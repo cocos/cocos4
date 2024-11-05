@@ -1,11 +1,14 @@
 #include "spine-wasm.h"
-#include <map>
 #include "AtlasAttachmentLoaderExtension.h"
 #include "spine-mesh-data.h"
 #include "util-function.h"
 #include "wasmSpineExtension.h"
 
-std::map<std::string, SkeletonData*> skeletonDataMap{};
+using namespace spine;
+
+namespace {
+    HashMap<String, SkeletonData*> skeletonDataMap{};
+}
 
 uint32_t SpineWasmUtil::s_listenerID = 0;
 EventType SpineWasmUtil::s_currentType = EventType_Event;
@@ -15,9 +18,9 @@ uint8_t* SpineWasmUtil::s_mem = nullptr;
 uint32_t SpineWasmUtil::s_memSize = 0;
 
 void SpineWasmUtil::spineWasmInit() {
-    LogUtil::Initialize();
-    spine::SpineExtension* tension = new WasmSpineExtension();
-    spine::SpineExtension::setInstance(tension);
+    // LogUtil::Initialize();
+    SpineExtension* extension = new WasmSpineExtension();
+    SpineExtension::setInstance(extension);
 
     SpineMeshData::initMeshMemory();
 
@@ -25,60 +28,64 @@ void SpineWasmUtil::spineWasmInit() {
 }
 
 void SpineWasmUtil::spineWasmDestroy() {
-    auto* extension = spine::SpineExtension::getInstance();
+    auto* extension = SpineExtension::getInstance();
     delete extension;
     freeStoreMemory();
     SpineMeshData::releaseMeshMemory();
-    LogUtil::ReleaseBuffer();
+    // LogUtil::ReleaseBuffer();
 }
 
-SkeletonData* SpineWasmUtil::querySpineSkeletonDataByUUID(const std::string& uuid) {
-    auto iter = skeletonDataMap.find(uuid);
-    if (iter == skeletonDataMap.end()) {
+SkeletonData* SpineWasmUtil::querySpineSkeletonDataByUUID(const String& uuid) {
+    if (!skeletonDataMap.containsKey(uuid)) {
         return nullptr;
     }
-    SkeletonData* ptrVal = iter->second;
-    return ptrVal;
+    return skeletonDataMap[uuid];
 }
 
-SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithJson(const std::string& jsonStr, const std::string& altasStr) {
-    auto* atlas = new Atlas(altasStr.c_str(), altasStr.size(), "", nullptr, false);
+SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithJson(const String& jsonStr, const String& altasStr) {
+#if ENABLE_JSON_PARSER
+    auto* atlas = new Atlas(altasStr.buffer(), altasStr.length(), "", nullptr, false);
     if (!atlas) {
         return nullptr;
     }
     AttachmentLoader* attachmentLoader = new AtlasAttachmentLoaderExtension(atlas);
-    spine::SkeletonJson json(attachmentLoader);
+    SkeletonJson json(attachmentLoader);
     json.setScale(1.0F);
-    SkeletonData* skeletonData = json.readSkeletonData(jsonStr.c_str());
+    SkeletonData* skeletonData = json.readSkeletonData(jsonStr.buffer());
 
     return skeletonData;
+#else
+    return nullptr;
+#endif
 }
 
-SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize, const std::string& altasStr) {
-    auto* atlas = new Atlas(altasStr.c_str(), altasStr.size(), "", nullptr, false);
+SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize, const String& altasStr) {
+#if ENABLE_BINARY_PARSER
+    auto* atlas = new Atlas(altasStr.buffer(), altasStr.length(), "", nullptr, false);
     if (!atlas) {
         return nullptr;
     }
     AttachmentLoader* attachmentLoader = new AtlasAttachmentLoaderExtension(atlas);
-    spine::SkeletonBinary binary(attachmentLoader);
+    SkeletonBinary binary(attachmentLoader);
     binary.setScale(1.0F);
     SkeletonData* skeletonData = binary.readSkeletonData(s_mem, byteSize);
     return skeletonData;
+#else
+    return nullptr;
+#endif
 }
 
-void SpineWasmUtil::registerSpineSkeletonDataWithUUID(SkeletonData* data, const std::string& uuid) {
-    auto iter = skeletonDataMap.find(uuid);
-    if (iter == skeletonDataMap.end()) {
-        skeletonDataMap[uuid] = data;
+void SpineWasmUtil::registerSpineSkeletonDataWithUUID(SkeletonData* data, const String& uuid) {
+    if (!skeletonDataMap.containsKey(uuid)) {
+        skeletonDataMap.put(uuid, data);
     }
 }
 
-void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const std::string& uuid) {
-    auto iter = skeletonDataMap.find(uuid);
-    if (iter != skeletonDataMap.end()) {
+void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const String& uuid) {
+    if (skeletonDataMap.containsKey(uuid)) {
         auto* data = skeletonDataMap[uuid];
         delete data;
-        skeletonDataMap.erase(iter);
+        skeletonDataMap.remove(uuid);
     }
 }
 
