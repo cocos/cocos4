@@ -601,8 +601,8 @@ ui-section { margin-top: 4px; }
 ui-prop > ui-section,
 ui-prop > ui-prop,
 ui-section > ui-prop[slot="header"],
-ui-prop [slot="content"] ui-prop { 
-    margin-top: 0; 
+ui-prop [slot="content"] ui-prop {
+    margin-top: 0;
     margin-left: 0;
 }
 ui-prop[ui-section-config] + ui-section.config,
@@ -651,7 +651,7 @@ exports.setTooltip = function(dump, $label, name) {
                 </ui-link>`.trim() : `<ui-label value="${dump.name || name}"></ui-label>`;
 
             $label.setAttribute('tooltip', `
-                <div>${attributeTitle}${attributeName}</div><br><ui-label value="${dump.tooltip}"></ui-label>`.trim()
+                <div style='margin-bottom: 10px'>${attributeTitle}${attributeName}</div><ui-label value="${dump.tooltip}"></ui-label>`.trim()
             );
         }
     }

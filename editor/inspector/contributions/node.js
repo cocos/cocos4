@@ -473,7 +473,7 @@ exports.$ = {
     nodeRotation: '.container > .body > .node > .rotation',
     nodeScale: '.container > .body > .node > .scale',
     nodeMobility: '.container > .body > .node > .mobility',
-    nodeLayer: '.container > .body > .node > .layer',
+    nodeLayer: '.container > .body > .node > .layer > ui-label',
     nodeLayerSelect: '.container > .body > .node > .layer .layer-select',
     nodeLayerButton: '.container > .body > .node > .layer .layer-edit',
 
