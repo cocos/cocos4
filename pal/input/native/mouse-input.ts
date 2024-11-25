@@ -96,13 +96,13 @@ export class MouseInputSource {
     private _handleMouseWheel: (mouseEvent: jsb.MouseWheelEvent) => void;
 
     constructor () {
-        this._handleMouseDown = this._createEventCacheCallback$(InputEventType.MOUSE_DOWN);
-        this._handleMouseMove = this._createEventCacheCallback$(InputEventType.MOUSE_MOVE);
-        this._handleMouseUp =  this._createEventCacheCallback$(InputEventType.MOUSE_UP);
-        this._handleWindowLeave = this._createEventCacheCallback$(InputEventType.MOUSE_LEAVE);
-        this._handleWindowEnter = this._createEventCacheCallback$(InputEventType.MOUSE_ENTER);
-        this._handleMouseWheel = this._createEventCacheCallback$(InputEventType.MOUSE_WHEEL);
-        this._registerEvent$();
+        this._handleMouseDown = this._createEventCacheCallback(InputEventType.MOUSE_DOWN);
+        this._handleMouseMove = this._createEventCacheCallback(InputEventType.MOUSE_MOVE);
+        this._handleMouseUp =  this._createEventCacheCallback(InputEventType.MOUSE_UP);
+        this._handleWindowLeave = this._createEventCacheCallback(InputEventType.MOUSE_LEAVE);
+        this._handleWindowEnter = this._createEventCacheCallback(InputEventType.MOUSE_ENTER);
+        this._handleMouseWheel = this._createEventCacheCallback(InputEventType.MOUSE_WHEEL);
+        this._registerEvent();
         this._windowManager = jsb.ISystemWindowManager.getInstance();
     }
 
@@ -120,7 +120,7 @@ export class MouseInputSource {
         return new Vec2(x, y);
     }
 
-    private _registerEvent$ (): void {
+    private _registerEvent (): void {
         jsb.onMouseDown = this._handleMouseDown;
         jsb.onMouseMove = this._handleMouseMove;
         jsb.onMouseUp =  this._handleMouseUp;
@@ -134,7 +134,7 @@ export class MouseInputSource {
         jsb.onWindowEnter = this._handleWindowEnter;
     }
 
-    private _createEventCacheCallback$ (eventType: InputEventType) {
+    private _createEventCacheCallback (eventType: InputEventType) {
         return (mouseEvent?: jsb.MouseEvent | jsb.MouseWheelEvent): void => {
             this._cache.push(eventType, mouseEvent);
         };
@@ -146,16 +146,16 @@ export class MouseInputSource {
         cache.forEach((e: MouseEventElement) => {
             switch (e.type) {
             case InputEventType.MOUSE_LEAVE:
-                this._dispatchWindowLeave$();
+                this._dispatchWindowLeave();
                 break;
             case InputEventType.MOUSE_ENTER:
-                this._dispatchWindowEnter$();
+                this._dispatchWindowEnter();
                 break;
             case InputEventType.MOUSE_WHEEL:
-                this._dispatchMouseWheel$(e.mouseEvent as jsb.MouseWheelEvent);
+                this._dispatchMouseWheel(e.mouseEvent as jsb.MouseWheelEvent);
                 break;
             default:
-                this._dispatchEvent$(e.type!, e.mouseEvent);
+                this._dispatchEvent(e.type!, e.mouseEvent);
                 break;
             }
         });
@@ -163,7 +163,7 @@ export class MouseInputSource {
         cache.clear();
     }
 
-    private _dispatchEvent$ (eventType: InputEventType, mouseEvent: jsb.MouseEvent): void {
+    private _dispatchEvent (eventType: InputEventType, mouseEvent: jsb.MouseEvent): void {
         const location = this._getLocation(mouseEvent);
         let button = mouseEvent.button;
         switch (eventType) {
@@ -193,7 +193,7 @@ export class MouseInputSource {
         this._eventTarget.emit(eventType, eventMouse);
     }
 
-    private _dispatchMouseWheel$ (mouseEvent: jsb.MouseWheelEvent): void {
+    private _dispatchMouseWheel (mouseEvent: jsb.MouseWheelEvent): void {
         const eventType = InputEventType.MOUSE_WHEEL;
         const location = this._getLocation(mouseEvent);
         const button = mouseEvent.button;
@@ -216,13 +216,13 @@ export class MouseInputSource {
     }
 
     // Should include window id if supporting multiple windows.
-    private _dispatchWindowLeave$ (): void {
+    private _dispatchWindowLeave (): void {
         const eventType = InputEventType.MOUSE_LEAVE;
         const eventMouse = new EventMouse(eventType, false);
         this._eventTarget.emit(eventType, eventMouse);
     }
 
-    private _dispatchWindowEnter$ (): void {
+    private _dispatchWindowEnter (): void {
         const eventType = InputEventType.MOUSE_ENTER;
         const eventMouse = new EventMouse(eventType, false);
         this._eventTarget.emit(eventType, eventMouse);
