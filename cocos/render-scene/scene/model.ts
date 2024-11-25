@@ -182,11 +182,11 @@ export class Model {
      * @zh 光照探针开关
      */
     get useLightProbe (): boolean {
-        return this._useLightProbe$;
+        return this._useLightProbe;
     }
 
     set useLightProbe (val) {
-        this._useLightProbe$ = val;
+        this._useLightProbe = val;
         this.onMacroPatchesStateChanged();
     }
 
@@ -195,11 +195,11 @@ export class Model {
      * @zh 模型所处的四面体索引
      */
     get tetrahedronIndex (): number {
-        return this._tetrahedronIndex$;
+        return this._tetrahedronIndex;
     }
 
     set tetrahedronIndex (index: number) {
-        this._tetrahedronIndex$ = index;
+        this._tetrahedronIndex = index;
     }
 
     /**
@@ -493,16 +493,16 @@ export class Model {
      */
     protected _localSHBuffer: Buffer | null = null;
 
-    private _lightmap$: Texture2D | null = null;
-    private _lightmapUVParam$: Vec4 = v4();
+    private _lightmap: Texture2D | null = null;
+    private _lightmapUVParam: Vec4 = v4();
 
     /**
      * @en located tetrahedron index
      * @zh 所处的四面体索引
      */
-    private _tetrahedronIndex$ = -1;
-    private _lastWorldBoundCenter$ = v3(Infinity, Infinity, Infinity);
-    private _useLightProbe$ = false;
+    private _tetrahedronIndex = -1;
+    private _lastWorldBoundCenter = v3(Infinity, Infinity, Infinity);
+    private _useLightProbe = false;
 
     /**
      * @en World AABB buffer
@@ -752,11 +752,11 @@ export class Model {
     }
 
     public showTetrahedron (): boolean {
-        return this.isLightProbeAvailable$();
+        return this.isLightProbeAvailable();
     }
 
-    private isLightProbeAvailable$ (): boolean {
-        if (!this._useLightProbe$) {
+    private isLightProbeAvailable (): boolean {
+        if (!this._useLightProbe) {
             return false;
         }
 
@@ -772,7 +772,7 @@ export class Model {
         return true;
     }
 
-    private updateSHBuffer$ (): void {
+    private updateSHBuffer (): void {
         if (!this._localSHData) {
             return;
         }
@@ -807,7 +807,7 @@ export class Model {
             this._localSHData[i] = 0.0;
         }
 
-        this.updateSHBuffer$();
+        this.updateSHBuffer();
     }
 
     /**
@@ -815,12 +815,12 @@ export class Model {
      * @zh 更新模型的球谐 ubo
      */
     public updateSHUBOs (): void {
-        if (!this.isLightProbeAvailable$()) {
+        if (!this.isLightProbeAvailable()) {
             return;
         }
 
         const center = this._worldBounds!.center;
-        if (!EDITOR && center.equals(this._lastWorldBoundCenter$, EPSILON)) {
+        if (!EDITOR && center.equals(this._lastWorldBoundCenter, EPSILON)) {
             return;
         }
 
@@ -828,9 +828,9 @@ export class Model {
         const weights = new Vec4();
         const lightProbes = (cclegacy.director.root.pipeline.pipelineSceneData as PipelineSceneData).lightProbes;
 
-        this._lastWorldBoundCenter$.set(center);
-        this._tetrahedronIndex$ = lightProbes.data!.getInterpolationWeights(center, this._tetrahedronIndex$, weights);
-        const result = lightProbes.data!.getInterpolationSHCoefficients(this._tetrahedronIndex$, weights, coefficients);
+        this._lastWorldBoundCenter.set(center);
+        this._tetrahedronIndex = lightProbes.data!.getInterpolationWeights(center, this._tetrahedronIndex, weights);
+        const result = lightProbes.data!.getInterpolationSHCoefficients(this._tetrahedronIndex, weights, coefficients);
         if (!result) {
             return;
         }
@@ -842,7 +842,7 @@ export class Model {
         const SHCls: typeof SH = cclegacy.internal.SH;
         SHCls.reduceRinging(coefficients, lightProbes.reduceRinging);
         SHCls.updateUBOData(this._localSHData, UBOSHEnum.SH_LINEAR_CONST_R_OFFSET, coefficients);
-        this.updateSHBuffer$();
+        this.updateSHBuffer();
     }
 
     /**
@@ -859,7 +859,7 @@ export class Model {
         this._worldBounds.copy(this._modelBounds);
     }
 
-    private _createSubModel$ (): SubModel {
+    private _createSubModel (): SubModel {
         return new SubModel();
     }
 
@@ -874,7 +874,7 @@ export class Model {
         this.initialize();
 
         if (this._subModels[idx] == null) {
-            this._subModels[idx] = this._createSubModel$();
+            this._subModels[idx] = this._createSubModel();
         } else {
             this._subModels[idx].destroy();
         }
@@ -942,8 +942,8 @@ export class Model {
      * because the lighting map will influence the shader
      */
     public initLightingmap (texture: Texture2D | null, uvParam: Vec4): void {
-        this._lightmap$ = texture;
-        this._lightmapUVParam$ = uvParam;
+        this._lightmap = texture;
+        this._lightmapUVParam = uvParam;
     }
 
     /**
@@ -955,8 +955,8 @@ export class Model {
     public updateLightingmap (texture: Texture2D | null, uvParam: Vec4): void {
         Vec4.toArray(this._localData, uvParam, UBOLocalEnum.LIGHTINGMAP_UVPARAM);
         this._localDataUpdated = true;
-        this._lightmap$ = texture;
-        this._lightmapUVParam$ = uvParam;
+        this._lightmap = texture;
+        this._lightmapUVParam = uvParam;
 
         this.onMacroPatchesStateChanged();
 
@@ -1171,7 +1171,7 @@ export class Model {
      */
     public getMacroPatches (subModelIndex: number): IMacroPatch[] | null {
         let patches = this.receiveShadow ? shadowMapPatches : null;
-        if (this._lightmap$ != null) {
+        if (this._lightmap != null) {
             if (this.node && this.node.scene && !this.node.scene.globals.disableLightmap) {
                 const mainLightIsStationary = this.node.scene.globals.bakedWithStationaryMainLight;
                 const lightmapPathes = mainLightIsStationary ? stationaryLightMapPatches : staticLightMapPatches;
@@ -1183,7 +1183,7 @@ export class Model {
                 }
             }
         }
-        if (this._useLightProbe$) {
+        if (this._useLightProbe) {
             patches = patches ? patches.concat(lightProbePatches) : lightProbePatches;
         }
         const reflectionProbePatches: IMacroPatch[] = [
@@ -1248,7 +1248,7 @@ export class Model {
     }
 
     protected _initLocalSHDescriptors (subModelIndex: number): void {
-        if (!EDITOR && !this._useLightProbe$) {
+        if (!EDITOR && !this._useLightProbe) {
             return;
         }
 
