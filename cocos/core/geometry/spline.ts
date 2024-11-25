@@ -90,28 +90,16 @@ const _v3 = new Vec3();
  */
 
 export class Spline {
-    private readonly _type$: number;
-    private declare _mode$: SplineMode;
-    private _knots$: Vec3[] = [];
-
-    // The private properties '_mode' and '_knots' are used in 'jsb_conversions_spec.cpp' for native platforms.
-    // bool sevalue_to_native(const se::Value &from, cc::geometry::Spline *to, se::Object * /*unused*/)
-    // So declare them here and add references in constructor.
+    private readonly _type: number;
     private declare _mode: SplineMode;
-    private declare _knots: Vec3[];
-    //
+    private _knots: Vec3[] = [];
 
     private constructor (mode: SplineMode = SplineMode.CATMULL_ROM, knots: Readonly<Vec3[]> = []) {
-        this._type$ = ShapeType.SHAPE_SPLINE;
-        this._mode$ = mode;
+        this._type = ShapeType.SHAPE_SPLINE;
+        this._mode = mode;
 
         for (let i = 0; i < knots.length; i++) {
-            this._knots$[i] = new Vec3(knots[i]);
-        }
-
-        if (JSB) {
-            this._mode = this._mode$;
-            this._knots = this._knots$;
+            this._knots[i] = new Vec3(knots[i]);
         }
     }
 
@@ -150,13 +138,13 @@ export class Spline {
      * @returns @en The target Spline instance to copy to, same as the `out` parameter. @zh 拷贝目标 Spline 实例，值与 `out` 参数相同。
      */
     public static copy (out: Spline, s: Spline): Spline {
-        out._mode$ = s.mode;
-        out._knots$.length = 0;
+        out._mode = s.mode;
+        out._knots.length = 0;
 
         const knots = s.knots;
         const length = knots.length;
         for (let i = 0; i < length; i++) {
-            out._knots$[i] = new Vec3(knots[i]);
+            out._knots[i] = new Vec3(knots[i]);
         }
 
         return out;
@@ -169,7 +157,7 @@ export class Spline {
      * 获取此 Spline 的类型，固定返回 `ShapeType.SHAPE_SPLINE`
      */
     get type (): number {
-        return this._type$;
+        return this._type;
     }
 
     /**
@@ -179,7 +167,7 @@ export class Spline {
      * 获取当前 Spline 实例的模式。
      */
     get mode (): SplineMode {
-        return this._mode$;
+        return this._mode;
     }
 
     /**
@@ -189,7 +177,7 @@ export class Spline {
      * 获取当前 Spline 实例的所有结点。
      */
     get knots (): Readonly<Vec3[]> {
-        return this._knots$;
+        return this._knots;
     }
 
     /**
@@ -201,11 +189,11 @@ export class Spline {
      * @param knots @en The knots to be set to this spline instance. @zh 要设置到当前 Spline 实例的结点列表。
      */
     public setModeAndKnots (mode: SplineMode, knots: Vec3[]): void {
-        this._mode$ = mode;
-        this._knots$.length = 0;
+        this._mode = mode;
+        this._knots.length = 0;
 
         for (let i = 0; i < knots.length; i++) {
-            this._knots$[i] = new Vec3(knots[i]);
+            this._knots[i] = new Vec3(knots[i]);
         }
     }
 
@@ -216,7 +204,7 @@ export class Spline {
      * 清空当前 Spline 实例的所有结点。
      */
     public clearKnots (): void {
-        this._knots$.length = 0;
+        this._knots.length = 0;
     }
 
     /**
@@ -227,7 +215,7 @@ export class Spline {
      * @returns @en The knot count of this Spline instance. @zh 当前 Spline 实例的结点数量。
      */
     public getKnotCount (): number {
-        return this._knots$.length;
+        return this._knots.length;
     }
 
     /**
@@ -238,7 +226,7 @@ export class Spline {
      * @param knot @en The knot to add to this Spline instance. @zh 要添加到当前 Spline 实例的结点。
      */
     public addKnot (knot: Vec3): void {
-        this._knots$.push(new Vec3(knot));
+        this._knots.push(new Vec3(knot));
     }
 
     /**
@@ -251,12 +239,12 @@ export class Spline {
      */
     public insertKnot (index: number, knot: Vec3): void {
         const item = new Vec3(knot);
-        if (index >= this._knots$.length) {
-            this._knots$.push(item);
+        if (index >= this._knots.length) {
+            this._knots.push(item);
             return;
         }
 
-        this._knots$.splice(index, 0, item);
+        this._knots.splice(index, 0, item);
     }
 
     /**
@@ -267,9 +255,9 @@ export class Spline {
      * @param index
      */
     public removeKnot (index: number): void {
-        assertsArrayIndex(this._knots$, index);
+        assertsArrayIndex(this._knots, index);
 
-        this._knots$.splice(index, 1);
+        this._knots.splice(index, 1);
     }
 
     /**
@@ -281,9 +269,9 @@ export class Spline {
      * @param knot @en The knot to be set to the specified position. @zh 要设置的结点。
      */
     public setKnot (index: number, knot: Vec3): void {
-        assertsArrayIndex(this._knots$, index);
+        assertsArrayIndex(this._knots, index);
 
-        this._knots$[index].set(knot);
+        this._knots[index].set(knot);
     }
 
     /**
@@ -295,9 +283,9 @@ export class Spline {
      * @returns @en The knot of the specified position of this Spline instance. @zh 当前 Spline 实例指定位置的结点。
      */
     public getKnot (index: number): Readonly<Vec3> {
-        assertsArrayIndex(this._knots$, index);
+        assertsArrayIndex(this._knots, index);
 
-        return this._knots$[index];
+        return this._knots[index];
     }
 
     /**
@@ -324,23 +312,23 @@ export class Spline {
             t     = (t % deltaT) / deltaT;
         }
 
-        const knots = this._knots$;
+        const knots = this._knots;
 
         if (index >= segments) {
             return new Vec3(knots[knots.length - 1]);
         }
 
-        switch (this._mode$) {
+        switch (this._mode) {
         case SplineMode.LINEAR:
-            return Spline.calcLinear$(knots[index], knots[index + 1], t);
+            return Spline.calcLinear(knots[index], knots[index + 1], t);
         case SplineMode.BEZIER: {
             const start = index * 4;
-            return Spline.calcBezier$(knots[start], knots[start + 1], knots[start + 2], knots[start + 3], t);
+            return Spline.calcBezier(knots[start], knots[start + 1], knots[start + 2], knots[start + 3], t);
         }
         case SplineMode.CATMULL_ROM: {
             const v0 = index > 0 ? knots[index - 1] : knots[index];
             const v3 = index + 2 < knots.length ? knots[index + 2] : knots[index + 1];
-            return Spline.calcCatmullRom$(v0, knots[index], knots[index + 1], v3, t);
+            return Spline.calcCatmullRom(v0, knots[index], knots[index + 1], v3, t);
         }
         default:
             return new Vec3();
@@ -381,8 +369,8 @@ export class Spline {
 
     // eslint-disable-next-line consistent-return
     private getSegments (): number {
-        const count = this._knots$.length;
-        switch (this._mode$) {
+        const count = this._knots.length;
+        switch (this._mode) {
         case SplineMode.LINEAR:
         case SplineMode.CATMULL_ROM:
             if (count < 2) {
@@ -404,7 +392,7 @@ export class Spline {
         }
     }
 
-    private static calcLinear$ (v0: Vec3, v1: Vec3, t: number): Vec3 {
+    private static calcLinear (v0: Vec3, v1: Vec3, t: number): Vec3 {
         const result = new Vec3();
         Vec3.multiplyScalar(_v0, v0, (1.0 - t));
         Vec3.multiplyScalar(_v1, v1, t);
@@ -413,7 +401,7 @@ export class Spline {
         return result;
     }
 
-    private static calcBezier$ (v0: Vec3, v1: Vec3, v2: Vec3, v3: Vec3, t: number): Vec3 {
+    private static calcBezier (v0: Vec3, v1: Vec3, v2: Vec3, v3: Vec3, t: number): Vec3 {
         const result = new Vec3();
         const s = 1.0 - t;
         Vec3.multiplyScalar(_v0, v0, s * s * s);
@@ -426,7 +414,7 @@ export class Spline {
 
         return result;
     }
-    private static calcCatmullRom$ (v0: Vec3, v1: Vec3, v2: Vec3, v3: Vec3, t: number): Vec3 {
+    private static calcCatmullRom (v0: Vec3, v1: Vec3, v2: Vec3, v3: Vec3, t: number): Vec3 {
         const result = new Vec3();
         const t2 = t * t;
         const t3 = t2 * t;
