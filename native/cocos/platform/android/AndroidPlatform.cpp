@@ -849,13 +849,12 @@ void AndroidPlatform::exit() {
 int32_t AndroidPlatform::loop() {
     IXRInterface *xr = CC_GET_XR_INTERFACE();
     while (true) {
-        int events;
         struct android_poll_source *source;
 
         // suspend thread while _loopTimeOut set to -1
-        while ((ALooper_pollAll(_loopTimeOut, nullptr, &events,
-                                reinterpret_cast<void **>(&source))) >= 0) {
-            // process event
+        while (ALooper_pollOnce(_loopTimeOut, nullptr, nullptr,
+                                reinterpret_cast<void **>(&source)) >= 0) {
+            // Process event
             if (source != nullptr) {
                 source->process(_app, source);
             }
