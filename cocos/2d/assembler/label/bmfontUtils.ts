@@ -43,7 +43,7 @@ let _comp: Label | null = null;
 let _uiTrans: UITransform | null = null;
 
 let _fntConfig: IConfig | null = null;
-let _spriteFrame: SpriteFrame|null = null;
+let _spriteFrame: SpriteFrame | null = null;
 let QUAD_INDICES: Uint16Array | null = null;
 
 export const bmfontUtils = {
@@ -176,13 +176,14 @@ export const bmfontUtils = {
         const renderData = label.renderData!;
         const vData = renderData.chunk.vb;
         const vertexCount = renderData.vertexCount;
+        const stride = renderData.floatStride;
         const dataList = renderData.data;
         let vertexOffset = 3;
         for (let i = 0; i < vertexCount; i++) {
             const vert = dataList[i];
             vData[vertexOffset] = vert.u;
             vData[vertexOffset + 1] = vert.v;
-            vertexOffset += 9;
+            vertexOffset += stride;
         }
     },
 
