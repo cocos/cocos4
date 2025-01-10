@@ -475,11 +475,11 @@ export class Pass {
     public resetTextures (): void {
         if (cclegacy.rendering) {
             const set = this._shaderInfo.descriptors[SetIndex.MATERIAL];
-            for (const combined of set.samplerTextures) {
+            set.samplerTextures.forEach((combined) => {
                 for (let j = 0; j < combined.count; ++j) {
                     this.resetTexture(combined.name, j);
                 }
-            }
+            });
         } else {
             for (let i = 0; i < this._shaderInfo.samplerTextures.length; i++) {
                 const u = this._shaderInfo.samplerTextures[i];
@@ -582,13 +582,7 @@ export class Pass {
     }
 
     protected get _isBlend (): boolean {
-        let bBlend = false;
-        for (const target of this.blendState.targets) {
-            if (target.blend) {
-                bBlend = true;
-            }
-        }
-        return bBlend;
+        return this.blendState.targets.some((target) => target.blend);
     }
 
     // internal use
@@ -910,10 +904,10 @@ export class Pass {
 
 function serializeBlendState (bs: BlendState): string {
     let res = `,bs,${bs.isA2C}`;
-    for (const t of bs.targets) {
+    bs.targets.forEach((t) => {
         res += `,bt,${t.blend},${t.blendEq},${t.blendAlphaEq},${t.blendColorMask}`;
         res += `,${t.blendSrc},${t.blendDst},${t.blendSrcAlpha},${t.blendDstAlpha}`;
-    }
+    });
     return res;
 }
 
