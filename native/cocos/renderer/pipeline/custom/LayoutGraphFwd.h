@@ -38,7 +38,7 @@ namespace cc {
 
 namespace render {
 
-enum class DescriptorTypeOrder;
+enum class DescriptorTypeOrder : uint8_t;
 
 struct Descriptor;
 struct DescriptorBlock;
@@ -51,7 +51,7 @@ struct RenderStageTag;
 struct RenderPhaseTag;
 struct RenderPhase;
 
-enum class RenderPassType : uint32_t;
+enum class RenderPassType : uint8_t;
 
 struct LayoutGraph;
 
@@ -64,9 +64,6 @@ struct DescriptorData;
 struct DescriptorBlockData;
 struct DescriptorSetLayoutData;
 struct DescriptorSetData;
-struct DescriptorGroupBlockData;
-struct DescriptorGroupLayoutData;
-struct DescriptorGroupData;
 struct PipelineLayoutData;
 struct ShaderBindingData;
 struct ShaderLayoutData;

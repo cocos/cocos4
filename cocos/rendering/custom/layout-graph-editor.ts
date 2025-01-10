@@ -25,7 +25,7 @@
 /* eslint-disable max-len */
 import { EffectAsset } from '../../asset/assets';
 import { assert, error, warn } from '../../core';
-import { ShaderStageFlagBit, Type, Uniform, UniformBlock } from '../../gfx';
+import { Format, MemoryAccessBit, SampleType, ShaderStageFlagBit, Type, Uniform, UniformBlock, ViewDimension } from '../../gfx';
 import { DefaultVisitor, depthFirstSearch, GraphColor, MutableVertexPropertyMap } from './graph';
 import {
     Descriptor,
@@ -33,7 +33,7 @@ import {
     DescriptorBlockData,
     DescriptorBlockFlattened,
     DescriptorBlockIndex,
-    DescriptorData, DescriptorDB, DescriptorSetData,
+    DescriptorData, DescriptorDB, DescriptorGroupBlock, DescriptorGroupBlockIndex, DescriptorSetData,
     DescriptorTypeOrder,
     LayoutGraph, LayoutGraphData, LayoutGraphDataValue, LayoutGraphValue,
     PipelineLayoutData, RenderPassType, RenderPhase, RenderPhaseData,
@@ -42,12 +42,12 @@ import {
 import { getDescriptorTypeOrderName } from './layout-graph-names';
 import { ENABLE_SUBPASS, getOrCreateDescriptorID, sortDescriptorBlocks } from './layout-graph-utils';
 import {
-    ParameterType, UpdateFrequency,
+    AccessType, ParameterType, UpdateFrequency,
 } from './types';
 import { getUpdateFrequencyName } from './types-names';
 
 export function getLayoutGraphDataVersion (): number {
-    return 0;
+    return 1;
 }
 
 // get name of gfx.Type
@@ -585,6 +585,15 @@ export class LayoutGraphInfo {
         }
         return value;
     }
+    private getDescriptorGroupBlock (key: string, descriptorDB: DescriptorDB): DescriptorGroupBlock {
+        const value = descriptorDB.groupBlocks.get(key);
+        if (value === undefined) {
+            const groupBlock: DescriptorGroupBlock = new DescriptorGroupBlock();
+            descriptorDB.groupBlocks.set(key, groupBlock);
+            return groupBlock;
+        }
+        return value;
+    }
     private checkConsistency (lhs: UniformBlock, rhs: UniformBlock): boolean {
         if (lhs.count !== 1) {
             return false;
@@ -662,6 +671,31 @@ export class LayoutGraphInfo {
             }
         }
     }
+    private buildGroupBlocks (visDB: VisibilityDB, rate: UpdateFrequency, blocks: EffectAsset.IBlockInfo[], db: DescriptorDB, counter: DescriptorCounter): void {
+        const visBlock = visDB.getBlock({
+            updateFrequency: rate,
+            parameterType: ParameterType.TABLE,
+            descriptorType: DescriptorTypeOrder.UNIFORM_BUFFER,
+        });
+        blocks.forEach((info): void => {
+            const groupBlockIndex = new DescriptorGroupBlockIndex(
+                rate,
+                ParameterType.TABLE,
+                DescriptorTypeOrder.UNIFORM_BUFFER,
+                rate >= UpdateFrequency.PER_PHASE ? visBlock.getVisibility(info.name) : info.stageFlags,
+                MemoryAccessBit.READ_ONLY,
+                ViewDimension.BUFFER,
+            );
+            const key = JSON.stringify(groupBlockIndex);
+            const block = this.getDescriptorGroupBlock(key, db);
+            if (groupBlockIndex.updateFrequency > UpdateFrequency.PER_BATCH) {
+                this.addDescriptor(block, info.name);
+                this.addUniformBlock(block, info.name, this.makeUniformBlock(info));
+            } else {
+                counter.addDescriptor(key, info.name, 1);
+            }
+        });
+    }
     private buildBuffers (
         visDB: VisibilityDB,
         rate: UpdateFrequency,
@@ -690,6 +724,52 @@ export class LayoutGraphInfo {
                 counter.addDescriptor(key, info.name, 1);
             }
         }
+    }
+    private getBufferAccessType (access: MemoryAccessBit): AccessType {
+        if (access & MemoryAccessBit.WRITE_ONLY) {
+            return AccessType.READ_WRITE;
+        }
+        return AccessType.READ;
+    }
+    private getImageAccessType (access: MemoryAccessBit): AccessType {
+        if (access === MemoryAccessBit.READ_WRITE) {
+            return AccessType.READ_WRITE;
+        }
+        if (access === MemoryAccessBit.WRITE_ONLY) {
+            return AccessType.WRITE;
+        }
+        return AccessType.READ;
+    }
+    private buildGroupBuffers (
+        visDB: VisibilityDB,
+        rate: UpdateFrequency,
+        infoArray: EffectAsset.IBufferInfo[],
+        type: Type,
+        db: DescriptorDB,
+        counter: DescriptorCounter,
+    ): void {
+        const visBlock = visDB.getBlock({
+            updateFrequency: rate,
+            parameterType: ParameterType.TABLE,
+            descriptorType: DescriptorTypeOrder.STORAGE_BUFFER,
+        });
+        infoArray.forEach((info): void => {
+            const groupBlockIndex = new DescriptorGroupBlockIndex(
+                rate,
+                ParameterType.TABLE,
+                DescriptorTypeOrder.STORAGE_BUFFER,
+                rate >= UpdateFrequency.PER_PHASE ? visBlock.getVisibility(info.name) : info.stageFlags,
+                info.memoryAccess,
+                ViewDimension.BUFFER,
+            );
+            const key = JSON.stringify(groupBlockIndex);
+            const block = this.getDescriptorGroupBlock(key, db);
+            if (groupBlockIndex.updateFrequency > UpdateFrequency.PER_BATCH) {
+                this.addDescriptor(block, info.name, type);
+            } else {
+                counter.addDescriptor(key, info.name, 1);
+            }
+        });
     }
     private buildNonTextures (
         visDB: VisibilityDB,
@@ -721,6 +801,38 @@ export class LayoutGraphInfo {
             }
         }
     }
+    private buildGroupNonTextures (
+        visDB: VisibilityDB,
+        rate: UpdateFrequency,
+        order: DescriptorTypeOrder,
+        infoArray: EffectAsset.ISamplerInfo[] | EffectAsset.IInputAttachmentInfo[],
+        type: Type,
+        db: DescriptorDB,
+        counter: DescriptorCounter,
+    ): void {
+        const visBlock = visDB.getBlock({
+            updateFrequency: rate,
+            parameterType: ParameterType.TABLE,
+            descriptorType: order,
+        });
+        infoArray.forEach((info): void => {
+            const groupBlockIndex = new DescriptorGroupBlockIndex(
+                rate,
+                ParameterType.TABLE,
+                order,
+                rate >= UpdateFrequency.PER_PHASE ? visBlock.getVisibility(info.name) : info.stageFlags,
+                MemoryAccessBit.READ_ONLY,
+                ViewDimension.UNKNOWN,
+            );
+            const key = JSON.stringify(groupBlockIndex);
+            const block = this.getDescriptorGroupBlock(key, db);
+            if (groupBlockIndex.updateFrequency > UpdateFrequency.PER_BATCH) {
+                this.addDescriptor(block, info.name, type);
+            } else {
+                counter.addDescriptor(key, info.name, info.count);
+            }
+        });
+    }
     private buildTextures (
         visDB: VisibilityDB,
         rate: UpdateFrequency,
@@ -749,6 +861,97 @@ export class LayoutGraphInfo {
                 counter.addDescriptor(key, info.name, info.count);
             }
         }
+    }
+    private buildGroupTextures (
+        visDB: VisibilityDB,
+        rate: UpdateFrequency,
+        order: DescriptorTypeOrder,
+        infoArray: EffectAsset.ISamplerTextureInfo[] | EffectAsset.ITextureInfo[],
+        db: DescriptorDB,
+        counter: DescriptorCounter,
+    ): void {
+        const visBlock = visDB.getBlock({
+            updateFrequency: rate,
+            parameterType: ParameterType.TABLE,
+            descriptorType: order,
+        });
+        infoArray.forEach((info): void => {
+            const groupBlockIndex = new DescriptorGroupBlockIndex(
+                rate,
+                ParameterType.TABLE,
+                order,
+                rate >= UpdateFrequency.PER_PHASE ? visBlock.getVisibility(info.name) : info.stageFlags,
+                MemoryAccessBit.READ_ONLY,
+                this.getViewDimension(info.type),
+                info.sampleType, // SINT, UINT not supported yet. Only support FLOAT, UNFILTERABLE_FLOAT
+                Format.UNKNOWN, // Format is not used for textures
+            );
+            const key = JSON.stringify(groupBlockIndex);
+            const block = this.getDescriptorGroupBlock(key, db);
+            if (groupBlockIndex.updateFrequency > UpdateFrequency.PER_BATCH) {
+                this.addDescriptor(block, info.name, info.type);
+            } else {
+                counter.addDescriptor(key, info.name, info.count);
+            }
+        });
+    }
+    private getViewDimension (type: Type): ViewDimension  {
+        switch (type) {
+        case Type.SAMPLER1D:
+        case Type.TEXTURE1D:
+        case Type.IMAGE1D:
+            return ViewDimension.TEX1D;
+        case Type.SAMPLER2D:
+        case Type.TEXTURE2D:
+        case Type.IMAGE2D:
+            return ViewDimension.TEX2D;
+        case Type.SAMPLER2D_ARRAY:
+        case Type.TEXTURE2D_ARRAY:
+        case Type.IMAGE2D_ARRAY:
+            return ViewDimension.TEX2D_ARRAY;
+        case Type.SAMPLER_CUBE:
+        case Type.TEXTURE_CUBE:
+        case Type.IMAGE_CUBE:
+            return ViewDimension.TEXCUBE;
+        case Type.SAMPLER3D:
+        case Type.TEXTURE3D:
+        case Type.IMAGE3D:
+            return ViewDimension.TEX3D;
+        default:
+            return ViewDimension.UNKNOWN;
+        }
+    }
+    private buildGroupImages (
+        visDB: VisibilityDB,
+        rate: UpdateFrequency,
+        infoArray: EffectAsset.IImageInfo[],
+        db: DescriptorDB,
+        counter: DescriptorCounter,
+    ): void {
+        const visBlock = visDB.getBlock({
+            updateFrequency: rate,
+            parameterType: ParameterType.TABLE,
+            descriptorType: DescriptorTypeOrder.STORAGE_IMAGE,
+        });
+        infoArray.forEach((info): void => {
+            const groupBlockIndex = new DescriptorGroupBlockIndex(
+                rate,
+                ParameterType.TABLE,
+                DescriptorTypeOrder.STORAGE_IMAGE,
+                rate >= UpdateFrequency.PER_PHASE ? visBlock.getVisibility(info.name) : info.stageFlags,
+                info.memoryAccess,
+                this.getViewDimension(info.type),
+                SampleType.FLOAT, // Not used, use default value
+                Format.UNKNOWN, // TODO(zhouzhenglong): Add correct layout format qualifier
+            );
+            const key = JSON.stringify(groupBlockIndex);
+            const block = this.getDescriptorGroupBlock(key, db);
+            if (groupBlockIndex.updateFrequency > UpdateFrequency.PER_BATCH) {
+                this.addDescriptor(block, info.name, info.type);
+            } else {
+                counter.addDescriptor(key, info.name, info.count);
+            }
+        });
     }
     public addEffect (asset: EffectAsset): void {
         const lg = this.lg;
@@ -782,9 +985,10 @@ export class LayoutGraphInfo {
                 const visDB = passVis.getPhase(phaseName);
                 const db = lg.getDescriptors(phaseID);
                 const counter = new DescriptorCounter();
+                const groupCounter = new DescriptorCounter();
 
                 // merge descriptors and reserve capacity
-                for (const list of shader.descriptors) {
+                shader.descriptors.forEach((list): void => {
                     this.buildBlocks(visDB, list.rate, list.blocks, db, counter);
                     this.buildBuffers(visDB, list.rate, list.buffers, Type.UNKNOWN, db, counter);
                     this.buildNonTextures(visDB, list.rate, DescriptorTypeOrder.SAMPLER, list.samplers, Type.SAMPLER, db, counter);
@@ -792,7 +996,16 @@ export class LayoutGraphInfo {
                     this.buildTextures(visDB, list.rate, DescriptorTypeOrder.TEXTURE, list.textures, db, counter);
                     this.buildTextures(visDB, list.rate, DescriptorTypeOrder.SAMPLER_TEXTURE, list.samplerTextures, db, counter);
                     this.buildTextures(visDB, list.rate, DescriptorTypeOrder.STORAGE_IMAGE, list.images, db, counter);
-                }
+
+                    // WebGPU
+                    this.buildGroupBlocks(visDB, list.rate, list.blocks, db, groupCounter);
+                    this.buildGroupBuffers(visDB, list.rate, list.buffers, Type.UNKNOWN, db, groupCounter);
+                    this.buildGroupNonTextures(visDB, list.rate, DescriptorTypeOrder.SAMPLER, list.samplers, Type.SAMPLER, db, groupCounter);
+                    // InputAttachment is not supported in WebGPU
+                    this.buildGroupTextures(visDB, list.rate, DescriptorTypeOrder.TEXTURE, list.textures, db, groupCounter);
+                    this.buildGroupTextures(visDB, list.rate, DescriptorTypeOrder.SAMPLER_TEXTURE, list.samplerTextures, db, groupCounter);
+                    this.buildGroupImages(visDB, list.rate, list.images, db, groupCounter);
+                });
 
                 // update max capacity and debug info
                 counter.counter.forEach((v: number, key: string): void => {
@@ -801,6 +1014,22 @@ export class LayoutGraphInfo {
                         block.capacity = Math.max(block.capacity, v);
                         if (this.enableDebug) {
                             const names = counter.inspector.get(key);
+                            if (names === undefined) {
+                                return;
+                            }
+                            block.descriptors.clear();
+                            for (const name of names) {
+                                block.descriptors.set(name, new Descriptor());
+                            }
+                        }
+                    }
+                });
+                groupCounter.counter.forEach((v: number, key: string): void => {
+                    const block = this.getDescriptorGroupBlock(key, db);
+                    if (v > block.capacity) {
+                        block.capacity = Math.max(block.capacity, v);
+                        if (this.enableDebug) {
+                            const names = groupCounter.inspector.get(key);
                             if (names === undefined) {
                                 return;
                             }
