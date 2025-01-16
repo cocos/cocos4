@@ -66,9 +66,14 @@ void *gles2wLoad(const char *proc) {
 }
 #else
     #include <dlfcn.h>
+    #include "BasePlatform.h"
+    #include "../gfx-gles-common/eglw.h"
+    #include "../gfx-gles-common/gles2w.h"
 
-static void *libegl = nullptr;
-static void *libgles = nullptr;
+namespace {
+    void *libegl = nullptr;
+    void *libgles = nullptr;
+}
 
 bool gles2wOpen() {
     libegl = dlopen("libEGL.so", RTLD_LAZY | RTLD_GLOBAL);
@@ -98,7 +103,12 @@ bool gles2wClose() {
 void *gles2wLoad(const char *proc) {
     void *res = nullptr;
     if (eglGetProcAddress) res = reinterpret_cast<void *>(eglGetProcAddress(proc));
-    if (!res) res = dlsym(libegl, proc);
+    auto sdkVersion = cc::BasePlatform::getPlatform()->getSdkVersion();
+    if (sdkVersion <= 23) {
+        if (!res) res = dlsym(libgles, proc);
+    } else {
+        if (!res) res = dlsym(libegl, proc);
+    }
     return res;
 }
 #endif
