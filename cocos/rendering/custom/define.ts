@@ -428,7 +428,8 @@ export function getDescBindingFromName (bindingName: string): number {
     let currDesData: DescriptorSetData;
     for (const i of vertIds) {
         const layout = layoutGraph.getLayout(i);
-        for (const [k, descData] of layout.descriptorSets) {
+        const sets = layout.getSets();
+        for (const [k, descData] of sets) {
             const layoutData = descData.descriptorSetLayoutData;
             const blocks = layoutData.descriptorBlocks;
             for (const b of blocks) {
@@ -493,7 +494,7 @@ export function getDescriptorSetDataFromLayout (layoutName: string): DescriptorS
     const webPip = cclegacy.director.root.pipeline as WebPipeline;
     const stageId = webPip.layoutGraph.locateChild(webPip.layoutGraph.N, layoutName);
     const layout = webPip.layoutGraph.getLayout(stageId);
-    const layoutData = layout.descriptorSets.get(UpdateFrequency.PER_PASS);
+    const layoutData = layout.getSet(UpdateFrequency.PER_PASS);
     layouts.set(layoutName, layoutData!);
     return layoutData;
 }
@@ -501,7 +502,7 @@ export function getDescriptorSetDataFromLayout (layoutName: string): DescriptorS
 export function getDescriptorSetDataFromLayoutId (id: number): DescriptorSetData | undefined {
     const webPip = cclegacy.director.root.pipeline as WebPipeline;
     const layout = webPip.layoutGraph.getLayout(id);
-    const layoutData = layout.descriptorSets.get(UpdateFrequency.PER_PASS);
+    const layoutData = layout.getSet(UpdateFrequency.PER_PASS);
     return layoutData;
 }
 
@@ -514,7 +515,7 @@ function getUniformBlock (block: string, layoutName: string): UniformBlock | und
     const lg = webPip.layoutGraph;
     const nodeId = lg.locateChild(0xFFFFFFFF, layoutName);
     const ppl = lg.getLayout(nodeId);
-    const layout = ppl.descriptorSets.get(UpdateFrequency.PER_PASS)!.descriptorSetLayoutData;
+    const layout = ppl.getSet(UpdateFrequency.PER_PASS)!.descriptorSetLayoutData;
     const nameID: number = lg.attributeIndex.get(block)!;
     return layout.uniformBlocks.get(nameID);
 }

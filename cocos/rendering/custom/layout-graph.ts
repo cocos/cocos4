@@ -28,6 +28,7 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 /* eslint-disable max-len */
+import { HTML5 } from 'internal:constants';
 import { AddressableGraph, AdjI, AdjacencyGraph, BidirectionalGraph, ComponentGraph, ED, InEI, MutableGraph, MutableReferenceGraph, NamedGraph, OutE, OutEI, PolymorphicGraph, PropertyGraph, ReferenceGraph, VertexListGraph, findRelative, getPath } from './graph';
 import type { DescriptorSet, DescriptorSetLayout, PipelineLayout } from '../../gfx';
 import { DescriptorSetLayoutInfo, Format, MemoryAccessBit, SampleType, ShaderStageFlagBit, Type, UniformBlock, ViewDimension } from '../../gfx';
@@ -38,6 +39,16 @@ import { saveUniformBlock, loadUniformBlock, saveDescriptorSetLayoutInfo, loadDe
 
 function resetDescriptorSetLayoutInfo (info: DescriptorSetLayoutInfo): void {
     info.bindings.length = 0;
+}
+
+export const enum LayoutType {
+    VULKAN,
+    WEBGPU,
+}
+
+export class Layout {
+    static type = LayoutType.VULKAN;
+    static isWebGPU = false;
 }
 
 export const enum DescriptorTypeOrder {
@@ -603,6 +614,12 @@ export class PipelineLayoutData {
         this.descriptorSets.clear();
         this.descriptorGroups.clear();
     }
+    getSets (): Map<UpdateFrequency, DescriptorSetData> {
+        return HTML5 && Layout.isWebGPU ? this.descriptorGroups : this.descriptorSets;
+    }
+    getSet (frequency: UpdateFrequency): DescriptorSetData | undefined {
+        return HTML5 && Layout.isWebGPU ? this.descriptorGroups.get(frequency) : this.descriptorSets.get(frequency);
+    }
     readonly descriptorSets: Map<UpdateFrequency, DescriptorSetData> = new Map<UpdateFrequency, DescriptorSetData>();
     readonly descriptorGroups: Map<UpdateFrequency, DescriptorSetData> = new Map<UpdateFrequency, DescriptorSetData>();
 }
@@ -995,6 +1012,7 @@ export class LayoutGraphObjectPool {
         this.renderCommon = renderCommon;
     }
     reset (): void {
+        this.l.reset(); // Layout
         this.d.reset(); // Descriptor
         this.db.reset(); // DescriptorBlock
         this.dbf.reset(); // DescriptorBlockFlattened
@@ -1018,6 +1036,10 @@ export class LayoutGraphObjectPool {
         this.rsd.reset(); // RenderStageData
         this.rpd.reset(); // RenderPhaseData
         this.lgd.reset(); // LayoutGraphData
+    }
+    createLayout (): Layout {
+        const v = this.l.add(); // Layout
+        return v;
     }
     createDescriptor (
         type: Type = Type.UNKNOWN,
@@ -1183,6 +1205,7 @@ export class LayoutGraphObjectPool {
         return v;
     }
     public readonly renderCommon: RenderCommonObjectPool;
+    private readonly l: RecyclePool<Layout> = createPool(Layout);
     private readonly d: RecyclePool<Descriptor> = createPool(Descriptor);
     private readonly db: RecyclePool<DescriptorBlock> = createPool(DescriptorBlock);
     private readonly dbf: RecyclePool<DescriptorBlockFlattened> = createPool(DescriptorBlockFlattened);
