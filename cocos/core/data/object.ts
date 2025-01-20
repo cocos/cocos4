@@ -198,6 +198,12 @@ class CCObject implements EditorExtendableObject {
      * @internal
      */
     public _objFlags: number = 0;
+
+    /**
+     * @dontmangle
+     * NOTE: _name is a serializable property set by `CCClass.fastDefine`,
+     * so it should not be mangled while `mangleProtected` is true in `<<ProjectRoot>>/engine-mangle-config.json`.
+     */
     protected declare _name: string;
 
     constructor (name = '') {
