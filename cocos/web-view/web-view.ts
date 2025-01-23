@@ -178,17 +178,17 @@ export class WebView extends Component {
         this._impl.loadURL(this._url);
     }
 
-    onLoading (): void {
+    private onLoading (): void {
         ComponentEventHandler.emitEvents(this.webviewEvents, this, WebViewEventType.LOADING);
         this.node.emit(WebViewEventType.LOADING, this);
     }
 
-    onLoaded (): void {
+    private onLoaded (): void {
         ComponentEventHandler.emitEvents(this.webviewEvents, this, WebViewEventType.LOADED);
         this.node.emit(WebViewEventType.LOADED, this);
     }
 
-    onError (...args: any[any]): void {
+    private onError (...args: any[any]): void {
         ComponentEventHandler.emitEvents(this.webviewEvents, this, WebViewEventType.ERROR, args);
         this.node.emit(WebViewEventType.ERROR, this, args);
     }
