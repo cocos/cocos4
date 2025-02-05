@@ -613,6 +613,7 @@ export class NodeEventProcessor {
 
     /**
      * @engineInternal
+     * @mangle
      */
     public _handleEventTouch (eventTouch: EventTouch): boolean | void {
         try {
