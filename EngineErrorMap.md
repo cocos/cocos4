@@ -160,6 +160,10 @@ cc.ReverseTime.initWithAction(): the action was already passed in.
 <!-- DEPRECATED -->
 cc.Animate.initWithAnimation(): animation must be non-NULL
 
+### 1031
+
+Set `setter` to boolean is deprecated. Please don not use like this again.
+
 ### 1100
 
 Expected 'data' dict, but not found. Config file: %s
@@ -2002,6 +2006,10 @@ Invalid RichText img tag! The sprite frame name can't be found in the ImageAtlas
 ### 4500
 
 Graphics: There is no model in %s.
+
+### 4501
+
+Graphics feature is not enabled in 'Project Settings -> Feature Cropping', %s
 
 ### 4600
 

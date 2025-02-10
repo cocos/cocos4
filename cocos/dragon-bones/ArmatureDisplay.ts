@@ -32,7 +32,7 @@ import { AttachUtil } from './AttachUtil';
 import { CCFactory } from './CCFactory';
 import { DragonBonesAsset } from './DragonBonesAsset';
 import { DragonBonesAtlasAsset } from './DragonBonesAtlasAsset';
-import { Graphics } from '../2d/components';
+import type { Graphics } from '../2d/components/graphics';
 import { CCArmatureDisplay } from './CCArmatureDisplay';
 import { MaterialInstance } from '../render-scene/core/material-instance';
 import { ArmatureSystem } from './ArmatureSystem';
@@ -996,16 +996,22 @@ export class ArmatureDisplay extends UIRenderer {
     _updateDebugDraw (): void {
         if (this.debugBones) {
             if (!this._debugDraw) {
-                const debugDrawNode = new Node('DEBUG_DRAW_NODE');
+                let debugDrawNode: Node | null = new Node('DEBUG_DRAW_NODE');
                 debugDrawNode.hideFlags |= CCObjectFlags.DontSave | CCObjectFlags.HideInHierarchy;
-                const debugDraw = debugDrawNode.addComponent(Graphics);
-                debugDraw.lineWidth = 1;
-                debugDraw.strokeColor = new Color(255, 0, 0, 255);
+                let debugDraw: Graphics | undefined;
+                try {
+                    debugDraw = debugDrawNode.addComponent('cc.Graphics') as Graphics;
+                    debugDraw.lineWidth = 1;
+                    debugDraw.strokeColor = new Color(255, 0, 0, 255);
 
-                this._debugDraw = debugDraw;
+                    this._debugDraw = debugDraw;
+                    this._debugDraw.node.parent = this.node;
+                } catch (e: any) {
+                    errorID(4501, e.message as string);
+                    debugDrawNode.destroy();
+                    debugDrawNode = null;
+                }
             }
-
-            this._debugDraw.node.parent = this.node;
         } else if (this._debugDraw) {
             this._debugDraw.node.parent = null;
         }
