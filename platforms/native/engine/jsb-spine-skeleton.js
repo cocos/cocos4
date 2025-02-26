@@ -174,8 +174,7 @@ const cacheManager = require('./jsb-cache-manager');
         this._target = target;
         this._callback = callback;
 
-        // eslint-disable-next-line no-undef
-        const AnimationEventType = legacyCC.internal.SpineAnimationEventType;
+        const AnimationEventType = cc.internal.SpineAnimationEventType;
 
         this.setStartListener(function (trackEntry) {
             if (this._target && this._callback) {
@@ -405,6 +404,10 @@ const cacheManager = require('./jsb-cache-manager');
     };
 
     skeleton.setVertexEffectDelegate = function (effectDelegate) {
+        if (cc.internal.SPINE_VERSION === '4.2') {
+            cc.warn('setVertexEffectDelegate is deprecated since spine 4.2');
+            return;
+        }
         if (this._nativeSkeleton && !this.isAnimationCached()) {
             this._nativeSkeleton.setVertexEffectDelegate(effectDelegate);
         }
@@ -696,7 +699,11 @@ const cacheManager = require('./jsb-cache-manager');
             this._preCacheMode = this._cacheMode;
 
             this.defaultSkin && this._nativeSkeleton.setSkin(this.defaultSkin);
-            this.animation = this.defaultAnimation;
+            if (this.defaultAnimation) {
+                this.animation = this.defaultAnimation;
+            } else if (this._animationName) {
+                this.animation = this._animationName;
+            }
         } else if (this._nativeSkeleton) {
             this._nativeSkeleton.stopSchedule();
             this._nativeSkeleton._comp = null;

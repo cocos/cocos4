@@ -24,7 +24,7 @@
 import { EDITOR_NOT_IN_PREVIEW, JSB } from 'internal:constants';
 import { ccclass, executeInEditMode, help, menu, serializable, type, override, displayOrder, editable, visible } from 'cc.decorator';
 import { Material, Texture2D } from '../asset/assets';
-import { error, errorID, logID, warn } from '../core/platform/debug';
+import { error, errorID, logID, warnID } from '../core/platform/debug';
 import { Enum, EnumType, ccenum } from '../core/value-types/enum';
 import { Node, NodeEventType } from '../scene-graph';
 import { CCObjectFlags, Color, RecyclePool, js } from '../core';
@@ -45,6 +45,7 @@ import SkeletonCache, { AnimationCache, AnimationFrame, SkeletonCacheItemInfo } 
 import { TrackEntryListeners } from './track-entry-listeners';
 import { setPropertyEnumType } from '../core/internal-index';
 import { RenderData } from '../2d/renderer/render-data';
+import { SPINE_VERSION } from './lib/spine-version';
 
 const CachedFrameTime = 1 / 60;
 
@@ -783,7 +784,12 @@ export class Skeleton extends UIRenderer {
            it will cause rendering issues when a prefab with Spine assets is added to the scene node tree.
         */
         if (this.defaultSkin && this.defaultSkin !== '') this.setSkin(this.defaultSkin);
-        if (this.defaultAnimation) this.animation = this.defaultAnimation.toString();
+        if (this.defaultAnimation) {
+            this.animation = this.defaultAnimation.toString();
+        } else if (this._animationName) {
+            this.animation = this._animationName;
+        }
+
         this._updateUseTint();
         this._indexBoneSockets();
         this._updateSocketBindings();
@@ -821,7 +827,7 @@ export class Skeleton extends UIRenderer {
         }
         if (this.isAnimationCached()) {
             if (this.debugBones || this.debugSlots) {
-                warn('Debug bones or slots is invalid in cached mode');
+                warnID(16410);
             }
             const skeletonInfo = this._skeletonCache!.getSkeletonInfo(this._skeletonData!);
             if (this._skeletonInfo !== skeletonInfo) {
@@ -848,7 +854,7 @@ export class Skeleton extends UIRenderer {
      */
     public setSlotsRange (startSlotIndex: number, endSlotIndex: number): void {
         if (this.isAnimationCached()) {
-            warn('Slots visible range can not be modified in cached mode.');
+            warnID(16411);
         } else {
             this._startSlotIndex = startSlotIndex;
             this._endSlotIndex = endSlotIndex;
@@ -928,7 +934,7 @@ export class Skeleton extends UIRenderer {
         this._playTimes = loop ? 0 : 1;
         if (this.isAnimationCached()) {
             if (trackIndex !== 0) {
-                warn('Track index can not greater than 0 in cached mode.');
+                warnID(16412);
             }
             if (!this._skeletonCache) return null;
             let cache = this._skeletonCache.getAnimationCache(this._skeletonData!.uuid, name);
@@ -970,7 +976,7 @@ export class Skeleton extends UIRenderer {
         delay = delay || 0;
         if (this.isAnimationCached()) {
             if (trackIndex !== 0) {
-                warn('Track index can not greater than 0 in cached mode.');
+                warnID(16413);
             }
             this._animationQueue.push({ animationName: name, loop, delay });
             return null;
@@ -1006,7 +1012,7 @@ export class Skeleton extends UIRenderer {
      */
     public getCurrent (trackIndex: number): spine.TrackEntry | null {
         if (this.isAnimationCached()) {
-            warn('\'getCurrent\' interface can not be invoked in cached mode.');
+            warnID(16414);
         } else if (this._state) {
             return this._state.getCurrent(trackIndex);
         }
@@ -1462,7 +1468,7 @@ export class Skeleton extends UIRenderer {
      */
     public setMix (fromAnimation: string, toAnimation: string, duration: number): void {
         if (this.isAnimationCached()) {
-            warn('cached mode not support setMix!!!');
+            warnID(16415);
             return;
         }
         if (this._state) {
@@ -1477,7 +1483,7 @@ export class Skeleton extends UIRenderer {
      */
     public clearTracks (): void {
         if (this.isAnimationCached()) {
-            warn('\'clearTracks\' interface can not be invoked in cached mode.');
+            warnID(16416);
         } else if (this._state) {
             this._state.clearTracks();
             this.setToSetupPose();
@@ -1491,7 +1497,7 @@ export class Skeleton extends UIRenderer {
      */
     public clearTrack (trackIndex: number): void {
         if (this.isAnimationCached()) {
-            warn('\'clearTrack\' interface can not be invoked in cached mode.');
+            warnID(16417);
         } else if (this._state) {
             this._state.clearTrack(trackIndex);
             if (EDITOR_NOT_IN_PREVIEW) {
@@ -1638,7 +1644,7 @@ export class Skeleton extends UIRenderer {
                 }
             }
             if (this.isAnimationCached()) {
-                warn('Debug bones or slots is invalid in cached mode');
+                warnID(16418);
             } else if (!JSB) {
                 this._instance!.setDebugMode(true);
             }
@@ -1699,11 +1705,16 @@ export class Skeleton extends UIRenderer {
     }
 
     /**
+     * @version 3.8, deprecated since spine 4.2
      * @en Sets vertex effect delegate.
      * @zh 设置顶点特效动画代理。
      * @param effectDelegate @en Vertex effect delegate. @zh 顶点特效代理。
      */
     public setVertexEffectDelegate (effectDelegate: VertexEffectDelegate | null | undefined): void {
+        if (SPINE_VERSION !== '3.8') {
+            warnID(16409);
+            return;
+        }
         if (!this._instance) {
             return;
         }
