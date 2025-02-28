@@ -209,7 +209,6 @@
                             "default": false
                         }
                     }
-
                 },
                 "physics-2d-builtin": {
                     "label": "i18n:ENGINE.features.physics_2d_builtin.label",
@@ -377,18 +376,18 @@
         "spine": {
             "label": "i18n:ENGINE.features.spine.label",
             "description": "i18n:ENGINE.features.spine.description",
-            "isNativeModule": true,
             "category": "2d",
-            "dependencies": [
-                "2d"
-            ],
             "options": {
                 "spine-3.8": {
                     "enginePlugin": true,
                     "cmakeConfig": "USE_SPINE_3_8",
                     "default": true,
+                    "isNativeModule": true,
                     "label": "i18n:ENGINE.features.spine_38.label",
                     "description": "i18n:ENGINE.features.spine_38.description",
+                    "dependencies": [
+                        "2d"
+                    ],
                     "flags": {
                         "LOAD_SPINE_MANUALLY": {
                             "label": "i18n:ENGINE.features.flags.spine.loadManual.label",
@@ -402,8 +401,12 @@
                     "enginePlugin": true,
                     "cmakeConfig": "USE_SPINE_4_2",
                     "default": false,
+                    "isNativeModule": true,
                     "label": "i18n:ENGINE.features.spine_42.label",
                     "description": "i18n:ENGINE.features.spine_42.description",
+                    "dependencies": [
+                        "2d"
+                    ],
                     "flags": {
                         "LOAD_SPINE_MANUALLY": {
                             "label": "i18n:ENGINE.features.flags.spine.loadManual.label",
