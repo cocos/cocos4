@@ -280,7 +280,14 @@ export class SkeletonData extends Asset {
     }
 
     private mergedUUID (): string {
-        return this._uuid + murmurhash2_32_gc(this._atlasText, 668).toString();
+        // merge texture's id and atlas content
+        const hashContent = [
+            this._atlasText,
+            ...this.textures.map((texture) => texture.getId()),
+        ].join('');
+
+        // merge asset's uuid & hashContent
+        return `${this._uuid}${murmurhash2_32_gc(hashContent, 668)}`;
     }
 
     /**
