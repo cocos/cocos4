@@ -23,3 +23,11 @@
 */
 
 export const SPINE_VERSION = '3.8';
+
+export function isBinarySupported (buffer: Uint8Array): boolean {
+    return false;
+}
+
+export function isJsonSupported (json: JSON): boolean {
+    return false;
+}
