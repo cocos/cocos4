@@ -1415,6 +1415,88 @@ declare namespace jsb {
         showExternalOfferInformationDialog: (listener: ExternalOfferInformationDialogListener) => void;
         showInAppMessages: (params: InAppMessageParams, listener: InAppMessageResponseListener) => void;
     }
+
+    export class PlayException {
+        getMessage(): string;
+        getLocalizedMessage(): string;
+        printStackTrace(): void;
+        toString(): string;
+    }
+
+    export interface OnCanceledListener {
+        onCanceled(): void;
+    }
+
+    export interface OnCompleteListener {
+        onComplete(task: any): void;
+    }
+
+    export interface OnFailureListener {
+        onFailure(e: PlayException): void;
+    }
+
+    export interface OnSuccessListener {
+        onSuccess(result: any): void;
+    }
+
+    export interface OnContinueWithListener {
+        then(result: any): void;
+    }
+
+    export interface OnContinueWithTaskListener {
+        then(result: any): void;
+    }
+
+    export class PlayTask {
+        public addOnCanceledListener(listener: OnCanceledListener): PlayTask;
+        public addOnCompleteListener(listener: OnCompleteListener): PlayTask;
+        public addOnFailureListener(listener: OnFailureListener): PlayTask;
+        public addOnSuccessListener(listener: OnSuccessListener): PlayTask;
+        public continueWith(listener: OnContinueWithListener): PlayTask;
+        public getResult(listener: OnSuccessListener): any;
+        public isCanceled(): boolean;
+        public isComplete(): boolean;
+        public isSuccessful(): boolean;
+    }
+    export class AuthenticationResult {
+        private constructor();
+        public isAuthenticated(): boolean;
+    }
+    export class RecallAccess {
+        private constructor();
+        public hashCode(): number;
+        public getSessionId(): string;
+        public equals(other: RecallAccess): boolean;
+    }
+    export class GamesSignInClient {
+        public isAuthenticated(): PlayTask;
+        public requestServerSideAccess(serverClientId: string, forceRefreshToken: boolean): PlayTask;
+        public signIn(): PlayTask;
+    }
+    export class AchievementsClient {
+        public showAchievements(): void;
+        public incrementImmediate(id: string, numSteps: number): PlayTask;
+        public load(forceReload: boolean): PlayTask;
+        public revealImmediate(id: string): PlayTask;
+        public setStepsImmediate(id: string, numSteps: number): PlayTask;
+        public unlockImmediate(id: string): PlayTask;
+        public increment(id: string, numSteps: number): void;
+        public reveal(id: string): void;
+        public setSteps(id: string, numSteps: number): void;
+        public unlock(id: string): void;
+    }
+
+    export class RecallClient {
+        public requestRecallAccess(): PlayTask;
+    }
+    export class PlayGames {
+        public static getAchievementsClient(): AchievementsClient;
+        public static getGamesSignInClient(): GamesSignInClient;
+        public static getRecallClient(): RecallClient;
+    }
+    export class PlayGamesSdk {
+        public static initialize(): void;
+    }
 }
 
 declare namespace ns {
