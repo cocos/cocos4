@@ -9,14 +9,14 @@ const { setHidden, setReadonly, isMultipleInvalid } = require('../utils/prop');
 
 // Query an automatic atlas or sprite atlas
 async function findAutoAtlasFolder(spriteFrameUuid) {
-    let info = await Editor.Message.request('builder', 'request-to-build-worker', 'build-worker:query-atlas-by-sprite', spriteFrameUuid);
-    // auto atlas
-    if (info) { return info.uuid; }
-
     // sprite-atlas
     const plistUuid = spriteFrameUuid.split('@')[0];
-    info = await Editor.Message.request('asset-db', 'query-asset-info', plistUuid);
-    return info && info.importer === 'sprite-atlas';
+    let info = await Editor.Message.request('asset-db', 'query-asset-info', plistUuid);
+    if (info && info.importer === 'sprite-atlas') { return plistUuid; }
+
+    // auto atlas
+    info = await Editor.Message.request('builder', 'request-to-build-worker', 'build-worker:query-atlas-by-sprite', spriteFrameUuid);
+    return info && info.uuid;
 }
 
 // query the dom node by type
