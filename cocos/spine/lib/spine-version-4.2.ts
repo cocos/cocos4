@@ -34,7 +34,10 @@ function isVersionCompatible(version: string | null): boolean {
     return true;
 };
 
-export function isBinarySupported (buffer: Uint8Array): boolean {
+/**
+ * @internal Used only by editor. 
+ */
+export function isBinaryCompatible (buffer: Uint8Array): boolean {
     if (!BUILD) {
         const input = new DataInput(buffer);
         SkeletonBinary.readInt(input);// read hash
@@ -46,7 +49,10 @@ export function isBinarySupported (buffer: Uint8Array): boolean {
     return false;
 }
 
-export function isJsonSupported (json: JSON): boolean {
+/**
+ * @internal Used only by editor.
+ */
+export function isJsonCompatible (json: JSON): boolean {
     if (!BUILD) {
         return isVersionCompatible(json['skeleton']['spine']);
     }
