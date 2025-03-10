@@ -7,15 +7,10 @@ exports.close = close;
 
 const { setHidden, setReadonly, isMultipleInvalid } = require('../utils/prop');
 
-// Query an automatic atlas or sprite atlas
+// Query an automatic atlas
 async function findAutoAtlasFolder(spriteFrameUuid) {
-    // sprite-atlas
-    const plistUuid = spriteFrameUuid.split('@')[0];
-    let info = await Editor.Message.request('asset-db', 'query-asset-info', plistUuid);
-    if (info && info.importer === 'sprite-atlas') { return plistUuid; }
-
     // auto atlas
-    info = await Editor.Message.request('builder', 'request-to-build-worker', 'build-worker:query-atlas-by-sprite', spriteFrameUuid);
+    const info = await Editor.Message.request('builder', 'request-to-build-worker', 'build-worker:query-atlas-by-sprite', spriteFrameUuid);
     return info && info.uuid;
 }
 
