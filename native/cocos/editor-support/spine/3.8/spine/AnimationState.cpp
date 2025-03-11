@@ -637,7 +637,7 @@ void AnimationState::enableQueue() {
 
 Animation *AnimationState::getEmptyAnimation() {
     static Vector<Timeline *> timelines;
-    static Animation ret(String("<empty>+1"), timelines, 0);
+    static Animation ret(String("<empty>"), timelines, 0);
     return &ret;
 }
 
