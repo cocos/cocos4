@@ -207,9 +207,9 @@ jobs:
           cd ./native/external
           diff_output=$(git diff)
           if [ -n "$diff_output" ]; then
-            echo "SPINE_WASM_UP_TO_DATE_BASE=false" >> $GITHUB_ENV
+            echo "SPINE_WASM_UP_TO_DATE_BASE=false" >> $GITHUB_OUTPUT
           else
-            echo "SPINE_WASM_UP_TO_DATE_BASE=true" >> $GITHUB_ENV
+            echo "SPINE_WASM_UP_TO_DATE_BASE=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Check if spine wasm files are up-to-date (head)
@@ -219,9 +219,9 @@ jobs:
           cd ./native/external
           diff_output=$(git diff)
           if [ -n "$diff_output" ]; then
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=false" >> $GITHUB_ENV
+            echo "SPINE_WASM_UP_TO_DATE_HEAD=false" >> $GITHUB_OUTPUT
           else
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=true" >> $GITHUB_ENV
+            echo "SPINE_WASM_UP_TO_DATE_HEAD=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload Spine Artifact
