@@ -272,6 +272,19 @@ export class UIRenderer extends Renderer {
      */
     public _flagChangedVersion = -1;
 
+    private _priority = 0;
+
+    get priority (): number {
+        return this._priority;
+    }
+
+    set priority (val: number) {
+        this._priority = val;
+        if (JSB) {
+            this._renderEntity.setPriority(val);
+        }
+    }
+
     /**
      * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
      */
