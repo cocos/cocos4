@@ -198,7 +198,10 @@
             "dependentModules": ["2d"]
         },
         "vendor-google": {
-            "modules": ["vendor-google"]
+            "modules": ["vendor-google"],
+            "intrinsicFlags": {
+                "USE_VENDOR_GOOGLE": true
+            }
         },
         "spine-3.8": {
             "modules": ["spine"],
@@ -465,6 +468,13 @@
             "overrides": {
                 "cocos/spine/lib/spine-version.ts": "cocos/spine/lib/spine-version-4.2.ts",
                 "cocos/spine/lib/spine-instantiate.ts": "cocos/spine/lib/spine-instantiate-4.2.ts"
+            }
+        },
+        {
+            "test": "context.buildTimeConstants.USE_VENDOR_GOOGLE",
+            "isVirtualModule": false,
+            "overrides": {
+                "vendor/google/index.ts": "vendor/google/impl.ts"
             }
         }
     ],
