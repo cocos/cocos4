@@ -13,6 +13,11 @@ namespace {
         spine::EventType eventType{spine::EventType::EventType_Start};
         spine::Event *event{nullptr};
     };
+
+    struct SlotCacheInfo {
+        bool isOwner{false};
+        spine::Attachment* attachment{nullptr};
+    };
 }
 enum DEBUG_SHAPE_TYPE {
     DEBUG_REGION = 0,
@@ -88,5 +93,9 @@ private:
     spine::HashMap<spine::TrackEntry *, uint32_t> _trackListenerSet{};
     UserData _userData;
     spine::Vector<SpineDebugShape> _debugShapes{};
-    spine::HashMap<spine::Slot*, spine::String> _slotTextureSet{};
+    /**
+     * The slot's attachment may be modified when calling AnimationState::apply(), which can cause custom attachments to malfunction. 
+     * To prevent this, we need to cache the original attachment.
+     */
+    spine::HashMap<spine::Slot*, SlotCacheInfo> _slotTextureSet{};
 };

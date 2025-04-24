@@ -50,6 +50,11 @@ class Material;
 
 class AttachmentVertices;
 
+struct SlotCacheInfo {
+    bool isOwner{false};
+    spine::Attachment* attachment{nullptr};
+};
+
 /** Draws a skeleton.
      */
 class SkeletonRenderer : public cc::RefCounted, public cc::middleware::IMiddleware {
@@ -189,6 +194,11 @@ protected:
     cc::Material *_material = nullptr;
     ccstd::vector<cc::RenderDrawInfo *> _drawInfoArray;
     ccstd::unordered_map<uint32_t, cc::Material *> _materialCaches;
+    /**
+     * The slot's attachment may be modified when calling AnimationState::apply(), which can cause custom attachments to malfunction. 
+     * To prevent this, we need to cache the original attachment.
+     */
+    ccstd::unordered_map<spine::Slot *, SlotCacheInfo> _slotTextureSet;
     bool _needClearMaterialCaches = false;
 };
 }; // namespace cc
