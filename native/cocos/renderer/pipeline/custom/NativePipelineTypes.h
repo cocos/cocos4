@@ -1437,6 +1437,43 @@ struct DescriptorSetContext {
     IntrusivePtr<gfx::DescriptorSet> descriptorSet;
 };
 
+struct TextureWithAccessFlags {
+    IntrusivePtr<gfx::Texture> texture;
+    gfx::AccessFlagBit accessFlags{gfx::AccessFlagBit::NONE};
+};
+
+struct DeviceRenderData {
+    using allocator_type = boost::container::pmr::polymorphic_allocator<char>;
+    allocator_type get_allocator() const noexcept { // NOLINT
+        return {buffers.get_allocator().resource()};
+    }
+
+    DeviceRenderData(const allocator_type& alloc) noexcept; // NOLINT
+    DeviceRenderData(DeviceRenderData&& rhs, const allocator_type& alloc);
+
+    DeviceRenderData(DeviceRenderData&& rhs) noexcept = default;
+    DeviceRenderData(DeviceRenderData const& rhs) = delete;
+    DeviceRenderData& operator=(DeviceRenderData&& rhs) noexcept = default;
+    DeviceRenderData& operator=(DeviceRenderData const& rhs) = delete;
+
+    void clear() noexcept {
+        hasConstants = false;
+        required = false;
+        buffers.clear();
+        textures.clear();
+        samplers.clear();
+    }
+    bool hasNoData() const noexcept {
+        return !hasConstants && buffers.empty() && textures.empty() && samplers.empty();
+    }
+
+    bool hasConstants{false};
+    bool required{false};
+    PmrFlatMap<NameLocalID, IntrusivePtr<gfx::Buffer>> buffers;
+    PmrFlatMap<NameLocalID, TextureWithAccessFlags> textures;
+    PmrFlatMap<NameLocalID, gfx::Sampler*> samplers;
+};
+
 struct NativeRenderContext {
     using allocator_type = boost::container::pmr::polymorphic_allocator<char>;
     allocator_type get_allocator() const noexcept { // NOLINT
@@ -1459,7 +1496,9 @@ struct NativeRenderContext {
     QuadResource fullscreenQuad;
     SceneCulling sceneCulling;
     LightResource lightResources;
-    ccstd::pmr::unordered_map<DescriptorSetKey, DescriptorSetContext> graphNodeContexts;
+    ccstd::pmr::unordered_map<RenderGraph::vertex_descriptor, PmrFlatMap<NameLocalID, ResourceGraph::vertex_descriptor>> resourceGraphIndex;
+    ccstd::pmr::unordered_map<DescriptorSetKey, DeviceRenderData> graphNodeRenderData;
+    ccstd::pmr::unordered_map<DescriptorSetKey, gfx::DescriptorSet*> graphNodeDescriptorSets;
 };
 
 class NativeProgramLibrary final : public ProgramLibrary {
@@ -1676,6 +1715,8 @@ public:
     void setCustomContext(std::string_view name);
 
     static void prepareDescriptors(RenderGraphVisitorContext& ctx, RenderGraph::vertex_descriptor passID);
+
+    void prepareDescriptorSets(gfx::CommandBuffer& cmdBuff, const FrameGraphDispatcher& rdg, RenderGraph::vertex_descriptor passID);
 
 private:
     ccstd::vector<gfx::CommandBuffer*> _commandBuffers;

@@ -48,6 +48,7 @@ template <class T>
 using Array4 = std::array<T, 4>;
 
 struct RenderGraphVisitorContext;
+struct FrameGraphDispatcher;
 
 } // namespace render
 
@@ -102,6 +103,8 @@ struct SceneCulling;
 struct LightResource;
 struct DescriptorSetKey;
 struct DescriptorSetContext;
+struct TextureWithAccessFlags;
+struct DeviceRenderData;
 struct NativeRenderContext;
 class NativeProgramLibrary;
 struct PipelineCustomization;
