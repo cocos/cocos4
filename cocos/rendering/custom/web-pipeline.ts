@@ -434,6 +434,45 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
             setShadowUBOView(this, camera, layoutName);
         }
     }
+    addDraw3D (camera: Camera, models: Model[], sceneFlags = SceneFlags.NON_BUILTIN): void {
+        const blit = renderGraphPool.createBlit(emptyMaterial, this._renderGraph.N, SceneFlags.NONE, camera, BlitType.DRAW_3D);
+        for (const model of models) {
+            blit.models.push(model);
+        }
+        this._renderGraph.addVertex<RenderGraphValue.Blit>(
+            RenderGraphValue.Blit,
+            blit,
+            'Draw3D',
+            '',
+            renderGraphPool.createRenderData(),
+            !DEBUG,
+            this._vertID,
+        );
+        if (!(sceneFlags & SceneFlags.NON_BUILTIN)) {
+            const layoutName = this.getParentLayout();
+            setCameraUBOValues(
+                this,
+                camera,
+                this._pipeline,
+                camera.scene,
+                layoutName,
+            );
+            if (!(sceneFlags & SceneFlags.SHADOW_CASTER)) setShadowUBOView(this, camera, layoutName);
+        }
+    }
+    addDraw2D (camera: Camera): void {
+        this._renderGraph.addVertex<RenderGraphValue.Blit>(
+            RenderGraphValue.Blit,
+            renderGraphPool.createBlit(emptyMaterial, this._renderGraph.N, SceneFlags.NONE, camera, BlitType.DRAW_2D),
+            'Draw2D',
+            '',
+            emptyRenderData,
+            !DEBUG,
+            this._vertID,
+        );
+    }
+    addProfiler (camera: Camera): void {
+    }
     clearRenderTarget (name: string, color: Color = new Color()): void {
         const clearView = renderGraphPool.createClearView(name, ClearFlagBit.COLOR);
         clearView.clearColor.copy(color);

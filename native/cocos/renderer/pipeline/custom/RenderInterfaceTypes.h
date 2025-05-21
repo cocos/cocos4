@@ -73,7 +73,6 @@ class RenderWindow;
 namespace render {
 
 constexpr bool ENABLE_SUBPASS = true;
-constexpr bool ENABLE_GPU_DRIVEN = false;
 
 } // namespace render
 
@@ -615,6 +614,18 @@ public:
      */
     virtual void addCameraQuad(scene::Camera *camera, Material *material, uint32_t passID, SceneFlags sceneFlags) = 0;
     /**
+     * @beta Feature is under development
+     */
+    virtual void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model*> &models, SceneFlags sceneFlags) = 0;
+    /**
+     * @beta Feature is under development
+     */
+    virtual void addDraw2D(const scene::Camera *camera) = 0;
+    /**
+     * @beta Feature is under development
+     */
+    virtual void addProfiler(const scene::Camera *camera) = 0;
+    /**
      * @en Clear current render target.
      * @zh 清除当前渲染目标
      * @param name @en The name of the render target @zh 渲染目标的名字
@@ -645,6 +656,9 @@ public:
     }
     void addCameraQuad(scene::Camera *camera, Material *material, uint32_t passID) {
         addCameraQuad(camera, material, passID, SceneFlags::NONE);
+    }
+    void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model*> &models) {
+        addDraw3D(camera, models, SceneFlags::NON_BUILTIN);
     }
     void clearRenderTarget(const ccstd::string &name) {
         clearRenderTarget(name, {});
