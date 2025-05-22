@@ -31,7 +31,7 @@ import { EDITOR } from 'cc/env';
 
 import {
     BloomType,
-    fillRequiredPipelineSettings, getBuiltinBloomMaterial, makePipelineSettings, PipelineSettings,
+    fillRequiredPipelineSettings, makePipelineSettings, PipelineSettings,
 } from './builtin-pipeline-types';
 
 const { ccclass, disallowMultiple, executeInEditMode, menu, property, requireComponent, type } = _decorator;
@@ -282,9 +282,6 @@ export class BuiltinPipelineSettings extends Component {
     @type(CCFloat)
     @property({
         group: { id: 'Bloom', name: 'Bloom (PostProcessing)', style: 'section' },
-    })
-    @visible(function(this: BuiltinPipelineSettings) {
-        return this.bloomType === BloomType.MipmapFilter;
     })
     set bloomIntensity(value: number) {
         this._settings.bloom.intensity = value;
