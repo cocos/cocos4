@@ -303,14 +303,6 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
         }
         const passOrSubpassId = this._renderGraph.getParent(this._vertID);
         if (sceneFlags & SceneFlags.UI) {
-            const passLayoutId = this._lg.locateChild(
-                this._lg.N,
-                'default',
-            );
-            const phaseLayoutId = this._lg.locateChild(
-                passLayoutId,
-                'default',
-            );
             const queueId = this._renderGraph.addVertex<RenderGraphValue.Queue>(
                 RenderGraphValue.Queue,
                 this._queue,
@@ -332,53 +324,7 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
             );
         }
         if (sceneFlags & SceneFlags.PROFILER) {
-            let showStatistics = false;
-            const N = this._renderGraph.N;
-            if (passOrSubpassId !== N) {
-                const passOrNullId = this._renderGraph.getParent(passOrSubpassId);
-                const passId = passOrNullId === N
-                    ? passOrSubpassId
-                    : passOrNullId;
-
-                if (
-                    passId !== N
-            && this._renderGraph.h(RenderGraphValue.RasterPass, passId)
-                ) {
-                    const pass = this._renderGraph.value(RenderGraphValue.RasterPass, passId);
-                    showStatistics = pass.showStatistics;
-                }
-            }
-            if (showStatistics) {
-                const passLayoutId = this._lg.locateChild(
-                    this._lg.N,
-                    'default',
-                );
-                const phaseLayoutId = this._lg.locateChild(
-                    passLayoutId,
-                    'default',
-                );
-                const queueId = this._renderGraph.addVertex<RenderGraphValue.Queue>(
-                    RenderGraphValue.Queue,
-                    this._queue,
-                    'UI Queue',
-                    'default',
-                    this._data,
-                    !DEBUG,
-                    passOrSubpassId,
-                );
-                this._renderGraph.addVertex<RenderGraphValue.Blit>(
-                    RenderGraphValue.Blit,
-                    renderGraphPool.createBlit(emptyMaterial, this._renderGraph.N, SceneFlags.NONE, camera, BlitType.DRAW_PROFILE),
-                    'Profiler',
-                    '',
-                    emptyRenderData,
-                    !DEBUG,
-                    queueId,
-                );
-
-                const data = renderData;
-                WebSetter.setMat4(this._lg, data, 'cc_matProj', camera.matProj);
-            }
+            this.addProfiler(camera);
         }
         const sceneBuilder = pipelinePool.sceneBuilder.add();
         sceneBuilder.update(renderData, this._lg, this._renderGraph, sceneId, sceneData);
@@ -472,6 +418,37 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
         );
     }
     addProfiler (camera: Camera): void {
+        const passOrSubpassId = this._renderGraph.getParent(this._vertID);
+        this._renderGraph.addVertex<RenderGraphValue.Blit>(
+            RenderGraphValue.Blit,
+            renderGraphPool.createBlit(emptyMaterial, this._renderGraph.N, SceneFlags.NONE, camera, BlitType.DRAW_PROFILE),
+            'DrawProfiler',
+            '',
+            emptyRenderData,
+            !DEBUG,
+            this._vertID,
+        );
+        const queueId = this._renderGraph.addVertex<RenderGraphValue.Queue>(
+            RenderGraphValue.Queue,
+            this._queue,
+            'UI Queue',
+            'default',
+            this._data,
+            !DEBUG,
+            passOrSubpassId,
+        );
+        const blitID = this._renderGraph.addVertex<RenderGraphValue.Blit>(
+            RenderGraphValue.Blit,
+            renderGraphPool.createBlit(emptyMaterial, this._renderGraph.N, SceneFlags.NONE, camera, BlitType.DRAW_PROFILE),
+            'Profiler',
+            '',
+            emptyRenderData,
+            !DEBUG,
+            queueId,
+        );
+
+        const data = this._renderGraph.getData(blitID);
+        WebSetter.setMat4(this._lg, data, 'cc_matProj', camera.matProj);
     }
     clearRenderTarget (name: string, color: Color = new Color()): void {
         const clearView = renderGraphPool.createClearView(name, ClearFlagBit.COLOR);
