@@ -854,6 +854,42 @@ Object* Object::createUTF8String(const std::string& str) {
     return obj;
 }
 
+std::unordered_map<Object*, JSVM_Deferred> Object::resolverMap;
+
+void Object::resolverPromise(Object* object, const Value& value) {
+    auto it = resolverMap.find(object);
+    if (it != resolverMap.end()) {
+        auto* resolver = it->second;
+        JSVM_Value jsvmValue;
+        se::internal::seToJsValue(value, &jsvmValue);
+        OH_JSVM_ResolveDeferred(ScriptEngine::getEnv(), resolver, jsvmValue);
+        resolverMap.erase(it);
+    }
+}
+
+void Object::rejectPromise(Object* object, const Value& value) {
+    auto it = resolverMap.find(object);
+    if (it != resolverMap.end()) {
+        auto* resolver = it->second;
+        JSVM_Value jsvmValue;
+        se::internal::seToJsValue(value, &jsvmValue);
+        OH_JSVM_ResolveDeferred(ScriptEngine::getEnv(), resolver, jsvmValue);
+        resolverMap.erase(it);
+    }
+}
+
+Object* Object::createPromise() {
+    JSVM_Deferred deferred = nullptr;
+    JSVM_Value promise = nullptr;
+    JSVM_Status createStatus = OH_JSVM_CreatePromise(ScriptEngine::getEnv(), &deferred, &promise);
+    if (createStatus != JSVM_OK) {
+        return nullptr;
+    }
+    Object* object = Object::_createJSObject(ScriptEngine::getEnv(), promise, nullptr);
+    resolverMap[object] = deferred;
+    return object;
+}
+
 ObjectRef::ObjectRef(Object *parent)
 : _parent(parent) {
 

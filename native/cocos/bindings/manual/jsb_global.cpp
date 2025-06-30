@@ -54,6 +54,7 @@
 
 #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
     #include "platform/openharmony/napi/NapiHelper.h"
+    #include "platform/openharmony/napi/NapiPromiseBridge.h"
 #endif
 
 extern void jsb_register_ADPF(se::Object *); // NOLINT
@@ -1537,14 +1538,8 @@ static bool JSB_openharmony_postSyncMessage(se::State &s) { // NOLINT(readabilit
             SE_REPORT_ERROR("postMessage, Unsupported type");
             return false;
         }
-
         Napi::Value napiPromise = NapiHelper::postSyncMessageToUIThread(msgType.c_str(), napiArg1);
-
-        // TODO(cjh): Implement Promise for se
-        se::HandleObject retObj(se::Object::createPlainObject());
-        retObj->defineFunction("then", _SE(JSB_empty_promise_then));
-        s.rval().setObject(retObj);
-        //
+        s.rval().setObject(NapiPromiseBridge::createPromise(napiPromise));
         return true;
     }
 
