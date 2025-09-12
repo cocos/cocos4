@@ -22,45 +22,28 @@
  THE SOFTWARE.
 */
 
-import { checkPalIntegrity, withImpl } from '../integrity-check';
+import { EventAcceleration } from '../../../cocos/input/types';
+import { InputEventType } from '../../../cocos/input/types/event-enum';
 
-const FRAME_RESET_TIME = 2000;
+export type AccelerometerCallback = (res: EventAcceleration) => void;
 
-export class Pacer {
-    private _isPlaying = false;
-    private _onTick: (() => void) | null = null;
+export class AccelerometerInputSource {
+
     constructor () {
-        this._isPlaying = false;
+
     }
 
-    get targetFrameRate (): number {
-        return 0;
-    }
 
-    set targetFrameRate (val: number) {
+    public start (): void {
+
+    }
+    public stop (): void {
+
+    }
+    public setInterval (intervalInMileseconds: number): void {
+
+    }
+    public on (eventType: InputEventType, callback: AccelerometerCallback, target?: any): void {
         
     }
-
-    set onTick (val: (() => void) | null) {
-       
-    }
-
-    get onTick (): (() => void) | null {
-        return this._onTick;
-    }
-
-    start (): void {
-
-    }
-
-    stop (): void {
-
-    }
-
-    _handleRAF = (stamp: number): void => {
-
-    };
-
 }
-
-checkPalIntegrity<typeof import('pal/pacer')>(withImpl<typeof import('./pacer-web')>());

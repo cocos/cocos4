@@ -1,7 +1,7 @@
 /*
  Copyright (c) 2025 Xiamen Yaji Software Co., Ltd.
 
- https://www.cocos.com/
+ http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -22,45 +22,33 @@
  THE SOFTWARE.
 */
 
-import { checkPalIntegrity, withImpl } from '../integrity-check';
+import { InputEventType } from '../../../cocos/input/types/event-enum';
+import { EventTarget } from '../../../cocos/core/event/event-target';
+import { EventHandheld } from '../../../cocos/input/types';
+import { InputSourcePosition, InputSourceOrientation } from '../input-source';
+export type HandheldCallback = (res: EventHandheld) => void;
 
-const FRAME_RESET_TIME = 2000;
 
-export class Pacer {
-    private _isPlaying = false;
-    private _onTick: (() => void) | null = null;
+export class HandheldInputDevice {
+    public get handheldPosition (): InputSourcePosition { return this._handheldPosition; }
+    public get handheldOrientation (): InputSourceOrientation { return this._handheldOrientation; }
+
+    private _eventTarget: EventTarget = new EventTarget();
+
+    private declare _handheldPosition: InputSourcePosition;
+    private declare _handheldOrientation: InputSourceOrientation;
+
     constructor () {
-        this._isPlaying = false;
-    }
-
-    get targetFrameRate (): number {
-        return 0;
-    }
-
-    set targetFrameRate (val: number) {
-        
-    }
-
-    set onTick (val: (() => void) | null) {
-       
-    }
-
-    get onTick (): (() => void) | null {
-        return this._onTick;
-    }
-
-    start (): void {
 
     }
 
-    stop (): void {
 
+
+    /**
+     * @engineInternal
+     */
+    public _on (eventType: InputEventType, callback: HandheldCallback, target?: any): void {
+        this._eventTarget.on(eventType, callback, target);
     }
-
-    _handleRAF = (stamp: number): void => {
-
-    };
 
 }
-
-checkPalIntegrity<typeof import('pal/pacer')>(withImpl<typeof import('./pacer-web')>());

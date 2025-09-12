@@ -22,45 +22,32 @@
  THE SOFTWARE.
 */
 
-import { checkPalIntegrity, withImpl } from '../integrity-check';
+import { EventMouse } from '../../../cocos/input/types';
+import { EventTarget } from '../../../cocos/core/event';
+import { InputEventType } from '../../../cocos/input/types/event-enum';
 
-const FRAME_RESET_TIME = 2000;
+export type MouseCallback = (res: EventMouse) => void;
 
-export class Pacer {
-    private _isPlaying = false;
-    private _onTick: (() => void) | null = null;
+export class MouseInputSource {
+    private _eventTarget: EventTarget = new EventTarget();
+
     constructor () {
-        this._isPlaying = false;
-    }
-
-    get targetFrameRate (): number {
-        return 0;
-    }
-
-    set targetFrameRate (val: number) {
-        
-    }
-
-    set onTick (val: (() => void) | null) {
-       
-    }
-
-    get onTick (): (() => void) | null {
-        return this._onTick;
-    }
-
-    start (): void {
 
     }
 
-    stop (): void {
+    public dispatchMouseDownEvent (nativeMouseEvent: any): void {  }
+    public dispatchMouseMoveEvent (nativeMouseEvent: any): void {  }
+    public dispatchMouseUpEvent (nativeMouseEvent: any): void {  }
+    public dispatchScrollEvent (nativeMouseEvent: any): void {  }
+
+
+    public dispatchEventsInCache (): void {
 
     }
 
-    _handleRAF = (stamp: number): void => {
-
-    };
+    
+    public on (eventType: InputEventType, callback: MouseCallback, target?: any): void {
+        this._eventTarget.on(eventType, callback, target);
+    }
 
 }
-
-checkPalIntegrity<typeof import('pal/pacer')>(withImpl<typeof import('./pacer-web')>());
