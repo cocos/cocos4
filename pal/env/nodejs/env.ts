@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2025 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
@@ -21,4 +21,21 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-export {};
+
+import { checkPalIntegrity, withImpl } from '../../integrity-check';
+
+export function findCanvas (): { frame: HTMLDivElement, container: HTMLDivElement, canvas: HTMLCanvasElement } {
+    const frame = document.querySelector('#GameDiv') as HTMLDivElement;
+    const container = document.querySelector('#Cocos3dGameContainer') as HTMLDivElement;
+    const canvas = document.querySelector('#GameCanvas') as HTMLCanvasElement;
+
+    return { frame, container, canvas };
+}
+
+export function loadJsFile (path: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        reject("not supported");
+    });
+}
+
+checkPalIntegrity<typeof import('pal/env')>(withImpl<typeof import('./env')>());

@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
@@ -21,4 +21,32 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-export {};
+
+import { checkPalIntegrity, withImpl } from '../integrity-check';
+
+
+export function instantiateWasm (wasmUrl: string, importObject: WebAssembly.Imports): Promise<any> {
+    return fetchBuffer(wasmUrl).then((arrayBuffer) => WebAssembly.instantiate(arrayBuffer, importObject));
+}
+
+export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+        reject(new Error('not supported.'));
+    });
+}
+
+/**
+ * @en Translate virtual addresses within the engine to actual addresses of paths, such as external:emscripten/webgpu/glslang.wasm
+ * @zh 把引擎内部的虚拟地址转为路径的实际地址，如external:emscripten/webgpu/glslang.wasm
+ */
+export function fetchUrl (binaryUrl: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        reject(new Error('not supported.'));
+    });
+}
+
+export function ensureWasmModuleReady (): Promise<void> {
+    return Promise.resolve();
+}
+
+checkPalIntegrity<typeof import('pal/wasm')>(withImpl<typeof import('./wasm-nodejs')>());

@@ -22,45 +22,26 @@
  THE SOFTWARE.
 */
 
-import { checkPalIntegrity, withImpl } from '../integrity-check';
+import {  EventKeyboard } from '../../../cocos/input/types';
+import { EventTarget } from '../../../cocos/core/event';
+import { InputEventType } from '../../../cocos/input/types/event-enum';
 
-const FRAME_RESET_TIME = 2000;
 
-export class Pacer {
-    private _isPlaying = false;
-    private _onTick: (() => void) | null = null;
+export type KeyboardCallback = (res: EventKeyboard) => void;
+
+
+export class KeyboardInputSource {
+    private _eventTarget: EventTarget = new EventTarget();
+
     constructor () {
-        this._isPlaying = false;
-    }
-
-    get targetFrameRate (): number {
-        return 0;
-    }
-
-    set targetFrameRate (val: number) {
-        
-    }
-
-    set onTick (val: (() => void) | null) {
-       
-    }
-
-    get onTick (): (() => void) | null {
-        return this._onTick;
-    }
-
-    start (): void {
 
     }
 
-    stop (): void {
+    public dispatchKeyboardDownEvent (nativeKeyboardEvent: jsb.KeyboardEvent): void { }
+    public dispatchKeyboardUpEvent (nativeKeyboardEvent: jsb.KeyboardEvent): void {  }
 
+
+    public on (eventType: InputEventType, callback: KeyboardCallback, target?: any): void {
+        this._eventTarget.on(eventType, callback, target);
     }
-
-    _handleRAF = (stamp: number): void => {
-
-    };
-
 }
-
-checkPalIntegrity<typeof import('pal/pacer')>(withImpl<typeof import('./pacer-web')>());
