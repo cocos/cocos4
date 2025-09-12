@@ -31,7 +31,6 @@ import { enqueueOperation, OperationInfo, OperationQueueable } from '../operatio
 import { Platform } from '../../system-info/enum-type';
 
 const urlCount: Record<string, number> = {};
-const audioEngine = jsb.AudioEngine;
 const INVALID_AUDIO_ID = -1;
 
 enum AudioBufferFormat {
@@ -133,20 +132,8 @@ export class AudioPlayer implements OperationQueueable {
     static loadNative (url: string, opts?: AudioLoadOptions): Promise<unknown> {
         return new Promise((resolve, reject) => {
             if (systemInfo.platform === Platform.WIN32) {
-                // NOTE: audioEngine.preload() not works well on Win32 platform.
-                // Especially when there is not audio output device. But still need to preload
-                audioEngine.preload(url, (isSuccess) => {
-                    console.debug('somehow preload success on windows');
-                });
                 resolve(url);
             } else {
-                audioEngine.preload(url, (isSuccess) => {
-                    if (isSuccess) {
-                        resolve(url);
-                    } else {
-                        reject(new Error('load audio failed'));
-                    }
-                });
             }
         });
     }
@@ -158,7 +145,6 @@ export class AudioPlayer implements OperationQueueable {
             }).catch(reject);
         });
     }
-    static readonly maxAudioChannel: number = audioEngine.getMaxAudioInstance();
 
     private get _isValid (): boolean {
         return this._id !== INVALID_AUDIO_ID;
@@ -177,11 +163,10 @@ export class AudioPlayer implements OperationQueueable {
         if (!this._isValid) {
             return this._cachedState.loop;
         }
-        return audioEngine.isLoop(this._id);
+        return false;
     }
     set loop (val: boolean) {
         if (this._isValid) {
-            audioEngine.setLoop(this._id, val);
         }
         this._cachedState.loop = val;
     }
@@ -189,12 +174,11 @@ export class AudioPlayer implements OperationQueueable {
         if (!this._isValid) {
             return this._cachedState.volume;
         }
-        return audioEngine.getVolume(this._id);
+        return 0;
     }
     set volume (val: number) {
         val = clamp01(val);
         if (this._isValid) {
-            audioEngine.setVolume(this._id, val);
         }
         this._cachedState.volume = val;
     }
@@ -202,13 +186,13 @@ export class AudioPlayer implements OperationQueueable {
         if (!this._isValid) {
             return this._cachedState.duration;
         }
-        return audioEngine.getDuration(this._id);
+        return 0;
     }
     get currentTime (): number {
         if (!this._isValid) {
             return this._cachedState.currentTime;
         }
-        return audioEngine.getCurrentTime(this._id);
+        return 0;
     }
 
     get sampleRate (): number {
@@ -225,7 +209,6 @@ export class AudioPlayer implements OperationQueueable {
             // Duration is invalid before player
             // time = clamp(time, 0, this.duration);
             if (this._isValid) {
-                audioEngine.setCurrentTime(this._id, time);
             }
             this._cachedState.currentTime = time;
             return resolve();
