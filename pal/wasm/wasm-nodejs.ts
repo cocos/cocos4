@@ -21,7 +21,6 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-
 import { checkPalIntegrity, withImpl } from '../integrity-check';
 
 
@@ -31,7 +30,17 @@ export function instantiateWasm (wasmUrl: string, importObject: WebAssembly.Impo
 
 export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
-        reject(new Error('not supported.'));
+        try {
+            // here is in the BUILD mode
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore NOTE: we need to use 'import.meta' here, but the tsc won't allow this, so we need to force ignoring this error here.
+            binaryUrl = new URL(binaryUrl, import.meta.url).href;
+            fetch(binaryUrl).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
+                // noop
+            });
+        } catch (e) {
+            reject(e);
+        }
     });
 }
 
@@ -41,7 +50,7 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
  */
 export function fetchUrl (binaryUrl: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-        reject(new Error('not supported.'));
+        reject(new Error('nodejs not supported.'));
     });
 }
 
