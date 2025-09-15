@@ -15,7 +15,6 @@ function inject () {
         jsbWindow.top = jsbWindow.parent = jsbWindow;
         jsbWindow.location = require('./location');
         jsbWindow.document = require('./document');
-        jsbWindow.navigator = require('./navigator');
     // }
 
     jsbWindow.CanvasRenderingContext2D = require('./CanvasRenderingContext2D');
