@@ -1,7 +1,7 @@
-const cacheManager = require('../../../common/engine/cache-manager');
-const { downloadFile, readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, _subpackagesPath } = require('../../../common/engine/fs-utils');
+const cacheManager = require('./cache-manager');
+const { downloadFile, readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, _subpackagesPath } = require('./fs-utils');
 
-cc.assetManager.fsUtils = ral.fsUtils;
+//cc.assetManager.fsUtils = ral.fsUtils;
 
 const REGEX = /^https?:\/\/.*/;
 
@@ -17,34 +17,9 @@ const subpackages = {};
 const loadedScripts = {};
 
 function downloadScript (url, options, onComplete) {
-    if (REGEX.test(url)) {
-        onComplete && onComplete(new Error('Can not load remote scripts'));
-        return;
-    }
-
-    if (loadedScripts[url]) return onComplete && onComplete();
-
-    require(url);
-    loadedScripts[url] = true;
+    // TODO(qgh): Skip loading the script. There are currently issues with script loading, so it's not needed here.
+    console.warn("Can not load scripts ".concat(url));
     onComplete && onComplete(null);
-}
-
-function handleZip (url, options, onComplete) {
-    const cachedUnzip = cacheManager.cachedFiles.get(url);
-    if (cachedUnzip) {
-        cacheManager.updateLastTime(url);
-        onComplete && onComplete(null, cachedUnzip.url);
-    } else if (REGEX.test(url)) {
-        downloadFile(url, null, options.header, options.onFileProgress, (err, downloadedZipPath) => {
-            if (err) {
-                onComplete && onComplete(err);
-                return;
-            }
-            cacheManager.unzipAndCacheBundle(url, downloadedZipPath, options.__cacheBundleRoot__, onComplete);
-        });
-    } else {
-        cacheManager.unzipAndCacheBundle(url, url, options.__cacheBundleRoot__, onComplete);
-    }
 }
 
 function loadAudioPlayer (url, options, onComplete) {
@@ -150,65 +125,40 @@ function downloadAsset (url, options, onComplete) {
 
 function downloadBundle (nameOrUrl, options, onComplete) {
     const bundleName = cc.path.basename(nameOrUrl);
-    const version = options.version || cc.assetManager.downloader.bundleVers[bundleName];
-    const suffix = version ? `${version}.` : '';
-
-    if (subpackages[bundleName]) {
-        var config = `${bundleName}/config.${suffix}json`;
-        loadSubpackage(bundleName, options.onFileProgress, (err) => {
-            if (err) {
-                onComplete(err, null);
-                return;
-            }
-            downloadJson(config, options, (err, data) => {
-                data && (data.base = `${bundleName}/`);
-                onComplete(err, data);
-            });
-        });
-    } else {
-        let js; let url;
-        if (REGEX.test(nameOrUrl) || nameOrUrl.startsWith(getUserDataPath())) {
-            url = nameOrUrl;
-            js = `src/bundle-scripts/${bundleName}/index.${suffix}js`;
+    const version = options.version || downloader.bundleVers[bundleName];
+    let url;
+    if (REGEX.test(nameOrUrl) || nameOrUrl.startsWith(getUserDataPath())) {
+        url = nameOrUrl;
+        cacheManager.makeBundleFolder(bundleName);
+    } else if (downloader.remoteBundles.indexOf(bundleName) !== -1) {
+            url = `${downloader.remoteServerAddress}remote/${bundleName}`;
             cacheManager.makeBundleFolder(bundleName);
-        } else if (downloader.remoteBundles.indexOf(bundleName) !== -1) {
-                url = `${downloader.remoteServerAddress}remote/${bundleName}`;
-                js = `src/bundle-scripts/${bundleName}/index.${suffix}js`;
-                cacheManager.makeBundleFolder(bundleName);
-            } else {
-                url = `assets/${bundleName}`;
-                js = `assets/${bundleName}/index.${suffix}js`;
-            }
-
-        if (!loadedScripts[js]) {
-            require(js);
-            loadedScripts[js] = true;
+        } else {
+            url = `assets/${bundleName}`;
         }
+    const config = `${url}/cc.config.${version ? `${version}.` : ''}json`;
+    options.__cacheBundleRoot__ = bundleName;
+    downloadJson(config, options, (err, response) => {
+        if (err) {
+            onComplete(err, null);
+            return;
+        }
+        const out = response;
+        out && (out.base = `${url}/`);
 
-        options.__cacheBundleRoot__ = bundleName;
-        var config = `${url}/config.${suffix}json`;
-        downloadJson(config, options, (err, data) => {
-            if (err) {
-                onComplete && onComplete(err);
-                return;
-            }
-            if (data.isZip) {
-                const zipVersion = data.zipVersion;
-                const zipUrl = `${url}/res.${zipVersion ? `${zipVersion}.` : ''}zip`;
-                handleZip(zipUrl, options, (err, unzipPath) => {
-                    if (err) {
-                        onComplete && onComplete(err);
-                        return;
-                    }
-                    data.base = `${unzipPath}/res/`;
-                    onComplete && onComplete(null, data);
-                });
-            } else {
-                data.base = `${url}/`;
-                onComplete && onComplete(null, data);
-            }
-        });
-    }
+        if (out.hasPreloadScript) {
+            const js = `${url}/index.${version ? `${version}.` : ''}${out.encrypted ? 'jsc' : `js`}`;
+            downloadScript(js, options, (err) => {
+                if (err) {
+                    onComplete(err, null);
+                    return;
+                }
+                onComplete(null, out);
+            });
+        } else {
+            onComplete(null, out);
+        }
+    });
 }
 
 function downloadArrayBuffer (url, options, onComplete) {

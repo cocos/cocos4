@@ -23,7 +23,6 @@
 */
 import { checkPalIntegrity, withImpl } from '../integrity-check';
 
-
 export function instantiateWasm (wasmUrl: string, importObject: WebAssembly.Imports): Promise<any> {
     return fetchBuffer(wasmUrl).then((arrayBuffer) => WebAssembly.instantiate(arrayBuffer, importObject));
 }
@@ -31,13 +30,10 @@ export function instantiateWasm (wasmUrl: string, importObject: WebAssembly.Impo
 export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
         try {
-            // here is in the BUILD mode
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore NOTE: we need to use 'import.meta' here, but the tsc won't allow this, so we need to force ignoring this error here.
-            binaryUrl = new URL(binaryUrl, import.meta.url).href;
-            fetch(binaryUrl).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
-                // noop
-            });
+            const externalRoot = `${globalThis.window.enginePath}/native/external/`;
+            binaryUrl = binaryUrl.replace('external:', externalRoot);
+            const arrayBuffer = globalThis.fs.readFileSync(binaryUrl) as ArrayBuffer;
+            resolve(arrayBuffer);
         } catch (e) {
             reject(e);
         }

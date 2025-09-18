@@ -27,22 +27,34 @@ import { checkPalIntegrity, withImpl } from '../integrity-check';
 const FRAME_RESET_TIME = 2000;
 
 export class Pacer {
-    private _isPlaying = false;
+    private _stHandle = 0;
     private _onTick: (() => void) | null = null;
+    private _targetFrameRate = 60;
+    private _frameTime = 0;
+    private _startTime = 0;
+    private _isPlaying = false;
+
     constructor () {
         this._isPlaying = false;
     }
 
     get targetFrameRate (): number {
-        return 0;
+        return this._targetFrameRate;
     }
 
     set targetFrameRate (val: number) {
-        
+        if (this._targetFrameRate !== val) {
+            this._targetFrameRate = val;
+            this._frameTime = 1000 / this._targetFrameRate;
+            if (this._isPlaying) {
+                this.stop();
+                this.start();
+            }
+        }
     }
 
     set onTick (val: (() => void) | null) {
-       
+        this._onTick = val;
     }
 
     get onTick (): (() => void) | null {
@@ -50,17 +62,38 @@ export class Pacer {
     }
 
     start (): void {
+        if (this._isPlaying) return;
+        const updateCallback = (): void => {
+            if (this._isPlaying) {
+                this._stHandle = this._stTime(updateCallback);
+            }
+            if (this._onTick) {
+                this._onTick();
+            }
+        };
+        this._startTime = performance.now();
+        this._stHandle = this._stTime(updateCallback);
 
+        this._isPlaying = true;
     }
 
     stop (): void {
-
+        if (!this._isPlaying) return;
+        this._ctTime(this._stHandle);
+        this._stHandle = 0;
+        this._isPlaying = false;
     }
 
-    _handleRAF = (stamp: number): void => {
+    private _stTime (callback: () => void): number {
+        const currTime = performance.now();
+        const elapseTime = Math.max(0, currTime - this._startTime);
+        const timeToCall = Math.max(0, this._frameTime - elapseTime);
+        return setTimeout(callback, timeToCall);
+    }
 
-    };
-
+    private _ctTime (id: number | undefined): void {
+        clearTimeout(id);
+    }
 }
 
 checkPalIntegrity<typeof import('pal/pacer')>(withImpl<typeof import('./pacer-web')>());
