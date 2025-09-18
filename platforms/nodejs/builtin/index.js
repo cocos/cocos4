@@ -1,21 +1,21 @@
 globalThis.__EDITOR__ = globalThis.process && ('electron' in globalThis.process.versions);
 
 require('./wasm');
-const jsbWindow = globalThis.window;
+const nodeWindow = globalThis.window;
 
 const { btoa, atob } = require('./base64/base64.min');
 
-jsbWindow.btoa = btoa;
-jsbWindow.atob = atob;
+nodeWindow.btoa = btoa;
+nodeWindow.atob = atob;
 const { Blob, URL } = require('./Blob');
 
-jsbWindow.Blob = Blob;
-jsbWindow.URL = URL;
-jsbWindow.DOMParser = require('./xmldom/dom-parser').DOMParser;
+nodeWindow.Blob = Blob;
+nodeWindow.URL = URL;
+nodeWindow.DOMParser = require('./xmldom/dom-parser').DOMParser;
 
-// jsbWindow.XMLHttpRequest = jsb.XMLHttpRequest;
-// jsbWindow.SocketIO = jsb.SocketIO;
-// jsbWindow.WebSocket = jsb.WebSocket;
+// nodeWindow.XMLHttpRequest = jsb.XMLHttpRequest;
+// nodeWindow.SocketIO = jsb.SocketIO;
+// nodeWindow.WebSocket = jsb.WebSocket;
 
 //require('./jsb_prepare');
 require('./jsb-adapter');
@@ -27,23 +27,23 @@ let _requestAnimationFrameID = 0;
 const _requestAnimationFrameCallbacks = {};
 let _firstTick = true;
 
-jsbWindow.requestAnimationFrame = function (cb) {
+nodeWindow.requestAnimationFrame = function (cb) {
     const id = ++_requestAnimationFrameID;
     _requestAnimationFrameCallbacks[id] = cb;
     return id;
 };
 
-jsbWindow.cancelAnimationFrame = function (id) {
+nodeWindow.cancelAnimationFrame = function (id) {
     delete _requestAnimationFrameCallbacks[id];
 };
 
 function tick (nowMilliSeconds) {
     if (_firstTick) {
         _firstTick = false;
-        if (jsbWindow.onload) {
+        if (nodeWindow.onload) {
             const event = new Event('load');
             event._target = globalThis;
-            jsbWindow.onload(event);
+            nodeWindow.onload(event);
         }
     }
     fireTimeout(nowMilliSeconds);
@@ -99,46 +99,7 @@ function fireTimeout (nowMilliSeconds) {
     }
 }
 
-function createTimeoutInfo (prevFuncArgs, isRepeat) {
-    const cb = prevFuncArgs[0];
-    if (!cb) {
-        console.error('createTimeoutInfo doesn\'t pass a callback ...');
-        return 0;
-    }
-
-    const delay = prevFuncArgs.length > 1 ? prevFuncArgs[1] : 0;
-    let args;
-
-    if (prevFuncArgs.length > 2) {
-        args = Array.prototype.slice.call(prevFuncArgs, 2);
-    }
-
-    const info = new TimeoutInfo(cb, delay, isRepeat, this, args);
-    _timeoutInfos[info.id] = info;
-    return info.id;
-}
-
-if (window.oh && window.scriptEngineType === 'napi') {
-    console.log(`Openharmony with napi has alreay implemented setTimeout/setInterval`);
-} else {
-    // In openharmony, the setTimeout function will conflict with the timer of the worker thread and cause a crash,
-    // so you need to use the default timer
-    jsbWindow.setTimeout = function (cb) {
-        return createTimeoutInfo(arguments, false);
-    };
-
-    jsbWindow.clearTimeout = function (id) {
-        delete _timeoutInfos[id];
-    };
-
-    jsbWindow.setInterval = function (cb) {
-        return createTimeoutInfo(arguments, true);
-    };
-
-    jsbWindow.clearInterval = jsbWindow.clearTimeout;
-}
-
-jsbWindow.alert = console.error.bind(console);
+nodeWindow.alert = console.error.bind(console);
 
 // // File utils (Temporary, won't be accessible)
 // if (typeof jsb.FileUtils !== 'undefined') {
@@ -146,19 +107,19 @@ jsbWindow.alert = console.error.bind(console);
 //     delete jsb.FileUtils;
 // }
 
-// jsbWindow.XMLHttpRequest.prototype.addEventListener = function (eventName, listener, options) {
+// nodeWindow.XMLHttpRequest.prototype.addEventListener = function (eventName, listener, options) {
 //     this[`on${eventName}`] = listener;
 // };
 
-// jsbWindow.XMLHttpRequest.prototype.removeEventListener = function (eventName, listener, options) {
+// nodeWindow.XMLHttpRequest.prototype.removeEventListener = function (eventName, listener, options) {
 //     this[`on${eventName}`] = null;
 // };
 
 // SocketIO
-if (jsbWindow.SocketIO) {
-    jsbWindow.io = jsbWindow.SocketIO;
-    jsbWindow.SocketIO.prototype._Emit = jsbWindow.SocketIO.prototype.emit;
-    jsbWindow.SocketIO.prototype.emit = function (uri, delegate) {
+if (nodeWindow.SocketIO) {
+    nodeWindow.io = nodeWindow.SocketIO;
+    nodeWindow.SocketIO.prototype._Emit = nodeWindow.SocketIO.prototype.emit;
+    nodeWindow.SocketIO.prototype.emit = function (uri, delegate) {
         if (typeof delegate === 'object') {
             delegate = JSON.stringify(delegate);
         }
@@ -166,7 +127,7 @@ if (jsbWindow.SocketIO) {
     };
 }
 
-jsbWindow.gameTick = tick;
+nodeWindow.gameTick = tick;
 
 // // generate get set function
 // jsb.generateGetSet = function (moduleObj) {
@@ -209,9 +170,9 @@ jsbWindow.gameTick = tick;
 //     }
 // };
 
-for (const key in jsbWindow) {
+for (const key in nodeWindow) {
     if (globalThis[key] === undefined) {
-        globalThis[key] = jsbWindow[key];
+        globalThis[key] = nodeWindow[key];
     }
 }
 

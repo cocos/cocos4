@@ -40,12 +40,6 @@ function inject () {
     jsbWindow.KeyboardEvent = require('./KeyboardEvent');
     jsbWindow.DeviceMotionEvent = require('./DeviceMotionEvent');
 
-    // ES6
-    const m_fetch = require('./fetch');
-    jsbWindow.fetch = m_fetch.fetch;
-    jsbWindow.Headers = m_fetch.Headers;
-    jsbWindow.Request = m_fetch.Request;
-    jsbWindow.Response = m_fetch.Response;
 
     // const PORTRAIT = 0;
     // const LANDSCAPE_LEFT = -90;
