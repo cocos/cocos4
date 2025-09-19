@@ -543,7 +543,7 @@ export class Details {
 Details.pool.get = function (): Details {
     return this._get() || new Details();
 };
-if (EDITOR || TEST) {
+if (EDITOR || NODEJS || TEST) {
     Details.prototype.assignAssetsBy = function (getter: (uuid: string, options: {
         type: Constructor<Asset>;
         owner: Record<string, unknown>;
