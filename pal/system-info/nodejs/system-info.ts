@@ -84,7 +84,7 @@ class SystemInfo extends EventTarget {
     }
 
     public hasFeature (feature: Feature): boolean {
-        warn("hasFeature is not supported.");
+        // warn("hasFeature is not supported.");
         return false;
     }
 
