@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-const { getUserDataPath, readJsonSync, makeDirSync, writeFileSync, copyFile, downloadFile, deleteFile, rmdirSync } = require('./fs-utils');
+const { makeDirSync, copyFile, downloadFile, deleteFile, rmdirSync } = require('./fs-utils');
 
 let checkNextPeriod = false;
 let writeCacheFileList = null;
@@ -65,17 +65,8 @@ const cacheManager = {
     },
 
     init () {
-        this.cacheDir = `${getUserDataPath()}/${this.cacheDir}`;
-        const cacheFilePath = `${this.cacheDir}/${this.cachedFileName}`;
-        const result = readJsonSync(cacheFilePath);
-        if (result instanceof Error || !result.version) {
-            if (!(result instanceof Error)) rmdirSync(this.cacheDir, true);
-            this.cachedFiles = new cc.AssetManager.Cache();
-            makeDirSync(this.cacheDir, true);
-            writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
-        } else {
-            this.cachedFiles = new cc.AssetManager.Cache(result.files);
-        }
+        //TODO(qgh): Read the configuration file
+        this.cachedFiles = new cc.AssetManager.Cache();
         this.tempFiles = new cc.AssetManager.Cache();
     },
 
@@ -88,7 +79,7 @@ const cacheManager = {
 
     _write () {
         writeCacheFileList = null;
-        writeFileSync(`${this.cacheDir}/${this.cachedFileName}`, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
+        //TODO(qgh): Write to the configuration file
     },
 
     writeCacheFile () {
@@ -238,20 +229,6 @@ const cacheManager = {
         const targetPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}`;
         const self = this;
         makeDirSync(targetPath, true);
-        // unzip(zipFilePath, targetPath, (err) => {
-        //     if (err) {
-        //         rmdirSync(targetPath, true);
-        //         if (isOutOfStorage(err.message)) {
-        //             self.outOfStorage = true;
-        //             self.autoClear && self.clearLRU();
-        //         }
-        //         onComplete && onComplete(err);
-        //         return;
-        //     }
-        //     self.cachedFiles.add(id, { bundle: cacheBundleRoot, url: targetPath, lastTime: time });
-        //     self.writeCacheFile();
-        //     onComplete && onComplete(null, targetPath);
-        // });
         console.log('cannot support');
     },
 
