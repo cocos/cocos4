@@ -1,5 +1,5 @@
 const cacheManager = require('./cache-manager');
-const { downloadFile, readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, _subpackagesPath } = require('./fs-utils');
+const { readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, _subpackagesPath } = require('./fs-utils');
 
 //cc.assetManager.fsUtils = ral.fsUtils;
 
@@ -17,9 +17,21 @@ const subpackages = {};
 const loadedScripts = {};
 
 function downloadScript (url, options, onComplete) {
-    // TODO(qgh): Skip loading the script. There are currently issues with script loading, so it's not needed here.
-    console.warn("Can not load scripts ".concat(url));
-    onComplete && onComplete(null);
+    if (typeof options === 'function') {
+        onComplete = options;
+        options = null;
+    }
+
+    if (loadedScripts[url]) {
+         onComplete && onComplete();
+         return;
+    }
+
+    download(url, (src, options, onComplete) => {
+        globalThis.nodeEnv.require(src);
+        loadedScripts[url] = true;
+        onComplete && onComplete(null);
+    }, options, options.onFileProgress, onComplete);
 }
 
 function loadAudioPlayer (url, options, onComplete) {
@@ -49,7 +61,7 @@ function download (url, func, options, onFileProgress, onComplete) {
             onComplete(err, data);
         });
     } else {
-        downloadFile(url, null, options.header, onFileProgress, (err, path) => {
+        downloader.downloadFile(url, options, onFileProgress, (err, path) => {
             if (err) {
                 onComplete(err, null);
                 return;

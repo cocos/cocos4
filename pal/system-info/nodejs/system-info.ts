@@ -21,8 +21,8 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-
 import { DEBUG } from 'internal:constants';
+import { IFeatureMap } from 'pal/system-info';
 import { EventTarget } from '../../../cocos/core/event';
 import { checkPalIntegrity, withImpl } from '../../integrity-check';
 import { BrowserType, NetworkType, OS, Platform, Language, Feature } from '../enum-type';
@@ -43,17 +43,34 @@ class SystemInfo extends EventTarget {
     public declare readonly browserType: BrowserType;
     public declare readonly browserVersion: string;
     public declare readonly isXR: boolean;
+    private declare _featureMap: IFeatureMap;
+    private _initPromise: Promise<void>[] = [];
 
     constructor () {
         super();
 
         this.networkType = NetworkType.LAN;  // TODO
         this.isNative = false;
-        this.isBrowser = true;
+        this.isBrowser = false;
 
         this.isMobile = false;
-        this.platform = Platform.EDITOR_PAGE;  // TODO
+        this.platform = Platform.NODEJS_PAGE;  // TODO
+  
+        this.browserType = BrowserType.UNKNOWN;
+        this.browserVersion = '';
 
+        const osInfo = globalThis.nodeEnv.require('os');
+        let osName = OS.UNKNOWN;
+        if (osInfo.type().indexOf('wiWindows_NTn') !== -1) {
+            osName = OS.WINDOWS;
+        } else if (osInfo.type().indexOf('Darwin') !== -1) {
+            osName = OS.OSX;
+        } else if (osInfo.type().indexOf('Linux') !== -1) {
+            osName = OS.LINUX;
+        }
+        this.os = osName;
+        this.osVersion = osInfo.release();
+        this.osMainVersion = parseInt(this.osVersion);
 
         // init isLittleEndian
         this.isLittleEndian = ((): boolean => {
@@ -63,43 +80,62 @@ class SystemInfo extends EventTarget {
             return new Int16Array(buffer)[0] === 256;
         })();
 
-        this.language = Language.CHINESE;
-
-        this.os = OS.UNKNOWN;
-        this.osVersion = "";
-        this.osMainVersion = 10;
-
-        // TODO: use dack-type to determine the browserType
-        // init browserType and browserVersion
-        this.browserType = BrowserType.UNKNOWN;
-        // init browserVersion
-        this.browserVersion = '';
+        // init languageCode and language
+        let currLanguage = globalThis.nodeEnv.systemLanguage;
+        this.nativeLanguage = currLanguage.toLowerCase();
+        currLanguage = currLanguage ? currLanguage.split('-')[0] : Language.ENGLISH;
+        this.language = currLanguage as Language;
 
         this.isXR = false;
+        this._featureMap = {
+            [Feature.WEBP]: true,
+            [Feature.IMAGE_BITMAP]: false,
+            [Feature.WEB_VIEW]: false,
+            [Feature.VIDEO_PLAYER]: false,
+            [Feature.SAFE_AREA]: false,
+            [Feature.HPE]: false,
+
+            [Feature.INPUT_TOUCH]: false,
+            [Feature.EVENT_KEYBOARD]: false,
+            [Feature.EVENT_MOUSE]: false,
+            [Feature.EVENT_TOUCH]: false,
+            [Feature.EVENT_ACCELEROMETER]: false,
+            // NOTE: webkitGetGamepads is not standard web interface
+            [Feature.EVENT_GAMEPAD]: false,
+            [Feature.EVENT_HANDLE]: false,
+            [Feature.EVENT_HMD]: false,
+            [Feature.EVENT_HANDHELD]: false,
+            [Feature.WASM]: true,
+        };
+
     }
 
     public init (): Promise<void[]> {
-        warn("init is not supported.");
-        return Promise.resolve([]);
+        return Promise.all(this._initPromise);
     }
 
     public hasFeature (feature: Feature): boolean {
-        // warn("hasFeature is not supported.");
-        return false;
+        return this._featureMap[feature];
     }
 
     public getBatteryLevel (): number {
-        warn("getBatteryLevel is not supported.");
+        if (DEBUG) {
+            warn("getBatteryLevel is not supported.");
+        }
         return 1;
     }
+
     public triggerGC (): void {
-        if (DEBUG) {
-            warn('triggerGC is not supported.');
+        if (global.gc) {
+            global.gc();
         }
     }
+
     public openURL (url: string): void {
-        warn("openURL is not supported.");
+        var open = globalThis.nodeEnv.require('open');
+        open(url);
     }
+
     public now (): number {
         if (Date.now) {
             return Date.now();
@@ -107,12 +143,15 @@ class SystemInfo extends EventTarget {
 
         return +(new Date());
     }
+    
     public restartJSVM (): void {
-        warn("restartJSVM is not supported.");
+        if (DEBUG) {
+            warn('restartJSVM is not supported.');
+        }
     }
 
     public exit (): void {
-        warn("exit is not supported.");
+        globalThis.nodeEnv.process.exit();
     }
 
     public close (): void {

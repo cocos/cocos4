@@ -33,9 +33,8 @@ export function findCanvas (): { frame: HTMLDivElement, container: HTMLDivElemen
 }
 
 export function loadJsFile (path: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        reject("not supported");
-    });
+    // eslint-disable-next-line import/no-dynamic-require
+    return globalThis.nodeEnv.require(`${path}`);
 }
 
 checkPalIntegrity<typeof import('pal/env')>(withImpl<typeof import('./env')>());

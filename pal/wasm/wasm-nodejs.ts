@@ -30,9 +30,10 @@ export function instantiateWasm (wasmUrl: string, importObject: WebAssembly.Impo
 export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
         try {
-            const externalRoot = `${globalThis.window.enginePath}/native/external/`;
+            const externalRoot = `${globalThis.nodeEnv.enginePath}/native/external/`;
             binaryUrl = binaryUrl.replace('external:', externalRoot);
-            const arrayBuffer = globalThis.fs.readFileSync(binaryUrl) as ArrayBuffer;
+            const fs = globalThis.nodeEnv.require('fs-extra');
+            const arrayBuffer = fs.readFileSync(binaryUrl) as ArrayBuffer;
             resolve(arrayBuffer);
         } catch (e) {
             reject(e);
@@ -40,13 +41,15 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
     });
 }
 
-/**
- * @en Translate virtual addresses within the engine to actual addresses of paths, such as external:emscripten/webgpu/glslang.wasm
- * @zh 把引擎内部的虚拟地址转为路径的实际地址，如external:emscripten/webgpu/glslang.wasm
- */
-export function fetchUrl (binaryUrl: string): Promise<string> {
+export function fetchUrl(binaryUrl: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-        reject(new Error('nodejs not supported.'));
+        try {
+            const externalRoot = `${globalThis.nodeEnv.enginePath}/native/external/`;
+            binaryUrl = binaryUrl.replace('external:', externalRoot);
+            resolve(binaryUrl);
+        } catch (e) {
+            reject(e);
+        }
     });
 }
 
