@@ -19,16 +19,8 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const path = require("path");
-
-const fs = window.fs;
-let jsb_downloader = null;
-const downloading = new cc.AssetManager.Cache();
-let tempDir = '';
-
-// jsb.Downloader.prototype._ctor = function () {
-//     this.__nativeRefs = {};
-// };
+const path = globalThis.nodeEnv.require('path');
+const fs = globalThis.nodeEnv.require('fs-extra');
 
 const fsUtils = {
 
@@ -37,10 +29,11 @@ const fsUtils = {
     initJsbDownloader(jsbDownloaderMaxTasks, jsbDownloaderTimeout) {
         console.log("initJsbDownloader: nodejs does not support")
     },
+
     getUserDataPath() {
-        console.log("getUserDataPath: nodejs does not support");
-        return path.join('./', "writablePath");
+        return path.join(globalThis.nodeEnv.userDataPath, "writablePath");
     },
+
     checkFsValid() {
         if (!fs) {
             cc.warn('can not get the file system!');
@@ -50,9 +43,10 @@ const fsUtils = {
     },
 
     deleteFile(filePath, onComplete) {
-        fs.unlink(filePath, (e) => {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath);
+        fs.unlink(fullFilePath, (e) => {
             if (e) {
-                const err = new Error(`Delete file failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Delete file failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 console.warn(err.message);
                 onComplete && onComplete(err);
             } else {
@@ -61,8 +55,7 @@ const fsUtils = {
         });
     },
     
-    fullPathForFilename(filename) {
-        const path = globalThis.window.path;
+    fullPathForFilename(filename, forceReturnFullpath = false) {
         if(filename.length <= 0){ 
             return "";
         }
@@ -70,28 +63,22 @@ const fsUtils = {
             return filename;
         }
         const newFilename = path.normalize(filename);
-        const projectPath = globalThis.window.projectResourcePath;
+        const projectPath = '';
         const fullpath = path.join(projectPath, newFilename);
-        if(fs.pathExistsSync(fullpath)) {
+        if(fs.pathExistsSync(fullpath) || forceReturnFullpath) {
             return fullpath;
         }
         return "";
     },
 
-    downloadFile(remoteUrl, filePath, header, onProgress, onComplete) {
-        cc.warn('can not downloadFile the file system!');
-        // downloading.add(remoteUrl, { onProgress, onComplete });
-        // let storagePath = filePath;
-        // if (!storagePath) storagePath = `${tempDir}/${performance.now()}${cc.path.extname(remoteUrl)}`;
-        // jsb_downloader.createDownloadTask(remoteUrl, storagePath, header);
-    },
-
     saveFile(srcPath, destPath, onComplete) {
-        srcPath = fsUtils.fullPathForFilename(srcPath);
-        destPath = fsUtils.fullPathForFilename(destPath);
-        fs.copyFile(srcPath, destPath, (e) => {
+        const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
+        const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
+        fs.copyFile(fullSrcPath, fullDestPath, (e) => {
             if (e) {
-                const err = new Error(`Save file failed: path: ${srcPath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Save file failed: srcPath: "${srcPath}" (resolved: "${fullSrcPath}")  \
+                                                         dstPath: "${destPath}" (resolved: "${fullDestPath}")  
+                                                         ${e.message}`);
                 console.warn(err.message);
                 onComplete && onComplete(err);
             } else {
@@ -102,9 +89,13 @@ const fsUtils = {
     },
 
     copyFile(srcPath, destPath, onComplete) {
-        fs.copyFile(srcPath, destPath, (e) => {
+        const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
+        const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
+        fs.copyFile(fullSrcPath, fullDestPath, (e) => {
             if (e) {
-                const err = new Error(`Copy file failed: path: ${srcPath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Copy file failed: srcPath: "${srcPath}" (resolved: "${fullSrcPath}")  \
+                                                         dstPath: "${destPath}" (resolved: "${fullDestPath}")  
+                                                         ${e.message}`);
                 cc.warn(err.message);
                 onComplete && onComplete(err);
             } else {
@@ -114,9 +105,10 @@ const fsUtils = {
     },
 
     writeFile(filePath, data, encoding, onComplete) {
-        fs.writeFile(filePath, data, encoding, (e) => {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath, true);
+        fs.writeFile(fullFilePath, data, encoding, (e) => {
             if (e) {
-                const err = new Error(`Write file failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Write file failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 cc.warn(err.message);
                 onComplete && onComplete(err);
             } else {
@@ -126,20 +118,22 @@ const fsUtils = {
     },
 
     writeFileSync(filePath, data, encoding) {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath, true);
         try {
-            fs.writeFile(filePath, data, encoding);
+            fs.writeFile(fullFilePath, data, encoding);
             return null;
         } catch (e) {
-            const err = new Error(`Write file sync failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+            const err = new Error(`Failed to write file synchronously: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
             cc.warn(err.message);
             return err;
         }
     },
 
     readFile(filePath, encoding, onComplete) {
-        fs.readFile(filePath, encoding, (e, data) => {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath);
+        fs.readFile(fullFilePath, encoding, (e, data) => {
             if (e) {
-                const err = new Error(`Read file failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Read file failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 cc.warn(err.message);
                 onComplete && onComplete(err, null);
             } else {
@@ -148,10 +142,11 @@ const fsUtils = {
         })
     },
 
-    readDir(filePath, onComplete) {
-        fs.readdir(filePath, (e, files) => {
+    readDir(dirPath, onComplete) {
+        const fullDirPath = fsUtils.fullPathForFilename(dirPath);
+        fs.readdir(fullDirPath, (e, files) => {
             if (e) {
-                const err = new Error(`Read directory failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Read directory failed: "${dirPath}" (resolved: "${fullDirPath}") - ${e.message}`);
                 cc.warn(err.message);
                 onComplete && onComplete(err, null);
             } else {
@@ -169,10 +164,10 @@ const fsUtils = {
     },
 
     readJson(filePath, onComplete) {
-        filePath = fsUtils.fullPathForFilename(filePath);
-        fs.readJson(filePath, (e, jsonObj) => {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath);
+        fs.readJson(fullFilePath, (e, jsonObj) => {
             if (e) {
-                const err = new Error(`Read json failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`Read json failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 cc.warn(err.message);
                 onComplete && onComplete(err, null);
             } else {
@@ -182,49 +177,54 @@ const fsUtils = {
     },
 
     readJsonSync(filePath) {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath);
         try {
-            return fs.readJsonSync(filePath);
+            return fs.readJsonSync(fullFilePath);
         } catch (e) {
-            const err = new Error(`Read json sync failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+            const err = new Error(`Failed to read JSON file synchronously: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
             cc.warn(err.message);
             return err;
         }
     },
 
-    makeDirSync(filePath, recursive) {
+    makeDirSync(dirPath, recursive) {
+        const fullDirPath = fsUtils.fullPathForFilename(dirPath, true);
         try {
-            fs.mkdirSync(filePath, { recursive: recursive });
+            fs.mkdirSync(fullDirPath, { recursive: recursive });
             return null;
-        } catch (r) {
-            const err = new Error(`Make directory failed: path: ${filePath} errno: ${e.errno} message: ${e.message}`);
+        } catch (e) {
+            const err = new Error(`Make directory failed: "${dirPath}" (resolved: "${fullDirPath}") - ${e.message}`);
             cc.warn(err.message);
             return err;
         }
     },
 
     rmdirSync(dirPath, recursive) {
+        const fullDirPath = fsUtils.fullPathForFilename(dirPath);
         try {
-            fs.rmSync(dirPath, { recursive: recursive });
+            fs.rmSync(fullDirPath, { recursive: recursive });
             return null;
         } catch (e) {
-            const err = new Error(`Remove directory failed: path: ${dirPath} errno: ${e.errno} message: ${e.message}`);
+            const err = new Error(`Remove directory failed: "${dirPath}" (resolved: "${fullDirPath}") - ${e.message}`);
             cc.warn(err.message);
             return err;
         }
     },
 
     exists(filePath, onComplete) {
-        fs.pathExists(filePath, function (e, exists) {
+        const fullFilePath = fsUtils.fullPathForFilename(filePath);
+        fs.pathExists(fullFilePath, function (e, exists) {
             if(e) {
-                const err = new Error(`Path existence check failed: ${filePath} errno: ${e.errno} message: ${e.message}`);
+                const err = new Error(`File existence check failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 cc.warn(err.message);
                 return err;
             }
             onComplete && onComplete(exists);
         });
     },
+
     loadSubpackage(name, onProgress, onComplete) {
-        throw new Error('not implement');
+        throw new Error('nodejs not implement');
     },
 };
 

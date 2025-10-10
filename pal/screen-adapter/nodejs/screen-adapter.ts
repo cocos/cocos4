@@ -53,17 +53,9 @@ export interface IScreenOptions {
     isHeadlessMode: boolean;
 }
 
-// these value is defined in the native layer
-const orientationMap: Record<string, Orientation> = {
-    0: Orientation.PORTRAIT,
-    '-90': Orientation.LANDSCAPE_LEFT,
-    90: Orientation.LANDSCAPE_RIGHT,
-    180: Orientation.PORTRAIT_UPSIDE_DOWN,
-};
-
 class ScreenAdapter extends EventTarget {
     public isFrameRotated = false;
-    public handleResizeEvent = true;
+    public handleResizeEvent = false;
 
     public get supportFullScreen (): boolean {
         return false;
@@ -77,8 +69,10 @@ class ScreenAdapter extends EventTarget {
     }
 
     public get windowSize (): Size {
+        // Simulate fake window size
         return new Size(960, 640);
     }
+
     public set windowSize (size: Size) {
         warn('Setting window size is not supported yet.');
     }
@@ -88,9 +82,11 @@ class ScreenAdapter extends EventTarget {
         const resolutionScale = this.resolutionScale;
         return new Size(windowSize.width * resolutionScale, windowSize.height * resolutionScale);
     }
+
     public get resolutionScale (): number {
         return this._resolutionScale;
     }
+
     public set resolutionScale (v: number) {
         if (v === this._resolutionScale) {
             return;
@@ -99,15 +95,13 @@ class ScreenAdapter extends EventTarget {
     }
 
     public get orientation (): Orientation {
-        warn('get orientation is not supported yet.');
-        return Orientation.LANDSCAPE;
+        return Orientation.PORTRAIT;
     }
     public set orientation (value: Orientation) {
         warnID(1221);
     }
 
     public get safeAreaEdge (): SafeAreaEdge {
-        warn('get safeAreaEdge is not supported yet.');
         return {
             top: 0,
             bottom: 0,
