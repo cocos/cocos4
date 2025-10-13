@@ -1,5 +1,6 @@
 const HTMLElement = require('./HTMLElement');
 const Event = require('./Event');
+const sharp = globalThis.nodeEnv.sharp;
 
 class HTMLImageElement extends HTMLElement {
     constructor(width, height, isCalledFromImage) {
@@ -18,7 +19,6 @@ class HTMLImageElement extends HTMLElement {
 
     destroy() {
         if (this._data) {
-   
             this._data = null;
         }
         this._src = null;
@@ -27,6 +27,21 @@ class HTMLImageElement extends HTMLElement {
     set src(src) {
         this._src = src;
         if (src === '') return;
+        sharp(src).metadata().then(info => {
+                this.width = info.width;
+                this.height = info.height;
+                return setTimeout(()=>{
+                    var event = new Event('load');
+                    this.dispatchEvent(event);
+                }, 0);
+        }).catch(err => {
+            console.warng(`Failed to load source image from ${src}, error reason: ${err}`);
+            this._data = null;
+            setTimeout(()=>{
+                var event = new Event('error');
+                this.dispatchEvent(event);
+            }, 0);
+        });
     }
 
     get src() {
