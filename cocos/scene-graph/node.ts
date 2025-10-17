@@ -23,7 +23,7 @@
 */
 
 import { ccclass, editable, serializable, type } from 'cc.decorator';
-import { DEV, DEBUG, EDITOR, EDITOR_NOT_IN_PREVIEW, USE_UI_SKEW } from 'internal:constants';
+import { DEV, DEBUG, EDITOR, EDITOR_NOT_IN_PREVIEW, USE_UI_SKEW, NODEJS } from 'internal:constants';
 import { Layers } from './layers';
 import { NodeUIProperties } from './node-ui-properties';
 import { cclegacy } from '../core/global-exports';
@@ -1497,7 +1497,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         // detach self and children from editor
         const parent = this._parent;
         const destroyByParent: boolean = (!!parent) && ((parent._objFlags & Destroying) !== 0);
-        if (!destroyByParent && EDITOR) {
+        if (!destroyByParent && (EDITOR || NODEJS)) {
             // TODO: `_registerIfAttached` is injected property
             // issue: https://github.com/cocos/cocos-engine/issues/14643
             (this as any)._registerIfAttached!(false);
