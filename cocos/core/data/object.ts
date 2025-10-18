@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { SUPPORT_JIT, EDITOR, TEST, JSB, EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
+import { SUPPORT_JIT, EDITOR, TEST, JSB, EDITOR_NOT_IN_PREVIEW, NODEJS } from 'internal:constants';
 import * as js from '../utils/js';
 import { CCClass } from './class';
 import { errorID, warnID } from '../platform/debug';
@@ -657,7 +657,7 @@ export function isValid<T> (value: T | null | undefined, strictMode?: boolean): 
 }
 legacyCC.isValid = isValid;
 
-if (EDITOR || TEST) {
+if (EDITOR || TEST || NODEJS) {
     js.value(CCObject, '_willDestroy', (obj) => !(obj._objFlags & CCObjectFlags.Destroyed) && (obj._objFlags & CCObjectFlags.ToDestroy) > 0);
     js.value(CCObject, '_cancelDestroy', (obj) => {
         obj._objFlags &= ~CCObjectFlags.ToDestroy;

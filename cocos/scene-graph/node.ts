@@ -1126,7 +1126,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         const component = new constructor();
         component.node = (this as unknown as Node); // TODO: HACK here
         this._components.push(component);
-        if (EDITOR && EditorExtends.Node && EditorExtends.Component) {
+        if ((EDITOR || NODEJS) && EditorExtends.Node && EditorExtends.Component) {
             const node = EditorExtends.Node.getNode(this._id);
             if (node) {
                 EditorExtends.Component.add(component._id, component);
@@ -1402,7 +1402,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             const i = this._components.indexOf(component);
             if (i !== -1) {
                 this._components.splice(i, 1);
-                if (EDITOR && EditorExtends.Component) {
+                if ((EDITOR || NODEJS) && EditorExtends.Component) {
                     EditorExtends.Component.remove(component._id);
                 }
                 this.emit(NodeEventType.COMPONENT_REMOVED, component);
