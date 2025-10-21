@@ -479,7 +479,7 @@ export class SpriteFrame extends Asset {
      */
     set _textureSource (value: TextureBase) {
         // Optimization for build
-        if (globalThis.Build || NODEJS) {
+        if (globalThis.Build) {
             this._texture = value;
             return;
         }
