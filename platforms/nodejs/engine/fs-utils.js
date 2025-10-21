@@ -74,6 +74,7 @@ const fsUtils = {
     saveFile(srcPath, destPath, onComplete) {
         const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
         const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
+        fs.ensureDirSync(path.dirname(fullDestPath));
         fs.copyFile(fullSrcPath, fullDestPath, (e) => {
             if (e) {
                 const err = new Error(`Save file failed: srcPath: "${srcPath}" (resolved: "${fullSrcPath}")  \
@@ -91,6 +92,7 @@ const fsUtils = {
     copyFile(srcPath, destPath, onComplete) {
         const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
         const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
+        fs.ensureDirSync(path.dirname(fullDestPath));
         fs.copyFile(fullSrcPath, fullDestPath, (e) => {
             if (e) {
                 const err = new Error(`Copy file failed: srcPath: "${srcPath}" (resolved: "${fullSrcPath}")  \

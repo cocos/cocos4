@@ -1464,7 +1464,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             }
         }
 
-        if (EDITOR) {
+        if (EDITOR || NODEJS) {
             const scene = (cclegacy.director as Director).getScene() as this | null;
             const inCurrentSceneBefore = oldParent && oldParent.isChildOf(scene);
             const inCurrentSceneNow = newParent && newParent.isChildOf(scene);
