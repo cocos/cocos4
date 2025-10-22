@@ -1091,7 +1091,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             throw TypeError(getError(3810));
         }
 
-        if (EDITOR && (constructor as typeof constructor & { _disallowMultiple?: unknown })._disallowMultiple) {
+        if ((EDITOR || NODEJS) && (constructor as typeof constructor & { _disallowMultiple?: unknown })._disallowMultiple) {
             this._checkMultipleComp!(constructor);
         }
 
