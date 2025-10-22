@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-const { makeDirSync, copyFile, downloadFile, deleteFile, rmdirSync } = require('./fs-utils');
+const { makeDirSync, copyFile, downloadFile, deleteFile, rmdirSync, getUserDataPath } = require('./fs-utils');
 
 let checkNextPeriod = false;
 let writeCacheFileList = null;
@@ -66,6 +66,7 @@ const cacheManager = {
 
     init () {
         //TODO(qgh): Read the configuration file
+        this.cacheDir = `${getUserDataPath()}/${this.cacheDir}`;
         this.cachedFiles = new cc.AssetManager.Cache();
         this.tempFiles = new cc.AssetManager.Cache();
     },
