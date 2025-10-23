@@ -330,25 +330,23 @@ parser.register({
 var transformUrl = function (url, options) {
     let inLocal = false;
     let inCache = false;
-    const isInUserDataPath = url.startsWith(getUserDataPath());
-    if (isInUserDataPath) {
-        inLocal = true;
-    } else if (REGEX.test(url)) {
-        if (!options.reload) {
-            const cache = cacheManager.cachedFiles.get(url);
+    if (REGEX.test(url) && !url.startsWith('file:///') && !url.startsWith('file://')) {
+        if (options.reload) {
+            return { url };
+        } else {
+            const cache = cacheManager.getCache(url);
             if (cache) {
                 inCache = true;
-                url = cache.url;
-            } else {
-                const tempUrl = cacheManager.tempFiles.get(url);
-                if (tempUrl) {
-                    inLocal = true;
-                    url = tempUrl;
-                }
+                url = cache;
             }
         }
     } else {
         inLocal = true;
+        if (url.startsWith('file:///')) {
+            url = url.replace(/^file:\/\/\//, '');
+        } else if(url.startsWith('file:///')) {
+            url = url.replace(/^file:\/\//, '');
+        }
     }
     return { url, inLocal, inCache };
 };
