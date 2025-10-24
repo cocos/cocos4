@@ -21,16 +21,16 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-import { EDITOR, NATIVE, PREVIEW, TEST } from 'internal:constants';
-import { assert, settings, SettingsCategory } from '../../core';
+import { EDITOR, NATIVE, NODEJS, PREVIEW, TEST } from 'internal:constants';
+import { assert, settings, SettingsCategory, cclegacy } from '../../core';
 import { fetchPipeline, pipeline } from './shared';
 import Task from './task';
 
 declare const Editor: any;
-if ((EDITOR || PREVIEW) && !TEST) {
-    const cache: {[uuid: string]: string | null} = {};
+if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
+    const cache: { [uuid: string]: string | null } = {};
     const resolveMap: { [uuid: string]: Function[] } = {};
-    const replaceExtension  = (task: Task, done): void => {
+    const replaceExtension = (task: Task, done): void => {
         task.output = task.input;
         (async (): Promise<void> => {
             for (let i = 0; i < task.input.length; i++) {
@@ -80,12 +80,22 @@ if ((EDITOR || PREVIEW) && !TEST) {
         try {
             let text = '';
             if (EDITOR) {
-                const info: {library: {['.bin']: any}} = await Editor.Message.request('asset-db', 'query-asset-info', uuid);
+                const info: { library: { ['.bin']: any } } = await Editor.Message.request('asset-db', 'query-asset-info', uuid);
                 // Current rule: If an asset has only one .bin file, then it is in CCON format.
                 if (info && info.library['.bin'] && Object.keys(info.library).length === 1) {
                     text = '.cconb';
                 }
-            } else {
+            } else if(NODEJS) {
+                const base = cclegacy.assetManager.generalImportBase;
+                const requestUrl = `${base}/query-extname/${uuid}`;
+                // 使用时的完整错误处理
+                try {
+                    text = await fetchText(requestUrl) as string;
+                } catch (e) {
+                    console.warn(`Failed to get file type from URL: ${requestUrl}. Error: ${e}`);
+                    text = '';
+                }
+            } else {  
                 let previewServer = '';
                 if (NATIVE) {
                     previewServer = settings.querySettings<string>(SettingsCategory.PATH, 'previewServer') || '';

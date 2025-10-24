@@ -330,7 +330,8 @@ parser.register({
 var transformUrl = function (url, options) {
     let inLocal = false;
     let inCache = false;
-    if (REGEX.test(url) && !url.startsWith('file:///') && !url.startsWith('file://')) {
+    
+    if (REGEX.test(url) && !url.startsWith('file://')) {
         if (options.reload) {
             return { url };
         } else {
@@ -342,10 +343,8 @@ var transformUrl = function (url, options) {
         }
     } else {
         inLocal = true;
-        if (url.startsWith('file:///')) {
-            url = url.replace(/^file:\/\/\//, '');
-        } else if(url.startsWith('file:///')) {
-            url = url.replace(/^file:\/\//, '');
+        if(url.startsWith('file://')) {
+            url = globalThis.nodeEnv.require('url').fileURLToPath(url);
         }
     }
     return { url, inLocal, inCache };
