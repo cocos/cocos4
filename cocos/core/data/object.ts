@@ -215,7 +215,7 @@ class CCObject implements EditorExtendableObject {
          */
         this._name = name;
 
-        if (EDITOR) {
+        if (EDITOR || NODEJS) {
             // See cocos/cocos-engine#15392
             this[editorExtrasTag] = {};
         }
@@ -471,7 +471,7 @@ if (EDITOR) {
 (prototype as any)._deserialize = null;
 
 // See cocos/cocos-engine#15392
-if (EDITOR) {
+if (EDITOR || NODEJS) {
     CCClass.fastDefine('cc.Object', CCObject, { _name: '', _objFlags: 0, [editorExtrasTag]: {} });
     CCClass.Attr.setClassAttr(CCObject, editorExtrasTag, 'editorOnly', true);
 } else {
