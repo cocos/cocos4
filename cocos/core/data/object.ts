@@ -393,7 +393,7 @@ class CCObject implements EditorExtendableObject {
 }
 
 const prototype = CCObject.prototype;
-if (EDITOR || TEST) {
+if (EDITOR || TEST || NODEJS) {
     js.get(prototype, 'isRealValid', function (this: CCObject) {
         return !(this._objFlags & CCObjectFlags.RealDestroyed);
     });
