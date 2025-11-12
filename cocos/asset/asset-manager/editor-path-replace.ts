@@ -86,14 +86,26 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                     text = '.cconb';
                 }
             } else if(NODEJS) {
-                const base = cclegacy.assetManager.generalImportBase;
-                const requestUrl = `${base}/query-extname/${uuid}`;
-                // 使用时的完整错误处理
-                try {
-                    text = await fetchText(requestUrl) as string;
-                } catch (e) {
-                    console.warn(`Failed to get file type from URL: ${requestUrl}. Error: ${e}`);
-                    text = '';
+                const importBase = cclegacy.assetManager.generalImportBase;
+                let useAssetDB = true;
+                if(importBase && (importBase.startsWith('http://') || importBase.startsWith('https://'))) {
+                    // cli：场景使用的是网络路径
+                    const requestUrl = `${importBase}/query-extname/${uuid}`;
+                    try {
+                        text = await fetchText(requestUrl) as string;
+                        useAssetDB = false;
+                    } catch (e) {
+                        console.warn(`Failed to get file type from URL: ${requestUrl}. Error: ${e}`);
+                        text = '';
+                    }
+                } 
+                // 如果网络路径没有配置，或者不是网络路径，或者请求异常，使用AssetDB
+                if(useAssetDB && globalThis.AssetDB) {
+                    const meta: { files: string[] } = await globalThis.AssetDB.queryAsset(uuid)?.meta;
+                    // Current rule: If an asset has only one .bin file, then it is in CCON format.
+                    if (meta && meta.files.length === 1 && meta.files[0] === '.bin') {
+                        text = '.cconb';
+                    }
                 }
             } else {  
                 let previewServer = '';
