@@ -4,13 +4,15 @@ require('./wasm');
 const nodeWindow = globalThis.window;
 
 const { btoa, atob } = require('./base64/base64.min');
-
 nodeWindow.btoa = btoa;
 nodeWindow.atob = atob;
-const { Blob, URL } = require('./Blob');
 
-nodeWindow.Blob = Blob;
-nodeWindow.URL = URL;
+const { Blob, URL } = require('./Blob');
+nodeWindow.URL = URL; 
+if (!nodeWindow.Blob) {
+    nodeWindow.Blob = Blob;
+}
+
 nodeWindow.DOMParser = require('./xmldom/dom-parser').DOMParser;
 
 nodeWindow.XMLHttpRequest = globalThis.nodeEnv.XMLHttpRequest;
