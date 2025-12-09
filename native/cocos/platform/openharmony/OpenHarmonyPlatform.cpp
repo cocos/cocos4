@@ -222,6 +222,11 @@ int ohKeyCodeToCocosKeyCode(OH_NativeXComponent_KeyCode ohKeyCode) {
         {KEY_NUMPAD_7, cc::KeyCode::NUMPAD_7},
         {KEY_NUMPAD_8, cc::KeyCode::NUMPAD_8},
         {KEY_NUMPAD_9, cc::KeyCode::NUMPAD_9},
+
+        {KEY_MENU, cc::KeyCode::CONTEXT_MENU},
+        {KEY_SYSRQ, cc::KeyCode::PRINT_SCREEN},
+        {KEY_META_LEFT, cc::KeyCode::META_LEFT},
+        {KEY_META_RIGHT, cc::KeyCode::META_RIGHT},
     };
     if (keyCodeMap.find(ohKeyCode) != keyCodeMap.end()) {
         return int(keyCodeMap[ohKeyCode]);
