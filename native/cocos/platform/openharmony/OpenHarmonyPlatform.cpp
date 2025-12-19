@@ -30,7 +30,6 @@
 
 #include "application/ApplicationManager.h"
 #include "application/CocosApplication.h"
-#include "openharmony/OpenHarmonyGamepad.h"
 #include "platform/UniversalPlatform.h"
 
 #include "platform/openharmony/modules/SystemWindow.h"
@@ -42,7 +41,10 @@
 #include "platform/empty/modules/Screen.h"
 #include "platform/empty/modules/Vibrator.h"
 #include "platform/openharmony/modules/System.h"
-#include "platform/openharmony/OpenHarmonyGamepad.h"
+
+#if CC_USE_GAMEPAD
+    #include "platform/openharmony/OpenHarmonyGamepad.h"
+#endif
 
 #include "cocos/engine/EngineEvents.h"
 
@@ -184,11 +186,47 @@ int ohKeyCodeToCocosKeyCode(OH_NativeXComponent_KeyCode ohKeyCode) {
         {KEY_SPACE, cc::KeyCode::SPACE},
         {KEY_ALT_RIGHT, cc::KeyCode::ALT_RIGHT},
         {KEY_CTRL_RIGHT, cc::KeyCode::CONTROL_RIGHT},
+    
         {KEY_DPAD_LEFT, cc::KeyCode::ARROW_LEFT},
         {KEY_DPAD_RIGHT, cc::KeyCode::ARROW_RIGHT},
         {KEY_DPAD_DOWN, cc::KeyCode::ARROW_DOWN},
         {KEY_DPAD_UP, cc::KeyCode::ARROW_UP},
+        {KEY_DPAD_CENTER, cc::KeyCode::DPAD_CENTER},
+    
+        {KEY_MOVE_HOME, cc::KeyCode::HOME},
+        {KEY_MOVE_END, cc::KeyCode::END},
+        {KEY_FORWARD_DEL, cc::KeyCode::DELETE_KEY},
         {KEY_INSERT, cc::KeyCode::INSERT},
+        {KEY_PAGE_UP, cc::KeyCode::PAGE_UP},
+        {KEY_PAGE_DOWN, cc::KeyCode::PAGE_DOWN},
+        {KEY_SCROLL_LOCK, cc::KeyCode::SCROLLLOCK},
+        {KEY_BREAK, cc::KeyCode::PAUSE},
+        // numpad
+        {KEY_NUM_LOCK, cc::KeyCode::NUM_LOCK},
+        {KEY_NUMPAD_DIVIDE, cc::KeyCode::NUMPAD_DIVIDE},
+        {KEY_NUMPAD_MULTIPLY, cc::KeyCode::NUMPAD_MULTIPLY},
+        {KEY_NUMPAD_SUBTRACT, cc::KeyCode::NUMPAD_MINUS},
+        {KEY_NUMPAD_ADD, cc::KeyCode::NUMPAD_PLUS},
+        {KEY_NUMPAD_ENTER, cc::KeyCode::NUMPAD_ENTER},
+        {KEY_NUMPAD_DOT, cc::KeyCode::NUMPAD_DECIMAL},
+        {KEY_NUMPAD_COMMA, cc::KeyCode::COMMA},
+        {KEY_NUMPAD_EQUALS, cc::KeyCode::EQUAL},
+    
+        {KEY_NUMPAD_0, cc::KeyCode::NUMPAD_0},
+        {KEY_NUMPAD_1, cc::KeyCode::NUMPAD_1},
+        {KEY_NUMPAD_2, cc::KeyCode::NUMPAD_2},
+        {KEY_NUMPAD_3, cc::KeyCode::NUMPAD_3},
+        {KEY_NUMPAD_4, cc::KeyCode::NUMPAD_4},
+        {KEY_NUMPAD_5, cc::KeyCode::NUMPAD_5},
+        {KEY_NUMPAD_6, cc::KeyCode::NUMPAD_6},
+        {KEY_NUMPAD_7, cc::KeyCode::NUMPAD_7},
+        {KEY_NUMPAD_8, cc::KeyCode::NUMPAD_8},
+        {KEY_NUMPAD_9, cc::KeyCode::NUMPAD_9},
+
+        {KEY_MENU, cc::KeyCode::CONTEXT_MENU},
+        {KEY_SYSRQ, cc::KeyCode::PRINT_SCREEN},
+        {KEY_META_LEFT, cc::KeyCode::META_LEFT},
+        {KEY_META_RIGHT, cc::KeyCode::META_RIGHT},
     };
     if (keyCodeMap.find(ohKeyCode) != keyCodeMap.end()) {
         return int(keyCodeMap[ohKeyCode]);
@@ -346,23 +384,6 @@ void onSurfaceDestroyedCB(OH_NativeXComponent* component, void* window) {
 
 namespace cc {
 
-// struct ControllerKeyRemap {
-//     ButtonCode ohButtonCode;
-//     StickKeyCode actionCode{StickKeyCode::UNDEFINE};
-//     const char *name;
-// };
-//
-// #def ine REMAP_WITH_NAME(btn, key) \
-//    { btn, key, #btn }
-//
-// static const ControllerKeyRemap PADDLEBOAT_MAPKEY[] = {
-//     REMAP_WITH_NAME(ButtonCode::OH_LeftShoulder, StickKeyCode::L1),
-//     REMAP_WITH_NAME(ButtonCode::OH_RightShoulder, StickKeyCode::R1),
-// };
-// #undef REMAP_WITH_NAME
-
-// cc::KeyboardEvent keyboardEvent;
-
 OpenHarmonyPlatform::OpenHarmonyPlatform() {
     registerInterface(std::make_shared<System>());
     registerInterface(std::make_shared<Screen>());
@@ -376,7 +397,9 @@ OpenHarmonyPlatform::OpenHarmonyPlatform() {
     _callback.OnSurfaceChanged = onSurfaceChangedCB;
     _callback.OnSurfaceDestroyed = onSurfaceDestroyedCB;
     _callback.DispatchTouchEvent = dispatchTouchEventCB;
-    _gamePad = std::make_unique<OpenHarmonyGamePad>();
+    #if CC_USE_GAMEPAD
+        _gamePad = std::make_unique<OpenHarmonyGamePad>();
+    #endif
 }
 
 OpenHarmonyPlatform::~OpenHarmonyPlatform() {
@@ -640,6 +663,13 @@ void OpenHarmonyPlatform::onSurfaceChanged(OH_NativeXComponent* component, void*
     ev.width = width;
     ev.height = height;
     events::WindowEvent::broadcast(ev);
+    // Hack:On the PC platform, a resize message is sent, but this message occurs before initialization is complete, resulting in unprocessed messages.
+    // Therefore, an additional handling of the resize message is required here.
+    cc::SystemWindowManager* windowMgr = this->getInterface<cc::SystemWindowManager>();
+    CC_ASSERT_NOT_NULL(windowMgr);
+    auto systemWindow = windowMgr->getWindow(cc::ISystemWindow::mainWindowId);
+    CC_ASSERT_NOT_NULL(systemWindow);
+    systemWindow->setViewSize(width, height);
 }
 
 void OpenHarmonyPlatform::onSurfaceDestroyed(OH_NativeXComponent* component, void* window) {
