@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable no-console */
+/* eslint-disable no-trailing-spaces */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 
@@ -37,6 +42,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                 const item = task.input[i];
                 if (!item.uuid || item.isNative) { continue; }
                 try {
+                    // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unsafe-argument
                     const extension = await queryExtension(item.overrideUuid || item.uuid);
                     if (extension) {
                         item.ext = extension;
@@ -63,6 +69,9 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
             }
             resolve(xhr.response);
         };
+        xhr.onabort = xhr.ontimeout = xhr.onerror = (): void => {
+            reject();
+        };
         xhr.send(null);
     });
 
@@ -85,10 +94,10 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                 if (info && info.library['.bin'] && Object.keys(info.library).length === 1) {
                     text = '.cconb';
                 }
-            } else if(NODEJS) {
+            } else if (NODEJS) {
                 const importBase = cclegacy.assetManager.generalImportBase;
                 let useAssetDB = true;
-                if(importBase && (importBase.startsWith('http://') || importBase.startsWith('https://'))) {
+                if (importBase && (importBase.startsWith('http://') || importBase.startsWith('https://'))) {
                     // cli：场景使用的是网络路径
                     const requestUrl = `${importBase}/query-extname/${uuid}`;
                     try {
@@ -100,7 +109,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                     }
                 } 
                 // 如果网络路径没有配置，或者不是网络路径，或者请求异常，使用AssetDB
-                if(useAssetDB && globalThis.AssetDB) {
+                if (useAssetDB && globalThis.AssetDB) {
                     const meta: { files: string[] } = await globalThis.AssetDB.queryAsset(uuid)?.meta;
                     // Current rule: If an asset has only one .bin file, then it is in CCON format.
                     if (meta && meta.files.length === 1 && meta.files[0] === '.bin') {
