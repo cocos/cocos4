@@ -131,10 +131,9 @@ export class AudioPlayer implements OperationQueueable {
     }
     static loadNative (url: string, opts?: AudioLoadOptions): Promise<unknown> {
         return new Promise((resolve, reject) => {
-            if (systemInfo.platform === Platform.WIN32) {
-                resolve(url);
-            } else {
-            }
+            // Todo(qgh): We need to parse the audio file, but this feature is not yet implemented.
+            console.warn("Audio file parsing is not supported.");
+            resolve(url);
         });
     }
     static loadOneShotAudio (url: string, volume: number, opts?: AudioLoadOptions): Promise<OneShotAudio> {
