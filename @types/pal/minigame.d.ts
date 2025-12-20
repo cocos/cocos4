@@ -79,8 +79,9 @@ declare module 'pal/minigame' {
         offFeedStatusChange(cb?: (type: string) => void): void;
         storeFeedData(opt: storeFeedDataOptions): void;
         getFeedData(opt: getFeedDataOptions): void;
-        setEnableDebug?(parm: DebugParameter): void;
-        notifyMiniProgramPlayableStatus?(parm: notiOptions): void;
+
+        setEnableDebug? (parm: DebugParameter): void;
+        notifyMiniProgramPlayableStatus? (parm: notiOptions): void;
     }
 
     interface WeChatAPI {
@@ -434,14 +435,14 @@ interface getFeedDataOptions {
     complete?: () => void,
 }
 
-export interface DebugParameter {
-    setEnableDebug: boolean,
+interface DebugParameter {
+    enableDebug: boolean,
     success?: () => void,
     fail?: (err: any) => void,
     complete?: () => void,
 }
 
-export interface notiOptions {
+interface notiOptions {
     success?: () => void,
     fail?: (err: any) => void,
     complete?: () => void,
