@@ -27,7 +27,18 @@ class HTMLImageElement extends HTMLElement {
     set src(src) {
         this._src = src;
         if (src === '') return;
-        sharp(src).metadata().then(info => {
+        
+        let image = src;
+        if (typeof src === 'string' && src.startsWith('data:')) {
+            const matches = src.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+                const { Buffer } = require('buffer');
+                // Convert to Uint8Array to avoid Buffer version mismatch issues with sharp
+                image = new Uint8Array(Buffer.from(matches[2], 'base64'));
+            }
+        }
+
+        sharp(image).metadata().then(info => {
                 this.width = info.width;
                 this.height = info.height;
                 return setTimeout(()=>{
@@ -35,7 +46,7 @@ class HTMLImageElement extends HTMLElement {
                     this.dispatchEvent(event);
                 }, 0);
         }).catch(err => {
-            console.warng(`Failed to load source image from ${src}, error reason: ${err}`);
+            console.warn(`Failed to load source image from ${src}, error reason: ${err}`);
             this._data = null;
             setTimeout(()=>{
                 var event = new Event('error');
