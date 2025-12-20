@@ -72,7 +72,7 @@ export default function deserializeAsset (json: Record<string, any>, options: Re
 
     asset._uuid = options.__uuid__ || '';
 
-    if (EDITOR) {
+    if (EDITOR || NODEJS) {
         missingClass.reportMissingClass(asset);
         missingClass.reset();
     }
