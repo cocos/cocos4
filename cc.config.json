@@ -652,6 +652,13 @@
             "ccGlobal": true,
             "internal": false
         },
+        "SUD": {
+            "comment": "Running in the sud's quick game.",
+            "type": "boolean",
+            "value": false,
+            "ccGlobal": true,
+            "internal": false
+        },
         "NODEJS": {
             "comment": "Running in the Node.js environment.",
             "type": "boolean",
