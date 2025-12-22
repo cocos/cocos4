@@ -51,7 +51,7 @@ if (NATIVE) {
     Object.defineProperty(globalJsb, 'bridge', {
         get() {
             if (globalJsb.__ccbridge !== undefined) return globalJsb.__ccbridge;
-            if (globalThis.ScriptNativeBridge && sys.os === sys.OS.ANDROID || sys.os === sys.OS.IOS || sys.os === sys.OS.OSX || sys.os === sys.OS.OHOS) {
+            if (globalThis.ScriptNativeBridge && (sys.os === sys.OS.ANDROID || sys.os === sys.OS.IOS || sys.os === sys.OS.OSX || sys.os === sys.OS.OHOS)) {
                 globalJsb.__ccbridge = new ScriptNativeBridge();
             } else {
                 globalJsb.__ccbridge = null;
