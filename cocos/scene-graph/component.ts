@@ -24,7 +24,7 @@
 */
 
 import { ccclass, tooltip, displayName, type, serializable, disallowAnimation } from 'cc.decorator';
-import { EDITOR, NODEJS, TEST } from 'internal:constants';
+import { EDITOR, TEST } from 'internal:constants';
 import { Script } from '../asset/assets/scripts';
 import { CCObject, CCObjectFlags } from '../core/data/object';
 import { IDGenerator } from '../core/utils/id-generator';
@@ -727,7 +727,7 @@ class Component extends CCObject {
 }
 
 // NOTE: these are all injected properties
-if (EDITOR || TEST || NODEJS) {
+if (EDITOR || TEST) {
     // INHERITABLE STATIC MEMBERS
     (Component as any)._executeInEditMode = false;
     (Component as any)._playOnFocus = false;
@@ -759,7 +759,7 @@ value(Component, '_registerEditorProps', (cls, props): void => {
     if (order && typeof order === 'number') {
         cls._executionOrder = order;
     }
-    if (EDITOR || TEST || NODEJS) {
+    if (EDITOR || TEST) {
         const name = getClassName(cls);
         for (const key in props) {
             const val = props[key];

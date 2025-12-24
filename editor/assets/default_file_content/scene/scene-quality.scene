@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.SceneAsset",
-    "_name": "quality",
+    "_name": "scene-quality",
     "_objFlags": 0,
     "_native": "",
     "scene": {

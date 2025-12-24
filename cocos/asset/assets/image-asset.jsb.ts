@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { ALIPAY, XIAOMI, JSB, TEST, EDITOR, NODEJS } from 'internal:constants';
+import { ALIPAY, XIAOMI, JSB, TEST, EDITOR } from 'internal:constants';
 import { Format, FormatFeatureBit, deviceManager } from '../../gfx';
 import { PixelFormat } from './asset-enum';
 import { sys, macro, warnID, cclegacy } from '../../core';
@@ -125,8 +125,10 @@ imageAssetProto._setRawAsset = function (filename: string, inLibrary = true) {
 imageAssetProto.reset = function (data: any) {
     this._nativeData = data;
 
-    if (data.format !== undefined && !this.isFormatFixed()) {
-        this.format = (data as any).format;
+    if (!(data instanceof jsbWindow.HTMLElement)) {
+        if(data.format !== undefined) {
+            this.format = (data as any).format;
+        }
     }
     this._syncDataToNative();
 };
@@ -190,7 +192,7 @@ imageAssetProto._syncDataToNative = function () {
 };
 
 imageAssetProto._serialize = function () {
-    if (EDITOR || NODEJS || TEST) {
+    if (EDITOR || TEST) {
         let targetExtensions;
         if (this._native) {
             targetExtensions = [this._native];
@@ -265,7 +267,8 @@ imageAssetProto._deserialize = function (data: any) {
 
     if (ext) {
         this._setRawAsset(ext);
-        this.setFixedFormat(format);
+        this.format = format;
+        // this._format = format;
     } else {
         warnID(3121);
     }
