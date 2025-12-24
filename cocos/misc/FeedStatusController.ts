@@ -35,6 +35,7 @@
  */
 import { _decorator } from '../core';
 import { Component } from '../scene-graph/component';
+
 const { ccclass } = _decorator;
 
 declare const minigame: any;
