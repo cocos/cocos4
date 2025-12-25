@@ -738,7 +738,7 @@
         "RUNTIME_BASED": {
             "comment": "Running in runtime based environment.",
             "type": "boolean",
-            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME",
+            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD",
             "ccGlobal": true,
             "internal": false
         },
