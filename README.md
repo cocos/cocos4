@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://www.cocos.com/">
-        <img src="https://user-images.githubusercontent.com/1503156/112012067-d5cdf580-8b63-11eb-819a-1c32cf253b25.png"
+        <img src="./ui.png"
              alt="Cocos Creator Logo">
     </a>
 </p>
@@ -24,8 +24,6 @@
 </p>
 
 # COCOS 4
-
-![image](./ui.png)
 
 COCOS 4 is an open-source, high-performance, cross-platform game and interactive content development engine. Built on a mature C++ architecture, it provides powerful rendering capabilities and flexible script bindings, supporting a "write once, run anywhere" philosophy.
 
