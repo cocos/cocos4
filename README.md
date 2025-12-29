@@ -13,7 +13,7 @@
         <img src="https://img.shields.io/github/forks/cocos/cocos-engine.svg?style=flat-square&colorB=4183c4"
              alt="forks">
     </a>
-    <a href="./licenses/LICENSE">
+    <a href="./LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square&colorB=4183c4"
              alt="license">
     </a>
