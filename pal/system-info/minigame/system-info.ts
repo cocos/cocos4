@@ -263,7 +263,9 @@ class SystemInfo extends EventTarget {
 
         this._initPromise.push(this._supportsWebpPromise());
 
-        this._registerEvent();
+        if (!globalThis.runOnPlayableMode) {
+            this._registerEvent();
+        }
     }
 
     private _supportsWebpPromise (): Promise<void> {
