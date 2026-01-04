@@ -43,6 +43,5 @@ export { AnimationGraphVariant } from './animation-graph-variant';
 
 export type { PoseGraph } from './pose-graph/pose-graph';
 
-export * from './pose-graph/op/index'
+export * from './pose-graph/op/index';
 export type { EnterNodeInfo } from './pose-graph/foundation/authoring/enter-node-info';
-

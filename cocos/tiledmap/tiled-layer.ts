@@ -486,7 +486,7 @@ export class TiledLayer extends UIRenderer {
         this._markForUpdateRenderData();
     }
 
-    protected _resize(): void {
+    protected _resize (): void {
         this._markForUpdateRenderData();
     }
 

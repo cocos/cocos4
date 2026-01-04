@@ -32,11 +32,11 @@ import type { CompiledDeserializeFn } from './deserialize-dynamic';
 
 import { reportMissingClass as defaultReportMissingClass } from './report-missing-class';
 
-import type { MapEnum, TupleSlice } from './deserialize-type-utilities';
-
-const FORCE_COMPILED = false; // TODO: BUILD;
+import type { MapEnum, TupleSlice } from './deserialize-type-utilities'; // TODO: BUILD;
 
 import { deserializeBuiltinValueType, deserializeBuiltinValueTypeInto } from './compiled/builtin-value-type';
+
+const FORCE_COMPILED = false;
 
 /** **************************************************************************
  * BUILT-IN TYPES / CONSTAINTS
@@ -53,7 +53,7 @@ const EMPTY_PLACEHOLDER = 0;
 // Both T and U have non-negative integer ranges.
 // When the value >= 0 represents T
 // When the value is < 0, it represents ~U. Use ~x to extract the value of U.
-type Bnot<T extends number, U extends number> = T|U;
+type Bnot<T extends number, U extends number> = T | U;
 
 // Combines a boolean and a number into one value.
 // The number must >= 0.
@@ -144,7 +144,7 @@ const enum DataTypeID {
 }
 
 export declare namespace deserialize.Internal {
-    export import DataTypeID_ = DataTypeID;
+    export type DataTypeID_ = DataTypeID;
     export type DataTypes_ = DataTypes;
 }
 
@@ -181,12 +181,12 @@ type AnyData = DataTypes[keyof DataTypes];
 
 type AdvancedData = DataTypes[Exclude<keyof DataTypes, DataTypeID.SimpleType>];
 
-type OtherObjectData = ICustomObjectDataContent | Exclude<DataTypes[PrimitiveObjectTypeID], (number|string|boolean|null)>;
+type OtherObjectData = ICustomObjectDataContent | Exclude<DataTypes[PrimitiveObjectTypeID], (number | string | boolean | null)>;
 
 // class Index of DataTypeID.CustomizedClass or PrimitiveObjectTypeID
 type OtherObjectTypeID = Bnot<number, PrimitiveObjectTypeID>;
 
-type Ctor<T> = new() => T;
+type Ctor<T> = new () => T;
 // Includes normal CCClass and fast defined class
 export interface CCClassConstructor<T> extends Ctor<T> {
     __values__: string[]
@@ -211,7 +211,7 @@ const CLASS_TYPE = 0;
 const CLASS_KEYS = 1;
 const CLASS_PROP_TYPE_OFFSET = 2;
 type IClass = [
-    string|AnyCtor,
+    string | AnyCtor,
     string[],
     // offset - It is used to specify the correspondence between the elements in CLASS_KEYS and their AdvancedType,
     //          which is only valid for AdvancedType.
@@ -350,14 +350,14 @@ interface IFileDataMap {
 
     [File.SharedUuids]: SharedString[] | Empty; // Shared uuid strings for dependent assets
     [File.SharedStrings]: SharedString[] | Empty;
-    [File.SharedClasses]: (IClass|string|AnyCCClass)[];
+    [File.SharedClasses]: (IClass | string | AnyCCClass)[];
     [File.SharedMasks]: IMask[] | Empty;  // Shared Object layouts for IClassObjectData
 
     // Data area
 
     // A one-dimensional array to represent object datas, layout is [...IClassObjectData[], ...OtherObjectData[], RootInfo]
     // If the last element is not RootInfo(number), the first element will be the root object to return and it doesn't have native asset
-    [File.Instances]: (IClassObjectData|OtherObjectData|RootInfo)[];
+    [File.Instances]: (IClassObjectData | OtherObjectData | RootInfo)[];
     [File.InstanceTypes]: OtherObjectTypeID[] | Empty;
     // Object references infomation
     [File.Refs]: IRefs | Empty;
@@ -366,11 +366,11 @@ interface IFileDataMap {
 
     // Asset-dependent objects that are deserialized and parsed into object arrays
     // eslint-disable-next-line @typescript-eslint/ban-types
-    [File.DependObjs]: (object|InstanceIndex)[];
+    [File.DependObjs]: (object | InstanceIndex)[];
     // Asset-dependent key name or array index
-    [File.DependKeys]: (StringIndexBnotNumber|string)[];
+    [File.DependKeys]: (StringIndexBnotNumber | string)[];
     // UUID of dependent assets
-    [File.DependUuidIndices]: (StringIndex|string)[];
+    [File.DependUuidIndices]: (StringIndex | string)[];
 }
 
 type IFileData = MapEnum<{
@@ -408,9 +408,9 @@ type IPackedFileData = [
 ];
 
 export declare namespace deserialize.Internal {
-    export import Refs_ = Refs;
+    export type Refs_ = Refs;
     export type IRefs_ = IRefs;
-    export import File_ = File;
+    export type File_ = File;
     export type IFileData_ = IFileData;
     export type IPackedFileData_ = IPackedFileData;
 }
@@ -509,7 +509,7 @@ export class Details {
     /**
      * @method reset
      */
-    reset  (): void {
+    reset (): void {
         if (FORCE_COMPILED) {
             this.uuidList = null;
             this.uuidObjList = null;
@@ -713,7 +713,7 @@ function parseArray (data: IRuntimeFileData, owner: any, key: string, value: IAr
 
 const ASSIGNMENTS: {
     [K in keyof DataTypes]?: ParseFunction<DataTypes[K]>;
-// eslint-disable-next-line @typescript-eslint/ban-types
+    // eslint-disable-next-line @typescript-eslint/ban-types
 } = new Array(DataTypeID.ARRAY_LENGTH) as {};
 ASSIGNMENTS[DataTypeID.SimpleType] = assignSimple;    // Only be used in the instances array
 ASSIGNMENTS[DataTypeID.InstanceRef] = assignInstanceRef;
@@ -896,7 +896,7 @@ export function isCompiledJson (json: unknown): boolean {
     }
 }
 
-function initializeDeserializationContext(
+function initializeDeserializationContext (
     data: IDeserializeInput,
     details: Details,
     options?: IOptions & DeserializeDynamicOptions,
@@ -987,11 +987,11 @@ export declare namespace deserialize {
 
     export type ReportMissingClass = (id: string) => void;
 
-    export type ClassFinder = {
+    export interface ClassFinder {
         (id: string, serialized: unknown, owner?: unknown[] | Record<PropertyKey, unknown>, propName?: string): SerializableClassConstructor | undefined;
 
         onDereferenced?: (deserializedList: Array<Record<PropertyKey, unknown> | undefined>, id: number, object: Record<string, unknown> | unknown[], propName: string) => void;
-    };
+    }
 }
 
 deserialize.Details = Details;
@@ -1005,8 +1005,7 @@ class FileInfo {
     }
 }
 
-export function unpackJSONs (
-    data: IPackedFileData, classFinder?: ClassFinder, reportMissingClass?: deserialize.ReportMissingClass): IDeserializeInput[] {
+export function unpackJSONs (data: IPackedFileData, classFinder?: ClassFinder, reportMissingClass?: deserialize.ReportMissingClass): IDeserializeInput[] {
     if (data[File.Version] < SUPPORT_MIN_FORMAT_VERSION) {
         throw new Error(getError(5304, data[File.Version]));
     }
@@ -1027,7 +1026,7 @@ export function unpackJSONs (
     return sections as unknown as IDeserializeInput[];
 }
 
-export function packCustomObjData (type: string, data: IClassObjectData|OtherObjectData, hasNativeDep?: boolean): IFileData {
+export function packCustomObjData (type: string, data: IClassObjectData | OtherObjectData, hasNativeDep?: boolean): IFileData {
     return [
         SUPPORT_MIN_FORMAT_VERSION, EMPTY_PLACEHOLDER, EMPTY_PLACEHOLDER,
         [type],
