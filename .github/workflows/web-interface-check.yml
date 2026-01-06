@@ -211,20 +211,58 @@ jobs:
             echo "SPINE_WASM_UP_TO_DATE_BASE=true" >> $GITHUB_OUTPUT
           fi
 
+      # - name: Check if spine wasm files are up-to-date (head)
+      #   id: check-wasm-up-to-date-head
+      #   if: ${{ matrix.config.target == 'head' }}
+      #   run: |
+      #     cd ./native/external
+      #     diff_output=$(git diff)
+      #     echo "git diff 退出码: $diff_status"
+      #     echo "diff_output 长度: ${#diff_output}"   
+      #     if [ -n "$diff_output" ]; then
+      #       echo "SPINE_WASM_UP_TO_DATE_HEAD=false"
+      #       echo "SPINE_WASM_UP_TO_DATE_HEAD=false" >> $GITHUB_OUTPUT
+      #     else
+      #       echo "SPINE_WASM_UP_TO_DATE_HEAD=true"
+      #       echo "SPINE_WASM_UP_TO_DATE_HEAD=true" >> $GITHUB_OUTPUT
+      #     fi
+
       - name: Check if spine wasm files are up-to-date (head)
         id: check-wasm-up-to-date-head
         if: ${{ matrix.config.target == 'head' }}
         run: |
+          echo "=== 快速调试 ==="
+          
           cd ./native/external
-          diff_output=$(git diff)
-          echo "git diff 退出码: $diff_status"
-          echo "diff_output 长度: ${#diff_output}"
-          if [ -n "$diff_output" ]; then
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=false"
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=false" >> $GITHUB_OUTPUT
+          
+          # 1. 直接运行 git diff 并查看结果
+          echo "1. 直接运行 git diff:"
+          git --no-pager diff | head -100
+          echo "..."
+          
+          # 2. 检查退出码
+          DIFF_EXIT=$?
+          echo "退出码: $DIFF_EXIT"
+          
+          # 3. 使用 wc 统计行数
+          echo "2. 统计差异行数:"
+          git --no-pager diff | wc -l
+          
+          # 4. 只检查二进制文件
+          echo "3. 检查二进制文件差异:"
+          for file in $(git --no-pager diff --name-only | grep -E '\.(wasm|js|mem)$'); do
+              if [ -f "$file" ]; then
+                  echo "  $file - 已修改"
+              fi
+          done
+          
+          # 5. 设置输出
+          if git --no-pager diff --quiet; then
+              echo "无差异"
+              echo "SPINE_WASM_UP_TO_DATE_HEAD=true" >> $GITHUB_OUTPUT
           else
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=true"
-            echo "SPINE_WASM_UP_TO_DATE_HEAD=true" >> $GITHUB_OUTPUT
+              echo "有差异"
+              echo "SPINE_WASM_UP_TO_DATE_HEAD=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload Spine Artifact
