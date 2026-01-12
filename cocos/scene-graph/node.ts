@@ -2628,7 +2628,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
                 z = worldPosition.z;
             }
 
-            Vec3.set(worldPosition, val as number, y, z!);
+            Vec3.set(worldPosition, val as number, y, z);
         }
 
         const parent = this._parent;
