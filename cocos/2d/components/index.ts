@@ -23,7 +23,8 @@
 */
 
 export * from './label';
-export { Sprite, SpriteType } from './sprite';
+export { Sprite } from './sprite';
+export type { SpriteType } from './sprite';
 export { UIMeshRenderer } from './ui-mesh-renderer';
 export { LabelOutline } from './label-outline';
 export { UIStaticBatch } from './ui-static-batch';
