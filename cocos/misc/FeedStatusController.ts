@@ -40,7 +40,7 @@ const { ccclass, menu, executionOrder } = _decorator;
 
 declare const minigame: any;
 @ccclass('FeedStatusController')
-@executionOrder(98)
+@executionOrder(90)
 @menu('Miscellaneous/FeedStatusController')
 export class FeedStatusController extends Component {
     constructor () {
