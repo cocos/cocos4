@@ -36,10 +36,11 @@
 import { _decorator } from '../core';
 import { Component } from '../scene-graph/component';
 
-const { ccclass, menu } = _decorator;
+const { ccclass, menu, executionOrder } = _decorator;
 
 declare const minigame: any;
 @ccclass('FeedStatusController')
+@executionOrder(98)
 @menu('Miscellaneous/FeedStatusController')
 export class FeedStatusController extends Component {
     constructor () {
