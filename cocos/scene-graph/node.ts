@@ -2616,7 +2616,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
      * @param y Y axis position
      * @param z Z axis position
      */
-    public setWorldPosition(x: number, y: number, z: number): void;
+    public setWorldPosition(x: number, y: number, z?: number): void;
 
     public setWorldPosition (val: Vec3 | number, y?: number, z?: number): void {
         const worldPosition = this._pos;
@@ -2624,7 +2624,11 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         if (y === undefined) {
             Vec3.copy(worldPosition, val as Vec3);
         } else {
-            Vec3.set(worldPosition, val as number, y, z!);
+            if (z === undefined) {
+                z = worldPosition.z;
+            }
+
+            Vec3.set(worldPosition, val as number, y, z);
         }
 
         const parent = this._parent;
