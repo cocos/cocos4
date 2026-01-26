@@ -303,10 +303,12 @@ export class Slider extends Component {
         Vec3.set(this._touchPos, touchPos.x, touchPos.y, 0);
         const uiTrans = this.node._getUITransformComp()!;
         const localTouchPos = uiTrans.convertToNodeSpaceAR(this._touchPos, _tempPos);
+        localTouchPos.x += uiTrans.anchorX * uiTrans.width;
+        localTouchPos.y += uiTrans.anchorY * uiTrans.height;
         if (this.direction === Direction.Horizontal as number) {
-            this.progress = clamp01(0.5 + (localTouchPos.x - this._offset.x) / uiTrans.width);
+            this.progress = clamp01((localTouchPos.x - this._offset.x) / uiTrans.width);
         } else {
-            this.progress = clamp01(0.5 + (localTouchPos.y - this._offset.y) / uiTrans.height);
+            this.progress = clamp01((localTouchPos.y - this._offset.y) / uiTrans.height);
         }
     }
 
