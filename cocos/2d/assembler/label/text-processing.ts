@@ -257,6 +257,8 @@ export class TextProcessing {
             // nop
         }
         }
+        canvasSize.width = Math.round(canvasSize.width);
+        canvasSize.height = Math.round(canvasSize.height);
     }
 
     // can cache
