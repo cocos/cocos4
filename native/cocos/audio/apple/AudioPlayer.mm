@@ -100,7 +100,7 @@ void AudioPlayer::destroy() {
                 _rotateBufferThread = nullptr;
                 ALOGVV("rotateBufferThread exited!");
 
-#if CC_TARGET_PLATFORM == CC_PLATFORM_IOS
+#if CC_PLATFORM == CC_PLATFORM_IOS
                 // some specific OpenAL implement defects existed on iOS platform
                 // refer to: https://github.com/cocos2d/cocos2d-x/issues/18597
                 ALint sourceState;
