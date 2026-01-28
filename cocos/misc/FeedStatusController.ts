@@ -36,11 +36,16 @@
 import { _decorator } from '../core';
 import { Component } from '../scene-graph/component';
 
-const { ccclass } = _decorator;
+const { ccclass, menu, executionOrder } = _decorator;
 
 declare const minigame: any;
 @ccclass('FeedStatusController')
+@executionOrder(90)
+@menu('Miscellaneous/FeedStatusController')
 export class FeedStatusController extends Component {
+    constructor () {
+        super();
+    }
     protected start (): void {
         if (minigame && minigame.onFeedStatusChange) {
             minigame.onFeedStatusChange(this.feedStatusChangeCallBack);
