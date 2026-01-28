@@ -1144,7 +1144,7 @@ export class Layout extends Component {
     }
 
     protected _transformDirty (type: TransformBit): void {
-        // SCALE变化且受缩放影响，或POSITION变化时都需要重新布局
+        // Invalidate layout when scale is affected and changed, or position is changed.
         if ((type & TransformBit.SCALE && this._affectedByScale) || (type & TransformBit.POSITION)) {
             this._doLayoutDirty();
         }
