@@ -56,6 +56,12 @@ texture2DProto._ctor = function () {
     this._mipmaps = [];
 };
 
+const oldInitDefault = texture2DProto.initDefault;
+texture2DProto.initDefault = function (uuid: string) {
+    oldInitDefault.call(this, uuid);
+    this._mipmaps = this.getMipmaps();
+}
+
 texture2DProto._serialize = function (ctxForExporting: any) {
     if (EDITOR || NODEJS || TEST) {
         return {
