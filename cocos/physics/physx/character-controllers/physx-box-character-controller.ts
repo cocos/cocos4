@@ -67,11 +67,12 @@ export class PhysXBoxCharacterController extends PhysXCharacterController implem
         controllerDesc.position = { x: v3_0.x, y: v3_0.y, z: v3_0.z };//PxExtendedVec3
         controllerDesc.setMaterial(pxMtl);
         controllerDesc.setReportCallback(PX.PxUserControllerHitReport.implement(physxWorld.callback.controllerHitReportCB));
-        this._impl = PX.createBoxCharacterController(physxWorld.controllerManager, controllerDesc);
+        const impl = PX.createBoxCharacterController(physxWorld.controllerManager, controllerDesc);
+        this.setImpl(impl);
 
-        if (this._impl.$$) {
-            PX.IMPL_PTR[this._impl.$$.ptr] = this;
-            const shapePtr = this._impl.getShape().$$.ptr;
+        if (impl.$$) {
+            PX.IMPL_PTR[impl.$$.ptr] = this;
+            const shapePtr = impl.getShape().$$.ptr;
             PX.IMPL_PTR[shapePtr] = this;
         }
 
