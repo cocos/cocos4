@@ -7,7 +7,7 @@ body:
   attributes:
     value: |
       - Please write a descriptive proposal title above.
-      - Search [open](https://github.com/cocos/cocos-engine/issues) and [closed](https://github.com/cocos/cocos-engine/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been suggested.
+      - Search [open](https://github.com/cocos/cocos4/issues) and [closed](https://github.com/cocos/cocos4/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been suggested.
 
 - type: textarea
   attributes:

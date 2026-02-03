@@ -9,7 +9,7 @@ body:
       Please write a descriptive issue title above.
       
       **Before You Start:**
-      - Search [open](https://github.com/cocos/cocos-engine/issues) and [closed](https://github.com/cocos/cocos-engine/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been reported.
+      - Search [open](https://github.com/cocos/cocos4/issues) and [closed](https://github.com/cocos/cocos4/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been reported.
       - Verify that your issue is reproducible in the latest stable version of [Cocos Creator](https://www.cocos.com/creator).
 
       **For usage questions, please use the following resources:**
