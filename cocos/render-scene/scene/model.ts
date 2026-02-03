@@ -33,7 +33,7 @@ import { RenderScene } from '../core/render-scene';
 import { Texture2D } from '../../asset/assets/texture-2d';
 import { SubModel } from './submodel';
 import { IMacroPatch } from '../core/pass';
-import { Mat4, Vec3, Vec4, geometry, cclegacy, EPSILON, v3, v4 } from '../../core';
+import { approx, Mat4, Vec3, Vec4, geometry, cclegacy, EPSILON, v3, v4 } from '../../core';
 import { Attribute, DescriptorSet, Device, Buffer, BufferInfo,
     BufferUsageBit, MemoryUsageBit, Filter, Address, SamplerInfo, deviceManager, Texture } from '../../gfx';
 import {
@@ -51,7 +51,6 @@ import { ReflectionProbeType } from '../../3d/reflection-probe/reflection-probe-
 import type { SH } from '../../gi/light-probe/sh';
 import type { PipelineSceneData } from '../../rendering';
 import { getPipelineSceneData } from '../../rendering/pipeline-scene-data-utils';
-import { approx } from '../../core';
 
 const m4_1 = new Mat4();
 
