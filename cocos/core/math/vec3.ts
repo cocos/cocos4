@@ -962,7 +962,7 @@ export class Vec3 extends ValueType {
         return Vec3.equals(this, other, epsilon);
     }
 
-    public approxEquals(other: Vec3, epsilon = EPSILON): boolean {
+    public approxEquals (other: Vec3, epsilon = EPSILON): boolean {
         const self = this;
         return (
             abs(self.x - other.x) <= epsilon
