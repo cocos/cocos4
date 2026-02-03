@@ -66,7 +66,7 @@ jobs:
             author: cocos-robot <cocos-robot@cocos.com>
             commit-message: "[ci skip][AUTO]: Automated code generating update: ${{ github.event.pull_request.head.sha }}  (#${{ github.event.number }})"
             token: ${{ secrets.PR_TOKEN }}
-            push-to-fork: cocos-robot/engine
+            push-to-fork: cocos-robot/cocos4
             branch: t/bot/genbindings
             branch-suffix: short-commit-hash
             delete-branch: true
