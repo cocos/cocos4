@@ -51,6 +51,7 @@ import { ReflectionProbeType } from '../../3d/reflection-probe/reflection-probe-
 import type { SH } from '../../gi/light-probe/sh';
 import type { PipelineSceneData } from '../../rendering';
 import { getPipelineSceneData } from '../../rendering/pipeline-scene-data-utils';
+import { approx } from '../../core';
 
 const m4_1 = new Mat4();
 
@@ -824,7 +825,8 @@ export class Model {
         }
 
         const center = this._worldBounds!.center;
-        if (!EDITOR && center.approxEquals(this._lastWorldBoundCenter, EPSILON)) {
+        const last = this._lastWorldBoundCenter;
+        if (!EDITOR && approx(center.x, last.x) && approx(center.y, last.y) && approx(center.z, last.z)) {
             return;
         }
 
