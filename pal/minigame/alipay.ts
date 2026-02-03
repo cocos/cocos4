@@ -149,7 +149,7 @@ minigame.stopAccelerometer = function (res: any): void {
 
 // #region SafeArea
 minigame.getSafeArea = function (): SafeArea {
-    if (typeof minigame.getWindowInfo == "function") {
+    if (typeof minigame.getWindowInfo === "function") {
         const windowInfo = minigame.getWindowInfo();
         return windowInfo.safeArea;
     }
