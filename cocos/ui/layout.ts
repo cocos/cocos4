@@ -1144,11 +1144,10 @@ export class Layout extends Component {
     }
 
     protected _transformDirty (type: TransformBit): void {
-        if (!(type & TransformBit.SCALE) || !(type & TransformBit.POSITION) || !this._affectedByScale) {
-            return;
+        // Invalidate layout when scale is affected and changed, or position is changed.
+        if ((type & TransformBit.SCALE && this._affectedByScale) || (type & TransformBit.POSITION)) {
+            this._doLayoutDirty();
         }
-
-        this._doLayoutDirty();
     }
 
     protected _doLayoutDirty (): void {
