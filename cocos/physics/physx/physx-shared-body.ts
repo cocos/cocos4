@@ -37,6 +37,7 @@ import { ERigidBodyType, PhysicsSystem } from '../framework';
 import { PhysXJoint } from './joints/physx-joint';
 import { PhysicsGroup } from '../framework/physics-enum';
 import { Node } from '../../scene-graph';
+import { PhysXFilterData } from './filter-data';
 
 /** @mangle */
 export class PhysXSharedBody {
@@ -89,7 +90,7 @@ export class PhysXSharedBody {
     private _dynamicActor!: PhysX.RigidActor | any;
     private _staticActor!: PhysX.RigidActor | any;
     private _wrappedBody: PhysXRigidBody | null = null;
-    private _filterData: any;
+    private _filterData: PhysXFilterData;
 
     set reference (v: boolean) {
         this._ref = v ? this._ref + 1 : this._ref - 1;

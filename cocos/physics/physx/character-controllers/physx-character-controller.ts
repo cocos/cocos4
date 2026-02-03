@@ -31,6 +31,7 @@ import { PhysXWorld } from '../physx-world';
 import { PhysXShape } from '../shapes/physx-shape';
 import { degreesToRadians } from '../../../core/utils/misc';
 import { TransformBit } from '../../../scene-graph';
+import { PhysXFilterData } from '../filter-data';
 
 const v3_0 = new Vec3(0, 0, 0);
 const v3_1 = new Vec3(0, 0, 0);
@@ -41,7 +42,7 @@ export class PhysXCharacterController implements IBaseCharacterController {
     protected _impl: any = null;
     protected _comp: CharacterController = null as any;
     private _pxCollisionFlags = 0;//: PX.PxControllerCollisionFlags;
-    private _filterData: any;
+    private _filterData: PhysXFilterData;
     private _queryFilterCB: any = null;
     protected _word3 = 0;
     protected _overlapRecovery = true;
@@ -85,6 +86,7 @@ export class PhysXCharacterController implements IBaseCharacterController {
         this._filterData.word0 = this._comp.group;
         const mask = PhysicsSystem.instance.collisionMatrix[group];
         this._filterData.word1 = mask;
+        this.updateFilterData();
 
         this.onComponentSet();
 
@@ -291,5 +293,10 @@ export class PhysXCharacterController implements IBaseCharacterController {
         if (!this._impl) return;
         // this._impl.setQueryFilterData(filterData);//set inside move()
         this._impl.setSimulationFilterData(this.filterData);
+    }
+
+    protected setImpl (impl: any): void {
+        this._impl = impl;
+        this.updateFilterData();
     }
 }
