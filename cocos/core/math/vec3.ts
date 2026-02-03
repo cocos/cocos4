@@ -959,10 +959,15 @@ export class Vec3 extends ValueType {
      * @returns Returns `true` when the components of both vectors are equal within the specified range of error; otherwise it returns `false`.
      */
     public equals (other: Vec3, epsilon = EPSILON): boolean {
+        return Vec3.equals(this, other, epsilon);
+    }
+
+    public approxEquals (other: Vec3, epsilon = EPSILON): boolean {
+        const self = this;
         return (
-            abs(this.x - other.x) <= epsilon
-            && abs(this.y - other.y) <= epsilon
-            && abs(this.z - other.z) <= epsilon
+            abs(self.x - other.x) <= epsilon
+            && abs(self.y - other.y) <= epsilon
+            && abs(self.z - other.z) <= epsilon
         );
     }
 
@@ -976,11 +981,10 @@ export class Vec3 extends ValueType {
      * @returns Returns `true` when the components of both vectors are equal within the specified range of error; otherwise it returns `false`.
      */
     public equals3f (x: number, y: number, z: number, epsilon = EPSILON): boolean {
-        return (
-            abs(this.x - x) <= epsilon
-            && abs(this.y - y) <= epsilon
-            && abs(this.z - z) <= epsilon
-        );
+        const self = this;
+        return (abs(self.x - x) <= epsilon * max(1.0, abs(self.x), abs(x))
+            && abs(self.y - y) <= epsilon * max(1.0, abs(self.y), abs(y))
+            && abs(self.z - z) <= epsilon * max(1.0, abs(self.z), abs(z)));
     }
 
     /**
