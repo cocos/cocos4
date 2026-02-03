@@ -824,7 +824,7 @@ export class Model {
         }
 
         const center = this._worldBounds!.center;
-        if (!EDITOR && center.equals(this._lastWorldBoundCenter, EPSILON)) {
+        if (!EDITOR && center.approxEquals(this._lastWorldBoundCenter, EPSILON)) {
             return;
         }
 
