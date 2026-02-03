@@ -28,7 +28,7 @@ jobs:
         id: pr_details
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/cocos/cocos-engine/pulls/${{ env.PR_NUMBER }}
+          route: GET /repos/cocos/cocos4/pulls/${{ env.PR_NUMBER }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -169,7 +169,7 @@ jobs:
             - Editor Version: ${process.env.EDITOR_VERSION}
             - Task Result: ${process.env.TASK_STATUS}
             - Task URL: https://cctest.cocos.org/#/reportview/PR-TEST/${process.env.JOB_ID}/-1
-            - GitHub Action: https://github.com/cocos/cocos-engine/actions/runs/${process.env.GITHUB_RUN_ID}
+            - GitHub Action: https://github.com/cocos/cocos4/actions/runs/${process.env.GITHUB_RUN_ID}
             ## Task Details
             ${process.env.TASK_REPORT}`);
       
@@ -191,7 +191,7 @@ jobs:
         id: pr_details
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/cocos/cocos-engine/pulls/${{ env.PR_NUMBER }}
+          route: GET /repos/cocos/cocos4/pulls/${{ env.PR_NUMBER }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -327,7 +327,7 @@ jobs:
             - Editor Version: ${process.env.EDITOR_VERSION}
             - Task Result: ${process.env.TASK_STATUS}
             - Task URL: https://cctest.cocos.org/#/reportview/PR-TEST/${process.env.JOB_ID}/-1
-            - GitHub Action: https://github.com/cocos/cocos-engine/actions/runs/${process.env.GITHUB_RUN_ID}
+            - GitHub Action: https://github.com/cocos/cocos4/actions/runs/${process.env.GITHUB_RUN_ID}
             ## Task Details
             ${process.env.TASK_REPORT}`);
       
@@ -357,7 +357,7 @@ jobs:
         id: pr_details
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/cocos/cocos-engine/pulls/${{ env.PR_NUMBER }}
+          route: GET /repos/cocos/cocos4/pulls/${{ env.PR_NUMBER }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -498,7 +498,7 @@ jobs:
             - Editor Version: ${process.env.EDITOR_VERSION}
             - Task Result: ${process.env.TASK_STATUS}
             - Task URL: https://cctest.cocos.org/#/reportview/PR-TEST/${process.env.JOB_ID}/-1
-            - GitHub Action: https://github.com/cocos/cocos-engine/actions/runs/${process.env.GITHUB_RUN_ID}
+            - GitHub Action: https://github.com/cocos/cocos4/actions/runs/${process.env.GITHUB_RUN_ID}
             ## Task Details
             ${process.env.TASK_REPORT}`);
       
@@ -519,7 +519,7 @@ jobs:
         id: pr_details
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/cocos/cocos-engine/pulls/${{ env.PR_NUMBER }}
+          route: GET /repos/cocos/cocos4/pulls/${{ env.PR_NUMBER }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -655,7 +655,7 @@ jobs:
             - Editor Version: ${process.env.EDITOR_VERSION}
             - Task Result: ${process.env.TASK_STATUS}
             - Task URL: https://cctest.cocos.org/#/reportview/PR-TEST/${process.env.JOB_ID}/-1
-            - GitHub Action: https://github.com/cocos/cocos-engine/actions/runs/${process.env.GITHUB_RUN_ID}
+            - GitHub Action: https://github.com/cocos/cocos4/actions/runs/${process.env.GITHUB_RUN_ID}
             ## Task Details
             ${process.env.TASK_REPORT}`);
       
