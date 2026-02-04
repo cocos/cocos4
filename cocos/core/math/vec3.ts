@@ -962,15 +962,6 @@ export class Vec3 extends ValueType {
         return Vec3.equals(this, other, epsilon);
     }
 
-    public approxEquals (other: Vec3, epsilon = EPSILON): boolean {
-        const self = this;
-        return (
-            abs(self.x - other.x) <= epsilon
-            && abs(self.y - other.y) <= epsilon
-            && abs(self.z - other.z) <= epsilon
-        );
-    }
-
     /**
      * @en Check whether the vector approximately equals another one.
      * @zh 判断当前向量是否在误差范围内与指定分量的向量相等。

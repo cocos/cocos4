@@ -33,7 +33,7 @@ import { RenderScene } from '../core/render-scene';
 import { Texture2D } from '../../asset/assets/texture-2d';
 import { SubModel } from './submodel';
 import { IMacroPatch } from '../core/pass';
-import { Mat4, Vec3, Vec4, geometry, cclegacy, EPSILON, v3, v4 } from '../../core';
+import { approx, Mat4, Vec3, Vec4, geometry, cclegacy, EPSILON, v3, v4 } from '../../core';
 import { Attribute, DescriptorSet, Device, Buffer, BufferInfo,
     BufferUsageBit, MemoryUsageBit, Filter, Address, SamplerInfo, deviceManager, Texture } from '../../gfx';
 import {
@@ -824,7 +824,8 @@ export class Model {
         }
 
         const center = this._worldBounds!.center;
-        if (!EDITOR && center.approxEquals(this._lastWorldBoundCenter, EPSILON)) {
+        const last = this._lastWorldBoundCenter;
+        if (!EDITOR && approx(center.x, last.x) && approx(center.y, last.y) && approx(center.z, last.z)) {
             return;
         }
 
