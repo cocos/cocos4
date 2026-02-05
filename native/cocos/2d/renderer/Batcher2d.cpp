@@ -272,7 +272,7 @@ void Batcher2d::walk(Node* node, float parentOpacity, bool parentColorDirty) { /
         }
     }
     
-    if (isCurrentColorDirty) {
+    if (isCurrentColorDirty && (!entity || visible && entity->isEnabled())) {
         node->_setColorDirty(false);
     }
 
