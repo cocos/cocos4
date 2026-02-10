@@ -14,6 +14,10 @@ using namespace spine;
 HashMap<SkeletonData *, HashMap<Attachment *, AttachmentVertices *>*> spineAttachmentVerticesMap{};
 HashMap<SkeletonData *, HashMap<spine::String, spine::String>*> spineTexturesMap{};
 
+#ifdef CC_SPINE_VERSION_4_2
+HashMap<SkeletonData *, Atlas*> spineAtlasMap{};
+#endif
+
 
 static const uint16_t quadTriangles[6] = {0, 1, 2, 2, 3, 0};
 
@@ -193,7 +197,12 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithJson(const String& jsonS
 
         saveAttachmentVertices(skeletonData, textureNames, textureUUIDs);
     }
+#ifdef CC_SPINE_VERSION_3_8
     delete atlas;
+#else
+    spineAtlasMap.put(skeletonData, atlas);
+#endif
+
 #endif
 
     return skeletonData;
@@ -222,7 +231,12 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize
 
         saveAttachmentVertices(skeletonData, textureNames, textureUUIDs);
     }
+#ifdef CC_SPINE_VERSION_3_8
     delete atlas;
+#else
+    spineAtlasMap.put(skeletonData, atlas);
+#endif
+
 #endif
     return skeletonData;
 }
@@ -249,6 +263,10 @@ void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const String& uuid) {
 
             spineAttachmentVerticesMap.remove(data);
         }
+#ifndef CC_SPINE_VERSION_3_8
+        auto* atlas = spineAtlasMap[data];
+        delete atlas;
+#endif        
         delete data;
         skeletonDataMap.remove(uuid);
     }
