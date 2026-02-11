@@ -149,8 +149,12 @@ minigame.stopAccelerometer = function (res: any): void {
 
 // #region SafeArea
 minigame.getSafeArea = function (): SafeArea {
+    if (typeof minigame.getWindowInfo === "function") {
+        const windowInfo = minigame.getWindowInfo();
+        return windowInfo.safeArea;
+    }
     console.warn('getSafeArea is not supported on this platform');
-    const systemInfo =  minigame.getSystemInfoSync();
+    const systemInfo = minigame.getSystemInfoSync();
     return {
         top: 0,
         left: 0,
