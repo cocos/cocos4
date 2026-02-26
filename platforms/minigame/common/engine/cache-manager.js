@@ -111,7 +111,7 @@ const cacheManager = {
         });
     },
 
-    writeCacheFile () {
+    writeCacheFile (cb) {
         if (!writeCacheFileList) {
             writeCacheFileList = setTimeout(this._write.bind(this), this.writeFileInterval);
             if (startWrite === true) {
@@ -126,12 +126,12 @@ const cacheManager = {
     },
 
     _cache () {
-        var self = this;
-        for (var id in this.cacheQueue) {
-            var { srcUrl, isCopy, cacheBundleRoot } = this.cacheQueue[id];
-            var time = Date.now().toString();
+        const self = this;
+        for (const id in this.cacheQueue) {
+            const { srcUrl, isCopy, cacheBundleRoot } = this.cacheQueue[id];
+            const time = Date.now().toString();
 
-            var localPath = '';
+            let localPath = '';
 
             if (cacheBundleRoot) {
                 localPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`;
@@ -189,7 +189,7 @@ const cacheManager = {
         rmdirSync(this.cacheDir, true);
         this.cachedFiles = new cc.AssetManager.Cache();
         makeDirSync(this.cacheDir, true);
-        var cacheFilePath = this.cacheDir + '/' + this.cachedFileName;
+        const cacheFilePath = this.cacheDir + '/' + this.cachedFileName;
         this.outOfStorage = false;
         writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
         cc.assetManager.bundles.forEach(bundle => {
@@ -200,8 +200,8 @@ const cacheManager = {
     clearLRU () {
         if (cleaning) return;
         cleaning = true;
-        var caches = [];
-        var self = this;
+        const caches = [];
+        const self = this;
         this.cachedFiles.forEach((val, key) => {
             if (self._isZipFile(key) && cc.assetManager.bundles.find((bundle) => bundle.base.indexOf(val.url) !== -1)) return;
             caches.push({ originUrl: key, url: val.url, lastTime: val.lastTime });
@@ -221,7 +221,7 @@ const cacheManager = {
         
         this.writeCacheFile(function () {
             function deferredDelete () {
-                var item = caches.pop();
+                const item = caches.pop();
                 if (self._isZipFile(item.originUrl)) {
                     rmdirSync(item.url, true);
                     self._deleteFileCB();
@@ -242,8 +242,8 @@ const cacheManager = {
 
     removeCache (url) {
         if (this.cachedFiles.has(url)) {
-            var self = this;
-            var path = this.cachedFiles.remove(url).url;
+            const self = this;
+            const path = this.cachedFiles.remove(url).url;
             this.writeCacheFile(function () {
                 if (self._isZipFile(url)) {
                     rmdirSync(path, true);
