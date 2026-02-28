@@ -55,7 +55,18 @@ MeshBuffer *MiddlewareManager::getMeshBuffer(int format) {
 }
 
 void MiddlewareManager::updateOperateCache() {
-    for (const auto &op : _operateCacheQueue) {
+    if (_operateCacheQueue.empty()) return;
+
+    ccstd::vector<IMiddleware*> seen;
+    ccstd::vector<std::pair<IMiddleware*, bool>> finalOperations;
+    for (auto it = _operateCacheQueue.rbegin(); it != _operateCacheQueue.rend(); ++it) {
+        if (std::find(seen.begin(), seen.end(), it->first) == seen.end()) {
+            seen.push_back(it->first);
+            finalOperations.emplace_back(it->first, it->second);
+        }
+    }
+
+    for (const auto &op : finalOperations) {
         IMiddleware *editor = op.first;
         bool isAddOperation = op.second;
 
@@ -88,12 +99,19 @@ void MiddlewareManager::update(float dt) {
 }
 
 void MiddlewareManager::render(float dt) {
-    // Object._deferredDestroy is called after component update in Director.tick and before emitting BEFORE_DRAW event in which MiddlewareManager::render is invoked, 
-    // so the native object may be released here and it needs to be erased from _updateList.
-    for (auto &iter : _operateCacheQueue) {
-        auto it = std::find(_updateList.begin(), _updateList.end(), iter.first);
-        if (!iter.second && it != _updateList.end()) {
-            _updateList.erase(it);
+    ccstd::vector<IMiddleware*> skipRenderList;
+    if (!_operateCacheQueue.empty()) {
+        ccstd::vector<IMiddleware*> seen;
+        // Object._deferredDestroy is called after component update in Director.tick and before emitting BEFORE_DRAW event in which MiddlewareManager::render is invoked, 
+        // so the native object may be released here.
+        // We shouldn't execute editor->render(dt) if it's already removed in _operateCacheQueue.
+        for (auto it = _operateCacheQueue.rbegin(); it != _operateCacheQueue.rend(); ++it) {
+            if (std::find(seen.begin(), seen.end(), it->first) == seen.end()) {
+                seen.push_back(it->first);
+                if (!it->second) {
+                    skipRenderList.push_back(it->first);
+                }
+            }
         }
     }
 
@@ -106,6 +124,9 @@ void MiddlewareManager::render(float dt) {
 
     for (size_t i = 0, len = _updateList.size(); i < len; ++i) {
         auto *editor = _updateList[i];
+        if (!skipRenderList.empty() && std::find(skipRenderList.begin(), skipRenderList.end(), editor) != skipRenderList.end()) {
+            continue;
+        }
         editor->render(dt);
     }
 
