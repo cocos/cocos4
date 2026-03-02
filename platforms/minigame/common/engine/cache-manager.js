@@ -191,6 +191,8 @@ const cacheManager = {
         makeDirSync(this.cacheDir, true);
         const cacheFilePath = this.cacheDir + '/' + this.cachedFileName;
         this.outOfStorage = false;
+        clearTimeout(writeCacheFileList);
+        writeCacheFileList = null;
         writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
         cc.assetManager.bundles.forEach(bundle => {
             if (REGEX.test(bundle.base)) this.makeBundleFolder(bundle.name);
@@ -219,6 +221,8 @@ const cacheManager = {
             this.cachedFiles.remove(caches[i].originUrl);
         }
         
+        clearTimeout(writeCacheFileList);
+        writeCacheFileList = null;
         this.writeCacheFile(function () {
             function deferredDelete () {
                 const item = caches.pop();
@@ -238,6 +242,8 @@ const cacheManager = {
         if (this.cachedFiles.has(url)) {
             const self = this;
             const path = this.cachedFiles.remove(url).url;
+            clearTimeout(writeCacheFileList);
+            writeCacheFileList = null;
             this.writeCacheFile(function () {
                 self._removePathOrFile(url, path);
             });
