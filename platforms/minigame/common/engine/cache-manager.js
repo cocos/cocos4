@@ -222,13 +222,7 @@ const cacheManager = {
         this.writeCacheFile(function () {
             function deferredDelete () {
                 const item = caches.pop();
-                if (self._isZipFile(item.originUrl)) {
-                    rmdirSync(item.url, true);
-                    self._deleteFileCB();
-                }
-                else {
-                    deleteFile(item.url, self._deleteFileCB.bind(self));
-                }
+                self._removePathOrFile(item.originUrl, item.url);
                 if (caches.length > 0) { 
                     setTimeout(deferredDelete, self.deleteInterval); 
                 }
@@ -245,13 +239,7 @@ const cacheManager = {
             const self = this;
             const path = this.cachedFiles.remove(url).url;
             this.writeCacheFile(function () {
-                if (self._isZipFile(url)) {
-                    rmdirSync(path, true);
-                    self._deleteFileCB();
-                }
-                else {
-                    deleteFile(path, self._deleteFileCB.bind(self));
-                }
+                self._removePathOrFile(url, path);
             });
         }
     },
