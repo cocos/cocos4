@@ -56,34 +56,23 @@ export class PhysicsContactListener extends b2jsb.ContactListener {
 
     BeginContact (contact: b2jsb.Contact): void {
         if (!this._BeginContact) return;
-
-        const fixtureA = contact.GetFixtureA();
-        const fixtureB = contact.GetFixtureB();
-        const fixtures = this._contactFixtures;
-
-        (contact as any)._shouldReport = false;
-
-        if (fixtures.indexOf(fixtureA) !== -1 || fixtures.indexOf(fixtureB) !== -1) {
-            (contact as any)._shouldReport = true; // for quick check whether this contact should report
-            this._BeginContact(contact);
-        }
+        this._BeginContact(contact);
     }
 
     EndContact (contact: b2jsb.Contact): void {
-        if (this._EndContact && (contact as any)._shouldReport) {
-            (contact as any)._shouldReport = false;
+        if (this._EndContact) {
             this._EndContact(contact);
         }
     }
 
     PreSolve (contact: b2jsb.Contact, oldManifold: b2jsb.Manifold): void {
-        if (this._PreSolve && (contact as any)._shouldReport) {
+        if (this._PreSolve) {
             this._PreSolve(contact, oldManifold);
         }
     }
 
     PostSolve (contact: b2jsb.Contact, impulse: b2jsb.ContactImpulse): void {
-        if (this._PostSolve && (contact as any)._shouldReport) {
+        if (this._PostSolve) {
             this._PostSolve(contact, impulse);
         }
     }
