@@ -24,12 +24,15 @@
  ****************************************************************************/
 const {
     getUserDataPath, readJsonSync, makeDirSync,
-    writeFileSync, copyFile, downloadFile, deleteFile,
+    writeFileSync, writeFile, copyFile, downloadFile, deleteFile,
     rmdirSync, unzip, isOutOfStorage,
 } = window.fsUtils;
 
 let checkNextPeriod = false;
 let writeCacheFileList = null;
+let startWrite = false;
+let nextCallbacks = [];
+let callbacks = [];
 let cleaning = false;
 let suffix = 0;
 const REGEX = /^https?:\/\/.*/;
@@ -96,58 +99,74 @@ const cacheManager = {
 
     _write () {
         writeCacheFileList = null;
-        writeFileSync(`${this.cacheDir}/${this.cachedFileName}`, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
+        startWrite = true;
+        writeFile(this.cacheDir + '/' + this.cachedFileName, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8', function () {
+            startWrite = false;
+            for (let i = 0, j = callbacks.length; i < j; i++) {
+                callbacks[i]();
+            }
+            callbacks.length = 0;
+            callbacks.push.apply(callbacks, nextCallbacks);
+            nextCallbacks.length = 0;
+        });
     },
 
-    writeCacheFile () {
+    writeCacheFile (cb) {
         if (!writeCacheFileList) {
             writeCacheFileList = setTimeout(this._write.bind(this), this.writeFileInterval);
+            if (startWrite === true) {
+                cb && nextCallbacks.push(cb);
+            }
+            else {
+                cb && callbacks.push(cb);
+            }
+        } else {
+            cb && callbacks.push(cb);
         }
     },
 
     _cache () {
-        checkNextPeriod = false;
         const self = this;
-        let id = '';
-        // eslint-disable-next-line no-unreachable-loop
-        for (const key in this.cacheQueue) {
-            id = key;
-            break;
-        }
-        if (!id) return;
-        const { srcUrl, isCopy, cacheBundleRoot } = this.cacheQueue[id];
-        const time = Date.now().toString();
+        for (const id in this.cacheQueue) {
+            const { srcUrl, isCopy, cacheBundleRoot } = this.cacheQueue[id];
+            const time = Date.now().toString();
 
-        let localPath = '';
+            let localPath = '';
 
-        if (cacheBundleRoot) {
-            localPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`;
-        } else {
-            localPath = `${this.cacheDir}/${time}${suffix++}${cc.path.extname(id)}`;
-        }
-
-        function callback (err) {
-            if (err)  {
-                if (isOutOfStorage(err.message)) {
-                    self.outOfStorage = true;
-                    self.autoClear && self.clearLRU();
-                    return;
+            if (cacheBundleRoot) {
+                localPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`;
+            }
+            else {
+                localPath = `${this.cacheDir}/${time}${suffix++}${cc.path.extname(id)}`;
+            }
+            
+            function callback (err) {
+                checkNextPeriod = false;
+                if (err)  {
+                    if (isOutOfStorage(err.message)) {
+                        self.outOfStorage = true;
+                        self.autoClear && self.clearLRU();
+                        return;
+                    }
+                } else {
+                    self.cachedFiles.add(id, { bundle: cacheBundleRoot, url: localPath, lastTime: time });
+                    delete self.cacheQueue[id];
+                    self.writeCacheFile();
                 }
-            } else {
-                self.cachedFiles.add(id, { bundle: cacheBundleRoot, url: localPath, lastTime: time });
-                self.writeCacheFile();
+                if (!cc.js.isEmptyObject(self.cacheQueue)) {
+                    checkNextPeriod = true;
+                    setTimeout(self._cache.bind(self), self.cacheInterval);
+                }
             }
-            delete self.cacheQueue[id];
-            if (!cc.js.isEmptyObject(self.cacheQueue) && !checkNextPeriod) {
-                checkNextPeriod = true;
-                setTimeout(self._cache.bind(self), self.cacheInterval);
+            if (!isCopy) {
+                downloadFile(srcUrl, localPath, null, callback);
             }
+            else {
+                copyFile(srcUrl, localPath, callback);
+            }
+            return;
         }
-        if (!isCopy) {
-            downloadFile(srcUrl, localPath, null, callback);
-        } else {
-            copyFile(srcUrl, localPath, callback);
-        }
+        checkNextPeriod = false;
     },
 
     cacheFile (id, srcUrl, cacheEnabled, cacheBundleRoot, isCopy) {
@@ -155,9 +174,14 @@ const cacheManager = {
         if (!cacheEnabled || this.cacheQueue[id] || this.cachedFiles.has(id)) return;
 
         this.cacheQueue[id] = { srcUrl, cacheBundleRoot, isCopy };
-        if (!checkNextPeriod && !this.outOfStorage) {
+        if (!checkNextPeriod) {
             checkNextPeriod = true;
-            setTimeout(this._cache.bind(this), this.cacheInterval);
+            if (!this.outOfStorage) {
+                setTimeout(this._cache.bind(this), this.cacheInterval);
+            }
+            else {
+                checkNextPeriod = false;
+            }
         }
     },
 
@@ -165,10 +189,12 @@ const cacheManager = {
         rmdirSync(this.cacheDir, true);
         this.cachedFiles = new cc.AssetManager.Cache();
         makeDirSync(this.cacheDir, true);
+        const cacheFilePath = this.cacheDir + '/' + this.cachedFileName;
         this.outOfStorage = false;
         clearTimeout(writeCacheFileList);
-        this._write();
-        cc.assetManager.bundles.forEach((bundle) => {
+        writeCacheFileList = null;
+        writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
+        cc.assetManager.bundles.forEach(bundle => {
             if (REGEX.test(bundle.base)) this.makeBundleFolder(bundle.name);
         });
     },
@@ -194,27 +220,33 @@ const cacheManager = {
             cc.assetManager.files.remove(cacheKey);
             this.cachedFiles.remove(caches[i].originUrl);
         }
-
+        
         clearTimeout(writeCacheFileList);
-        this._write();
-        function deferredDelete () {
-            const item = caches.pop();
-            self._removePathOrFile(item.originUrl, item.url);
-            if (caches.length > 0) {
-                setTimeout(deferredDelete, self.deleteInterval);
-            } else {
-                cleaning = false;
+        writeCacheFileList = null;
+        this.writeCacheFile(function () {
+            function deferredDelete () {
+                const item = caches.pop();
+                self._removePathOrFile(item.originUrl, item.url);
+                if (caches.length > 0) { 
+                    setTimeout(deferredDelete, self.deleteInterval); 
+                }
+                else {
+                    cleaning = false;
+                }
             }
-        }
-        setTimeout(deferredDelete, self.deleteInterval);
+            setTimeout(deferredDelete, self.deleteInterval);
+        });
     },
 
     removeCache (url) {
         if (this.cachedFiles.has(url)) {
+            const self = this;
             const path = this.cachedFiles.remove(url).url;
             clearTimeout(writeCacheFileList);
-            this._write();
-            this._removePathOrFile(url, path);
+            writeCacheFileList = null;
+            this.writeCacheFile(function () {
+                self._removePathOrFile(url, path);
+            });
         }
     },
 
