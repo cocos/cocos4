@@ -134,7 +134,6 @@ void HttpClient::networkThread() {
 
 // Worker thread
 void HttpClient::networkThreadAlone(HttpRequest *request, HttpResponse *response) {
-    increaseThreadCount();
 
     char responseMessage[RESPONSE_BUFFER_SIZE] = {0};
     processResponse(response, responseMessage);
@@ -431,6 +430,7 @@ void HttpClient::sendImmediate(HttpRequest *request) {
     HttpResponse *response = ccnew HttpResponse(request);
     response->addRef(); // NOTE: RefCounted object's reference count is changed to 0 now. so needs to addRef after ccnew.
 
+    increaseThreadCount();
     gThreadPool->pushTask([this, request, response](int /*tid*/) { HttpClient::networkThreadAlone(request, response); });
 }
 
@@ -552,6 +552,11 @@ void HttpClient::increaseThreadCount() {
 
 void HttpClient::decreaseThreadCountAndMayDeleteThis() {
     bool needDeleteThis = false;
+    // if _threadCount is 0, it means that this HttpClient object is not used anymore.
+    // so return.
+    if (_threadCount == 0) {
+        return;
+    }
     _threadCountMutex.lock();
     --_threadCount;
     if (0 == _threadCount) {
