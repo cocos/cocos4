@@ -42,6 +42,24 @@ declare namespace spine {
         delete();
     }
 
+    /**
+     * @version 4.2
+     */
+    class SPVectorPhysicsConstraintPtr {
+        size(): number;
+        get(index: number): PhysicsConstraint;
+        delete();
+    }
+
+    /**
+     * @version 4.2
+     */
+    class SPVectorPhysicsConstraintDataPtr {
+        size(): number;
+        get(index: number): PhysicsConstraintData;
+        delete();
+    }
+
     class Animation {
         constructor(name: string, timelines: Array<Timeline>, duration: number);
         duration: number;
@@ -708,6 +726,10 @@ declare namespace spine {
         ikConstraints: Array<IkConstraint>;
         transformConstraints: Array<TransformConstraint>;
         pathConstraints: Array<PathConstraint>;
+        /**
+         * @version 4.2
+         */
+        physicsConstraints: Array<PhysicsConstraint>;
         _updateCache: Updatable[];
         skin: Skin;
         color: Color;
@@ -735,8 +757,24 @@ declare namespace spine {
         findIkConstraint(constraintName: string): IkConstraint;
         findTransformConstraint(constraintName: string): TransformConstraint;
         findPathConstraint(constraintName: string): PathConstraint;
+        /**
+         * @version 4.2
+         */
+        findPhysicsConstraint(constraintName: string): PhysicsConstraint;
+        /**
+         * @version 4.2
+         */
+        getPhysicsConstraints(): SPVectorPhysicsConstraintPtr;
         //getBounds(offset: Vector2, size: Vector2, temp?: Array<number>): void;
         update(delta: number): void;
+        /**
+         * @version 4.2
+         */
+        updateWorldTransform(physics: Physics): void;
+        /**
+         * @version 4.2
+         */
+        updateWorldTransform(physics: Physics, parent: Bone): void;
     }
     class SkeletonBinary {
         static AttachmentTypeValues: number[];
@@ -812,6 +850,10 @@ declare namespace spine {
         ikConstraints: IkConstraintData[];
         transformConstraints: TransformConstraintData[];
         pathConstraints: PathConstraintData[];
+        /**
+         * @version 4.2
+         */
+        physicsConstraints: PhysicsConstraintData[];
         x: number;
         y: number;
         width: number;
@@ -835,6 +877,14 @@ declare namespace spine {
         findTransformConstraint(constraintName: string): TransformConstraintData;
         findPathConstraint(constraintName: string): PathConstraintData;
         findPathConstraintIndex(pathConstraintName: string): number;
+        /**
+         * @version 4.2
+         */
+        findPhysicsConstraint(constraintName: string): PhysicsConstraintData;
+        /**
+         * @version 4.2
+         */
+        getPhysicsConstraints(): SPVectorPhysicsConstraintDataPtr;
     }
     class SkeletonJson {
         attachmentLoader: AttachmentLoader;
@@ -1003,6 +1053,82 @@ declare namespace spine {
         offsetShearY: number;
         relative: boolean;
         local: boolean;
+        constructor(name: string);
+    }
+    /**
+     * @version 4.2
+     */
+    enum Physics {
+        none = 0,
+        reset = 1,
+        update = 2,
+        pose = 3
+    }
+    /**
+     * @version 4.2
+     */
+    class PhysicsConstraint implements Updatable {
+        data: PhysicsConstraintData;
+        bone: Bone;
+        inertia: number;
+        strength: number;
+        damping: number;
+        massInverse: number;
+        wind: number;
+        gravity: number;
+        mix: number;
+        _reset: boolean;
+        ux: number;
+        uy: number;
+        cx: number;
+        cy: number;
+        tx: number;
+        ty: number;
+        xOffset: number;
+        xVelocity: number;
+        yOffset: number;
+        yVelocity: number;
+        rotateOffset: number;
+        rotateVelocity: number;
+        scaleOffset: number;
+        scaleVelocity: number;
+        remaining: number;
+        lastTime: number;
+        active: boolean;
+        constructor(data: PhysicsConstraintData, skeleton: Skeleton);
+        isActive(): boolean;
+        reset(): void;
+        setToSetupPose(): void;
+        update(): void;
+        translate(x: number, y: number): void;
+        rotate(x: number, y: number, degrees: number): void;
+    }
+    /**
+     * @version 4.2
+     */
+    class PhysicsConstraintData extends ConstraintData {
+        bone: BoneData;
+        x: number;
+        y: number;
+        rotate: number;
+        scaleX: number;
+        shearX: number;
+        limit: number;
+        step: number;
+        inertia: number;
+        strength: number;
+        damping: number;
+        massInverse: number;
+        wind: number;
+        gravity: number;
+        mix: number;
+        inertiaGlobal: boolean;
+        strengthGlobal: boolean;
+        dampingGlobal: boolean;
+        massGlobal: boolean;
+        windGlobal: boolean;
+        gravityGlobal: boolean;
+        mixGlobal: boolean;
         constructor(name: string);
     }
     class Triangulator {
