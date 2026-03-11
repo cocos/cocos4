@@ -22,37 +22,56 @@
  THE SOFTWARE.
 */
 
+import { B2 } from '../instantiated';
+
 type BeginContactCallback = (contact: number) => void;
 type EndContactCallback = (contact: number) => void;
 type PreSolveCallback = (contact: number, oldManifold: number) => void;
 type PostSolveCallback = (contact: number, impulse: number) => void;
 
 export class PhysicsContactListener {
+    static _contactFixtures: Set<number> = new Set<number>();
     static _BeginContact: BeginContactCallback | null = null;
     static _EndContact: EndContactCallback | null = null;
     static _PreSolve: PreSolveCallback | null = null;
     static _PostSolve: PostSolveCallback | null = null;
+    static _shouldReportContacts: Set<number> = new Set<number>();
 
     static BeginContact (contact: number): void {
-        if (this._BeginContact) {
+        if (!this._BeginContact) return;
+        const fixtureA = B2.ContactGetFixtureA(contact) as number;
+        const fixtureB = B2.ContactGetFixtureB(contact) as number;
+        const fixtures = this._contactFixtures;
+        this._shouldReportContacts.delete(contact);
+
+        if (fixtures.has(fixtureA) || fixtures.has(fixtureB)) {
+            this._shouldReportContacts.add(contact);
             this._BeginContact(contact);
         }
     }
 
     static EndContact (contact: number): void {
-        if (this._EndContact) {
+        if (this._EndContact && this._shouldReportContacts.has(contact)) {
+            this._shouldReportContacts.delete(contact);
             this._EndContact(contact);
         }
     }
 
     static PreSolve (contact: number, oldManifold: number): void {
-        if (this._PreSolve) {
+        if (this._PreSolve && this._shouldReportContacts.has(contact)) {
             this._PreSolve(contact, oldManifold);
         }
     }
+    static registerContactFixture (fixture: number): void {
+        this._contactFixtures.add(fixture);
+    }
+
+    static unregisterContactFixture (fixture: number): void {
+        this._contactFixtures.delete(fixture);
+    }
 
     static PostSolve (contact: number, impulse: number): void {
-        if (this._PostSolve) {
+        if (this._PostSolve && this._shouldReportContacts.has(contact)) {
             this._PostSolve(contact, impulse);
         }
     }
