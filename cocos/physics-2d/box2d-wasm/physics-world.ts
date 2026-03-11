@@ -82,6 +82,16 @@ export class B2PhysicsWorld implements IPhysicsWorld {
         PhysicsContactListener._PreSolve = this._onPreSolve;
         PhysicsContactListener._PostSolve = this._onPostSolve;
         this._contactListener = B2.ContactListener.implement(PhysicsContactListener.callback);
+        const orgRegisterContactFixture = this._contactListener.registerContactFixture.bind(this._contactListener);
+        this._contactListener.registerContactFixture = (contactFixture: number): void => {
+            PhysicsContactListener.registerContactFixture(contactFixture);
+            orgRegisterContactFixture(contactFixture);
+        };
+        const orgUnregisterContactFixture = this._contactListener.unregisterContactFixture.bind(this._contactListener);
+        this._contactListener.unregisterContactFixture = (contactFixture: number): void => {
+            PhysicsContactListener.unregisterContactFixture(contactFixture);
+            orgUnregisterContactFixture(contactFixture);
+        };
         this._world.SetContactListener(this._contactListener);
 
         this._aabbQueryCallback = B2.QueryCallback.implement(PhysicsAABBQueryCallback.callback);
