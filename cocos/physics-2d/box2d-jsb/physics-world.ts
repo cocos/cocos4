@@ -36,6 +36,7 @@ import { PhysicsContactListener } from './platform/physics-contact-listener';
 import { PhysicsAABBQueryCallback } from './platform/physics-aabb-query-callback';
 import { PhysicsRayCastCallback } from './platform/physics-ray-cast-callback';
 import { PhysicsContact, b2ContactExtends } from './physics-contact';
+import { PhysicsContactManager } from './physics-contact-manager';
 import { Contact2DType, Collider2D, RaycastResult2D } from '../framework';
 import { b2Shape2D } from './shapes/shape-2d';
 import { PhysicsDebugDraw } from './platform/physics-debug-draw';
@@ -444,22 +445,22 @@ export class b2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onBeginContact (b2contact: b2ContactExtends): void {
-        const c = PhysicsContact.get(b2contact);
+        const c = PhysicsContactManager.get(b2contact);
         c.emit(Contact2DType.BEGIN_CONTACT);
     }
 
     _onEndContact (b2contact: b2ContactExtends): void {
-        const c = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
         c.emit(Contact2DType.END_CONTACT);
 
-        PhysicsContact.put(b2contact);
+        PhysicsContactManager.put(b2contact);
     }
 
     _onPreSolve (b2contact: b2ContactExtends): void {
-        const c = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
@@ -468,7 +469,7 @@ export class b2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onPostSolve (b2contact: b2ContactExtends, impulse: b2jsb.ContactImpulse): void {
-        const c: PhysicsContact = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
