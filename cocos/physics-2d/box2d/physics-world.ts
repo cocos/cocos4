@@ -39,6 +39,7 @@ import { PhysicsDebugDraw } from './platform/physics-debug-draw';
 import { Node, find, Layers } from '../../scene-graph';
 import { director } from '../../game';
 import type { Graphics } from '../../2d/components/graphics';
+import { PhysicsContactManager } from './physics-contact-manager';
 
 const tempVec3 = new Vec3();
 const tempVec2_1 = new Vec2();
@@ -414,22 +415,22 @@ export class b2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onBeginContact (b2contact: b2ContactExtends): void {
-        const c = PhysicsContact.get(b2contact);
+        const c = PhysicsContactManager.get(b2contact);
         c.emit(Contact2DType.BEGIN_CONTACT);
     }
 
     _onEndContact (b2contact: b2ContactExtends): void {
-        const c = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
         c.emit(Contact2DType.END_CONTACT);
 
-        PhysicsContact.put(b2contact);
+        PhysicsContactManager.put(b2contact);
     }
 
     _onPreSolve (b2contact: b2ContactExtends): void {
-        const c = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
@@ -438,7 +439,7 @@ export class b2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onPostSolve (b2contact: b2ContactExtends, impulse: b2.ContactImpulse): void {
-        const c: PhysicsContact = b2contact.m_userData as PhysicsContact;
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
@@ -447,5 +448,8 @@ export class b2PhysicsWorld implements IPhysicsWorld {
         c._setImpulse(impulse);
         c.emit(Contact2DType.POST_SOLVE);
         c._setImpulse(null);
+    }
+    clearContacts (): void {
+        PhysicsContactManager.clear();
     }
 }
