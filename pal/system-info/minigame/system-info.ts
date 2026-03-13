@@ -23,7 +23,7 @@
  THE SOFTWARE.
 */
 
-import { ALIPAY, BYTEDANCE, HUAWEI, OPPO, RUNTIME_BASED, SUD, VIVO, MIGU, HONOR, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
+import { ALIPAY, BYTEDANCE, HUAWEI, OPPO, RUNTIME_BASED, SUD, SUDV2, VIVO, MIGU, HONOR, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
 import { minigame, SystemInfo as MinigameSystemInfo } from 'pal/minigame';
 import { IFeatureMap } from 'pal/system-info';
 import { EventTarget } from '../../../cocos/core/event';
@@ -60,6 +60,8 @@ if (WECHAT) {
     currentPlatform = Platform.HONOR_MINI_GAME;
 } else if (SUD) {
     currentPlatform = Platform.SUD_MINI_GAME;
+} else if (SUDV2) {
+    currentPlatform = Platform.SUDV2_MINI_GAME;
 }
 
 let isVersionGreaterOrEqualTo;
