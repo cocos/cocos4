@@ -659,6 +659,13 @@
             "ccGlobal": true,
             "internal": false
         },
+        "SUDV2": {
+            "comment": "Running in the sud v2's quick game.",
+            "type": "boolean",
+            "value": false,
+            "ccGlobal": true,
+            "internal": false
+        },
         "NODEJS": {
             "comment": "Running in the Node.js environment.",
             "type": "boolean",
@@ -738,7 +745,7 @@
         "RUNTIME_BASED": {
             "comment": "Running in runtime based environment.",
             "type": "boolean",
-            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD",
+            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD || $SUDV2",
             "ccGlobal": true,
             "internal": false
         },
