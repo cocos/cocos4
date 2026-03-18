@@ -29,7 +29,7 @@ import { Collider2D, Contact2DType, PhysicsSystem2D } from '../framework';
 import { B2Shape2D } from './shapes/shape-2d';
 import { IPhysics2DContact, IPhysics2DImpulse, IPhysics2DManifoldPoint, IPhysics2DWorldManifold } from '../spec/i-physics-contact';
 
-const pools: PhysicsContact[] = [];
+/* pools moved to PhysicsContactManager */
 
 // temp world manifold
 const pointCache = [new Vec2(), new Vec2()];
@@ -62,24 +62,7 @@ const impulse: IPhysics2DImpulse = {
 
 /** @mangle */
 export class PhysicsContact implements IPhysics2DContact {
-    static get (b2contact: number): PhysicsContact {
-        let c = pools.pop();
-
-        if (!c) {
-            c = new PhysicsContact();
-        }
-
-        c.init(b2contact);
-        return c;
-    }
-
-    static put (b2contact: number): void {
-        const c = getTSObjectFromWASMObjectPtr<PhysicsContact>(B2ObjectType.Contact, b2contact);
-        if (!c) return;
-
-        pools.push(c);
-        c.reset();
-    }
+    /* static get/put/clear moved to PhysicsContactManager */
 
     colliderA: Collider2D | null = null;
     colliderB: Collider2D | null = null;

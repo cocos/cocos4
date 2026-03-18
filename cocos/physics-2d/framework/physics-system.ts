@@ -381,8 +381,12 @@ export class PhysicsSystem2D extends Eventify(System) {
     static constructAndRegister (): void {
         director.registerSystem(PhysicsSystem2D.ID, PhysicsSystem2D.instance, SystemPriority.LOW);
     }
+    clearContacts (): void {
+        this.physicsWorld.clearContacts();
+    }
 }
 
 if (!BUILD || !LOAD_BOX2D_MANUALLY) {
     director.once(DirectorEvent.INIT, (): void => { PhysicsSystem2D.constructAndRegister(); });
+    director.once(DirectorEvent.RESET, (): void => { PhysicsSystem2D.instance.clearContacts(); });
 }

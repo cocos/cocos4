@@ -33,8 +33,6 @@ export type b2ContactExtends = b2.Contact & {
     m_userData: any;
 }
 
-const pools: PhysicsContact[] = [];
-
 // temp world manifold
 const pointCache = [new Vec2(), new Vec2()];
 
@@ -68,25 +66,6 @@ const impulse: IPhysics2DImpulse = {
 
 /** @mangle */
 export class PhysicsContact implements IPhysics2DContact {
-    static get (b2contact: b2ContactExtends): PhysicsContact {
-        let c = pools.pop();
-
-        if (!c) {
-            c = new PhysicsContact();
-        }
-
-        c.init(b2contact);
-        return c;
-    }
-
-    static put (b2contact: b2ContactExtends): void {
-        const c: PhysicsContact = b2contact.m_userData as PhysicsContact;
-        if (!c) return;
-
-        pools.push(c);
-        c.reset();
-    }
-
     colliderA: Collider2D | null = null;
     colliderB: Collider2D | null = null;
 
@@ -111,7 +90,6 @@ export class PhysicsContact implements IPhysics2DContact {
         this._inverted = false;
 
         this._b2contact = b2contact;
-        b2contact.m_userData = this;
     }
 
     reset (): void {
@@ -124,7 +102,6 @@ export class PhysicsContact implements IPhysics2DContact {
         this.disabled = false;
         this._impulse = null;
 
-        this._b2contact!.m_userData = null;
         this._b2contact = null;
     }
 

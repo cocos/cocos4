@@ -35,7 +35,7 @@ import { B2RigidBody2D } from './rigid-body';
 import { PhysicsContactListener } from './platform/physics-contact-listener';
 import { PhysicsAABBQueryCallback } from './platform/physics-aabb-query-callback';
 import { PhysicsRayCastCallback } from './platform/physics-ray-cast-callback';
-import { PhysicsContact } from './physics-contact';
+import { PhysicsContactManager } from './physics-contact-manager';
 import { Contact2DType, Collider2D, RaycastResult2D } from '../framework';
 import { B2Shape2D } from './shapes/shape-2d';
 import { PhysicsDebugDraw } from './platform/physics-debug-draw';
@@ -437,22 +437,22 @@ export class B2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onBeginContact (b2contact: number): void {
-        const c = PhysicsContact.get(b2contact);
+        const c = PhysicsContactManager.get(b2contact);
         c.emit(Contact2DType.BEGIN_CONTACT);
     }
 
     _onEndContact (b2contact: number): void {
-        const c = getTSObjectFromWASMObjectPtr<PhysicsContact>(B2ObjectType.Contact, b2contact);
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
         c.emit(Contact2DType.END_CONTACT);
 
-        PhysicsContact.put(b2contact);
+        PhysicsContactManager.put(b2contact);
     }
 
     _onPreSolve (b2contact: number): void {
-        const c = getTSObjectFromWASMObjectPtr<PhysicsContact>(B2ObjectType.Contact, b2contact);
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
@@ -461,7 +461,7 @@ export class B2PhysicsWorld implements IPhysicsWorld {
     }
 
     _onPostSolve (b2contact: number, impulse: number): void {
-        const c = getTSObjectFromWASMObjectPtr<PhysicsContact>(B2ObjectType.Contact, b2contact);
+        const c = PhysicsContactManager.find(b2contact);
         if (!c) {
             return;
         }
@@ -470,5 +470,9 @@ export class B2PhysicsWorld implements IPhysicsWorld {
         c._setImpulse(impulse);
         c.emit(Contact2DType.POST_SOLVE);
         c._setImpulse(0);
+    }
+
+    clearContacts (): void {
+        PhysicsContactManager.clear();
     }
 }
