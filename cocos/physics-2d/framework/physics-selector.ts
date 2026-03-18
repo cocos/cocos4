@@ -165,6 +165,7 @@ const ENTIRE_WORLD: IPhysicsWorld = {
     testPoint: FUNC,
     testAABB: FUNC,
     drawDebug: FUNC,
+    clearContacts: FUNC,
 };
 
 export function checkPhysicsModule (obj: any): boolean {

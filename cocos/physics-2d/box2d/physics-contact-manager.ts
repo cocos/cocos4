@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2024 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
@@ -21,22 +21,36 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
+import { PhysicsContact, b2ContactExtends } from './physics-contact';
 
-import { IVec2Like, Rect, Vec2 } from '../../core';
-import { ERaycast2DType, RaycastResult2D, Collider2D } from '../framework';
+const contactMap = new Map<b2ContactExtends, PhysicsContact>();
+const pools: PhysicsContact[] = [];
 
-export interface IPhysicsWorld {
-    readonly impl: any;
-    debugDrawFlags: number;
-    setGravity: (v: IVec2Like) => void;
-    setAllowSleep: (v: boolean) => void;
-    // setDefaultMaterial: (v: PhysicMaterial) => void;
-    step (deltaTime: number, velocityIterations?: number, positionIterations?: number): void;
-    syncPhysicsToScene (): void;
-    syncSceneToPhysics (): void;
-    raycast (p1: IVec2Like, p2: IVec2Like, type: ERaycast2DType, mask: number): RaycastResult2D[];
-    testPoint (p: Vec2): readonly Collider2D[];
-    testAABB (rect: Rect): readonly Collider2D[];
-    drawDebug (): void;
-    clearContacts (): void;
+export class PhysicsContactManager {
+    static get (b2contact: b2ContactExtends): PhysicsContact {
+        let c = pools.pop();
+        if (!c) {
+            c = new PhysicsContact();
+        }
+        c.init(b2contact);
+        contactMap.set(b2contact, c);
+        return c;
+    }
+
+    static find (b2contact: b2ContactExtends): PhysicsContact | null {
+        return contactMap.get(b2contact) ?? null;
+    }
+
+    static put (b2contact: b2ContactExtends): void {
+        const c = contactMap.get(b2contact);
+        if (!c) return;
+        pools.push(c);
+        c.reset();
+        contactMap.delete(b2contact);
+    }
+
+    static clear (): void {
+        contactMap.clear();
+        pools.length = 0;
+    }
 }

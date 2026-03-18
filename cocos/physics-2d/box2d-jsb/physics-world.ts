@@ -479,4 +479,7 @@ export class b2PhysicsWorld implements IPhysicsWorld {
         c.emit(Contact2DType.POST_SOLVE);
         c._setImpulse(null);
     }
+    clearContacts (): void {
+        PhysicsContactManager.clear();
+    }
 }
