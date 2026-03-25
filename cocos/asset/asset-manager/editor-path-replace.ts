@@ -89,7 +89,8 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
         try {
             let text = '';
             if (EDITOR) {
-                const info: { library: { ['.bin']: any } } = await Editor.Message.request('asset-db', 'query-asset-info', uuid);
+                // eslint-disable-next-line max-len
+                const info: { library: { ['.bin']: any } } = await fetch(`/cocos-api/assets/queryAssetInfo/?uuid=${uuid}`).then((response) => response.json());
                 // Current rule: If an asset has only one .bin file, then it is in CCON format.
                 if (info && info.library['.bin'] && Object.keys(info.library).length === 1) {
                     text = '.cconb';

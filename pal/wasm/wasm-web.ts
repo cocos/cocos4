@@ -35,20 +35,9 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
         try {
             // NOTE: when it's in EDITOR or PREVIEW, binaryUrl is a url with `external:` protocol.
-            if (EDITOR) {
-                Editor.Message.request('engine', 'query-engine-info').then((info) => {
-                    const externalRoot = `${info.native.path}/external/`;
-                    binaryUrl = binaryUrl.replace('external:', externalRoot);
-                    // IDEA: it's better we implement another PAL for nodejs platform.
-                    // eslint-disable-next-line @typescript-eslint/no-var-requires
-                    const fs = require('fs');
-                    const arrayBuffer = fs.readFileSync(binaryUrl) as ArrayBuffer;
-                    resolve(arrayBuffer);
-                });
-                return;
-            } else if (PREVIEW) {
+            if (EDITOR || PREVIEW) {
                 // NOTE: we resolve '/engine_external/' in editor preview server.
-                fetch(`/engine_external/?url=${binaryUrl}`).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
+                fetch(`/cocos-api/engine/queryEngineInfo/?url=${binaryUrl}`).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
                     // noop
                 });
                 return;
@@ -74,16 +63,7 @@ export function fetchUrl (binaryUrl: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {
         try {
             // NOTE: when it's in EDITOR or PREVIEW, binaryUrl is a url with `external:` protocol.
-            if (EDITOR) {
-                Editor.Message.request('engine', 'query-engine-info').then((info) => {
-                    const externalRoot = `${info.native.path}/external/`;
-                    binaryUrl = binaryUrl.replace('external:', externalRoot);
-                    // IDEA: it's better we implement another PAL for nodejs platform.
-                    // eslint-disable-next-line @typescript-eslint/no-var-requires
-                    resolve(binaryUrl);
-                });
-                return;
-            } else if (PREVIEW) {
+            if (EDITOR || PREVIEW) {
                 resolve(`/engine_external/?url=${binaryUrl}`);
                 return;
             }
