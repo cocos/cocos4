@@ -33,6 +33,7 @@ using SPVectorIkConstraintPtr = Vector<IkConstraint*>;
 using SPVectorIkConstraintDataPtr = Vector<IkConstraintData*>;
 using SPVectorTransformConstraintPtr = Vector<TransformConstraint*>;
 using SPVectorPathConstraintPtr = Vector<PathConstraint*>;
+using SPVectorPhysicsConstraintPtr = Vector<PhysicsConstraint*>;
 using SPVectorTimelinePtr = Vector<Timeline*>;
 using SPVectorTrackEntryPtr = Vector<TrackEntry*>;
 using SPVectorUpdatablePtr = Vector<Updatable*>;
@@ -207,6 +208,8 @@ DEFINE_ALLOW_RAW_POINTER(TrackEntry)
 DEFINE_ALLOW_RAW_POINTER(IkConstraintData)
 DEFINE_ALLOW_RAW_POINTER(PathConstraintData)
 DEFINE_ALLOW_RAW_POINTER(TransformConstraintData)
+DEFINE_ALLOW_RAW_POINTER(PhysicsConstraintData)
+DEFINE_ALLOW_RAW_POINTER(PhysicsConstraint)
 DEFINE_ALLOW_RAW_POINTER(SPVectorUnsignedShort)
 DEFINE_ALLOW_RAW_POINTER(SPVectorFloat)
 DEFINE_ALLOW_RAW_POINTER(SPVectorEventPtr)
@@ -516,7 +519,7 @@ EMSCRIPTEN_BINDINGS(spine) {
     REGISTER_SPINE_ENUM(TextureFilter);
     REGISTER_SPINE_ENUM(TextureWrap);
     REGISTER_SPINE_ENUM(AttachmentType);
-
+    REGISTER_SPINE_ENUM(Physics);
 
     REGISTER_SPINE_VECTOR(SPVectorDebugShape, false);
 
@@ -544,7 +547,9 @@ EMSCRIPTEN_BINDINGS(spine) {
     REGISTER_SPINE_VECTOR(SPVectorIkConstraintDataPtr, false);
     REGISTER_SPINE_VECTOR(SPVectorTransformConstraintPtr, false);
     REGISTER_SPINE_VECTOR(SPVectorPathConstraintPtr, false);
-    REGISTER_SPINE_VECTOR(SPVectorTimelinePtr, true); // .set used in Animation constructor 
+    REGISTER_SPINE_VECTOR(SPVectorTimelinePtr, true); // .set used in Animation constructor
+    REGISTER_SPINE_VECTOR(SPVectorPhysicsConstraintDataPtr, false);
+    REGISTER_SPINE_VECTOR(SPVectorPhysicsConstraintPtr, false);
     REGISTER_SPINE_VECTOR(SPVectorTrackEntryPtr, false);
     REGISTER_SPINE_VECTOR(SPVectorUpdatablePtr, false);
     REGISTER_SPINE_VECTOR(SPVectorSkinEntryPtr, false);
@@ -879,6 +884,64 @@ EMSCRIPTEN_BINDINGS(spine) {
         .property("mixScaleY", &TransformConstraint::getMixScaleY)
         .property("mixShearY", &TransformConstraint::getMixShearY);
 
+    class_<PhysicsConstraintData, base<ConstraintData>>("PhysicsConstraintData")
+        .constructor<const String &>()
+        .property("bone", &PhysicsConstraintData::getBone)
+        .property("x", &PhysicsConstraintData::getX, &PhysicsConstraintData::setX)
+        .property("y", &PhysicsConstraintData::getY, &PhysicsConstraintData::setY)
+        .property("rotate", &PhysicsConstraintData::getRotate, &PhysicsConstraintData::setRotate)
+        .property("scaleX", &PhysicsConstraintData::getScaleX, &PhysicsConstraintData::setScaleX)
+        .property("shearX", &PhysicsConstraintData::getShearX, &PhysicsConstraintData::setShearX)
+        .property("limit", &PhysicsConstraintData::getLimit, &PhysicsConstraintData::setLimit)
+        .property("step", &PhysicsConstraintData::getStep, &PhysicsConstraintData::setStep)
+        .property("inertia", &PhysicsConstraintData::getInertia, &PhysicsConstraintData::setInertia)
+        .property("strength", &PhysicsConstraintData::getStrength, &PhysicsConstraintData::setStrength)
+        .property("damping", &PhysicsConstraintData::getDamping, &PhysicsConstraintData::setDamping)
+        .property("massInverse", &PhysicsConstraintData::getMassInverse, &PhysicsConstraintData::setMassInverse)
+        .property("wind", &PhysicsConstraintData::getWind, &PhysicsConstraintData::setWind)
+        .property("gravity", &PhysicsConstraintData::getGravity, &PhysicsConstraintData::setGravity)
+        .property("mix", &PhysicsConstraintData::getMix, &PhysicsConstraintData::setMix)
+        .property("inertiaGlobal", &PhysicsConstraintData::isInertiaGlobal, &PhysicsConstraintData::setInertiaGlobal)
+        .property("strengthGlobal", &PhysicsConstraintData::isStrengthGlobal, &PhysicsConstraintData::setStrengthGlobal)
+        .property("dampingGlobal", &PhysicsConstraintData::isDampingGlobal, &PhysicsConstraintData::setDampingGlobal)
+        .property("massGlobal", &PhysicsConstraintData::isMassGlobal, &PhysicsConstraintData::setMassGlobal)
+        .property("windGlobal", &PhysicsConstraintData::isWindGlobal, &PhysicsConstraintData::setWindGlobal)
+        .property("gravityGlobal", &PhysicsConstraintData::isGravityGlobal, &PhysicsConstraintData::setGravityGlobal)
+        .property("mixGlobal", &PhysicsConstraintData::isMixGlobal, &PhysicsConstraintData::setMixGlobal);
+
+    class_<PhysicsConstraint, base<Updatable>>("PhysicsConstraint")
+        .constructor<PhysicsConstraintData &, Skeleton &>()
+        .property("data", GETTER_RVAL_TO_PTR(PhysicsConstraint, getData, PhysicsConstraintData*))
+        .property("bone", &PhysicsConstraint::getBone, &PhysicsConstraint::setBone)
+        .property("inertia", &PhysicsConstraint::getInertia, &PhysicsConstraint::setInertia)
+        .property("strength", &PhysicsConstraint::getStrength, &PhysicsConstraint::setStrength)
+        .property("damping", &PhysicsConstraint::getDamping, &PhysicsConstraint::setDamping)
+        .property("massInverse", &PhysicsConstraint::getMassInverse, &PhysicsConstraint::setMassInverse)
+        .property("wind", &PhysicsConstraint::getWind, &PhysicsConstraint::setWind)
+        .property("gravity", &PhysicsConstraint::getGravity, &PhysicsConstraint::setGravity)
+        .property("mix", &PhysicsConstraint::getMix, &PhysicsConstraint::setMix)
+        .property("_reset", &PhysicsConstraint::getReset, &PhysicsConstraint::setReset)
+        .property("ux", &PhysicsConstraint::getUx, &PhysicsConstraint::setUx)
+        .property("uy", &PhysicsConstraint::getUy, &PhysicsConstraint::setUy)
+        .property("cx", &PhysicsConstraint::getCx, &PhysicsConstraint::setCx)
+        .property("cy", &PhysicsConstraint::getCy, &PhysicsConstraint::setCy)
+        .property("tx", &PhysicsConstraint::getTx, &PhysicsConstraint::setTx)
+        .property("ty", &PhysicsConstraint::getTy, &PhysicsConstraint::setTy)
+        .property("xOffset", &PhysicsConstraint::getXOffset, &PhysicsConstraint::setXOffset)
+        .property("xVelocity", &PhysicsConstraint::getXVelocity, &PhysicsConstraint::setXVelocity)
+        .property("yOffset", &PhysicsConstraint::getYOffset, &PhysicsConstraint::setYOffset)
+        .property("yVelocity", &PhysicsConstraint::getYVelocity, &PhysicsConstraint::setYVelocity)
+        .property("rotateOffset", &PhysicsConstraint::getRotateOffset, &PhysicsConstraint::setRotateOffset)
+        .property("rotateVelocity", &PhysicsConstraint::getRotateVelocity, &PhysicsConstraint::setRotateVelocity)
+        .property("scaleOffset", &PhysicsConstraint::getScaleOffset, &PhysicsConstraint::setScaleOffset)
+        .property("scaleVelocity", &PhysicsConstraint::getScaleVelocity, &PhysicsConstraint::setScaleVelocity)
+        .property("remaining", &PhysicsConstraint::getRemaining, &PhysicsConstraint::setRemaining)
+        .property("lastTime", &PhysicsConstraint::getLastTime, &PhysicsConstraint::setLastTime)
+        .function("reset", &PhysicsConstraint::reset)
+        .function("setToSetupPose", &PhysicsConstraint::setToSetupPose)
+        .function("translate", &PhysicsConstraint::translate)
+        .function("rotate", &PhysicsConstraint::rotate);
+
     class_<Bone, base<Updatable>>("Bone")
         .constructor<BoneData &, Skeleton &, Bone *>()
         .property("data", GETTER_RVAL_TO_PTR(Bone, getData, BoneData*))
@@ -1058,7 +1121,7 @@ EMSCRIPTEN_BINDINGS(spine) {
         .function("findAnimation", &SkeletonData::findAnimation, allow_raw_pointers())
         .function("findIkConstraint", &SkeletonData::findIkConstraint, allow_raw_pointers())
         .function("findTransformConstraint", &SkeletonData::findTransformConstraint, allow_raw_pointers())
-        .function("findPhysicsConstraint", &SkeletonData::findPathConstraint, allow_raw_pointers())
+        .function("findPhysicsConstraint", &SkeletonData::findPhysicsConstraint, allow_raw_pointers())
         .function("findPathConstraint", &SkeletonData::findPathConstraint, allow_raw_pointers());
 
     class_<Animation>("Animation")
@@ -1295,6 +1358,8 @@ EMSCRIPTEN_BINDINGS(spine) {
             return &obj.getTransformConstraints(); }), allow_raw_pointer<SPVectorTransformConstraintPtr>())
         .function("getPathConstraints", optional_override([](Skeleton &obj){
             return &obj.getPathConstraints(); }), allow_raw_pointer<SPVectorPathConstraintPtr>())
+        .function("getPhysicsConstraints", optional_override([](Skeleton &obj){
+            return &obj.getPhysicsConstraints(); }), allow_raw_pointer<SPVectorPhysicsConstraintPtr>())
         .function("getUpdateCacheList", optional_override([](Skeleton &obj){
             return &obj.getUpdateCacheList(); }), allow_raw_pointer<SPVectorUpdatablePtr>())
         .property("skin", &Skeleton::_skin)
@@ -1322,6 +1387,7 @@ EMSCRIPTEN_BINDINGS(spine) {
         .function("findIkConstraint", &Skeleton::findIkConstraint, allow_raw_pointers())
         .function("findTransformConstraint", &Skeleton::findTransformConstraint, allow_raw_pointers())
         .function("findPathConstraint", &Skeleton::findPathConstraint, allow_raw_pointers())
+        .function("findPhysicsConstraint", &Skeleton::findPhysicsConstraint, allow_raw_pointers())
         //.function("getBounds", optional_override([](Skeleton &obj, &outX, ) {}), allow_raw_pointers())
         .function("update", &Skeleton::update);
 
