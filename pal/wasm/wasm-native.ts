@@ -34,7 +34,7 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
         try {
             // NOTE: when it's in EDITOR, binaryUrl is a url with `external:` protocol.
             if (EDITOR) {
-                fetch('/cocos-api/engine/queryEngineInfo').then((response) => response.json().then((info: any) => {
+                fetch('/cocos-file/engine/engineExternal').then((response) => response.json().then((info: any) => {
                     const externalRoot = `${info.native.path}/external/`;
                     binaryUrl = binaryUrl.replace('external:', externalRoot);
                     const arrayBuffer = native.fileUtils.getDataFromFile(binaryUrl);
@@ -58,7 +58,7 @@ export function fetchUrl (binaryUrl: string): Promise<string> {
         try {
             // NOTE: when it's in EDITOR, binaryUrl is a url with `external:` protocol.
             if (EDITOR) {
-                fetch('/cocos-api/engine/queryEngineInfo').then((response) => response.json().then((info: any) => {
+                fetch('/cocos-file/engine/engineExternal').then((response) => response.json().then((info: any) => {
                     const externalRoot = `${info.native.path}/external/`;
                     binaryUrl = binaryUrl.replace('external:', externalRoot);
                     resolve(binaryUrl);

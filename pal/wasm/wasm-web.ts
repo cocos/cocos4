@@ -37,7 +37,7 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
             // NOTE: when it's in EDITOR or PREVIEW, binaryUrl is a url with `external:` protocol.
             if (EDITOR || PREVIEW) {
                 // NOTE: we resolve '/engine_external/' in editor preview server.
-                fetch(`/cocos-api/engine/queryEngineInfo/?url=${binaryUrl}`).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
+                fetch(`/cocos-file/engine/engineExternal/?url=${binaryUrl}`).then((response) => response.arrayBuffer().then(resolve)).catch((e) => {
                     // noop
                 });
                 return;
@@ -64,7 +64,7 @@ export function fetchUrl (binaryUrl: string): Promise<string> {
         try {
             // NOTE: when it's in EDITOR or PREVIEW, binaryUrl is a url with `external:` protocol.
             if (EDITOR || PREVIEW) {
-                resolve(`/engine_external/?url=${binaryUrl}`);
+                resolve(`/cocos-file/engine/engineExternal/?url=${binaryUrl}`);
                 return;
             }
             // here is in the BUILD mode
