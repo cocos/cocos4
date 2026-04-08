@@ -215,9 +215,9 @@ export function combine (task: Task): any {
 
         // ugly hack, WeChat does not support loading font likes 'myfont.dw213.ttf'. So append hash to directory
         if (item.ext === '.ttf') {
-            url = `${base}/${uuid.slice(0, 2)}/${uuid}${ver}/${item.options.__nativeName__}`;
+            url = `${base}/cocos-api/engine/${uuid.slice(0, 2)}/${uuid}${ver}/${item.options.__nativeName__}`;
         } else {
-            url = `${base}/${uuid.slice(0, 2)}/${uuid}${ver}${item.ext}`;
+            url = `${base}/cocos-api/engine/${uuid.slice(0, 2)}/${uuid}${ver}${item.ext}`;
         }
 
         item.url = url;

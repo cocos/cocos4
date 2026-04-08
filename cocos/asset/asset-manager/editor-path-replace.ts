@@ -100,7 +100,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                 let useAssetDB = true;
                 if (importBase && (importBase.startsWith('http://') || importBase.startsWith('https://'))) {
                     // cli：场景使用的是网络路径
-                    const requestUrl = `${importBase}/query-extname/${uuid}`;
+                    const requestUrl = `${importBase}/cocos-api/engine/queryExtname/${uuid}`;
                     try {
                         text = await fetchText(requestUrl) as string;
                         useAssetDB = false;
@@ -123,7 +123,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                     previewServer = settings.querySettings<string>(SettingsCategory.PATH, 'previewServer') || '';
                     assert(Boolean(previewServer));
                 }
-                text = await fetchText(`${previewServer}/query-extname/${uuid}`) as string;
+                text = await fetchText(`${previewServer}/cocos-api/engine/queryExtname/${uuid}`) as string;
             }
             cache[uuid] = text;
             if (resolveMap[uuid]) {
