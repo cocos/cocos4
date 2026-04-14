@@ -33,16 +33,16 @@ const MAGIC = 0x4E4F4343;
 const CHUNK_ALIGN_AS = 8;
 
 export class CCON {
-    constructor (document: unknown, chunks: Uint8Array[]) {
+    constructor(document: unknown, chunks: Uint8Array[]) {
         this._document = document;
         this._chunks = chunks;
     }
 
-    get document (): unknown {
+    get document(): unknown {
         return this._document;
     }
 
-    get chunks (): Uint8Array[] {
+    get chunks(): Uint8Array[] {
         return this._chunks;
     }
 
@@ -50,7 +50,7 @@ export class CCON {
     private declare _chunks: Uint8Array[];
 }
 
-export function encodeCCONBinary (ccon: CCON): Uint8Array {
+export function encodeCCONBinary(ccon: CCON): Uint8Array {
     const { document, chunks } = ccon;
 
     const jsonBytes = new Uint8Array(notepackEncode(document));
@@ -75,7 +75,7 @@ export function encodeCCONBinary (ccon: CCON): Uint8Array {
     headerView.setUint32(8, ccobBuilder.byteLength, true);
     return ccobBuilder.get();
 
-    function uint32Bytes (value: number): ArrayBufferView {
+    function uint32Bytes(value: number): ArrayBufferView {
         const bytes = new ArrayBuffer(4);
         const view = new DataView(bytes);
         view.setUint32(0, value, true);
@@ -83,7 +83,7 @@ export function encodeCCONBinary (ccon: CCON): Uint8Array {
     }
 }
 
-export function decodeCCONBinary (bytes: Uint8Array): CCON {
+export function decodeCCONBinary(bytes: Uint8Array): CCON {
     if (bytes.length < 16) {
         throw new InvalidCCONError(getError(13102));
     }
@@ -159,7 +159,7 @@ interface BufferConstructor {
     from(buffer: ArrayBuffer, byteOffset?: number, byteLength?: number): Buffer;
 }
 
-function decodeJson (data: Uint8Array): string {
+function decodeJson(data: Uint8Array): string {
     if (typeof TextDecoder !== 'undefined') {
         return new TextDecoder().decode(data);
     } else if ('Buffer' in globalThis) {
@@ -177,13 +177,13 @@ export class BufferBuilder {
     private _viewOrPaddings: (ArrayBufferView | number)[] = [];
     private _length = 0;
 
-    constructor () {}
+    constructor() { }
 
-    get byteLength (): number {
+    get byteLength(): number {
         return this._length;
     }
 
-    public alignAs (align: number): number {
+    public alignAs(align: number): number {
         if (align !== 0) {
             const remainder = this._length % align;
             if (remainder !== 0) {
@@ -196,14 +196,14 @@ export class BufferBuilder {
         return 0;
     }
 
-    public append (view: ArrayBufferView): number {
+    public append(view: ArrayBufferView): number {
         const result = this._length;
         this._viewOrPaddings.push(view);
         this._length += view.byteLength;
         return result;
     }
 
-    public get (): Uint8Array {
+    public get(): Uint8Array {
         const result = new Uint8Array(this._length);
         let counter = 0;
         this._viewOrPaddings.forEach((viewOrPadding) => {
@@ -219,4 +219,6 @@ export class BufferBuilder {
 }
 
 cclegacy.internal.decodeCCONBinary = decodeCCONBinary;
+cclegacy.internal.encodeCCONBinary = encodeCCONBinary;
 cclegacy.internal.CCON = CCON;
+cclegacy.internal.BufferBuilder = BufferBuilder;
