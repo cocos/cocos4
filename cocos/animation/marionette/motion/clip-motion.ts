@@ -160,7 +160,8 @@ class ClipMotionEval implements MotionEval {
 
     public overrideClips (context: AnimationGraphBindingContext): void {
         const { _originalClip: originalClip } = this;
-        const overriding = context.clipOverrides?.get(originalClip);
+        const clipOverrides: any = context.clipOverrides;
+        const overriding: AnimationClip | null = clipOverrides && clipOverrides.get ? clipOverrides.get(originalClip) : null;
         if (overriding) {
             this._setClip(overriding, context);
         }
