@@ -124,13 +124,6 @@ minigame.createInnerAudioContext = createInnerAudioContextPolyfill(wx, {
     onSeek: false,
 }, true);
 
-let _cachedSystemInfo: SystemInfo = wx.getWindowInfo();
-minigame.onWindowResize?.((): void => {
-    // update cached system info
-    _cachedSystemInfo = wx.getWindowInfo() as SystemInfo;
-});
-minigame.getWindowInfo = (): SystemInfo => _cachedSystemInfo;
-
 // #region SafeArea
 // FIX_ME: wrong safe area when orientation is landscape left
 minigame.getSafeArea = (): SafeArea => {
