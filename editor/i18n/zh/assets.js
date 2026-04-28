@@ -37,6 +37,11 @@ module.exports = {
         newTypeScript: '脚本 (TypeScript)',
         newCubeMap: '立方体贴图',
         newScene: '场景',
+        newScene:{
+            '2d': '2D',
+            '3d': '3D',
+            quality: '质量',
+        },
         newPrefab: '预制 (Prefab)',
         newRenderTexture: '渲染纹理 (Render Texture)',
         newMaterial: '材质',
