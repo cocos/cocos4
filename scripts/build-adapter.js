@@ -56,7 +56,7 @@ async function bundleMinigameAdapter () {
     for (const platform of platforms) {
         console.log(`handle platform: ${green(platform)}`);
 
-        const needUglify = true;
+        const needUglify = (platform !== 'xiaomi');  // uglify conflicts with the webpack tool on xiaomi platform
 
         // bundle engine-adapter.js
         const engineEntry = normalizePath(ps.join(engineRoot, `platforms/minigame/platforms/${platform}/wrapper/engine/index.js`));
@@ -64,7 +64,10 @@ async function bundleMinigameAdapter () {
         await bundle(engineEntry, engineOutput, needUglify);
 
         // bundle web-adapter.js
-        const builtinEntry = normalizePath(ps.join(engineRoot, `platforms/minigame/platforms/${platform}/wrapper/builtin/index.js`));
+        let builtinEntry = normalizePath(ps.join(engineRoot, `platforms/minigame/platforms/${platform}/wrapper/builtin/index.js`));
+        if (platform === 'xiaomi') {
+            builtinEntry = normalizePath(ps.join(engineRoot, `platforms/minigame/platforms/${platform}/wrapper/builtin.js`));
+        }
         const builtinOutput = normalizePath(ps.join(engineRoot, `bin/adapter/minigame/${platform}/web-adapter.js`));
         await bundle(builtinEntry, builtinOutput, needUglify);
     }
@@ -93,6 +96,7 @@ async function bundleNodejsAdapter () {
     const webAdapterEntry = normalizePath(ps.join(engineRoot, 'platforms/nodejs/builtin/index.js'));
     const webAdapterOutput = normalizePath(ps.join(engineRoot, 'bin/adapter/nodejs/web-adapter.js'));
     await bundle(webAdapterEntry, webAdapterOutput, true);
+
 }
 
 function normalizePath (path) {

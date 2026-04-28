@@ -577,6 +577,13 @@
             "value": false,
             "internal": false
         },
+        "XIAOMI": {
+            "comment": "Running in the xiaomi's quick game.",
+            "type": "boolean",
+            "value": false,
+            "ccGlobal": true,
+            "internal": false
+        },
         "ALIPAY": {
             "comment": "Running in the alipay's mini game.",
             "type": "boolean",
@@ -619,6 +626,13 @@
         },
         "HUAWEI": {
             "comment": "Running in the huawei's quick game.",
+            "type": "boolean",
+            "value": false,
+            "ccGlobal": true,
+            "internal": false
+        },
+        "MIGU": {
+            "comment": "Running in the migu's quick game.",
             "type": "boolean",
             "value": false,
             "ccGlobal": true,
@@ -724,14 +738,14 @@
         "MINIGAME": {
             "comment": "Running in mini game.",
             "type": "boolean",
-            "value": "$WECHAT || $WECHAT_MINI_PROGRAM || $ALIPAY || $TAOBAO || $TAOBAO_MINIGAME || $BYTEDANCE",
+            "value": "$WECHAT || $WECHAT_MINI_PROGRAM || $XIAOMI || $ALIPAY || $TAOBAO || $TAOBAO_MINIGAME || $BYTEDANCE",
             "ccGlobal": true,
             "internal": false
         },
         "RUNTIME_BASED": {
             "comment": "Running in runtime based environment.",
             "type": "boolean",
-            "value": "$OPPO || $VIVO || $HUAWEI || $HONOR || $COCOS_RUNTIME || $SUD || $SUDV2",
+            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD || $SUDV2",
             "ccGlobal": true,
             "internal": false
         },

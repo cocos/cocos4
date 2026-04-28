@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { ALIPAY, JSB, TEST, EDITOR, NODEJS } from 'internal:constants';
+import { ALIPAY, XIAOMI, JSB, TEST, EDITOR, NODEJS } from 'internal:constants';
 import { Format, FormatFeatureBit, deviceManager } from '../../gfx';
 import { PixelFormat } from './asset-enum';
 import { sys, macro, warnID, cclegacy } from '../../core';
@@ -54,7 +54,7 @@ function isImageBitmap (imageSource: any): boolean {
 }
 
 function isNativeImage (imageSource: ImageSource): imageSource is (HTMLImageElement | HTMLCanvasElement | ImageBitmap) {
-    if (ALIPAY) {
+    if (ALIPAY || XIAOMI) {
         // We're unable to grab the constructors of Alipay native image or canvas object.
         return !('_data' in imageSource);
     }
