@@ -38,6 +38,11 @@ module.exports = {
         newCubeMap: 'CubeMap',
         newRenderTexture: 'Render Texture',
         newScene: 'Scene',
+        newScene:{
+            '2d': '2D',
+            '3d': '3D',
+            quality: 'Quality',
+        },
         newPrefab: 'Node Prefab',
         newMaterial: 'Material',
         newPhysicsMaterial: 'Physics Material',
