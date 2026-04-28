@@ -97,7 +97,7 @@ replaceProperty(
     sys,
     'sys',
     ['UNKNOWN', 'EDITOR_PAGE', 'EDITOR_CORE', 'MOBILE_BROWSER', 'DESKTOP_BROWSER', 'WIN32', 'MACOS', 'IOS', 'ANDROID', 'OHOS',
-        'WECHAT_GAME', 'ALIPAY_MINI_GAME', 'BYTEDANCE_MINI_GAME',
+        'WECHAT_GAME', 'XIAOMI_QUICK_GAME', 'ALIPAY_MINI_GAME', 'BYTEDANCE_MINI_GAME',
         'OPPO_MINI_GAME', 'VIVO_MINI_GAME', 'HUAWEI_QUICK_GAME'].map((item) => ({
         name: item,
         target: sys.Platform,
