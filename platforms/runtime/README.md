@@ -3,4 +3,3 @@ included platforms:
 - vivo
 - OPPO
 - huawei
-- Migu

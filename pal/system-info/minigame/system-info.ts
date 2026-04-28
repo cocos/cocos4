@@ -23,7 +23,7 @@
  THE SOFTWARE.
 */
 
-import { ALIPAY, BYTEDANCE, HUAWEI, OPPO, RUNTIME_BASED, SUD, SUDV2, VIVO, MIGU, HONOR, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
+import { ALIPAY, BYTEDANCE, HUAWEI, OPPO, RUNTIME_BASED, SUD, SUDV2, VIVO, HONOR, WECHAT, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
 import { minigame, SystemInfo as MinigameSystemInfo } from 'pal/minigame';
 import { IFeatureMap } from 'pal/system-info';
 import { EventTarget } from '../../../cocos/core/event';
@@ -38,8 +38,6 @@ if (WECHAT) {
     currentPlatform = Platform.WECHAT_GAME;
 } else if (WECHAT_MINI_PROGRAM) {
     currentPlatform = Platform.WECHAT_MINI_PROGRAM;
-} else if (XIAOMI) {
-    currentPlatform = Platform.XIAOMI_QUICK_GAME;
 } else if (ALIPAY) {
     currentPlatform = Platform.ALIPAY_MINI_GAME;
 } else if (TAOBAO) {
@@ -54,8 +52,6 @@ if (WECHAT) {
     currentPlatform = Platform.VIVO_MINI_GAME;
 } else if (HUAWEI) {
     currentPlatform = Platform.HUAWEI_QUICK_GAME;
-} else if (MIGU) {
-    currentPlatform = Platform.MIGU_MINI_GAME;
 } else if (HONOR) {
     currentPlatform = Platform.HONOR_MINI_GAME;
 } else if (SUD) {
@@ -201,7 +197,7 @@ class SystemInfo extends EventTarget {
 
         // init isMobile and platform
         this.platform = currentPlatform;
-        // Some minigame platforms don't support getting the platform, such as runtime and Xiaomi, so this.os returns UNKNOWN.
+        // Some minigame platforms don't support getting the platform, such as runtime, so this.os returns UNKNOWN.
         // Most platforms are mobile, so set UNKNOWN to mobile.
         this.isMobile = this.os === OS.ANDROID || this.os === OS.IOS || this.os === OS.UNKNOWN;
 

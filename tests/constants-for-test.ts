@@ -31,7 +31,6 @@ export const WECHAT = tryDefineGlobal('CC_WECHAT', !!(defined('wx') && (wx.getSy
 export const MINIGAME = tryDefineGlobal('CC_MINIGAME', false);
 export const RUNTIME_BASED = tryDefineGlobal('CC_RUNTIME_BASED', false);
 export const ALIPAY = tryDefineGlobal('CC_ALIPAY', false);
-export const XIAOMI = tryDefineGlobal('CC_XIAOMI', false);
 export const BYTEDANCE = tryDefineGlobal('CC_BYTEDANCE', false);
 export const HUAWEI = tryDefineGlobal('CC_HUAWEI', false);
 export const OPPO = tryDefineGlobal('CC_OPPO', false);
