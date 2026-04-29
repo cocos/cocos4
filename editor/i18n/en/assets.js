@@ -41,7 +41,7 @@ module.exports = {
         newScene:{
             '2d': '2D Scene',
             '3d': '3D Scene',
-            quality: 'Quality',
+            quality: 'High Quality Scene',
         },
         newPrefab: 'Node Prefab',
         newMaterial: 'Material',
