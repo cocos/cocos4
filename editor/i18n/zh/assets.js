@@ -38,8 +38,8 @@ module.exports = {
         newCubeMap: '立方体贴图',
         newScene: '场景',
         newScene:{
-            '2d': '2D',
-            '3d': '3D',
+            '2d': '2D 场景',
+            '3d': '3D 场景',
             quality: '质量',
         },
         newPrefab: '预制 (Prefab)',

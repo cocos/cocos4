@@ -39,8 +39,8 @@ module.exports = {
         newRenderTexture: 'Render Texture',
         newScene: 'Scene',
         newScene:{
-            '2d': '2D',
-            '3d': '3D',
+            '2d': '2D Scene',
+            '3d': '3D Scene',
             quality: 'Quality',
         },
         newPrefab: 'Node Prefab',
