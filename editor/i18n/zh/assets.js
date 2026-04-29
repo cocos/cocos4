@@ -40,7 +40,7 @@ module.exports = {
         newScene:{
             '2d': '2D 场景',
             '3d': '3D 场景',
-            quality: '质量',
+            quality: '高质量场景',
         },
         newPrefab: '预制 (Prefab)',
         newRenderTexture: '渲染纹理 (Render Texture)',
