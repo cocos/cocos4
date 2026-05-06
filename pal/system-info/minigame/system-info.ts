@@ -137,12 +137,11 @@ minigame.getSystemInfoSync = function (): MinigameSystemInfo {
     return _cachedSystemInfo;
 };
 
-if(originalGetWindowInfo != undefined) {
+if (originalGetWindowInfo !== undefined) {
     minigame.getWindowInfo = function (): WindowInfo {
-        return _cachedWindowInfo!!;
+        return _cachedWindowInfo!;
     };
 }
-
 
 class SystemInfo extends EventTarget {
     public declare readonly networkType: NetworkType;
