@@ -24,7 +24,7 @@
 */
 
 import { ALIPAY, BYTEDANCE, HUAWEI, OPPO, RUNTIME_BASED, SUD, SUDV2, VIVO, MIGU, HONOR, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
-import { minigame, SystemInfo as MinigameSystemInfo } from 'pal/minigame';
+import { minigame, SystemInfo as MinigameSystemInfo, WindowInfo } from 'pal/minigame';
 import { IFeatureMap } from 'pal/system-info';
 import { EventTarget } from '../../../cocos/core/event';
 import { checkPalIntegrity, withImpl } from '../../integrity-check';
@@ -100,7 +100,10 @@ if (BYTEDANCE) {
 }
 
 const originalGetSystemInfoSync = minigame.getSystemInfoSync;
+// Some platforms may not have this interface(getWindowInfo).
+const originalGetWindowInfo = minigame.getWindowInfo;
 let _cachedSystemInfo: MinigameSystemInfo = originalGetSystemInfoSync.call(minigame);
+let _cachedWindowInfo: WindowInfo | undefined = originalGetWindowInfo?.call(minigame);
 
 function testAndUpdateSystemInfoCache (testAmount: number, testInterval: number): void {
     let successfullyTestTimes = 0;
@@ -127,11 +130,18 @@ if (WECHAT && versionCompare(minigame.getAppBaseInfo().SDKVersion, '2.25.3') < 0
 minigame.onWindowResize?.(() => {
     // update cached system info
     _cachedSystemInfo = originalGetSystemInfoSync.call(minigame);
+    _cachedWindowInfo = originalGetWindowInfo?.call(minigame);
 });
 
 minigame.getSystemInfoSync = function (): MinigameSystemInfo {
     return _cachedSystemInfo;
 };
+
+if (originalGetWindowInfo !== undefined) {
+    minigame.getWindowInfo = function (): WindowInfo {
+        return _cachedWindowInfo!;
+    };
+}
 
 class SystemInfo extends EventTarget {
     public declare readonly networkType: NetworkType;
