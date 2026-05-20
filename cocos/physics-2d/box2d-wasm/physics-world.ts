@@ -114,7 +114,7 @@ export class B2PhysicsWorld implements IPhysicsWorld {
 
         if (!v) {
             if (this._debugGraphics) {
-                this._debugGraphics.node.parent = null;
+                this._debugGraphics.clear();
             }
         }
 
