@@ -10,6 +10,7 @@ import { waitForBox2dWasmInstantiation } from "../../cocos/physics-2d/box2d-wasm
 
 import RigidBodyTest from "./rigid-body";
 import ColliderTest from "./collider"; 
+import JointTest from "./joint";
 import SceneQueryTest from "./scene-query";
 import EventTest from "./events";
 
@@ -43,6 +44,9 @@ for (const id in physics2d.selector.backend) {
 
         //test collider
         ColliderTest(temp0);
+
+        //test joint
+        JointTest(temp0);
 
         //test scene query
         SceneQueryTest(temp0);

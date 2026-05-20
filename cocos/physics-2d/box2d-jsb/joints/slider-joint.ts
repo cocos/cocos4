@@ -67,8 +67,10 @@ export class b2SliderJoint extends b2Joint implements ISliderJoint {
     _createJointDef (): any {
         const comp = this._jointComp as SliderJoint2D;
         const def = new b2jsb.PrismaticJointDef();
-        def.localAnchorA = { x: comp.anchor.x / PHYSICS_2D_PTM_RATIO, y: comp.anchor.y / PHYSICS_2D_PTM_RATIO };
-        def.localAnchorB = { x: comp.connectedAnchor.x / PHYSICS_2D_PTM_RATIO, y: comp.connectedAnchor.y / PHYSICS_2D_PTM_RATIO };
+        const localAnchorA = this._getLocalAnchorA();
+        const localAnchorB = this._getLocalAnchorB();
+        def.localAnchorA = { x: localAnchorA.x, y: localAnchorA.y };
+        def.localAnchorB = { x: localAnchorB.x, y: localAnchorB.y };
         const angle = toRadian(comp.angle);
         def.localAxisA = { x: Math.cos(angle), y: Math.sin(angle) };
         def.referenceAngle = 0;
