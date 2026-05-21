@@ -431,7 +431,9 @@ module.exports = link(mixin({
     scrollview: {
         content: 'A scrollable display of the Nodes content',
         horizontal: 'Horizontal scroll',
+        horizontalContentAlign: 'Horizontal alignment used when the content is not wider than the view.',
         vertical: 'Vertical scroll',
+        verticalContentAlign: 'Vertical alignment used when the content is not taller than the view.',
         inertia: 'When inertia is set, the content will continue to move when touch ended',
         brake: 'It determines how quickly the content stop moving.<br>A value of 1 will stop the movement immediately.<br>A value of 0 will never stop the movement until it reaches to the boundary of scrollview.',
         elastic: "If elastic is set, the content will bounce back when it's moved out of scroll boundary.",
