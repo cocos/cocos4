@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+const oneOfProp = require('./one-of-prop');
+
 const i18nPrefix = 'i18n:';
 /*
  * Returns the ordered PropMap
@@ -300,7 +302,9 @@ exports.updatePropByDump = function(panel, dump) {
                 }
             }
         }
-        $prop.render(info);
+        const renderInfo = oneOfProp.normalizeOneOfDumpForRender(info);
+        $prop.render(renderInfo);
+        oneOfProp.decorateOneOfPropElement(exports, $prop, renderInfo);
     });
 
     for (const id of oldPropKeys) {

@@ -25,6 +25,7 @@
 import { LegacyPropertyDecorator } from './utils';
 import { property } from './property';
 import { CCString, CCInteger, CCFloat, CCBoolean, PrimitiveType } from '../utils/attribute';
+import type { OneOfPropertyType } from './one-of';
 
 /**
  * @en Declare the property as integer
@@ -55,11 +56,15 @@ export const string = type(CCString);
  * @zh 标记该属性的类型。
  * @param type
  */
-export function type (type: Function | [Function] | any): LegacyPropertyDecorator;
+export function type (
+    type: Function | [Function] | OneOfPropertyType | [OneOfPropertyType] | any,
+): LegacyPropertyDecorator;
 
 export function type<T> (type: PrimitiveType<T> | [PrimitiveType<T>]): LegacyPropertyDecorator;
 
-export function type<T> (type: PrimitiveType<T> | Function | [PrimitiveType<T>] | [Function]): LegacyPropertyDecorator {
+export function type<T> (
+    type: PrimitiveType<T> | Function | OneOfPropertyType | [PrimitiveType<T>] | [Function] | [OneOfPropertyType],
+): LegacyPropertyDecorator {
     return property({
         type,
     });

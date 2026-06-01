@@ -32,4 +32,14 @@ export {
 } from './serializable';
 export * from './editable';
 export * from './type';
+export { OneOf } from './one-of';
+export type {
+    OneOfOptions,
+    OneOfVariant,
+    OneOfTypedVariant,
+    OneOfBranchVariant,
+    OneOfDiscriminator,
+    OneOfBranch,
+    OneOfPropertyType,
+} from './one-of';
 export { override } from './override';
