@@ -37,9 +37,9 @@ export type {
     OneOfOptions,
     OneOfVariant,
     OneOfTypedVariant,
-    OneOfBranchVariant,
+    OneOfKeyVariant,
     OneOfDiscriminator,
-    OneOfBranch,
+    OneOfKey,
     OneOfPropertyType,
 } from './one-of';
 export { override } from './override';

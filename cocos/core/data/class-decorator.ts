@@ -34,9 +34,9 @@ export type {
     OneOfOptions,
     OneOfVariant,
     OneOfTypedVariant,
-    OneOfBranchVariant,
+    OneOfKeyVariant,
     OneOfDiscriminator,
-    OneOfBranch,
+    OneOfKey,
     OneOfPropertyType,
 } from './decorators/one-of';
 

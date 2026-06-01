@@ -98,11 +98,11 @@ describe('@property OneOf', () => {
             discriminator: getKind,
             variants: [
                 {
-                    branch: 'a',
+                    key: 'a',
                     create: createA,
                 },
                 {
-                    branch: 'b',
+                    key: 'b',
                     create: createB,
                     label: 'B',
                 },
@@ -125,11 +125,11 @@ describe('@property OneOf', () => {
         });
         expect(attrs.oneOf.variants).toStrictEqual([
             {
-                branch: 'a',
+                key: 'a',
                 create: createA,
             },
             {
-                branch: 'b',
+                key: 'b',
                 create: createB,
                 label: 'B',
             },
@@ -143,11 +143,11 @@ describe('@property OneOf', () => {
             switchPropertyName: getOneOfSwitchPropertyName('value'),
             variants: [
                 {
-                    branch: 'a',
+                    key: 'a',
                     creatable: true,
                 },
                 {
-                    branch: 'b',
+                    key: 'b',
                     label: 'B',
                     creatable: true,
                 },
@@ -160,14 +160,14 @@ describe('@property OneOf', () => {
             discriminator: (value: OneOfDuck) => value.category,
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => ({
                         category: 'dog',
                         woof: true,
                     }),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => ({
                         category: 'cat',
                         meow: 'm',
@@ -202,11 +202,11 @@ describe('@property OneOf', () => {
             discriminator: (value) => value.category,
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => new OneOfDynamicDog(),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => new OneOfDynamicCat(),
                 },
             ],
@@ -226,14 +226,14 @@ describe('@property OneOf', () => {
 
         expect(staticAttrs.userData.oneOf.variants[0]).not.toHaveProperty('type');
         expect(dogAttrs.ctor).toBe(OneOfDynamicDog);
-        expect(dogAttrs.userData.oneOf.currentBranch).toBe('dog');
+        expect(dogAttrs.userData.oneOf.currentKey).toBe('dog');
         expect(dogAttrs.userData.oneOf.currentVariantIndex).toBe(0);
         expect(dogAttrs.userData.oneOf.variants[0]).toMatchObject({
-            branch: 'dog',
+            key: 'dog',
             type: 'OneOfDynamicDog',
         });
         expect(dogAttrs.userData.oneOf.variants[1]).toMatchObject({
-            branch: 'cat',
+            key: 'cat',
             type: 'OneOfDynamicCat',
         });
         expect(CCClass.Attr.attr(host.value, 'woof').default).toBe(true);
@@ -242,7 +242,7 @@ describe('@property OneOf', () => {
 
         const catAttrs = CCClass.Attr.attr(host, 'value');
         expect(catAttrs.ctor).toBe(OneOfDynamicCat);
-        expect(catAttrs.userData.oneOf.currentBranch).toBe('cat');
+        expect(catAttrs.userData.oneOf.currentKey).toBe('cat');
         expect(catAttrs.userData.oneOf.currentVariantIndex).toBe(1);
         expect(CCClass.Attr.attr(host.value, 'meow').default).toBe('');
     });
@@ -274,19 +274,19 @@ describe('@property OneOf', () => {
             ),
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => new OneOfMixedDog(),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => new OneOfMixedCat(),
                 },
                 {
-                    branch: 'number',
+                    key: 'number',
                     create: () => 0,
                 },
                 {
-                    branch: 'string',
+                    key: 'string',
                     create: () => '',
                 },
             ],
@@ -307,14 +307,14 @@ describe('@property OneOf', () => {
         expect(attrs.type).toBe('Number');
         expect(attrs.default).toBe(0);
         expect(attrs).not.toHaveProperty('ctor');
-        expect(attrs.userData.oneOf.currentBranch).toBe('number');
+        expect(attrs.userData.oneOf.currentKey).toBe('number');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(2);
         expect(attrs.userData.oneOf.variants[0]).toMatchObject({
-            branch: 'dog',
+            key: 'dog',
             type: 'OneOfMixedDog',
         });
         expect(attrs.userData.oneOf.variants[2]).toMatchObject({
-            branch: 'number',
+            key: 'number',
             type: 'Number',
         });
 
@@ -324,10 +324,10 @@ describe('@property OneOf', () => {
         expect(host.value).toBe('');
         expect(attrs.type).toBe('String');
         expect(attrs.default).toBe('');
-        expect(attrs.userData.oneOf.currentBranch).toBe('string');
+        expect(attrs.userData.oneOf.currentKey).toBe('string');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(3);
         expect(attrs.userData.oneOf.variants[3]).toMatchObject({
-            branch: 'string',
+            key: 'string',
             type: 'String',
         });
 
@@ -336,10 +336,10 @@ describe('@property OneOf', () => {
 
         expect(attrs.ctor).toBe(OneOfMixedCat);
         expect(attrs.default).toBeInstanceOf(OneOfMixedCat);
-        expect(attrs.userData.oneOf.currentBranch).toBe('cat');
+        expect(attrs.userData.oneOf.currentKey).toBe('cat');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(1);
         expect(attrs.userData.oneOf.variants[1]).toMatchObject({
-            branch: 'cat',
+            key: 'cat',
             type: 'OneOfMixedCat',
         });
     });
@@ -351,15 +351,15 @@ describe('@property OneOf', () => {
             discriminator: (value) => typeof value,
             variants: [
                 {
-                    branch: 'number',
+                    key: 'number',
                     create: () => 123,
                 },
                 {
-                    branch: 'string',
+                    key: 'string',
                     create: () => 'hello',
                 },
                 {
-                    branch: 'boolean',
+                    key: 'boolean',
                     create: () => true,
                 },
             ],
@@ -379,18 +379,18 @@ describe('@property OneOf', () => {
 
         expect(attrs.type).toBe('String');
         expect(attrs.default).toBe('hello');
-        expect(attrs.userData.oneOf.currentBranch).toBe('string');
+        expect(attrs.userData.oneOf.currentKey).toBe('string');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(1);
         expect(attrs.userData.oneOf.variants[0]).toMatchObject({
-            branch: 'number',
+            key: 'number',
             type: 'Number',
         });
         expect(attrs.userData.oneOf.variants[1]).toMatchObject({
-            branch: 'string',
+            key: 'string',
             type: 'String',
         });
         expect(attrs.userData.oneOf.variants[2]).toMatchObject({
-            branch: 'boolean',
+            key: 'boolean',
             type: 'Boolean',
         });
 
@@ -400,10 +400,10 @@ describe('@property OneOf', () => {
         expect(host.value).toBe(123);
         expect(attrs.type).toBe('Number');
         expect(attrs.default).toBe(123);
-        expect(attrs.userData.oneOf.currentBranch).toBe('number');
+        expect(attrs.userData.oneOf.currentKey).toBe('number');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(0);
         expect(attrs.userData.oneOf.variants[0]).toMatchObject({
-            branch: 'number',
+            key: 'number',
             type: 'Number',
         });
 
@@ -413,10 +413,10 @@ describe('@property OneOf', () => {
         expect(host.value).toBe(true);
         expect(attrs.type).toBe('Boolean');
         expect(attrs.default).toBe(true);
-        expect(attrs.userData.oneOf.currentBranch).toBe('boolean');
+        expect(attrs.userData.oneOf.currentKey).toBe('boolean');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(2);
         expect(attrs.userData.oneOf.variants[2]).toMatchObject({
-            branch: 'boolean',
+            key: 'boolean',
             type: 'Boolean',
         });
 
@@ -426,7 +426,7 @@ describe('@property OneOf', () => {
         expect(host.value).toBe('hello');
         expect(attrs.type).toBe('String');
         expect(attrs.default).toBe('hello');
-        expect(attrs.userData.oneOf.currentBranch).toBe('string');
+        expect(attrs.userData.oneOf.currentKey).toBe('string');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(1);
     });
 
@@ -453,11 +453,11 @@ describe('@property OneOf', () => {
             discriminator: (value) => value.category,
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => new OneOfSwitchDog(),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => new OneOfSwitchCat(),
                     label: 'Cat',
                 },
@@ -505,11 +505,11 @@ describe('@property OneOf', () => {
             discriminator: (value) => value.category,
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => new OneOfSwitchSetterDog(),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => new OneOfSwitchSetterCat(),
                 },
             ],
@@ -563,11 +563,11 @@ describe('@property OneOf', () => {
             discriminator: (value) => value.category,
             variants: [
                 {
-                    branch: 'dog',
+                    key: 'dog',
                     create: () => new OneOfSwitchIsolatedDog(),
                 },
                 {
-                    branch: 'cat',
+                    key: 'cat',
                     create: () => new OneOfSwitchIsolatedCat(),
                 },
             ],

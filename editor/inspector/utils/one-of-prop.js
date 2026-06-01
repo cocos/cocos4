@@ -304,8 +304,8 @@ function getOneOfVariantLabel(variant, index) {
     if (variant.label) {
         return variant.label;
     }
-    if (variant.branch !== undefined) {
-        return `${variant.branch}`;
+    if (variant.key !== undefined) {
+        return `${variant.key}`;
     }
     if (variant.type) {
         return variant.type;

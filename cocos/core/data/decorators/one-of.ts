@@ -44,7 +44,7 @@ interface OneOfCreateValueType {
 const oneOfCreateValueTypeCache = new WeakMap<object, OneOfCreateValueType | null>();
 const oneOfSwitchAccessorRegistry = new WeakMap<Function, Set<string>>();
 
-export type OneOfBranch = string | number | boolean | null;
+export type OneOfKey = string | number | boolean | null;
 
 type NoInferType<T> = [T][T extends unknown ? 0 : never];
 
@@ -53,7 +53,7 @@ export type OneOfConstructor<T = unknown> = Function & { prototype: T };
 
 export type OneOfDiscriminator<T = unknown>
     = string
-    | ((value: T) => OneOfBranch)
+    | ((value: T) => OneOfKey)
     | {
         kind?: 'field';
         property: string;
@@ -72,18 +72,18 @@ export type NormalizedOneOfDiscriminator<T = unknown>
     }
     | {
         kind: 'function';
-        get: (value: T) => OneOfBranch;
+        get: (value: T) => OneOfKey;
     };
 
 export interface OneOfTypedVariant<T = unknown> {
     type: OneOfConstructor<T>;
     label?: string;
-    branch?: OneOfBranch;
+    key?: OneOfKey;
     create?: () => NoInferType<T>;
 }
 
-export interface OneOfBranchVariant<T = unknown> {
-    branch: OneOfBranch;
+export interface OneOfKeyVariant<T = unknown> {
+    key: OneOfKey;
     create: () => unknown;
     label?: string;
     type?: OneOfConstructor<T>;
@@ -92,12 +92,12 @@ export interface OneOfBranchVariant<T = unknown> {
 export type OneOfVariant<T = unknown>
     = OneOfConstructor<T>
       | OneOfTypedVariant<T>
-      | OneOfBranchVariant<T>;
+      | OneOfKeyVariant<T>;
 
 export interface NormalizedOneOfVariant<T = unknown> {
     type?: OneOfConstructor<T>;
     label?: string;
-    branch?: OneOfBranch;
+    key?: OneOfKey;
     create?: () => unknown;
 }
 
@@ -116,7 +116,7 @@ interface OneOfVariantAttributeUserData {
     type?: string;
     typeId?: string;
     label?: string;
-    branch?: string | number | boolean | null;
+    key?: string | number | boolean | null;
     creatable: boolean;
 }
 
@@ -192,11 +192,11 @@ export function createOneOfVariantValue (oneOfType: OneOfPropertyType, index: nu
 
     if (
         oneOfType.discriminator.kind === 'field'
-        && 'branch' in variant
+        && 'key' in variant
         && value
         && typeof value === 'object'
     ) {
-        (value as Record<string, OneOfBranch>)[oneOfType.discriminator.property] = variant.branch as OneOfBranch;
+        (value as Record<string, OneOfKey>)[oneOfType.discriminator.property] = variant.key as OneOfKey;
     }
 
     return value;
@@ -270,7 +270,7 @@ export function applyDynamicOneOfAttrs (
             attrs.userData,
             oneOf,
             current.index,
-            current.branch,
+            current.key,
             ctor,
             primitiveType,
         );
@@ -365,8 +365,8 @@ function getOneOfAttributeUserData (
             if (variant.label) {
                 data.label = variant.label;
             }
-            if ('branch' in variant) {
-                data.branch = variant.branch;
+            if ('key' in variant) {
+                data.key = variant.key;
             }
             return data;
         }),
@@ -376,40 +376,40 @@ function getOneOfAttributeUserData (
 function findCurrentOneOfVariant (
     oneOf: OneOfPropertyType,
     value: unknown,
-): { variant: NormalizedOneOfVariant; index: number; branch?: OneOfBranch } | undefined {
+): { variant: NormalizedOneOfVariant; index: number; key?: OneOfKey } | undefined {
     switch (oneOf.discriminator.kind) {
     case 'field': {
         if (!value || typeof value !== 'object') {
             return undefined;
         }
-        const branch = (value as Record<string, unknown>)[oneOf.discriminator.property];
-        return isOneOfBranch(branch) ? findOneOfVariantByBranch(oneOf, branch) : undefined;
+        const key = (value as Record<string, unknown>)[oneOf.discriminator.property];
+        return isOneOfKey(key) ? findOneOfVariantByKey(oneOf, key) : undefined;
     }
     case 'function': {
         if (value == null) {
             return undefined;
         }
-        let branch: unknown;
+        let key: unknown;
         try {
-            branch = oneOf.discriminator.get(value);
+            key = oneOf.discriminator.get(value);
         } catch (error) {
             return undefined;
         }
-        return isOneOfBranch(branch) ? findOneOfVariantByBranch(oneOf, branch) : undefined;
+        return isOneOfKey(key) ? findOneOfVariantByKey(oneOf, key) : undefined;
     }
     default:
         return findOneOfVariantByType(oneOf, value);
     }
 }
 
-function findOneOfVariantByBranch (
+function findOneOfVariantByKey (
     oneOf: OneOfPropertyType,
-    branch: OneOfBranch,
-): { variant: NormalizedOneOfVariant; index: number; branch: OneOfBranch } | undefined {
-    const index = oneOf.variants.findIndex((variant) => 'branch' in variant && variant.branch === branch);
+    key: OneOfKey,
+): { variant: NormalizedOneOfVariant; index: number; key: OneOfKey } | undefined {
+    const index = oneOf.variants.findIndex((variant) => 'key' in variant && variant.key === key);
     return index === -1
         ? undefined
-        : { variant: oneOf.variants[index], index, branch };
+        : { variant: oneOf.variants[index], index, key };
 }
 
 function findOneOfVariantByType (
@@ -507,7 +507,7 @@ function getDynamicOneOfUserData (
     userData: Record<string, any>,
     oneOf: OneOfPropertyType,
     variantIndex: number,
-    branch: OneOfBranch | undefined,
+    key: OneOfKey | undefined,
     currentCtor: Function | undefined,
     currentPrimitiveType: OneOfPrimitiveAttributeType | undefined,
 ): Record<string, any> {
@@ -532,7 +532,7 @@ function getDynamicOneOfUserData (
         ...userData,
         oneOf: {
             ...oneOfUserData,
-            currentBranch: branch,
+            currentKey: key,
             currentVariantIndex: variantIndex,
             variants,
         },
@@ -647,11 +647,11 @@ function normalizeVariant<T> (variant: OneOfVariant<T>): NormalizedOneOfVariant<
         }
         normalized.label = variant.label;
     }
-    if ('branch' in variant) {
-        if (!isOneOfBranch(variant.branch)) {
-            throw new TypeError('OneOf variant branch must be a string, number, boolean, or null.');
+    if ('key' in variant) {
+        if (!isOneOfKey(variant.key)) {
+            throw new TypeError('OneOf variant key must be a string, number, boolean, or null.');
         }
-        normalized.branch = variant.branch;
+        normalized.key = variant.key;
     }
     if ('create' in variant && typeof variant.create !== 'undefined') {
         if (typeof variant.create !== 'function') {
@@ -676,8 +676,8 @@ function validateVariants<T> (
     }
 
     for (const variant of variants) {
-        if (!('branch' in variant)) {
-            throw new TypeError('OneOf discriminated variants must specify a branch.');
+        if (!('key' in variant)) {
+            throw new TypeError('OneOf discriminated variants must specify a key.');
         }
         if (!variant.type && !variant.create) {
             throw new TypeError('OneOf discriminated variants must specify a type or create function.');
@@ -685,7 +685,7 @@ function validateVariants<T> (
     }
 }
 
-function isOneOfBranch (value: unknown): value is OneOfBranch {
+function isOneOfKey (value: unknown): value is OneOfKey {
     return value === null
         || typeof value === 'string'
         || typeof value === 'number'
