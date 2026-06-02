@@ -15,7 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
         "cc.decorator": [
-            "./cocos/core/data/decorators/index.ts"
+            "cocos/core/data/decorators/index.ts"
         ]
     },
     "types": [
