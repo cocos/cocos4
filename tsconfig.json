@@ -9,15 +9,13 @@
     "noEmit": true,
     "strict": true,
     "noImplicitAny": false,
-    "downlevelIteration": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": "./",
     "paths": {
         "cc.decorator": [
-            "cocos/core/data/decorators/index.ts"
+            "./cocos/core/data/decorators/index.ts"
         ]
     },
     "types": [
