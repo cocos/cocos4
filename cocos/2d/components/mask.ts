@@ -64,10 +64,10 @@ function _calculateCircle (center: Vec3, radius: Vec3, segments: number): Vec3[]
  */
 export enum MaskType {
     /**
-     * @en Rect mask.
+     * @en Rect mask, supports rounded corners by setting radius.
      *
      * @zh
-     * 使用矩形作为遮罩。
+     * 使用矩形作为遮罩，可通过 radius 设置圆角。
      */
     GRAPHICS_RECT = 0,
 
@@ -217,6 +217,32 @@ export class Mask extends Component {
 
     /**
      * @en
+     * The radius for rounded corners of rect mask.
+     *
+     * @zh
+     * 矩形遮罩的圆角半径。
+     */
+    @visible(function (this: Mask) {
+        return this.type === MaskType.GRAPHICS_RECT;
+    })
+    @tooltip('i18n:mask.radius')
+    @range([0, Number.POSITIVE_INFINITY])
+    get radius (): number {
+        return this._radius;
+    }
+
+    set radius (value) {
+        const radius = clamp(value, 0, Number.POSITIVE_INFINITY);
+        if (this._radius === radius) {
+            return;
+        }
+
+        this._radius = radius;
+        this._updateGraphics();
+    }
+
+    /**
+     * @en
      * The mask image.
      *
      * @zh
@@ -290,6 +316,9 @@ export class Mask extends Component {
     protected _segments = 64;
 
     @serializable
+    protected _radius = 0;
+
+    @serializable
     protected _alphaThreshold = 0.1;
 
     protected _sprite: Sprite | null = null;
@@ -350,7 +379,25 @@ export class Mask extends Component {
         testPt.y += ap.y * h;
 
         let result = false;
-        if (this.type === MaskType.GRAPHICS_RECT || this.type === MaskType.GRAPHICS_STENCIL || this.type === MaskType.SPRITE_STENCIL) {
+        if (this.type === MaskType.GRAPHICS_RECT) {
+            result = testPt.x >= 0 && testPt.y >= 0 && testPt.x <= w && testPt.y <= h;
+            const radius = Math.min(this._radius, w / 2, h / 2);
+            if (result && radius > 0) {
+                let dx = 0;
+                let dy = 0;
+                if (testPt.x < radius) {
+                    dx = testPt.x - radius;
+                } else if (testPt.x > w - radius) {
+                    dx = testPt.x - (w - radius);
+                }
+                if (testPt.y < radius) {
+                    dy = testPt.y - radius;
+                } else if (testPt.y > h - radius) {
+                    dy = testPt.y - (h - radius);
+                }
+                result = dx * dx + dy * dy <= radius * radius;
+            }
+        } else if (this.type === MaskType.GRAPHICS_STENCIL || this.type === MaskType.SPRITE_STENCIL) {
             result = testPt.x >= 0 && testPt.y >= 0 && testPt.x <= w && testPt.y <= h;
         } else if (this.type === MaskType.GRAPHICS_ELLIPSE) {
             const rx = w / 2;
@@ -423,7 +470,12 @@ export class Mask extends Component {
         const x = -width * ap.x;
         const y = -height * ap.y;
         if (this._type === MaskType.GRAPHICS_RECT) {
-            graphics.rect(x, y, width, height);
+            const radius = Math.min(this._radius, width / 2, height / 2);
+            if (radius > 0) {
+                graphics.roundRect(x, y, width, height, radius);
+            } else {
+                graphics.rect(x, y, width, height);
+            }
         } else if (this._type === MaskType.GRAPHICS_ELLIPSE) {
             const center = new Vec3(x + width / 2, y + height / 2, 0);
             const radius = new Vec3(width / 2, height / 2, 0);

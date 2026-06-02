@@ -779,6 +779,7 @@ module.exports = link(mixin({
     },
     mask: {
         type: 'The mask type',
+        radius: 'The radius for rounded corners of rect mask',
         spriteFrame: 'The mask image',
         inverted: 'The Reverse mask (Not supported Canvas Mode)',
         alphaThreshold:
