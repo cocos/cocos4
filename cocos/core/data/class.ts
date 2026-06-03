@@ -195,8 +195,9 @@ function define (className, baseClass, options): any {
                 renderName = 'render_stage';
             }
             // 增加了 hidden: 开头标识，使它最终不会显示在 Editor inspector 的添加组件列表里
-
-            window.EditorExtends && window.EditorExtends.Component.addMenu(cls, `hidden:${renderName}/${className}`, -1);
+            if (window.EditorExtends) {
+                window.EditorExtends.Component.addMenu(cls, `hidden:${renderName}/${className}`, -1);
+            }
         }
 
         // Note: `options.ctor` should be the same as `cls` except if
