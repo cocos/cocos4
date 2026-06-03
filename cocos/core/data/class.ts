@@ -203,8 +203,8 @@ function define (className, baseClass, options): any {
         // cc-class is defined by `cc.Class({/* ... */})`.
         // In such case, `options.ctor` may be `undefined`.
         // So we can not use `options.ctor`. Instead, we should use `cls` which is the "real" registered cc-class.
-        // 通过 globalThis.EditorExtends 发送事件，与 line 199 的 addMenu 保持一致
-        // 确保浏览器 preview 中 scene-bundle 的 Executor 能正确追踪类注册
+        // Emit via globalThis.EditorExtends to ensure the event reaches
+        // both the engine-internal and the scene-bundle event systems.
         if (globalThis.EditorExtends) {
             globalThis.EditorExtends.emit('class-registered', cls, frame, className);
         } else {
