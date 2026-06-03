@@ -34,8 +34,8 @@ export class b2CircleShape extends b2Shape2D implements ICircleShape {
 
     _worldPosition = new Vec2();
     get worldPosition (): Vec2 {
-        const p = (this._shapes[0] as b2jsb.CircleShape).m_p;
-        return this._worldPosition.set(p.x * PHYSICS_2D_PTM_RATIO, p.y * PHYSICS_2D_PTM_RATIO);
+        const comp = this.collider as CircleCollider2D;
+        return Vec2.transformMat4(this._worldPosition, comp.offset, comp.node.worldMatrix);
     }
 
     _createShapes (scaleX: number, scaleY: number, relativePositionX: number, relativePositionY: number): any[] {
