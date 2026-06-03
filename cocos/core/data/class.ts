@@ -196,14 +196,20 @@ function define (className, baseClass, options): any {
             }
             // 增加了 hidden: 开头标识，使它最终不会显示在 Editor inspector 的添加组件列表里
 
-            window.EditorExtends && window.EditorExtends.Component.addMenu(cls, `hidden:${renderName}/${className}`, -1);
+            globalThis.EditorExtends && globalThis.EditorExtends.Component.addMenu(cls, `hidden:${renderName}/${className}`, -1);
         }
 
         // Note: `options.ctor` should be the same as `cls` except if
         // cc-class is defined by `cc.Class({/* ... */})`.
         // In such case, `options.ctor` may be `undefined`.
         // So we can not use `options.ctor`. Instead, we should use `cls` which is the "real" registered cc-class.
-        EditorExtends.emit('class-registered', cls, frame, className);
+        // 通过 globalThis.EditorExtends 发送事件，与 line 199 的 addMenu 保持一致
+        // 确保浏览器 preview 中 scene-bundle 的 Executor 能正确追踪类注册
+        if (globalThis.EditorExtends) {
+            globalThis.EditorExtends.emit('class-registered', cls, frame, className);
+        } else {
+            EditorExtends.emit('class-registered', cls, frame, className);
+        }
     }
 
     if (frame) {
