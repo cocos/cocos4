@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { EPSILON, Quat, Vec2, Vec3 } from "../../cocos/core";
 import { director } from "../../cocos/game";
 import { Node } from "../../cocos/scene-graph";
@@ -36,6 +38,23 @@ export default function (parent: Node, _steps = 0) {
         collider.sensor = true;
         expect(collider.sensor).toBe(true);
     
+        parent.destroyAllChildren();
+        parent.removeAllChildren();
+    }
+
+    // circle worldPosition
+    {
+        const nodeCollider = new Node('CircleCollider2D');
+        parent.addChild(nodeCollider);
+        nodeCollider.worldPosition = new Vec3(10, 20, 0);
+
+        nodeCollider.addComponent(physics2d.RigidBody2D);
+        const collider = nodeCollider.addComponent(physics2d.CircleCollider2D) as physics2d.CircleCollider2D;
+        collider.offset = new Vec2(2, -3);
+        collider.apply();
+
+        expect(Vec2.equals(collider.worldPosition, new Vec2(12, 17))).toBe(true);
+
         parent.destroyAllChildren();
         parent.removeAllChildren();
     }

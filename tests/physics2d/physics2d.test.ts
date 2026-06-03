@@ -12,6 +12,7 @@ import RigidBodyTest from "./rigid-body";
 import ColliderTest from "./collider"; 
 import SceneQueryTest from "./scene-query";
 import EventTest from "./events";
+import DebugDrawTest from "./debug-draw";
 
 game.emit(Game.EVENT_PRE_SUBSYSTEM_INIT);
 physics2d.PhysicsSystem2D.constructAndRegister();
@@ -49,6 +50,9 @@ for (const id in physics2d.selector.backend) {
 
         //test events
         EventTest(temp0);
+
+        //test debug draw
+        DebugDrawTest();
 
         // destroy test scene
         temp0.destroy();

@@ -760,6 +760,7 @@ module.exports = link(mixin({
     },
     mask: {
         type: '遮罩类型',
+        radius: '矩形遮罩的圆角半径',
         spriteFrame: '遮罩所需要的贴图',
         inverted: '反向遮罩（不支持 Canvas 模式）',
         alphaThreshold: 'Alpha 阈值，只有当模板的像素的 Alpha 大于 Alpha Threshold 时，才会绘制内容（不支持 Canvas 模式）',
