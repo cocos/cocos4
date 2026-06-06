@@ -25,7 +25,7 @@
 import { cclegacy } from './core/global-exports';
 import { DataPoolManager } from './3d/skeletal-animation/data-pool-manager';
 import { Device, deviceManager } from './gfx';
-import { settings, Settings, warnID, Pool, macro, log } from './core';
+import { settings, Settings, warnID, Pool, macro, log, debug } from './core';
 import { PipelineEventProcessor } from './rendering/pipeline-event';
 import type { Root as JsbRoot } from './root';
 
@@ -242,7 +242,7 @@ rootProto.setRenderPipeline = function (customPipeline: boolean) {
     if (customPipeline) {
         cclegacy.rendering.createCustomPipeline();
         ppl = oldSetPipeline.call(this, null);
-        log(`Using custom pipeline: ${macro.CUSTOM_PIPELINE_NAME}`);
+        debug(`Using custom pipeline: ${macro.CUSTOM_PIPELINE_NAME}`);
     } else {
         // pipeline should not be created in C++, ._ctor need to be triggered
         if (cclegacy.legacy_rendering) {
