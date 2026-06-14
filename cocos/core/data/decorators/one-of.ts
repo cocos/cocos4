@@ -22,7 +22,8 @@
  THE SOFTWARE.
 */
 
-import { EDITOR, TEST } from 'internal:constants';
+import { DEV, EDITOR, TEST } from 'internal:constants';
+import { warn } from '../../platform/debug';
 import { getClassId, getClassName, isChildClassOf } from '../../utils/js';
 import type { IExposedAttributesUserData } from '../utils/attribute-defines';
 
@@ -36,12 +37,6 @@ const ONE_OF_BRAND = '__ccOneOfPropertyType__';
 
 type OneOfPrimitiveAttributeType = 'Number' | 'String' | 'Boolean';
 
-interface OneOfCreateValueType {
-    ctor?: Function;
-    primitiveType?: OneOfPrimitiveAttributeType;
-}
-
-const oneOfCreateValueTypeCache = new WeakMap<object, OneOfCreateValueType | null>();
 const oneOfSwitchAccessorRegistry = new WeakMap<Function, Set<string>>();
 
 export type OneOfKey = string | number | boolean | null;
@@ -190,15 +185,6 @@ export function createOneOfVariantValue (oneOfType: OneOfPropertyType, index: nu
         return undefined;
     }
 
-    if (
-        oneOfType.discriminator.kind === 'field'
-        && 'key' in variant
-        && value
-        && typeof value === 'object'
-    ) {
-        (value as Record<string, OneOfKey>)[oneOfType.discriminator.property] = variant.key as OneOfKey;
-    }
-
     return value;
 }
 
@@ -244,13 +230,7 @@ export function applyDynamicOneOfAttrs (
     }
 
     const nextAttrs = { ...attrs };
-    const defaultValue = createOneOfVariantDefaultValue(oneOf, current.index);
-    if (defaultValue !== undefined) {
-        nextAttrs.default = defaultValue;
-    } else {
-        delete nextAttrs.default;
-    }
-
+    delete nextAttrs.default;
     const primitiveType = getOneOfValuePrimitiveType(value);
     let ctor: Function | undefined;
     if (primitiveType) {
@@ -268,23 +248,12 @@ export function applyDynamicOneOfAttrs (
     if (attrs.userData && typeof attrs.userData === 'object') {
         nextAttrs.userData = getDynamicOneOfUserData(
             attrs.userData,
-            oneOf,
             current.index,
             current.key,
-            ctor,
-            primitiveType,
         );
     }
 
     return nextAttrs;
-}
-
-function createOneOfVariantDefaultValue (oneOfType: OneOfPropertyType, index: number): unknown {
-    try {
-        return createOneOfVariantValue(oneOfType, index);
-    } catch (error) {
-        return undefined;
-    }
 }
 
 function installOneOfSwitchVirtualAccessor (
@@ -317,7 +286,13 @@ function installOneOfSwitchVirtualAccessor (
             if (index === undefined || index >= oneOfType.variants.length) {
                 return;
             }
-            (this as Record<string, unknown>)[propertyName] = createOneOfVariantValue(oneOfType, index);
+            try {
+                (this as Record<string, unknown>)[propertyName] = createOneOfVariantValue(oneOfType, index);
+            } catch (error) {
+                if (DEV) {
+                    warn(`[OneOf] Failed to create variant ${index} for property "${propertyName}":`, error);
+                }
+            }
         },
     });
 
@@ -465,67 +440,17 @@ function isOneOfValueOfCtor (value: unknown, ctor: Function): boolean {
 }
 
 function getOneOfVariantCtor (variant: NormalizedOneOfVariant): Function | undefined {
-    if (variant.type) {
-        return variant.type;
-    }
-    return getOneOfVariantCreateValueType(variant)?.ctor;
-}
-
-function getOneOfVariantPrimitiveType (variant: NormalizedOneOfVariant): OneOfPrimitiveAttributeType | undefined {
-    return getOneOfVariantCreateValueType(variant)?.primitiveType;
-}
-
-function getOneOfVariantCreateValueType (variant: NormalizedOneOfVariant): OneOfCreateValueType | undefined {
-    if (!variant.create) {
-        return undefined;
-    }
-    if (oneOfCreateValueTypeCache.has(variant)) {
-        return oneOfCreateValueTypeCache.get(variant) || undefined;
-    }
-
-    let valueType: OneOfCreateValueType | undefined;
-    try {
-        const value = variant.create();
-        const primitiveType = getOneOfValuePrimitiveType(value);
-        if (primitiveType) {
-            valueType = { primitiveType };
-        } else if (value && typeof value === 'object') {
-            const valueCtor = (value as { constructor?: Function }).constructor;
-            if (valueCtor && valueCtor !== Object) {
-                valueType = { ctor: valueCtor };
-            }
-        }
-    } catch (error) {
-        // Creation factories are user code; failing to infer a type should not break attr lookup.
-    }
-
-    oneOfCreateValueTypeCache.set(variant, valueType || null);
-    return valueType;
+    return variant.type;
 }
 
 function getDynamicOneOfUserData (
     userData: Record<string, any>,
-    oneOf: OneOfPropertyType,
     variantIndex: number,
     key: OneOfKey | undefined,
-    currentCtor: Function | undefined,
-    currentPrimitiveType: OneOfPrimitiveAttributeType | undefined,
 ): Record<string, any> {
     const oneOfUserData = userData.oneOf;
     if (!oneOfUserData || typeof oneOfUserData !== 'object') {
         return userData;
-    }
-
-    const variants = Array.isArray(oneOfUserData.variants)
-        ? oneOfUserData.variants.map((item) => ({ ...item }))
-        : [];
-    variants.forEach((variantUserData, index) => {
-        applyOneOfVariantValueTypeUserData(variantUserData, oneOf.variants[index]);
-    });
-    if (currentCtor && variants[variantIndex]) {
-        applyOneOfVariantCtorUserData(variants[variantIndex], currentCtor);
-    } else if (currentPrimitiveType && variants[variantIndex]) {
-        applyOneOfVariantPrimitiveTypeUserData(variants[variantIndex], currentPrimitiveType);
     }
 
     return {
@@ -534,53 +459,8 @@ function getDynamicOneOfUserData (
             ...oneOfUserData,
             currentKey: key,
             currentVariantIndex: variantIndex,
-            variants,
         },
     };
-}
-
-function applyOneOfVariantValueTypeUserData (
-    variantUserData: Record<string, any>,
-    variant: NormalizedOneOfVariant | undefined,
-): void {
-    if (!variant) {
-        return;
-    }
-
-    const ctor = getOneOfVariantCtor(variant);
-    if (ctor) {
-        applyOneOfVariantCtorUserData(variantUserData, ctor);
-        return;
-    }
-
-    const primitiveType = getOneOfVariantPrimitiveType(variant);
-    if (primitiveType) {
-        applyOneOfVariantPrimitiveTypeUserData(variantUserData, primitiveType);
-    }
-}
-
-function applyOneOfVariantCtorUserData (variantUserData: Record<string, any>, ctor: Function | undefined): void {
-    if (!ctor) {
-        return;
-    }
-
-    const type = getClassName(ctor) || ctor.name;
-    if (type) {
-        variantUserData.type = type;
-    }
-
-    const typeId = getClassId(ctor);
-    if (typeId) {
-        variantUserData.typeId = typeId;
-    }
-}
-
-function applyOneOfVariantPrimitiveTypeUserData (
-    variantUserData: Record<string, any>,
-    primitiveType: OneOfPrimitiveAttributeType,
-): void {
-    variantUserData.type = primitiveType;
-    delete variantUserData.typeId;
 }
 
 function normalizeDiscriminator<T> (discriminator: OneOfDiscriminator<T> | undefined): NormalizedOneOfDiscriminator<T> {

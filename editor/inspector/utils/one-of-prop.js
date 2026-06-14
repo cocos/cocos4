@@ -59,6 +59,7 @@ exports.clearOneOfPropElement = function($prop) {
     $prop.$oneOfSelect.remove();
     delete $prop.$oneOfSelect;
     uninstallOneOfSelectEvents($prop);
+    uninstallOneOfResetEvent($prop);
 };
 
 function getOrCreateOneOfSelect($prop) {
@@ -76,6 +77,7 @@ function getOrCreateOneOfSelect($prop) {
     });
     $prop.$oneOfSelect = $select;
     installOneOfSelectEvents($prop);
+    installOneOfResetEvent($prop);
     return $select;
 }
 
@@ -251,6 +253,32 @@ function uninstallOneOfSelectEvents($prop) {
     $prop.removeEventListener('change', $prop.$oneOfSelectEventHandler, true);
     $prop.removeEventListener('confirm', $prop.$oneOfSelectEventHandler, true);
     delete $prop.$oneOfSelectEventHandler;
+}
+
+function installOneOfResetEvent($prop) {
+    if ($prop.$oneOfResetEventHandler) {
+        return;
+    }
+
+    $prop.$oneOfResetEventHandler = (event) => {
+        if (event.target !== $prop || !$prop.$oneOfSelect) {
+            return;
+        }
+
+        event.stopPropagation();
+        event.preventDefault();
+        dispatchOneOfSwitch($prop, $prop.$oneOfSelect.value);
+    };
+    $prop.addEventListener('reset-dump', $prop.$oneOfResetEventHandler, true);
+}
+
+function uninstallOneOfResetEvent($prop) {
+    if (!$prop.$oneOfResetEventHandler) {
+        return;
+    }
+
+    $prop.removeEventListener('reset-dump', $prop.$oneOfResetEventHandler, true);
+    delete $prop.$oneOfResetEventHandler;
 }
 
 function getEventOneOfSelect(event) {

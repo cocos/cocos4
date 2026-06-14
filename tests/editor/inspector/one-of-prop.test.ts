@@ -176,6 +176,122 @@ describe('inspector oneOf prop', () => {
         ]);
     });
 
+    test('resetting oneOf root dispatches the current variant switch command', () => {
+        const outerPanel = document.createElement('ui-panel');
+        const outerShadow = outerPanel.attachShadow({ mode: 'open' });
+        const events: string[] = [];
+        const resetEvents: string[] = [];
+        const duckDump = {
+            name: 'oneOfDuck',
+            path: '__comps__.0.oneOfDuck',
+            type: 'OneOf',
+            value: {},
+            userData: {
+                oneOf: {
+                    currentVariantIndex: 1,
+                    switchCommandPrefix: '__cc_oneof_switch__:',
+                    switchPropertyName: '__cc_oneOfSwitch_oneOfDuck',
+                    switchType: 'String',
+                    variants: [
+                        { key: 'dog', creatable: true },
+                        { key: 'cat', creatable: true },
+                    ],
+                },
+            },
+        };
+        const $duckProp = document.createElement('ui-prop');
+
+        $duckProp.dump = duckDump;
+        outerShadow.appendChild($duckProp);
+        document.body.appendChild(outerPanel);
+
+        outerShadow.addEventListener('reset-dump', (event) => {
+            resetEvents.push((event.target as HTMLElement & { dump?: { path?: string } }).dump?.path || '');
+        });
+        outerShadow.addEventListener('change-dump', (event) => {
+            events.push(`change:${(event.target as HTMLElement & { dump?: { path?: string; value?: string } }).dump?.path || ''}:${
+                (event.target as HTMLElement & { dump?: { value?: string } }).dump?.value || ''
+            }`);
+        });
+        outerShadow.addEventListener('confirm-dump', (event) => {
+            events.push(`confirm:${(event.target as HTMLElement & { dump?: { path?: string; value?: string } }).dump?.path || ''}:${
+                (event.target as HTMLElement & { dump?: { value?: string } }).dump?.value || ''
+            }`);
+        });
+
+        oneOfProp.decorateOneOfPropElement({
+            setReadonly () {},
+        }, $duckProp, duckDump);
+
+        const resetCancelled = !$duckProp.dispatchEvent(new CustomEvent('reset-dump', {
+            bubbles: true,
+            cancelable: true,
+        }));
+
+        expect(resetCancelled).toBe(true);
+        expect(resetEvents).toHaveLength(0);
+        expect(events).toStrictEqual([
+            'change:__comps__.0.__cc_oneOfSwitch_oneOfDuck:__cc_oneof_switch__:1',
+            'confirm:__comps__.0.__cc_oneOfSwitch_oneOfDuck:__cc_oneof_switch__:1',
+        ]);
+    });
+
+    test('resetting a child under oneOf root still bubbles as a normal reset', () => {
+        const outerPanel = document.createElement('ui-panel');
+        const outerShadow = outerPanel.attachShadow({ mode: 'open' });
+        const resetEvents: string[] = [];
+        const duckDump = {
+            name: 'oneOfDuck',
+            path: '__comps__.0.oneOfDuck',
+            type: 'OneOf',
+            value: {},
+            userData: {
+                oneOf: {
+                    currentVariantIndex: 1,
+                    switchCommandPrefix: '__cc_oneof_switch__:',
+                    switchPropertyName: '__cc_oneOfSwitch_oneOfDuck',
+                    switchType: 'String',
+                    variants: [
+                        { key: 'dog', creatable: true },
+                        { key: 'cat', creatable: true },
+                    ],
+                },
+            },
+        };
+        const childDump = {
+            name: 'meow',
+            path: '__comps__.0.oneOfDuck.meow',
+            type: 'String',
+            value: 'edited',
+        };
+        const $duckProp = document.createElement('ui-prop');
+        const $childProp = document.createElement('ui-prop');
+
+        $duckProp.dump = duckDump;
+        $childProp.dump = childDump;
+        $duckProp.appendChild($childProp);
+        outerShadow.appendChild($duckProp);
+        document.body.appendChild(outerPanel);
+
+        outerShadow.addEventListener('reset-dump', (event) => {
+            resetEvents.push((event.target as HTMLElement & { dump?: { path?: string } }).dump?.path || '');
+        });
+
+        oneOfProp.decorateOneOfPropElement({
+            setReadonly () {},
+        }, $duckProp, duckDump);
+
+        const resetCancelled = !$childProp.dispatchEvent(new CustomEvent('reset-dump', {
+            bubbles: true,
+            cancelable: true,
+        }));
+
+        expect(resetCancelled).toBe(false);
+        expect(resetEvents).toStrictEqual([
+            '__comps__.0.oneOfDuck.meow',
+        ]);
+    });
+
     test('restores the label slot when a oneOf object renderer switches to a primitive renderer', () => {
         const numberDump = {
             name: 'complexOneOf',
