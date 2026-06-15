@@ -234,12 +234,12 @@ function installOneOfSelectEvents($prop) {
             return;
         }
 
-        event.stopPropagation();
-        event.preventDefault();
-
         if (event.type === 'change') {
             dispatchOneOfSwitch($prop, $select.value);
         }
+
+        event.stopPropagation();
+        event.preventDefault();
     };
     $prop.addEventListener('change', $prop.$oneOfSelectEventHandler, true);
     $prop.addEventListener('confirm', $prop.$oneOfSelectEventHandler, true);
@@ -265,9 +265,12 @@ function installOneOfResetEvent($prop) {
             return;
         }
 
+        if (!dispatchOneOfSwitch($prop, $prop.$oneOfSelect.value)) {
+            return;
+        }
+
         event.stopPropagation();
         event.preventDefault();
-        dispatchOneOfSwitch($prop, $prop.$oneOfSelect.value);
     };
     $prop.addEventListener('reset-dump', $prop.$oneOfResetEventHandler, true);
 }
@@ -291,15 +294,19 @@ function getEventOneOfSelect(event) {
 }
 
 function dispatchOneOfSwitch($prop, rawIndex) {
+    if (typeof rawIndex !== 'string' || !/^(0|[1-9]\d*)$/.test(rawIndex)) {
+        return false;
+    }
+
     const index = Number(rawIndex);
     if (!Number.isInteger(index) || index < 0) {
-        return;
+        return false;
     }
 
     const sourceDump = $prop.$oneOfSelect && $prop.$oneOfSelect.$oneOfDump || $prop.dump;
     const oneOf = sourceDump && sourceDump.userData && sourceDump.userData.oneOf;
     if (!oneOf) {
-        return;
+        return false;
     }
 
     const prefix = oneOf.switchCommandPrefix || oneOfSwitchCommandPrefix;
@@ -326,6 +333,7 @@ function dispatchOneOfSwitch($prop, rawIndex) {
         cancelable: true,
     }));
     $prop.dump = originalDump;
+    return true;
 }
 
 function getOneOfVariantLabel(variant, index) {

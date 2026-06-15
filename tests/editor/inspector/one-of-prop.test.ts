@@ -1,4 +1,5 @@
 const oneOfProp = require('../../../editor/inspector/utils/one-of-prop');
+const propUtils = require('../../../editor/inspector/utils/prop');
 
 describe('inspector oneOf prop', () => {
     test('normalizes primitive oneOf dumps before rendering', () => {
@@ -89,6 +90,45 @@ describe('inspector oneOf prop', () => {
         expect(normalized).not.toHaveProperty('default');
     });
 
+    test('shared dump renderer normalizes and decorates oneOf props', () => {
+        /// @case
+        /// 1. A custom inspector path renders a primitive OneOf dump through the shared dump renderer.
+        /// 2. The dump still carries the static OneOf type tag before rendering.
+        /// @expect
+        /// The renderer receives the normalized primitive type and the OneOf selector is attached.
+        const dump = {
+            name: 'primitive',
+            path: '__comps__.0.primitive',
+            type: 'OneOf',
+            value: 123,
+            userData: {
+                oneOf: {
+                    currentVariantIndex: 0,
+                    switchCommandPrefix: '__cc_oneof_switch__:',
+                    switchPropertyName: '__cc_oneOfSwitch_primitive',
+                    switchType: 'String',
+                    variants: [
+                        { key: 'number', label: 'Number', creatable: true },
+                        { key: 'string', label: 'String', creatable: true },
+                    ],
+                },
+            },
+        };
+        const $prop = document.createElement('ui-prop');
+        const rendered: unknown[] = [];
+        $prop.render = (info: unknown) => {
+            rendered.push(info);
+        };
+
+        propUtils.renderDumpProp($prop, dump);
+
+        expect(rendered).toHaveLength(1);
+        expect(rendered[0]).not.toBe(dump);
+        expect((rendered[0] as { type?: string }).type).toBe('Number');
+        expect($prop.$oneOfSelect).toBeTruthy();
+        expect($prop.$oneOfSelect.value).toBe('0');
+    });
+
     test('switching oneOf duck does not submit the sibling complex oneOf value', () => {
         const outerPanel = document.createElement('ui-panel');
         const outerShadow = outerPanel.attachShadow({ mode: 'open' });
@@ -176,6 +216,56 @@ describe('inspector oneOf prop', () => {
         ]);
     });
 
+    test('switching an unresolved oneOf selection does not dispatch a switch command', () => {
+        /// @case
+        /// 1. A OneOf root has no currentVariantIndex, so the selector has no selected option.
+        /// 2. The empty selector value emits a change event.
+        /// @expect
+        /// No switch dump is dispatched and the empty value is not coerced to variant 0.
+        const outerPanel = document.createElement('ui-panel');
+        const outerShadow = outerPanel.attachShadow({ mode: 'open' });
+        const events: string[] = [];
+        const duckDump = {
+            name: 'oneOfDuck',
+            path: '__comps__.0.oneOfDuck',
+            type: 'OneOf',
+            value: {},
+            userData: {
+                oneOf: {
+                    switchCommandPrefix: '__cc_oneof_switch__:',
+                    switchPropertyName: '__cc_oneOfSwitch_oneOfDuck',
+                    switchType: 'String',
+                    variants: [
+                        { key: 'dog', creatable: true },
+                        { key: 'cat', creatable: true },
+                    ],
+                },
+            },
+        };
+        const $duckProp = document.createElement('ui-prop');
+
+        $duckProp.dump = duckDump;
+        outerShadow.appendChild($duckProp);
+        document.body.appendChild(outerPanel);
+
+        outerShadow.addEventListener('change-dump', (event) => {
+            events.push((event.target as HTMLElement & { dump?: { path?: string } }).dump?.path || '');
+        });
+
+        oneOfProp.decorateOneOfPropElement({
+            setReadonly () {},
+        }, $duckProp, duckDump);
+
+        expect($duckProp.$oneOfSelect.value).toBe('');
+
+        $duckProp.$oneOfSelect.dispatchEvent(new CustomEvent('change', {
+            bubbles: true,
+            cancelable: true,
+        }));
+
+        expect(events).toHaveLength(0);
+    });
+
     test('resetting oneOf root dispatches the current variant switch command', () => {
         const outerPanel = document.createElement('ui-panel');
         const outerShadow = outerPanel.attachShadow({ mode: 'open' });
@@ -234,6 +324,62 @@ describe('inspector oneOf prop', () => {
             'change:__comps__.0.__cc_oneOfSwitch_oneOfDuck:__cc_oneof_switch__:1',
             'confirm:__comps__.0.__cc_oneOfSwitch_oneOfDuck:__cc_oneof_switch__:1',
         ]);
+    });
+
+    test('resetting an unresolved oneOf root falls through without switching to the first variant', () => {
+        /// @case
+        /// 1. A OneOf root has no currentVariantIndex, so the selector value is empty.
+        /// 2. The root reset event reaches the OneOf decoration handler.
+        /// @expect
+        /// The reset is not consumed as a variant switch and no switch command for variant 0 is emitted.
+        const outerPanel = document.createElement('ui-panel');
+        const outerShadow = outerPanel.attachShadow({ mode: 'open' });
+        const events: string[] = [];
+        const resetEvents: string[] = [];
+        const duckDump = {
+            name: 'oneOfDuck',
+            path: '__comps__.0.oneOfDuck',
+            type: 'OneOf',
+            value: {},
+            userData: {
+                oneOf: {
+                    switchCommandPrefix: '__cc_oneof_switch__:',
+                    switchPropertyName: '__cc_oneOfSwitch_oneOfDuck',
+                    switchType: 'String',
+                    variants: [
+                        { key: 'dog', creatable: true },
+                        { key: 'cat', creatable: true },
+                    ],
+                },
+            },
+        };
+        const $duckProp = document.createElement('ui-prop');
+
+        $duckProp.dump = duckDump;
+        outerShadow.appendChild($duckProp);
+        document.body.appendChild(outerPanel);
+
+        outerShadow.addEventListener('reset-dump', (event) => {
+            resetEvents.push((event.target as HTMLElement & { dump?: { path?: string } }).dump?.path || '');
+        });
+        outerShadow.addEventListener('change-dump', (event) => {
+            events.push((event.target as HTMLElement & { dump?: { path?: string } }).dump?.path || '');
+        });
+
+        oneOfProp.decorateOneOfPropElement({
+            setReadonly () {},
+        }, $duckProp, duckDump);
+
+        const resetCancelled = !$duckProp.dispatchEvent(new CustomEvent('reset-dump', {
+            bubbles: true,
+            cancelable: true,
+        }));
+
+        expect(resetCancelled).toBe(false);
+        expect(resetEvents).toStrictEqual([
+            '__comps__.0.oneOfDuck',
+        ]);
+        expect(events).toHaveLength(0);
     });
 
     test('resetting a child under oneOf root still bubbles as a normal reset', () => {

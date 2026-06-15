@@ -57,13 +57,13 @@ export const string = type(CCString);
  * @param type
  */
 export function type (
-    type: Function | [Function] | OneOfPropertyType | [OneOfPropertyType] | any,
+    type: Function | [Function] | OneOfPropertyType | any,
 ): LegacyPropertyDecorator;
 
 export function type<T> (type: PrimitiveType<T> | [PrimitiveType<T>]): LegacyPropertyDecorator;
 
 export function type<T> (
-    type: PrimitiveType<T> | Function | OneOfPropertyType | [PrimitiveType<T>] | [Function] | [OneOfPropertyType],
+    type: PrimitiveType<T> | Function | OneOfPropertyType | [PrimitiveType<T>] | [Function],
 ): LegacyPropertyDecorator {
     return property({
         type,

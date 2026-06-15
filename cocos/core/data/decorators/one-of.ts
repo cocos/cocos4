@@ -162,7 +162,12 @@ export function getOneOfSwitchCommandIndex (value: unknown): number | undefined 
         return undefined;
     }
 
-    const index = Number(value.slice(ONE_OF_SWITCH_COMMAND_PREFIX.length));
+    const suffix = value.slice(ONE_OF_SWITCH_COMMAND_PREFIX.length);
+    if (!/^(0|[1-9]\d*)$/.test(suffix)) {
+        return undefined;
+    }
+
+    const index = Number(suffix);
     return Number.isInteger(index) && index >= 0 ? index : undefined;
 }
 
@@ -241,6 +246,7 @@ export function applyDynamicOneOfAttrs (
         ctor = getOneOfValueCtor(value)
             || (variantCtor && isOneOfValueOfCtor(value, variantCtor) ? variantCtor : undefined);
         if (ctor) {
+            nextAttrs.type = 'Object';
             nextAttrs.ctor = ctor;
         }
     }
@@ -555,10 +561,15 @@ function validateVariants<T> (
         return;
     }
 
+    const keys = new Set<OneOfKey>();
     for (const variant of variants) {
         if (!('key' in variant)) {
             throw new TypeError('OneOf discriminated variants must specify a key.');
         }
+        if (keys.has(variant.key)) {
+            throw new TypeError('OneOf discriminated variants must use unique keys.');
+        }
+        keys.add(variant.key);
         if (!variant.type && !variant.create) {
             throw new TypeError('OneOf discriminated variants must specify a type or create function.');
         }

@@ -33,6 +33,13 @@ exports.sortProp = function(propMap) {
     return orderList.concat(normalList);
 };
 
+exports.renderDumpProp = function($prop, dump) {
+    const renderInfo = oneOfProp.normalizeOneOfDumpForRender(dump);
+    $prop.render(renderInfo);
+    oneOfProp.decorateOneOfPropElement(exports, $prop, renderInfo);
+    return renderInfo;
+};
+
 /**
  *
  * This method is used to update the custom node
@@ -302,9 +309,7 @@ exports.updatePropByDump = function(panel, dump) {
                 }
             }
         }
-        const renderInfo = oneOfProp.normalizeOneOfDumpForRender(info);
-        $prop.render(renderInfo);
-        oneOfProp.decorateOneOfPropElement(exports, $prop, renderInfo);
+        exports.renderDumpProp($prop, info);
     });
 
     for (const id of oldPropKeys) {

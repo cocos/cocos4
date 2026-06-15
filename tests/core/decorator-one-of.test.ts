@@ -3,7 +3,7 @@ import {
     OneOf,
 } from '../../cocos/core/data/decorators';
 import { CCClass } from '../../cocos/core/data/class';
-import { getOneOfSwitchPropertyName, ONE_OF_SWITCH_COMMAND_PREFIX } from '../../cocos/core/data/decorators/one-of';
+import { getOneOfSwitchCommandIndex, getOneOfSwitchPropertyName, ONE_OF_SWITCH_COMMAND_PREFIX } from '../../cocos/core/data/decorators/one-of';
 import { property } from '../../cocos/core/data/decorators/property';
 import { deserialize } from '../../cocos/serialization/deserialize';
 import { captureWarns } from '../utils/log-capture';
@@ -181,6 +181,33 @@ describe('@property OneOf', () => {
         expect(oneOfType.discriminator.kind).toBe('function');
     });
 
+    test('OneOf discriminated variants reject duplicate keys', () => {
+        /// @case
+        /// 1. A discriminated OneOf declaration contains two variants with the same key.
+        /// 2. The declaration is constructed.
+        /// @expect
+        /// The invalid OneOf declaration reports a duplicate key instead of drifting between variants.
+        expect(() => OneOf({
+            discriminator: (value: OneOfDuck) => value.category,
+            variants: [
+                {
+                    key: 'dog',
+                    create: () => ({
+                        category: 'dog',
+                        woof: true,
+                    }),
+                },
+                {
+                    key: 'dog',
+                    create: () => ({
+                        category: 'cat',
+                        meow: 'm',
+                    }),
+                },
+            ],
+        })).toThrow('OneOf discriminated variants must use unique keys.');
+    });
+
     test('OneOf dynamic attrs resolve function-discriminated instance values', () => {
         @ccclass('OneOfDynamicDog')
         class OneOfDynamicDog {
@@ -227,6 +254,7 @@ describe('@property OneOf', () => {
         const dogAttrs = CCClass.Attr.attr(host, 'value');
 
         expect(staticAttrs.userData.oneOf.variants[0]).not.toHaveProperty('type');
+        expect(dogAttrs.type).toBe('Object');
         expect(dogAttrs.ctor).toBe(OneOfDynamicDog);
         expect(dogAttrs.userData.oneOf.currentKey).toBe('dog');
         expect(dogAttrs.userData.oneOf.currentVariantIndex).toBe(0);
@@ -244,6 +272,7 @@ describe('@property OneOf', () => {
         host.value = new OneOfDynamicCat();
 
         const catAttrs = CCClass.Attr.attr(host, 'value');
+        expect(catAttrs.type).toBe('Object');
         expect(catAttrs.ctor).toBe(OneOfDynamicCat);
         expect(catAttrs.userData.oneOf.currentKey).toBe('cat');
         expect(catAttrs.userData.oneOf.currentVariantIndex).toBe(1);
@@ -341,6 +370,7 @@ describe('@property OneOf', () => {
         host.value = new OneOfMixedCat();
         attrs = CCClass.Attr.attr(host, 'value');
 
+        expect(attrs.type).toBe('Object');
         expect(attrs.ctor).toBe(OneOfMixedCat);
         expect(attrs).not.toHaveProperty('default');
         expect(attrs.userData.oneOf.currentKey).toBe('cat');
@@ -441,6 +471,21 @@ describe('@property OneOf', () => {
         expect(attrs.userData.oneOf.currentKey).toBe('string');
         expect(attrs.userData.oneOf.currentVariantIndex).toBe(1);
         expect(attrs.userData.oneOf.variants).toBe(staticAttrs.userData.oneOf.variants);
+    });
+
+    test('OneOf switch commands reject empty and non-integer suffixes', () => {
+        /// @case
+        /// 1. A OneOf switch command is missing its variant index or carries a non-index suffix.
+        /// 2. The command parser receives the value.
+        /// @expect
+        /// Only non-negative decimal integer suffixes are accepted, including index 0.
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}0`)).toBe(0);
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}1`)).toBe(1);
+        expect(getOneOfSwitchCommandIndex(ONE_OF_SWITCH_COMMAND_PREFIX)).toBeUndefined();
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}-1`)).toBeUndefined();
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}1.5`)).toBeUndefined();
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}1e2`)).toBeUndefined();
+        expect(getOneOfSwitchCommandIndex(`${ONE_OF_SWITCH_COMMAND_PREFIX}abc`)).toBeUndefined();
     });
 
     test('OneOf switch command creates selected variant on the original property', () => {
