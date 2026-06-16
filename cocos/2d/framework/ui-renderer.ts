@@ -536,7 +536,7 @@ export class UIRenderer extends Renderer {
         const mat = this._updateBuiltinMaterial();
         this.setSharedMaterial(mat, 0);
         if (this.stencilStage === Stage.ENTER_LEVEL || this.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
-            this.getMaterialInstance(0)!.recompileShaders({ USE_ALPHA_TEST: true });
+            this.getMaterialInstance(0)?.recompileShaders({ USE_ALPHA_TEST: true });
         }
         this._updateBlendFunc();
     }
@@ -600,16 +600,24 @@ export class UIRenderer extends Renderer {
      */
     public _updateBlendFunc (): void {
         // todo: Not only Pass[0].target[0]
-        let target = this.getRenderMaterial(0)!.passes[0].blendState.targets[0];
+        const renderMat = this.getRenderMaterial(0);
+        if (!renderMat || !renderMat.passes[0]) {
+            return;
+        }
+        let target = renderMat.passes[0].blendState.targets[0];
         this._dstBlendFactorCache = target.blendDst;
         this._srcBlendFactorCache = target.blendSrc;
         if (this._dstBlendFactorCache !== this._dstBlendFactor || this._srcBlendFactorCache !== this._srcBlendFactor) {
-            target = this.getMaterialInstance(0)!.passes[0].blendState.targets[0];
+            const matInstance = this.getMaterialInstance(0);
+            if (!matInstance || !matInstance.passes[0]) {
+                return;
+            }
+            target = matInstance.passes[0].blendState.targets[0];
             target.blend = true;
             target.blendDstAlpha = BlendFactor.ONE_MINUS_SRC_ALPHA;
             target.blendDst = this._dstBlendFactor;
             target.blendSrc = this._srcBlendFactor;
-            const targetPass = this.getMaterialInstance(0)!.passes[0];
+            const targetPass = matInstance.passes[0];
             targetPass.blendState.setTarget(0, target);
             targetPass._updatePassHash();
             this._dstBlendFactorCache = this._dstBlendFactor;
