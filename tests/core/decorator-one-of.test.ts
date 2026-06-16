@@ -1,6 +1,7 @@
 import {
     ccclass,
     OneOf,
+    type as ccType,
 } from '../../cocos/core/data/decorators';
 import { CCClass } from '../../cocos/core/data/class';
 import { getOneOfSwitchCommandIndex, getOneOfSwitchPropertyName, ONE_OF_SWITCH_COMMAND_PREFIX } from '../../cocos/core/data/decorators/one-of';
@@ -48,9 +49,12 @@ describe('@property OneOf', () => {
                 },
             })
             public full: OneOfA | OneOfB | null = null;
+
+            @ccType(oneOfType)
+            public typed: OneOfA | OneOfB | null = null;
         }
 
-        for (const propertyName of ['shorthand', 'full']) {
+        for (const propertyName of ['shorthand', 'full', 'typed']) {
             const attrs = CCClass.Attr.attr(OneOfHost, propertyName);
 
             expect(attrs.type).toBe('OneOf');

@@ -34,14 +34,18 @@ import type { OneOfPropertyType } from './one-of';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type SimplePropertyType
+    = SimplePropertyElementType
+      | OneOfPropertyType;
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type SimplePropertyElementType
     = Function
       | string
       | typeof CCString
       | typeof CCInteger
-      | typeof CCBoolean
-      | OneOfPropertyType;
+      | typeof CCBoolean;
 
-export type PropertyType = SimplePropertyType | SimplePropertyType[];
+export type PropertyType = SimplePropertyType | SimplePropertyElementType[];
 
 /**
  * @zh CCClass 属性选项。
