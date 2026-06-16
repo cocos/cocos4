@@ -659,7 +659,7 @@
             "ccGlobal": true,
             "internal": false
         },
-        "SUDV2": {
+        "OpenPAAS": {
             "comment": "Running in the sud v2's quick game.",
             "type": "boolean",
             "value": false,
@@ -745,7 +745,7 @@
         "RUNTIME_BASED": {
             "comment": "Running in runtime based environment.",
             "type": "boolean",
-            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD || $SUDV2",
+            "value": "$OPPO || $VIVO || $HUAWEI || $MIGU || $HONOR || $COCOS_RUNTIME || $SUD || $OpenPAAS",
             "ccGlobal": true,
             "internal": false
         },
