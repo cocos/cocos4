@@ -24,7 +24,7 @@
 import { CULL_MESHOPT, NATIVE_CODE_BUNDLE_MODE } from 'internal:constants';
 import { ensureWasmModuleReady, instantiateWasm } from 'pal/wasm';
 
-import { sys, logID, error } from '../../core';
+import { sys, error, debugID } from '../../core';
 
 import { game } from '../../game';
 import { NativeCodeBundleMode } from '../../misc/webassembly-support';
@@ -53,7 +53,7 @@ function initDecoderASM (asm_factory: any): Promise<void> {
         MeshoptDecoder.decodeGltfBuffer = asm_factory.decodeGltfBuffer;
         MeshoptDecoder.useWorkers = asm_factory.useWorkers;
         MeshoptDecoder.decodeGltfBufferAsync = asm_factory.decodeGltfBufferAsync;
-        logID(14202);
+        debugID(14202);
     });
 }
 
@@ -70,7 +70,7 @@ function initDecoderWASM (wasm_factory: any, wasm_url: string): Promise<void> {
         MeshoptDecoder.decodeGltfBuffer = wasm_factory.decodeGltfBuffer;
         MeshoptDecoder.useWorkers = wasm_factory.useWorkers;
         MeshoptDecoder.decodeGltfBufferAsync = wasm_factory.decodeGltfBufferAsync;
-        logID(14203);
+        debugID(14203);
     });
 }
 

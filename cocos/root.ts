@@ -23,7 +23,7 @@
 */
 
 import { USE_XR } from 'internal:constants';
-import { Pool, cclegacy, warnID, settings, macro, log, errorID, SettingsCategory } from './core';
+import { Pool, cclegacy, warnID, settings, macro, log, errorID, SettingsCategory, debug } from './core';
 import { DebugView } from './rendering/debug-view';
 import { Camera, CameraType, Light, Model, TrackingType } from './render-scene/scene';
 import type { DataPoolManager } from './3d/skeletal-animation/data-pool-manager';
@@ -380,11 +380,11 @@ export class Root {
             isCreateDefaultPipeline = true;
             this._pipeline = this._customPipeline!;
             // Use default _pipelineEvent
-            log(`Using custom pipeline: ${macro.CUSTOM_PIPELINE_NAME}`);
+            debug(`Using custom pipeline: ${macro.CUSTOM_PIPELINE_NAME}`);
         } else {
             const rppl: (PipelineRuntime & IPipelineEvent) = legacy_rendering.createDefaultPipeline();
             isCreateDefaultPipeline = true;
-            log(`Using legacy pipeline`);
+            debug(`Using legacy pipeline`);
 
             this._classicPipeline = rppl!;
             this._pipeline = this._classicPipeline;

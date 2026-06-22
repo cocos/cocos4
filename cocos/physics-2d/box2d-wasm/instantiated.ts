@@ -26,7 +26,7 @@ import { instantiateWasm, ensureWasmModuleReady } from 'pal/wasm';
 import { BUILD, LOAD_BOX2D_MANUALLY, NATIVE_CODE_BUNDLE_MODE } from 'internal:constants';
 
 import { game } from '../../game';
-import { error, sys, IVec2Like, log } from '../../core';
+import { error, sys, IVec2Like, log, debug } from '../../core';
 import { NativeCodeBundleMode } from '../../misc/webassembly-support';
 
 // eslint-disable-next-line import/no-mutable-exports
@@ -148,7 +148,7 @@ function initWasm (wasmFactory, wasmUrl: string): Promise<void> {
                 }).catch((err) => reject(errorMessage(err)));
             },
         }).then((Instance: any) => {
-            log('[box2d]:box2d wasm lib loaded.');
+            debug('[box2d]:box2d wasm lib loaded.');
             B2 = Instance;
         }).then(resolve).catch((err: any) => reject(errorMessage(err)));
     });
@@ -158,7 +158,7 @@ function initAsm (asmFactory): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const errorMessage = (err: any): string => `[box2d]: box2d asm lib load failed: ${err}`;
         asmFactory().then((instance: any) => {
-            log('[box2d]:box2d asm lib loaded.');
+            debug('[box2d]:box2d asm lib loaded.');
             B2 = instance;
         }).then(resolve).catch((err: any) => reject(errorMessage(err)));
     });
