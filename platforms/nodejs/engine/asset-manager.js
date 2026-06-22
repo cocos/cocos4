@@ -1,30 +1,31 @@
 const cacheManager = require('./cache-manager');
-const { readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, _subpackagesPath } = require('./fs-utils');
-
-//cc.assetManager.fsUtils = ral.fsUtils;
+const { readText, readArrayBuffer, readJson, getUserDataPath } = require('./fs-utils');
 
 const REGEX = /^https?:\/\/.*/;
 
 const downloader = cc.assetManager.downloader;
 const parser = cc.assetManager.parser;
 const presets = cc.assetManager.presets;
-downloader.maxConcurrency = 12;
-downloader.maxRequestsPerFrame = 64;
-presets.scene.maxConcurrency = 12;
+downloader.maxConcurrency = 30;
+downloader.maxRequestsPerFrame = 60;
+presets.preload.maxConcurrency = 15;
+presets.preload.maxRequestsPerFrame = 30;
+presets.scene.maxConcurrency = 32;
 presets.scene.maxRequestsPerFrame = 64;
+presets.bundle.maxConcurrency = 32;
+presets.bundle.maxRequestsPerFrame = 64;
 
-const subpackages = {};
 const loadedScripts = {};
 
 function downloadScript (url, options, onComplete) {
     if (typeof options === 'function') {
         onComplete = options;
-        options = null;
+        options = {};
     }
 
     if (loadedScripts[url]) {
-         onComplete && onComplete();
-         return;
+        onComplete && onComplete();
+        return;
     }
 
     download(url, (src, options, onComplete) => {
@@ -97,19 +98,14 @@ function downloadJson (url, options, onComplete) {
     download(url, parseJson, options, options.onFileProgress, onComplete);
 }
 
+function downloadArrayBuffer (url, options, onComplete) {
+    download(url, parseArrayBuffer, options, options.onFileProgress, onComplete);
+}
+
 function loadFont (url, options, onComplete) {
+    // nodejs 环境没有 document/FontFace API，不支持字体加载
     const fontFamilyName = _getFontFamily(url);
-
-    const fontFace = new FontFace(fontFamilyName, `url('${url}')`);
-    document.fonts.add(fontFace);
-
-    fontFace.load();
-    fontFace.loaded.then(() => {
-        onComplete(null, fontFamilyName);
-    }, () => {
-        cc.warnID(4933, fontFamilyName);
-        onComplete(null, fontFamilyName);
-    });
+    onComplete(null, fontFamilyName);
 }
 
 function _getFontFamily (fontHandle) {
@@ -125,6 +121,9 @@ function _getFontFamily (fontHandle) {
         fontFamilyName = `${fontHandle.substring(0, ttfIndex)}_LABEL`;
     } else {
         fontFamilyName = `${fontHandle.substring(slashPos + 1, ttfIndex)}_LABEL`;
+    }
+    if (fontFamilyName.indexOf(' ') !== -1) {
+        fontFamilyName = `"${fontFamilyName}"`;
     }
     return fontFamilyName;
 }
@@ -143,11 +142,11 @@ function downloadBundle (nameOrUrl, options, onComplete) {
         url = nameOrUrl;
         cacheManager.makeBundleFolder(bundleName);
     } else if (downloader.remoteBundles.indexOf(bundleName) !== -1) {
-            url = `${downloader.remoteServerAddress}remote/${bundleName}`;
-            cacheManager.makeBundleFolder(bundleName);
-        } else {
-            url = `assets/${bundleName}`;
-        }
+        url = `${downloader.remoteServerAddress}remote/${bundleName}`;
+        cacheManager.makeBundleFolder(bundleName);
+    } else {
+        url = `assets/${bundleName}`;
+    }
     const config = `${url}/cc.config.${version ? `${version}.` : ''}json`;
     options.__cacheBundleRoot__ = bundleName;
     downloadJson(config, options, (err, response) => {
@@ -159,7 +158,7 @@ function downloadBundle (nameOrUrl, options, onComplete) {
         out && (out.base = `${url}/`);
 
         if (out.hasPreloadScript) {
-            const js = `${url}/index.${version ? `${version}.` : ''}${out.encrypted ? 'jsc' : `js`}`;
+            const js = `${url}/index.${version ? `${version}.` : ''}${out.encrypted ? 'jsc' : 'js'}`;
             downloadScript(js, options, (err) => {
                 if (err) {
                     onComplete(err, null);
@@ -171,10 +170,6 @@ function downloadBundle (nameOrUrl, options, onComplete) {
             onComplete(null, out);
         }
     });
-}
-
-function downloadArrayBuffer (url, options, onComplete) {
-    download(url, parseArrayBuffer, options, options.onFileProgress, onComplete);
 }
 
 const originParsePVRTex = parser.parsePVRTex;
@@ -240,6 +235,7 @@ downloader.register({
     '.pkm': downloadAsset,
     '.astc': downloadAsset,
 
+    // Font
     '.font': downloadAsset,
     '.eot': downloadAsset,
     '.ttf': downloadAsset,
@@ -267,6 +263,7 @@ downloader.register({
     '.dbbin': downloadAsset,
     '.skel': downloadAsset,
 
+    // Video
     '.mp4': downloadAsset,
     '.avi': downloadAsset,
     '.mov': downloadAsset,
@@ -281,6 +278,7 @@ downloader.register({
 });
 
 parser.register({
+    // Image
     '.png': downloader.downloadDomImage,
     '.jpg': downloader.downloadDomImage,
     '.bmp': downloader.downloadDomImage,
@@ -290,10 +288,13 @@ parser.register({
     '.tiff': downloader.downloadDomImage,
     '.image': downloader.downloadDomImage,
     '.webp': downloader.downloadDomImage,
+
+    // Compressed texture
     '.pvr': parsePVRTex,
     '.pkm': parsePKMTex,
     '.astc': parseASTCTex,
 
+    // Font
     '.font': loadFont,
     '.eot': loadFont,
     '.ttf': loadFont,
@@ -319,6 +320,7 @@ parser.register({
     '.fnt': parseText,
     '.plist': parsePlist,
 
+    // Binary
     '.binary': parseArrayBuffer,
     '.bin': parseArrayBuffer,
     '.dbbin': parseArrayBuffer,
@@ -327,10 +329,9 @@ parser.register({
     '.ExportJson': parseJson,
 });
 
-var transformUrl = function (url, options) {
+function transformUrl (url, options) {
     let inLocal = false;
     let inCache = false;
-    
     if (REGEX.test(url) && !url.startsWith('file://')) {
         if (options.reload) {
             return { url };
@@ -339,16 +340,22 @@ var transformUrl = function (url, options) {
             if (cache) {
                 inCache = true;
                 url = cache;
+            } else {
+                const tempUrl = cacheManager.getTemp(url);
+                if (tempUrl) {
+                    inLocal = true;
+                    url = tempUrl;
+                }
             }
         }
     } else {
         inLocal = true;
-        if(url.startsWith('file://')) {
+        if (url.startsWith('file://')) {
             url = globalThis.nodeEnv.require('url').fileURLToPath(url);
         }
     }
     return { url, inLocal, inCache };
-};
+}
 
 cc.assetManager.transformPipeline.append((task) => {
     const input = task.output = task.input;
@@ -372,7 +379,5 @@ cc.assetManager.transformPipeline.append((task) => {
 const originInit = cc.assetManager.init;
 cc.assetManager.init = function (options) {
     originInit.call(cc.assetManager, options);
-    const subpacks = cc.settings.querySettings('assets', 'subpackages');
-    subpacks && subpacks.forEach((x) => subpackages[x] = `${_subpackagesPath}${x}`);
     cacheManager.init();
 };
