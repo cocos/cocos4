@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-const { makeDirSync, copyFile, downloadFile, deleteFile, rmdirSync, getUserDataPath } = require('./fs-utils');
+const { makeDirSync, copyFile, deleteFile, readJsonSync, writeFileSync, rmdirSync, getUserDataPath, isOutOfStorage } = require('./fs-utils');
 
 let checkNextPeriod = false;
 let writeCacheFileList = null;
@@ -65,9 +65,17 @@ const cacheManager = {
     },
 
     init () {
-        //TODO(qgh): Read the configuration file
         this.cacheDir = `${getUserDataPath()}/${this.cacheDir}`;
-        this.cachedFiles = new cc.AssetManager.Cache();
+        const cacheFilePath = `${this.cacheDir}/${this.cachedFileName}`;
+        const result = readJsonSync(cacheFilePath);
+        if (result instanceof Error || !result.version) {
+            if (!(result instanceof Error)) rmdirSync(this.cacheDir, true);
+            this.cachedFiles = new cc.AssetManager.Cache();
+            makeDirSync(this.cacheDir, true);
+            writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
+        } else {
+            this.cachedFiles = new cc.AssetManager.Cache(result.files);
+        }
         this.tempFiles = new cc.AssetManager.Cache();
     },
 
@@ -80,7 +88,7 @@ const cacheManager = {
 
     _write () {
         writeCacheFileList = null;
-        //TODO(qgh): Write to the configuration file
+        writeFileSync(`${this.cacheDir}/${this.cachedFileName}`, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
     },
 
     writeCacheFile () {
@@ -102,22 +110,20 @@ const cacheManager = {
         const { srcUrl, isCopy, cacheBundleRoot } = this.cacheQueue[id];
         const time = Date.now().toString();
 
-        let localPath = '';
-
-        if (cacheBundleRoot) {
-            localPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`;
-        } else {
-            localPath = `${this.cacheDir}/${time}${suffix++}${cc.path.extname(id)}`;
-        }
-
+        const localPath = cacheBundleRoot
+            ? `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`
+            : `${this.cacheDir}/${time}${suffix++}${cc.path.extname(id)}`;
         function callback (err) {
-            if (err) {
-                console.log('cannot support');
-                // if (isOutOfStorage(err.message)) {
-                //     self.outOfStorage = true;
-                //     self.autoClear && self.clearLRU();
-                //     return;
-                // }
+            if (err)  {
+                // 不确定错误是否和runtime一致，得测试下
+                if (isOutOfStorage(err.message)) {
+                    self.outOfStorage = true;
+                    self.autoClear && self.clearLRU();
+                    return;
+                } else {
+                    // 打印出错信息
+                    console.warn(err);
+                }
             } else {
                 self.cachedFiles.add(id, { bundle: cacheBundleRoot, url: localPath, lastTime: time });
                 self.writeCacheFile();
@@ -138,7 +144,6 @@ const cacheManager = {
     cacheFile (id, srcUrl, cacheEnabled, cacheBundleRoot, isCopy) {
         cacheEnabled = cacheEnabled !== undefined ? cacheEnabled : this.cacheEnabled;
         if (!cacheEnabled || this.cacheQueue[id] || this.cachedFiles.has(id)) return;
-
         this.cacheQueue[id] = { srcUrl, cacheBundleRoot, isCopy };
         if (!checkNextPeriod && !this.outOfStorage) {
             checkNextPeriod = true;
@@ -164,28 +169,25 @@ const cacheManager = {
         const caches = [];
         const self = this;
         this.cachedFiles.forEach((val, key) => {
-            if (self._isZipFile(key) && cc.assetManager.bundles.find((bundle) => bundle.base.indexOf(val.url) !== -1)) return;
+            if (val.bundle === 'internal') return;
             caches.push({ originUrl: key, url: val.url, lastTime: val.lastTime });
         });
         caches.sort((a, b) => a.lastTime - b.lastTime);
         caches.length = Math.floor(caches.length / 3);
-        // cache length above 3 then clear 1/3， or clear all caches
-        if (caches.length < 3) {
-            console.warn('Insufficient storage, cleaning now');
-        } else {
-            caches.length = Math.floor(caches.length / 3);
+        if (caches.length === 0) {
+            cleaning = false;
+            return;
         }
         for (let i = 0, l = caches.length; i < l; i++) {
             const cacheKey = `${cc.assetManager.utils.getUuidFromURL(caches[i].originUrl)}@native`;
             cc.assetManager.files.remove(cacheKey);
             this.cachedFiles.remove(caches[i].originUrl);
         }
-
         clearTimeout(writeCacheFileList);
         this._write();
         function deferredDelete () {
             const item = caches.pop();
-            self._removePathOrFile(item.originUrl, item.url);
+            deleteFile(item.url, self._deleteFileCB.bind(self));
             if (caches.length > 0) {
                 setTimeout(deferredDelete, self.deleteInterval);
             } else {
@@ -200,19 +202,6 @@ const cacheManager = {
             const path = this.cachedFiles.remove(url).url;
             clearTimeout(writeCacheFileList);
             this._write();
-            this._removePathOrFile(url, path);
-        }
-    },
-
-    _removePathOrFile (url, path) {
-        if (this._isZipFile(url)) {
-            if (this._isZipFile(path)) {
-                deleteFile(path, this._deleteFileCB.bind(this));
-            } else {
-                rmdirSync(path, true);
-                this._deleteFileCB();
-            }
-        } else {
             deleteFile(path, this._deleteFileCB.bind(this));
         }
     },
@@ -223,18 +212,6 @@ const cacheManager = {
 
     makeBundleFolder (bundleName) {
         makeDirSync(`${this.cacheDir}/${bundleName}`, true);
-    },
-
-    unzipAndCacheBundle (id, zipFilePath, cacheBundleRoot, onComplete) {
-        const time = Date.now().toString();
-        const targetPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}`;
-        const self = this;
-        makeDirSync(targetPath, true);
-        console.log('cannot support');
-    },
-
-    _isZipFile (url) {
-        return url.slice(-4) === '.zip';
     },
 
 };

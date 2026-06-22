@@ -26,15 +26,19 @@ const fsUtils = {
 
     fs,
 
-    initJsbDownloader(jsbDownloaderMaxTasks, jsbDownloaderTimeout) {
-        console.log("initJsbDownloader: nodejs does not support")
+    isOutOfStorage (errMsg) {
+        return errMsg.indexOf('ENOSPC') !== -1;
     },
 
-    getUserDataPath() {
-        return path.join(globalThis.nodeEnv.userDataPath, "writablePath");
+    initJsbDownloader (jsbDownloaderMaxTasks, jsbDownloaderTimeout) {
+        console.log('initJsbDownloader: nodejs does not support');
     },
 
-    checkFsValid() {
+    getUserDataPath () {
+        return path.join(globalThis.nodeEnv.userDataPath, 'writablePath');
+    },
+
+    checkFsValid () {
         if (!fs) {
             cc.warn('can not get the file system!');
             return false;
@@ -42,7 +46,7 @@ const fsUtils = {
         return true;
     },
 
-    deleteFile(filePath, onComplete) {
+    deleteFile (filePath, onComplete) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath);
         fs.unlink(fullFilePath, (e) => {
             if (e) {
@@ -54,24 +58,24 @@ const fsUtils = {
             }
         });
     },
-    
-    fullPathForFilename(filename, forceReturnFullpath = false) {
-        if(filename.length <= 0){ 
-            return "";
+
+    fullPathForFilename (filename, forceReturnFullpath = false) {
+        if (filename.length <= 0) {
+            return '';
         }
-        if(path.isAbsolute(filename)) {
+        if (path.isAbsolute(filename)) {
             return filename;
         }
         const newFilename = path.normalize(filename);
         const projectPath = '';
         const fullpath = path.join(projectPath, newFilename);
-        if(fs.pathExistsSync(fullpath) || forceReturnFullpath) {
+        if (fs.pathExistsSync(fullpath) || forceReturnFullpath) {
             return fullpath;
         }
-        return "";
+        return '';
     },
 
-    saveFile(srcPath, destPath, onComplete) {
+    saveFile (srcPath, destPath, onComplete) {
         const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
         const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
         fs.ensureDirSync(path.dirname(fullDestPath));
@@ -89,7 +93,7 @@ const fsUtils = {
         });
     },
 
-    copyFile(srcPath, destPath, onComplete) {
+    copyFile (srcPath, destPath, onComplete) {
         const fullSrcPath = fsUtils.fullPathForFilename(srcPath);
         const fullDestPath = fsUtils.fullPathForFilename(destPath, true);
         fs.ensureDirSync(path.dirname(fullDestPath));
@@ -106,7 +110,7 @@ const fsUtils = {
         });
     },
 
-    writeFile(filePath, data, encoding, onComplete) {
+    writeFile (filePath, data, encoding, onComplete) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath, true);
         fs.writeFile(fullFilePath, data, encoding, (e) => {
             if (e) {
@@ -116,13 +120,13 @@ const fsUtils = {
             } else {
                 onComplete && onComplete(null);
             }
-        })
+        });
     },
 
-    writeFileSync(filePath, data, encoding) {
+    writeFileSync (filePath, data, encoding) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath, true);
         try {
-            fs.writeFile(fullFilePath, data, encoding);
+            fs.writeFileSync(fullFilePath, data, encoding);
             return null;
         } catch (e) {
             const err = new Error(`Failed to write file synchronously: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
@@ -131,7 +135,7 @@ const fsUtils = {
         }
     },
 
-    readFile(filePath, encoding, onComplete) {
+    readFile (filePath, encoding, onComplete) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath);
         fs.readFile(fullFilePath, encoding, (e, data) => {
             if (e) {
@@ -141,10 +145,10 @@ const fsUtils = {
             } else {
                 onComplete && onComplete(null, data);
             }
-        })
+        });
     },
 
-    readDir(dirPath, onComplete) {
+    readDir (dirPath, onComplete) {
         const fullDirPath = fsUtils.fullPathForFilename(dirPath);
         fs.readdir(fullDirPath, (e, files) => {
             if (e) {
@@ -154,18 +158,18 @@ const fsUtils = {
             } else {
                 onComplete && onComplete(null, files);
             }
-        })
+        });
     },
 
-    readText(filePath, onComplete) {
+    readText (filePath, onComplete) {
         fsUtils.readFile(filePath, 'utf8', onComplete);
     },
 
-    readArrayBuffer(filePath, onComplete) {
+    readArrayBuffer (filePath, onComplete) {
         fsUtils.readFile(filePath, '', onComplete);
     },
 
-    readJson(filePath, onComplete) {
+    readJson (filePath, onComplete) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath);
         fs.readJson(fullFilePath, (e, jsonObj) => {
             if (e) {
@@ -175,10 +179,10 @@ const fsUtils = {
             } else {
                 onComplete && onComplete(null, jsonObj);
             }
-        })
+        });
     },
 
-    readJsonSync(filePath) {
+    readJsonSync (filePath) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath);
         try {
             return fs.readJsonSync(fullFilePath);
@@ -189,10 +193,10 @@ const fsUtils = {
         }
     },
 
-    makeDirSync(dirPath, recursive) {
+    makeDirSync (dirPath, recursive) {
         const fullDirPath = fsUtils.fullPathForFilename(dirPath, true);
         try {
-            fs.mkdirSync(fullDirPath, { recursive: recursive });
+            fs.mkdirSync(fullDirPath, { recursive });
             return null;
         } catch (e) {
             const err = new Error(`Make directory failed: "${dirPath}" (resolved: "${fullDirPath}") - ${e.message}`);
@@ -201,10 +205,10 @@ const fsUtils = {
         }
     },
 
-    rmdirSync(dirPath, recursive) {
+    rmdirSync (dirPath, recursive) {
         const fullDirPath = fsUtils.fullPathForFilename(dirPath);
         try {
-            fs.rmSync(fullDirPath, { recursive: recursive });
+            fs.rmSync(fullDirPath, { recursive });
             return null;
         } catch (e) {
             const err = new Error(`Remove directory failed: "${dirPath}" (resolved: "${fullDirPath}") - ${e.message}`);
@@ -213,10 +217,10 @@ const fsUtils = {
         }
     },
 
-    exists(filePath, onComplete) {
+    exists (filePath, onComplete) {
         const fullFilePath = fsUtils.fullPathForFilename(filePath);
-        fs.pathExists(fullFilePath, function (e, exists) {
-            if(e) {
+        fs.pathExists(fullFilePath, (e, exists) => {
+            if (e) {
                 const err = new Error(`File existence check failed: "${filePath}" (resolved: "${fullFilePath}") - ${e.message}`);
                 cc.warn(err.message);
                 return err;
@@ -225,7 +229,7 @@ const fsUtils = {
         });
     },
 
-    loadSubpackage(name, onProgress, onComplete) {
+    loadSubpackage (name, onProgress, onComplete) {
         throw new Error('nodejs not implement');
     },
 };
