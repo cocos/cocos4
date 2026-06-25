@@ -817,11 +817,20 @@ export class LightResource {
         this.lightIndex.clear();
     }
 
+    /**
+     * @en Adds a light to the light buffer and returns its byte offset.
+     * @zh 将光源添加到光源缓冲区，并返回其字节偏移量。
+     * @param light @en The light to add. @zh 要添加的光源。
+     * @param bHDR @en Whether HDR rendering is enabled. @zh 是否启用 HDR 渲染。
+     * @param exposure @en The camera exposure value. @zh 相机曝光值。
+     * @param shadowInfo @en The shadow settings, or null if shadows are disabled. @zh 阴影设置，若禁用阴影则为 null。
+     * @returns @en The byte offset of the light in the light buffer. @zh 光源在光源缓冲区中的字节偏移量。
+     */
     addLight (light: Light, bHDR: boolean, exposure: number, shadowInfo: Shadows | null): number {
         // Already added
         const existingLightID = this.lightIndex.get(light);
         if (existingLightID !== undefined) {
-            return existingLightID;
+            return existingLightID * this.elementSize;
         }
 
         if (!this.lightBuffer) {
