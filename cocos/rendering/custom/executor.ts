@@ -615,10 +615,17 @@ class DeviceRenderQueue implements RecordingInterface {
         this._devicePass = devicePass;
         this._phaseID = cclegacy.rendering.getPhaseID(devicePass.passID, context.renderGraph.getLayout(id));
     }
+
+    /**
+     * @en Creates a blit descriptor for the given blit operation.
+     * @zh 为给定的 blit 操作创建一个 blit 描述符。
+     * @param blit @en The blit operation to create a descriptor for. @zh 要为其创建描述符的 blit 操作。
+     */
     createBlitDesc (blit: Blit): void {
         if (!this._blitDesc) {
             this._blitDesc = new BlitDesc(blit);
         }
+        this._blitDesc.blit = blit;
         this._blitDesc.createScreenQuad();
         this._blitDesc.createStageDescriptor();
     }
