@@ -70,20 +70,37 @@ static bool js_assets_SimpleTexture_registerListeners(se::State &s) // NOLINT(re
 {
     auto *cobj = SE_THIS_OBJECT<cc::SimpleTexture>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
-    auto *thisObj = s.thisObject();
 
-    cobj->on<cc::SimpleTexture::TextureUpdated>([thisObj](cc::SimpleTexture * /*emitter*/, cc::gfx::Texture *texture) {
+    // NOTE: resolve the live JS wrapper from the native pointer at emit time instead of capturing
+    // `s.thisObject()`. A native texture can outlive its JS wrapper (e.g. builtin textures kept alive
+    // by builtinResMgr), so a captured raw se::Object* would dangle and a later event would call into a
+    // dead object. Skip when no live wrapper exists. See registerPassesUpdatedListener below for details.
+    cobj->on<cc::SimpleTexture::TextureUpdated>([](cc::SimpleTexture *emitter, cc::gfx::Texture *texture) {
+        auto *se = se::ScriptEngine::getInstance();
+        if (se == nullptr || !se->isValid() || se->isInCleanup() || se->isGarbageCollecting()) {
+            return;
+        }
         se::AutoHandleScope hs;
-        se::Value arg0;
-        nativevalue_to_se(texture, arg0, nullptr);
-        se::ScriptEngine::getInstance()->callFunction(thisObj, "_onGFXTextureUpdated", 1, &arg0);
+        se::Object *jsObject = se::NativePtrToObjectMap::findFirst(emitter);
+        if (jsObject != nullptr) {
+            se::Value arg0;
+            nativevalue_to_se(texture, arg0, nullptr);
+            se->callFunction(jsObject, "_onGFXTextureUpdated", 1, &arg0);
+        }
     });
 
-    cobj->on<cc::SimpleTexture::AfterAssignImage>([thisObj](cc::SimpleTexture * /*emitter*/, cc::ImageAsset *image) {
+    cobj->on<cc::SimpleTexture::AfterAssignImage>([](cc::SimpleTexture *emitter, cc::ImageAsset *image) {
+        auto *se = se::ScriptEngine::getInstance();
+        if (se == nullptr || !se->isValid() || se->isInCleanup() || se->isGarbageCollecting()) {
+            return;
+        }
         se::AutoHandleScope hs;
-        se::Value arg0;
-        nativevalue_to_se(image, arg0, nullptr);
-        se::ScriptEngine::getInstance()->callFunction(thisObj, "_onAfterAssignImage", 1, &arg0);
+        se::Object *jsObject = se::NativePtrToObjectMap::findFirst(emitter);
+        if (jsObject != nullptr) {
+            se::Value arg0;
+            nativevalue_to_se(image, arg0, nullptr);
+            se->callFunction(jsObject, "_onAfterAssignImage", 1, &arg0);
+        }
     });
 
     return true;
@@ -94,12 +111,20 @@ static bool js_assets_TextureBase_registerGFXSamplerUpdatedListener(se::State &s
 {
     auto *cobj = SE_THIS_OBJECT<cc::TextureBase>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
-    auto *thisObj = s.thisObject();
-    cobj->on<cc::TextureBase::SamplerUpdated>([thisObj](cc::TextureBase * /*emitter*/, cc::gfx::Sampler *sampler) {
+    // Resolve the live JS wrapper at emit time (see SimpleTexture/Material listeners above) so the
+    // callback never targets a wrapper that has already been GC'd while the native object lives on.
+    cobj->on<cc::TextureBase::SamplerUpdated>([](cc::TextureBase *emitter, cc::gfx::Sampler *sampler) {
+        auto *se = se::ScriptEngine::getInstance();
+        if (se == nullptr || !se->isValid() || se->isInCleanup() || se->isGarbageCollecting()) {
+            return;
+        }
         se::AutoHandleScope hs;
-        se::Value arg0;
-        nativevalue_to_se(sampler, arg0, nullptr);
-        se::ScriptEngine::getInstance()->callFunction(thisObj, "_onGFXSamplerUpdated", 1, &arg0);
+        se::Object *jsObject = se::NativePtrToObjectMap::findFirst(emitter);
+        if (jsObject != nullptr) {
+            se::Value arg0;
+            nativevalue_to_se(sampler, arg0, nullptr);
+            se->callFunction(jsObject, "_onGFXSamplerUpdated", 1, &arg0);
+        }
     });
 
     return true;
@@ -110,10 +135,31 @@ static bool js_assets_Material_registerPassesUpdatedListener(se::State &s) // NO
 {
     auto *cobj = SE_THIS_OBJECT<cc::Material>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
-    auto *thisObj = s.thisObject();
-    cobj->on<cc::Material::PassesUpdated>([thisObj](cc::Material * /*emitter*/) {
+    // NOTE: Do NOT capture the JS wrapper (`s.thisObject()`) here. A native Material can outlive
+    // its JS wrapper -- e.g. builtin "rt-*" materials are kept alive by builtinResMgr's IntrusivePtr
+    // while their JS wrapper is GC'd after the owning sprite is destroyed. A captured raw se::Object*
+    // would then dangle, and a later PassesUpdated (emitted from Material::update()/doDestroy()) would
+    // invoke `_onPassesUpdated` on a dead object, producing:
+    //   [SE_ERROR] _onPassesUpdated is not a function: undefined
+    // Instead resolve the *current* live JS wrapper from the native pointer at emit time, and skip
+    // when none exists (a freshly recreated wrapper syncs passes lazily via its `passes` getter).
+    //
+    // The engine-state guard below is also mandatory: PassesUpdated can be emitted from
+    // Material::update()/copy()/doDestroy() while the script engine is being torn down (editor
+    // engine restart / scene reload) or while a GC is in progress. In those windows `findFirst`
+    // may still return an se::Object whose V8 persistent now points at a freed object, and calling
+    // into it crashes inside ObjectWrap::handle() (`Local<Object>::New` on a dangling handle).
+    // Never touch JS during cleanup or GC -- see native/cocos/bindings/docs/JSB2.0-learning.
+    cobj->on<cc::Material::PassesUpdated>([](cc::Material *emitter) {
+        auto *se = se::ScriptEngine::getInstance();
+        if (se == nullptr || !se->isValid() || se->isInCleanup() || se->isGarbageCollecting()) {
+            return;
+        }
         se::AutoHandleScope hs;
-        se::ScriptEngine::getInstance()->callFunction(thisObj, "_onPassesUpdated", 0, nullptr);
+        se::Object *jsObject = se::NativePtrToObjectMap::findFirst(emitter);
+        if (jsObject != nullptr) {
+            se->callFunction(jsObject, "_onPassesUpdated", 0, nullptr);
+        }
     });
 
     return true;
