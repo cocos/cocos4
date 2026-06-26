@@ -36,6 +36,7 @@ let callbacks = [];
 let cleaning = false;
 let suffix = 0;
 const REGEX = /^https?:\/\/.*/;
+const LOG_PREFIX = '[CacheManager]';
 
 const cacheManager = {
 
@@ -78,6 +79,10 @@ const cacheManager = {
     init () {
         this.cacheDir = `${getUserDataPath()}/${this.cacheDir}`;
         const cacheFilePath = `${this.cacheDir}/${this.cachedFileName}`;
+        console.warn(`${LOG_PREFIX} init storage`, {
+            cacheDir: this.cacheDir,
+            cacheFilePath,
+        });
         const result = readJsonSync(cacheFilePath);
         if (result instanceof Error || !result.version) {
             if (!(result instanceof Error)) rmdirSync(this.cacheDir, true);
@@ -209,11 +214,11 @@ const cacheManager = {
             caches.push({ originUrl: key, url: val.url, lastTime: val.lastTime });
         });
         caches.sort((a, b) => a.lastTime - b.lastTime);
-        // cache length above 3 then clear 1/3, or clear all caches
+        // cache length above 3 then clear 1/2, or clear all caches
         if (caches.length < 3) {
             console.warn('Insufficient storage, cleaning now');
         } else {
-            caches.length = Math.floor(caches.length / 3);
+            caches.length = Math.floor(caches.length / 2);
         }
         for (let i = 0, l = caches.length; i < l; i++) {
             const cacheKey = `${cc.assetManager.utils.getUuidFromURL(caches[i].originUrl)}@native`;
@@ -224,18 +229,53 @@ const cacheManager = {
         clearTimeout(writeCacheFileList);
         writeCacheFileList = null;
         this.writeCacheFile(function () {
-            function deferredDelete () {
-                const item = caches.pop();
-                self._removePathOrFile(item.originUrl, item.url);
-                if (caches.length > 0) { 
-                    setTimeout(deferredDelete, self.deleteInterval); 
-                }
-                else {
-                    cleaning = false;
-                }
-            }
-            setTimeout(deferredDelete, self.deleteInterval);
+            self._deleteLRUCaches(caches);
         });
+    },
+
+    _deleteLRUCaches (caches) {
+        const self = this;
+        let index = 0;
+        let pending = 0;
+        let removed = false;
+        const startTime = Date.now();
+        console.warn(`${LOG_PREFIX} delete LRU caches start`, {
+            count: caches.length,
+            startTime,
+        });
+
+        function finish () {
+            const endTime = Date.now();
+            console.warn(`${LOG_PREFIX} delete LRU caches finished`, {
+                count: caches.length,
+                removed,
+                startTime,
+                endTime,
+                durationMs: endTime - startTime,
+            });
+            if (removed) self.outOfStorage = false;
+            cleaning = false;
+        }
+
+        function onDeleted (err) {
+            if (!err) removed = true;
+            pending--;
+            if (index >= caches.length && pending === 0) {
+                finish();
+            }
+        }
+
+        function deleteBatch () {
+            for (; index < caches.length; index++) {
+                pending++;
+                self._removePathOrFile(caches[index].originUrl, caches[index].url, onDeleted);
+            }
+            if (pending === 0) {
+                finish();
+            }
+        }
+
+        deleteBatch();
     },
 
     removeCache (url) {
@@ -250,16 +290,24 @@ const cacheManager = {
         }
     },
 
-    _removePathOrFile (url, path) {
+    _removePathOrFile (url, path, onComplete) {
+        const cb = (err) => {
+            this._deleteFileCB(err);
+            onComplete && onComplete(err);
+        };
         if (this._isZipFile(url)) {
             if (this._isZipFile(path)) {
-                deleteFile(path, this._deleteFileCB.bind(this));
+                deleteFile(path, cb);
             } else {
-                rmdirSync(path, true);
-                this._deleteFileCB();
+                try {
+                    rmdirSync(path, true);
+                    cb();
+                } catch (err) {
+                    cb(err);
+                }
             }
         } else {
-            deleteFile(path, this._deleteFileCB.bind(this));
+            deleteFile(path, cb);
         }
     },
 
