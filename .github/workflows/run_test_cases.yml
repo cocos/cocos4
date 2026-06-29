@@ -122,7 +122,6 @@ jobs:
         run: |
           npm -v
           npm install --registry https://registry.npmmirror.com
-          npm install -g @cctest/scheduler --registry https://registry.npmmirror.com
       
       - name: Checkout test-projects
         shell: bash
@@ -452,7 +451,6 @@ jobs:
         run: |
           npm -v
           npm install --registry https://registry.npmmirror.com
-          npm install -g @cctest/scheduler --registry https://registry.npmmirror.com
       
       - name: Checkout test-projects
         shell: bash
