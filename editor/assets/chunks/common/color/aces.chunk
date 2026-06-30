@@ -1,6 +1,10 @@
 
+#ifndef CC_ACES_HDR_MAX
+  #define CC_ACES_HDR_MAX 8.0
+#endif
+
 vec3 ACESToneMap (vec3 color) {
-  color = min(color, vec3(8.0)); // guard against overflow
+  color = min(color, vec3(CC_ACES_HDR_MAX)); // guard against overflow
   const float A = 2.51;
   const float B = 0.03;
   const float C = 2.43;
