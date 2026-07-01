@@ -31,8 +31,8 @@ const {
 let checkNextPeriod = false;
 let writeCacheFileList = null;
 let startWrite = false;
-let nextCallbacks = [];
-let callbacks = [];
+const nextCallbacks = [];
+const callbacks = [];
 let cleaning = false;
 let suffix = 0;
 const REGEX = /^https?:\/\/.*/;
@@ -54,6 +54,9 @@ const cacheManager = {
     cacheInterval: 500,
 
     deleteInterval: 500,
+
+    // delete multiple files per cycle when clearing LRU caches
+    deleteBatchCount: 30,
 
     writeFileInterval: 2000,
 
@@ -105,7 +108,7 @@ const cacheManager = {
     _write () {
         writeCacheFileList = null;
         startWrite = true;
-        writeFile(this.cacheDir + '/' + this.cachedFileName, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8', function () {
+        writeFile(`${this.cacheDir}/${this.cachedFileName}`, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8', () => {
             startWrite = false;
             for (let i = 0, j = callbacks.length; i < j; i++) {
                 callbacks[i]();
@@ -121,8 +124,7 @@ const cacheManager = {
             writeCacheFileList = setTimeout(this._write.bind(this), this.writeFileInterval);
             if (startWrite === true) {
                 cb && nextCallbacks.push(cb);
-            }
-            else {
+            } else {
                 cb && callbacks.push(cb);
             }
         } else {
@@ -140,11 +142,10 @@ const cacheManager = {
 
             if (cacheBundleRoot) {
                 localPath = `${this.cacheDir}/${cacheBundleRoot}/${time}${suffix++}${cc.path.extname(id)}`;
-            }
-            else {
+            } else {
                 localPath = `${this.cacheDir}/${time}${suffix++}${cc.path.extname(id)}`;
             }
-            
+
             function callback (err) {
                 checkNextPeriod = false;
                 if (err)  {
@@ -165,8 +166,7 @@ const cacheManager = {
             }
             if (!isCopy) {
                 downloadFile(srcUrl, localPath, null, callback);
-            }
-            else {
+            } else {
                 copyFile(srcUrl, localPath, callback);
             }
             return;
@@ -183,8 +183,7 @@ const cacheManager = {
             checkNextPeriod = true;
             if (!this.outOfStorage) {
                 setTimeout(this._cache.bind(this), this.cacheInterval);
-            }
-            else {
+            } else {
                 checkNextPeriod = false;
             }
         }
@@ -194,12 +193,12 @@ const cacheManager = {
         rmdirSync(this.cacheDir, true);
         this.cachedFiles = new cc.AssetManager.Cache();
         makeDirSync(this.cacheDir, true);
-        const cacheFilePath = this.cacheDir + '/' + this.cachedFileName;
+        const cacheFilePath = `${this.cacheDir}/${this.cachedFileName}`;
         this.outOfStorage = false;
         clearTimeout(writeCacheFileList);
         writeCacheFileList = null;
         writeFileSync(cacheFilePath, JSON.stringify({ files: this.cachedFiles._map, version: this.version }), 'utf8');
-        cc.assetManager.bundles.forEach(bundle => {
+        cc.assetManager.bundles.forEach((bundle) => {
             if (REGEX.test(bundle.base)) this.makeBundleFolder(bundle.name);
         });
     },
@@ -214,27 +213,28 @@ const cacheManager = {
             caches.push({ originUrl: key, url: val.url, lastTime: val.lastTime });
         });
         caches.sort((a, b) => a.lastTime - b.lastTime);
-        // cache length above 3 then clear 1/2, or clear all caches
+        // cache length above 3 then clear 1/3, or clear all caches
         if (caches.length < 3) {
             console.warn('Insufficient storage, cleaning now');
         } else {
-            caches.length = Math.floor(caches.length / 2);
+            caches.length = Math.floor(caches.length / 3);
         }
         for (let i = 0, l = caches.length; i < l; i++) {
             const cacheKey = `${cc.assetManager.utils.getUuidFromURL(caches[i].originUrl)}@native`;
             cc.assetManager.files.remove(cacheKey);
             this.cachedFiles.remove(caches[i].originUrl);
         }
-        
+
         clearTimeout(writeCacheFileList);
         writeCacheFileList = null;
-        this.writeCacheFile(function () {
+        this.writeCacheFile(() => {
             self._deleteLRUCaches(caches);
         });
     },
 
     _deleteLRUCaches (caches) {
         const self = this;
+        const deleteBatchCount = Math.max(1, this.deleteBatchCount || 1);
         let index = 0;
         let pending = 0;
         let removed = false;
@@ -266,11 +266,22 @@ const cacheManager = {
         }
 
         function deleteBatch () {
-            for (; index < caches.length; index++) {
+            const end = Math.min(index + deleteBatchCount, caches.length);
+            for (; index < end; index++) {
                 pending++;
                 self._removePathOrFile(caches[index].originUrl, caches[index].url, onDeleted);
             }
-            if (pending === 0) {
+            const endTime = Date.now();
+            console.warn(`${LOG_PREFIX} delete batch：`, {
+                count: end,
+                removed,
+                startTime,
+                endTime,
+                durationMs: endTime - startTime,
+            });
+            if (index < caches.length) {
+                setTimeout(deleteBatch, self.deleteInterval);
+            } else if (pending === 0) {
                 finish();
             }
         }
@@ -284,7 +295,7 @@ const cacheManager = {
             const path = this.cachedFiles.remove(url).url;
             clearTimeout(writeCacheFileList);
             writeCacheFileList = null;
-            this.writeCacheFile(function () {
+            this.writeCacheFile(() => {
                 self._removePathOrFile(url, path);
             });
         }
