@@ -146,12 +146,19 @@ bool jsb_register_all_modules() {
     se::ScriptEngine *se = se::ScriptEngine::getInstance();
 
     se->addBeforeCleanupHook([]() {
+#if (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS || CC_PLATFORM == CC_PLATFORM_ANDROID || CC_PLATFORM == CC_PLATFORM_OHOS)
         // REMOVED: se->garbageCollect()
         // Reason: Calling GC before Object::cleanup() causes MarkCompact to traverse
         // live JSTypedArrays whose external BackingStore data has already been freed
         // by AudioEngine::end(). The safe GC in ScriptEngine::cleanup() (step 5,
         // after Object::cleanup() releases all persistent handles) is sufficient.
         cc::DeferredReleasePool::clear();
+#else
+        se->garbageCollect();
+        cc::DeferredReleasePool::clear();
+        se->garbageCollect();
+        cc::DeferredReleasePool::clear();
+#endif // (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS || CC_PLATFORM == CC_PLATFORM_ANDROID || CC_PLATFORM == CC_PLATFORM_OHOS)
     });
 
     se->addRegisterCallback(jsb_register_global_variables);
