@@ -1,9 +1,0 @@
-{
-  "deviceOrientation": "portrait",
-  "window": {
-    "allowsBounceVertical": "NO",
-    "transparentTitle": "always",
-    "enableAudioAlign": true,
-    "enableMultiAudio": true
-  }
-}
