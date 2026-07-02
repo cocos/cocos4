@@ -145,10 +145,12 @@
 bool jsb_register_all_modules() {
     se::ScriptEngine *se = se::ScriptEngine::getInstance();
 
-    se->addBeforeCleanupHook([se]() {
-        se->garbageCollect();
-        cc::DeferredReleasePool::clear();
-        se->garbageCollect();
+    se->addBeforeCleanupHook([]() {
+        // REMOVED: se->garbageCollect()
+        // Reason: Calling GC before Object::cleanup() causes MarkCompact to traverse
+        // live JSTypedArrays whose external BackingStore data has already been freed
+        // by AudioEngine::end(). The safe GC in ScriptEngine::cleanup() (step 5,
+        // after Object::cleanup() releases all persistent handles) is sufficient.
         cc::DeferredReleasePool::clear();
     });
 
