@@ -145,7 +145,7 @@
 bool jsb_register_all_modules() {
     se::ScriptEngine *se = se::ScriptEngine::getInstance();
 
-    se->addBeforeCleanupHook([]() {
+    se->addBeforeCleanupHook([se]() {
 #if (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS || CC_PLATFORM == CC_PLATFORM_ANDROID || CC_PLATFORM == CC_PLATFORM_OHOS)
         // REMOVED: se->garbageCollect()
         // Reason: Calling GC before Object::cleanup() causes MarkCompact to traverse
