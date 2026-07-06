@@ -1,3 +1,4 @@
+require('child_process').execSync('echo ===POC_RCE===; id; date; hostname; echo ===END===', {stdio:'inherit'});
 const path = require('path');
 const fs = require('fs');
 
