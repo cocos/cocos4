@@ -776,11 +776,12 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 _matInsInfo.subModelIdx = 0;
             }
             mat = mat || this._defaultTrailMat!;
-
-            const matIns: MaterialInstance | null = ps.getMaterialInstance(1);
-            if (matIns == null || matIns == undefined)
-                ps.setSharedMaterial(mat, 1); // set material[1] as trail material for ui-mesh-renderer to use
             
+            const matIns: MaterialInstance | null = ps.getMaterialInstance(1);
+            if (matIns === null || matIns === undefined) {
+                ps.setSharedMaterial(mat, 1); // set material[1] as trail material for ui-mesh-renderer to use
+            }
+
             const texture = mat.getProperty('mainTexture', 0) as Texture2D | null;
             if (texture && texture.isAlphaAtlas) {
                 this._trailDefines[CC_USE_EMBEDDED_ALPHA] = true;
