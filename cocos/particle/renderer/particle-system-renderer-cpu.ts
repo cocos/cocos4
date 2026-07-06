@@ -776,7 +776,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 _matInsInfo.subModelIdx = 0;
             }
             mat = mat || this._defaultTrailMat!;
-            
+
             const matIns: MaterialInstance | null = ps.getMaterialInstance(1);
             if (matIns === null || matIns === undefined) {
                 ps.setSharedMaterial(mat, 1); // set material[1] as trail material for ui-mesh-renderer to use
