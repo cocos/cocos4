@@ -1053,6 +1053,10 @@ Object.defineProperty(nodeProto, 'activeInHierarchy', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x01) !== 0; // Uint8, 0:0, activeInHierarchy
     },
     set(v) {
@@ -1064,6 +1068,10 @@ Object.defineProperty(nodeProto, '_activeInHierarchy', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x01) !== 0; // Uint8, 0:0, activeInHierarchy
     },
     set(v) {
@@ -1075,6 +1083,10 @@ Object.defineProperty(nodeProto, 'layer', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedUint32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedUint32Arr[1]; // Uint32, 1: layer
     },
     set(v) {
@@ -1091,6 +1103,10 @@ Object.defineProperty(nodeProto, '_layer', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedUint32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedUint32Arr[1]; // Uint32, 1: layer
     },
     set(v) {
@@ -1102,6 +1118,10 @@ Object.defineProperty(nodeProto, '_eventMask', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedUint32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedUint32Arr[0]; // Uint32, 0: eventMask
     },
     set(v) {
@@ -1113,6 +1133,10 @@ Object.defineProperty(nodeProto, '_siblingIndex', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedInt32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedInt32Arr[0]; // Int32, 0: siblingIndex
     },
     set(v) {
@@ -1133,6 +1157,10 @@ Object.defineProperty(nodeProto, 'siblingIndex', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedInt32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedInt32Arr[0]; // Int32, 0: siblingIndex
     },
     set(v) {
@@ -1142,6 +1170,10 @@ Object.defineProperty(nodeProto, 'siblingIndex', {
 
 // note: setSiblingIndex is a JSB function, DO NOT override it
 nodeProto.getSiblingIndex = function getSiblingIndex() {
+    if (this._sharedInt32Arr.buffer.byteLength === 0) {
+        console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+        return 0;
+    }
     return this._sharedInt32Arr[0]; // Int32, 0: siblingIndex
 };
 
@@ -1150,6 +1182,10 @@ Object.defineProperty(nodeProto, '_transformFlags', {
     configurable: true,
     enumerable: true,
     get() {
+        if (this._sharedUint32Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedUint32Arr[2]; // Uint32, 2: _transformFlags
     },
     set(v) {
@@ -1161,6 +1197,10 @@ Object.defineProperty(nodeProto, '_active', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x02) !== 0; // Uint8, 0:1, active
     },
     set(v) {
@@ -1172,6 +1212,10 @@ Object.defineProperty(nodeProto, 'active', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x02) !== 0; // Uint8, 0:1, active
     },
     set(v) {
@@ -1183,6 +1227,10 @@ Object.defineProperty(nodeProto, '_static', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x04) !== 0; // Uint8, 0:2, static
     },
     set(v) {
@@ -1194,6 +1242,10 @@ Object.defineProperty(nodeProto, '_colorDirty', {
     configurable: true,
     enumerable: true,
     get(): Readonly<Boolean> {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return false;
+        }
         return (this._sharedUint8Arr[0] & 0x08) !== 0; // Uint8, 0:3, _colorDirty
     },
     set(v) {
@@ -1205,6 +1257,10 @@ Object.defineProperty(nodeProto, '_skewType', {
     configurable: true,
     enumerable: true,
     get(): number {
+        if (this._sharedUint8Arr.buffer.byteLength === 0) {
+            console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+            return 0;
+        }
         return this._sharedUint8Arr[1];
     },
     set(v) {
@@ -1507,36 +1563,52 @@ nodeProto._setSkew = function (v: IVec2Like): void {
 };
 
 nodeProto._getSkewX = function () {
+    if (this._sharedFloat32Arr.buffer.byteLength === 0) {
+        console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+        return 0;
+    }
     return this._sharedFloat32Arr[0];
 };
 
 nodeProto._setSkewX = function (v: number) {
     this._sharedFloat32Arr[0] = v;
-}
+};
 
 nodeProto._getSkewY = function () {
+    if (this._sharedFloat32Arr.buffer.byteLength === 0) {
+        console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+        return 0;
+    }
     return this._sharedFloat32Arr[1];
 };
 
 nodeProto._setSkewY = function (v: number) {
     this._sharedFloat32Arr[1] = v;
-}
+};
 
 nodeProto._getLocalOpacity = function (): number {
+    if (this._sharedFloat32Arr.buffer.byteLength === 0) {
+        console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+        return 1;
+    }
     return this._sharedFloat32Arr[2];
 };
 
 nodeProto._setLocalOpacity = function (v: number): void {
     this._sharedFloat32Arr[2] = v;
-}
+}; 
 
 nodeProto._getFinalOpacity = function (): number {
+    if (this._sharedFloat32Arr.buffer.byteLength === 0) {
+        console.warn(`Node ${this.name} has no shared buffer, please check if it is initialized properly.`);
+        return 1;
+    }
     return this._sharedFloat32Arr[3];
 };
 
 nodeProto._setFinalOpacity = function (v: number): void {
     this._sharedFloat32Arr[3] = v;
-}
+};
 
 //
 nodeProto._ctor = function (name?: string) {
