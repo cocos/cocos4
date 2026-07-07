@@ -24,6 +24,12 @@
 
 export const SPINE_VERSION = '3.8';
 
+// Placeholder so spine-instantiate-dynamic.ts can import setSpineVersion from './spine-version' and type-check.
+// When building the engine with runtime-selectable spine, moduleOverrides replaces this file with
+// spine-version-dynamic.ts (the real implementation). In fixed single-version builds (spine-3.8 / spine-4.2)
+// spine-instantiate-dynamic is not used, so this no-op is never called.
+export function setSpineVersion (version: string): void {}
+
 export function isBinaryCompatible (buffer: Uint8Array): boolean {
     return false;
 }
