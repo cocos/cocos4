@@ -878,7 +878,7 @@ export class TiledLayer extends UIRenderer {
         const axis = this._staggerAxis;
 
         switch (this._layerOrientation) {
-        // left top to right dowm
+        // left top to right down
         case Orientation.ORTHO:
             col = Math.floor(x / maptw);
             row = Math.floor(y / mapth);
@@ -889,7 +889,7 @@ export class TiledLayer extends UIRenderer {
             col = Math.floor(x / maptw2);
             row = Math.floor(y / mapth2);
             break;
-            // left top to right dowm
+            // left top to right down
         case Orientation.HEX:
             if (axis === StaggerAxis.STAGGERAXIS_Y) {
                 row = Math.floor(y / (mapth - this._diffY1!));
@@ -1017,7 +1017,7 @@ export class TiledLayer extends UIRenderer {
         }
 
         switch (layerOrientation) {
-        // left top to right dowm
+        // left top to right down
         case Orientation.ORTHO:
             cullingCol = col;
             cullingRow = rows - row - 1;
@@ -1039,7 +1039,7 @@ export class TiledLayer extends UIRenderer {
             left = maptw2 * cullingCol;
             bottom = mapth2 * cullingRow;
             break;
-            // left top to right dowm
+            // left top to right down
         case Orientation.HEX:
             diffX2 = (axis! === StaggerAxis.STAGGERAXIS_Y && row % 2 === 1) ? maptw2 * odd_even! : 0;
             diffY2 = (axis! === StaggerAxis.STAGGERAXIS_X && col % 2 === 1) ? mapth2 * -odd_even! : 0;
