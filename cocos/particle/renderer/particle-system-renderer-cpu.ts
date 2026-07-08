@@ -779,7 +779,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
 
             const matIns: MaterialInstance | null = ps.getMaterialInstance(1);
             if (matIns === null || matIns === undefined) {
-                ps.setSharedMaterial(mat, 1); // set material[1] as trail material for ui-mesh-renderer to use
+                ps.setSharedMaterial(mat.parent, 1); // set material[1] as trail material for ui-mesh-renderer to use
+                ps.setMaterialInstance(mat, 1);
             }
 
             const texture = mat.getProperty('mainTexture', 0) as Texture2D | null;
