@@ -258,7 +258,7 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
 
     addSceneOfCamera (camera: Camera, light: LightInfo, sceneFlags = SceneFlags.NONE, name = 'Camera'): void {
         const lightTarget = light.light;
-        const scene = light.probe ? light.probe.node.scene.renderScene || undefined : undefined;
+        const scene = light.probe?.node?.scene?.renderScene || undefined;
         this._addScene(camera, sceneFlags, lightTarget, scene, light);
     }
     addScene (camera: Camera, sceneFlags = SceneFlags.NONE, light: Light | undefined | null = null, scene: RenderScene | undefined = undefined): SceneBuilder {
