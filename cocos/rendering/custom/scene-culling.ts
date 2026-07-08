@@ -195,10 +195,13 @@ function sceneCulling (
             }
             models.push(model);
         } else if (probe.probeType === ProbeType.CUBE) {
+            if (!wBounds || !model.bakeToReflectionProbe) {
+                continue;
+            }
             if (!isVisible(model, visibility)) {
                 continue;
             }
-            if (wBounds && isIntersectAABB(wBounds, probe.boundingBox!)) {
+            if (isIntersectAABB(wBounds, probe.boundingBox!)) {
                 continue;
             }
             models.push(model);
@@ -475,7 +478,8 @@ export class SceneCulling {
             );
 
             // Get or create render queue
-            const renderQueueID = this.getOrCreateRenderQueue(renderQueueKey, sceneData.flags, sceneData.camera);
+            const renderCamera = sceneData.light.probe ? sceneData.light.probe.camera : sceneData.camera;
+            const renderQueueID = this.getOrCreateRenderQueue(renderQueueKey, sceneData.flags, renderCamera);
 
             // add render queue query
             const renderQueueQuery = this.cullingPools.renderQueueQueryRecycle.add();

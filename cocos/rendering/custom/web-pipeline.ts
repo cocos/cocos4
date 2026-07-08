@@ -260,7 +260,13 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
         const lightTarget = light.light;
         this.addScene(camera, sceneFlags, lightTarget);
     }
-    addScene (camera: Camera, sceneFlags = SceneFlags.NONE, light: Light | undefined | null = null, scene: RenderScene | undefined = undefined): SceneBuilder {
+    addScene (
+        camera: Camera,
+        sceneFlags = SceneFlags.NONE,
+        light: Light | undefined | null = null,
+        scene: RenderScene | undefined = undefined,
+        lightInfo: LightInfo | null = null,
+    ): SceneBuilder {
         const sceneData = renderGraphPool.createSceneData(
             scene || camera.scene,
             camera,
@@ -268,6 +274,9 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
             light && !(sceneFlags & SceneFlags.SHADOW_CASTER) ? CullingFlags.CAMERA_FRUSTUM | CullingFlags.LIGHT_BOUNDS : CullingFlags.CAMERA_FRUSTUM,
             light,
         );
+        if (lightInfo) {
+            sceneData.light.reset(lightInfo.light, lightInfo.level, lightInfo.culledByLight, lightInfo.probe);
+        }
         const renderData = renderGraphPool.createRenderData();
         const sceneId = this._renderGraph.addVertex<RenderGraphValue.Scene>(RenderGraphValue.Scene, sceneData, 'Scene', '', renderData, !DEBUG, this._vertID);
         if (!(sceneFlags & SceneFlags.NON_BUILTIN)) {

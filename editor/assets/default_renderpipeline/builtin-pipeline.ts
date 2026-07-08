@@ -663,7 +663,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 // Rendering
                 const probePass = ppl.addRenderPass(width, height, 'default');
                 probePass.name = `PlanarReflectionProbe${probeID}`;
-                this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
+                this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera, probe,
                     colorName, depthStencilName, mainLight, scene);
             } else if (EDITOR) {
                 for (let faceIdx = 0; faceIdx < probe.bakedCubeTextures.length; faceIdx++) {
@@ -680,7 +680,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                     // Rendering
                     const probePass = ppl.addRenderPass(width, height, 'default');
                     probePass.name = `CubeProbe${probeID}${faceIdx}`;
-                    this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
+                    this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera, probe,
                         colorName, depthStencilName, mainLight, scene);
                 }
                 probe.needRender = false;
@@ -696,6 +696,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         cameraConfigs: Readonly<CameraConfigs & ForwardPassConfigs>,
         id: number,
         camera: renderer.scene.Camera,
+        probe: renderer.scene.ReflectionProbe,
         colorName: string,
         depthStencilName: string,
         mainLight: renderer.scene.DirectionalLight | null,
@@ -743,11 +744,13 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         // TODO(zhouzhenglong): Separate OPAQUE and MASK queue
 
         // add opaque and mask queue
+        const lightInfo = new rendering.LightInfo(mainLight || null, 0, false, probe);
         pass.addQueue(QueueHint.NONE, 'reflect-map') // Currently we put OPAQUE and MASK into one queue, so QueueHint is NONE
             .addScene(camera,
                 SceneFlags.OPAQUE | SceneFlags.MASK | SceneFlags.REFLECTION_PROBE,
                 mainLight || undefined,
-                scene ? scene : undefined);
+                scene ? scene : undefined,
+                lightInfo);
     }
     private _addForwardRadiancePasses(
         ppl: rendering.BasicPipeline,
