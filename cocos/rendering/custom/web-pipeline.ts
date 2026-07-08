@@ -258,17 +258,13 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
 
     addSceneOfCamera (camera: Camera, light: LightInfo, sceneFlags = SceneFlags.NONE, name = 'Camera'): void {
         const lightTarget = light.light;
-        const scene = light.probe ? light.probe.node.scene.renderScene || undefined : undefined;
-        this._addScene(camera, sceneFlags, lightTarget, scene, light);
+        this.addScene(camera, sceneFlags, lightTarget);
     }
-    addScene (camera: Camera, sceneFlags = SceneFlags.NONE, light: Light | undefined | null = null, scene: RenderScene | undefined = undefined): SceneBuilder {
-        return this._addScene(camera, sceneFlags, light, scene);
-    }
-    private _addScene (
+    addScene (
         camera: Camera,
-        sceneFlags: SceneFlags,
-        light: Light | undefined | null,
-        scene: RenderScene | undefined,
+        sceneFlags = SceneFlags.NONE,
+        light: Light | undefined | null = null,
+        scene: RenderScene | undefined = undefined,
         lightInfo: LightInfo | null = null,
     ): SceneBuilder {
         const sceneData = renderGraphPool.createSceneData(

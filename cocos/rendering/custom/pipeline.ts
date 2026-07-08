@@ -502,7 +502,8 @@ export interface RenderQueueBuilder extends Setter {
         camera: Camera,
         sceneFlags: SceneFlags,
         light?: Light,
-        scene?: RenderScene): SceneBuilder;
+        scene?: RenderScene,
+        lightInfo?: LightInfo): SceneBuilder;
     /**
      * @en Render a full-screen quad.
      * @zh 渲染全屏四边形
