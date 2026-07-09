@@ -471,7 +471,7 @@ export class Color extends ValueType implements Modifiable {
         }
     }
 
-    private syncData () {
+    private syncData (): void {
         const colorLen: number = 4;
         for (let i = 0; i < colorLen; ++i) {
             this._dataFloat[i] = this._data[i];
