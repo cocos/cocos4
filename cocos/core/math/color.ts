@@ -351,7 +351,7 @@ export class Color extends ValueType implements Modifiable {
 
     set r (red: number) {
         this._data[R_INDEX] = red;
-        this._dataFloat[R_INDEX] = red;
+        this._dataFloat[R_INDEX] = this.clampFloatData(red);
     }
 
     get rf (): number {
@@ -368,7 +368,7 @@ export class Color extends ValueType implements Modifiable {
 
     set g (green: number) {
         this._data[G_INDEX] = green;
-        this._dataFloat[G_INDEX] = green;
+        this._dataFloat[G_INDEX] = this.clampFloatData(green);
     }
 
     get gf (): number {
@@ -385,7 +385,7 @@ export class Color extends ValueType implements Modifiable {
 
     set b (blue: number) {
         this._data[B_INDEX] = blue;
-        this._dataFloat[B_INDEX] = blue;
+        this._dataFloat[B_INDEX] = this.clampFloatData(blue);
     }
 
     get bf (): number {
@@ -401,7 +401,7 @@ export class Color extends ValueType implements Modifiable {
 
     set a (alpha: number) {
         this._data[A_INDEX] = alpha;
-        this._dataFloat[A_INDEX] = alpha;
+        this._dataFloat[A_INDEX] = this.clampFloatData(alpha);
     }
 
     get af (): number {
@@ -412,22 +412,22 @@ export class Color extends ValueType implements Modifiable {
     get x (): number { return this._data[R_INDEX] * toFloat; }
     set x (value: number) {
         this._data[R_INDEX] = value * 255;
-        this._dataFloat[R_INDEX] = value * 255;
+        this._dataFloat[R_INDEX] = this.clampFloatData(value * 255);
     }
     get y (): number { return this._data[G_INDEX] * toFloat; }
     set y (value: number) {
         this._data[G_INDEX] = value * 255;
-        this._dataFloat[G_INDEX] = value * 255;
+        this._dataFloat[G_INDEX] = this.clampFloatData(value * 255);
     }
     get z (): number { return this._data[B_INDEX] * toFloat; }
     set z (value: number) {
         this._data[B_INDEX] = value * 255;
-        this._dataFloat[B_INDEX] = value * 255;
+        this._dataFloat[B_INDEX] = this.clampFloatData(value * 255);
     }
     get w (): number { return this._data[A_INDEX] * toFloat; }
     set w (value: number) {
         this._data[A_INDEX] = value * 255;
-        this._dataFloat[A_INDEX] = value * 255;
+        this._dataFloat[A_INDEX] = this.clampFloatData(value * 255);
     }
 
     get xf (): number { return this._dataFloat[R_INDEX] * toFloat; }
@@ -476,6 +476,13 @@ export class Color extends ValueType implements Modifiable {
         for (let i = 0; i < colorLen; ++i) {
             this._dataFloat[i] = this._data[i];
         }
+    }
+
+    private clampFloatData (value: number): number {
+        let result: number = value;
+        result = result > 255.0 ? 255.0 : result;
+        result = result < 0.0 ? 0.0 : result;
+        return result; 
     }
 
     /**
