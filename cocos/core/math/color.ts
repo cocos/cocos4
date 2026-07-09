@@ -42,7 +42,7 @@ const A_INDEX = 3;
 const mathAbs = Math.abs;
 const mathMax = Math.max;
 
-function freezeColor (r: number, g: number, b: number, a: number): Readonly<Color> {
+function freezeColor(r: number, g: number, b: number, a: number): Readonly<Color> {
     return Object.freeze(new Color(r, g, b, a));
 }
 
@@ -68,7 +68,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Copy content of a color into another and save the results to out color.
      * @zh 获得指定颜色的拷贝
      */
-    public static clone<Out extends IColorLike> (a: Out): Color {
+    public static clone<Out extends IColorLike>(a: Out): Color {
         const out = new Color();
         out.r = a.r;
         out.g = a.g;
@@ -81,7 +81,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Clone a color and save the results to out color.
      * @zh 复制目标颜色
      */
-    public static copy<Out extends IColorLike> (out: Out, a: Out): Out {
+    public static copy<Out extends IColorLike>(out: Out, a: Out): Out {
         out.r = a.r;
         out.g = a.g;
         out.b = a.b;
@@ -93,7 +93,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Set the components of a color to the given values and save the results to out color.
      * @zh 设置颜色值
      */
-    public static set<Out extends IColorLike> (out: Out, r: number, g: number, b: number, a: number): Out {
+    public static set<Out extends IColorLike>(out: Out, r: number, g: number, b: number, a: number): Out {
         out.r = r;
         out.g = g;
         out.b = b;
@@ -110,9 +110,9 @@ export class Color extends ValueType implements Modifiable {
      * color.toVec4();
      * ```
      */
-    public static toVec4 (color: Color, out?: Vec4): Vec4 {
+    public static toVec4(color: Color, out?: Vec4): Vec4 {
         const sourceData = color._data;
-        out = out !== undefined ?  out : new Vec4();
+        out = out !== undefined ? out : new Vec4();
         out.x = sourceData[R_INDEX] * toFloat;
         out.y = sourceData[G_INDEX] * toFloat;
         out.z = sourceData[B_INDEX] * toFloat;
@@ -128,7 +128,7 @@ export class Color extends ValueType implements Modifiable {
      * color.fromVec4(new Vec4(1,1,1,1));
      * ```
      */
-    public static fromVec4 (value: Vec4, out?: Color): Color {
+    public static fromVec4(value: Vec4, out?: Color): Color {
         out = out === undefined ? new Color() : out;
         const outData = out._data;
         outData[R_INDEX] = value.x / toFloat;
@@ -148,7 +148,7 @@ export class Color extends ValueType implements Modifiable {
      *   16进制字符串的格式应该类似: '#12345678' '#123456', '123456', '12345678'.
      *   16进制数值的格式应该类似:  0x12345678, 0x123456 .
      */
-    public static fromHEX<Out extends IColorLike> (out: Out, hex: string | number): Out {
+    public static fromHEX<Out extends IColorLike>(out: Out, hex: string | number): Out {
         let hexNumber: number;
         if (typeof hex === 'string') {
             hex = hex[0] === '#' ? hex.substring(1) : hex;
@@ -178,7 +178,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Add two colors by components. And save the results to out color.
      * @zh 逐通道颜色加法
      */
-    public static add<Out extends IColorLike> (out: Out, a: Out, b: Out): Out {
+    public static add<Out extends IColorLike>(out: Out, a: Out, b: Out): Out {
         out.r = a.r + b.r;
         out.g = a.g + b.g;
         out.b = a.b + b.b;
@@ -190,7 +190,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Subtract each components of color b from each components of color a. And save the results to out color.
      * @zh 逐通道颜色减法
      */
-    public static subtract<Out extends IColorLike> (out: Out, a: Out, b: Out): Out {
+    public static subtract<Out extends IColorLike>(out: Out, a: Out, b: Out): Out {
         out.r = a.r - b.r;
         out.g = a.g - b.g;
         out.b = a.b - b.b;
@@ -202,7 +202,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Multiply each components of two colors. And save the results to out color.
      * @zh 逐通道颜色乘法
      */
-    public static multiply<Out extends IColorLike> (out: Out, a: Out, b: Out): Out {
+    public static multiply<Out extends IColorLike>(out: Out, a: Out, b: Out): Out {
         out.r = a.r * b.r;
         out.g = a.g * b.g;
         out.b = a.b * b.b;
@@ -214,7 +214,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Divide each components of color a by each components of color b. And save the results to out color.
      * @zh 逐通道颜色除法
      */
-    public static divide<Out extends IColorLike> (out: Out, a: Out, b: Out): Out {
+    public static divide<Out extends IColorLike>(out: Out, a: Out, b: Out): Out {
         out.r = a.r / b.r;
         out.g = a.g / b.g;
         out.b = a.b / b.b;
@@ -226,7 +226,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Multiply all channels in a color with the given scale factor, and save the results to out color.
      * @zh 全通道统一缩放颜色
      */
-    public static scale<Out extends IColorLike> (out: Out, a: Out, b: number): Out {
+    public static scale<Out extends IColorLike>(out: Out, a: Out, b: number): Out {
         out.r = a.r * b;
         out.g = a.g * b;
         out.b = a.b * b;
@@ -238,7 +238,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Performs a linear interpolation between two colors.
      * @zh 逐通道颜色线性插值：A + t * (B - A)
      */
-    public static lerp<Out extends IColorLike> (out: Out, from: Out, to: Out, ratio: number): Out {
+    public static lerp<Out extends IColorLike>(out: Out, from: Out, to: Out, ratio: number): Out {
         const fromR = from.r;
         const fromG = from.g;
         const fromB = from.b;
@@ -256,7 +256,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 颜色转数组
      * @param ofs Array Start Offset
      */
-    public static toArray<Out extends IWritableArrayLike<number>> (out: Out, a: IColorLike, ofs = 0): Out {
+    public static toArray<Out extends IWritableArrayLike<number>>(out: Out, a: IColorLike, ofs = 0): Out {
         const scale = (a instanceof Color || a.a > 1) ? 1 / 255 : 1;
         out[ofs + 0] = a.r * scale;
         out[ofs + 1] = a.g * scale;
@@ -270,7 +270,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 数组转颜色
      * @param ofs Array Start Offset
      */
-    public static fromArray<Out extends IColorLike> (arr: IWritableArrayLike<number>, out: Out, ofs = 0): Out {
+    public static fromArray<Out extends IColorLike>(arr: IWritableArrayLike<number>, out: Out, ofs = 0): Out {
         out.r = arr[ofs + 0] * 255;
         out.g = arr[ofs + 1] * 255;
         out.b = arr[ofs + 2] * 255;
@@ -287,12 +287,12 @@ export class Color extends ValueType implements Modifiable {
      * @param uint32 @en The unsigned 32 bit integer @zh 32 位无符号整数
      * @returns @en The `out` object @zh `out` 对象
      */
-    public static fromUint32<Out extends IColorLike> (out: Out, uint32: number): Out {
+    public static fromUint32<Out extends IColorLike>(out: Out, uint32: number): Out {
         // Make sure it is an unsigned value.
         uint32 >>>= 0;
 
         out.r = uint32 & 0xff;
-        out.g = (uint32 >> 8)  & 0xff;
+        out.g = (uint32 >> 8) & 0xff;
         out.b = (uint32 >> 16) & 0xff;
         out.a = (uint32 >> 24) & 0xff;
         return out;
@@ -306,7 +306,7 @@ export class Color extends ValueType implements Modifiable {
      * @param color @en The color. @zh 颜色。
      * @returns @en The converted unsigned 32 bit integer. @zh 32 位无符号整数。
      */
-    public static toUint32 (color: IColorLike): number {
+    public static toUint32(color: IColorLike): number {
         return (color.a << 24 | color.b << 16 | color.g << 8 | color.r) >>> 0;
     }
 
@@ -314,7 +314,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Check whether the two given colors are identical
      * @zh 颜色等价判断
      */
-    public static strictEquals<Out extends IColorLike> (a: Out, b: Out): boolean {
+    public static strictEquals<Out extends IColorLike>(a: Out, b: Out): boolean {
         return a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a;
     }
 
@@ -322,7 +322,7 @@ export class Color extends ValueType implements Modifiable {
      * @en Check whether the two given colors are approximately equivalent. Difference of each channel is smaller that the epsilon.
      * @zh 排除浮点数误差的颜色近似等价判断
      */
-    public static equals<Out extends IColorLike> (a: Out, b: Out, epsilon = EPSILON): boolean {
+    public static equals<Out extends IColorLike>(a: Out, b: Out, epsilon = EPSILON): boolean {
         const hasInf = mathAbs(a.r) === Infinity || mathAbs(a.g) === Infinity || mathAbs(a.b) === Infinity || mathAbs(a.a) === Infinity;
         return !hasInf && (mathAbs(a.r - b.r) <= epsilon * mathMax(1.0, mathAbs(a.r), mathAbs(b.r))
             && mathAbs(a.g - b.g) <= epsilon * mathMax(1.0, mathAbs(a.g), mathAbs(b.g))
@@ -334,19 +334,19 @@ export class Color extends ValueType implements Modifiable {
      * @en Convert the given color to a hex color value. And save the results to out color.
      * @zh 获取指定颜色的整型数据表示
      */
-    public static hex<Out extends IColorLike> (a: Out): number {
+    public static hex<Out extends IColorLike>(a: Out): number {
         return ((a.r * 255) << 24 | (a.g * 255) << 16 | (a.b * 255) << 8 | a.a * 255) >>> 0;
     }
 
     private _data = new Uint8ClampedArray(4); // Do not use this to do color calculation or will clamp float part
-    private _dataFloat = new Float32Array(4); // Use this float version do color calculation
+    private _dataFloat = [0, 0, 0, 0]; // Use this float version do color calculation
 
     /**
      * @en Get red channel value.
      * @zh 获取当前颜色的 Red 通道。
      * @deprecated Use get rf() instead.
      */
-    get r (): number {
+    get r(): number {
         return this._data[R_INDEX];
     }
 
@@ -354,8 +354,10 @@ export class Color extends ValueType implements Modifiable {
      * @en Set red channel value.
      * @zh 设置当前颜色的 Red 通道。
      */
-    set r (red: number) {
+    set r(red: number) {
         this._data[R_INDEX] = red;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[R_INDEX] = this.clampFloatData(red);
     }
 
@@ -363,7 +365,9 @@ export class Color extends ValueType implements Modifiable {
      * @en Get red channel value.
      * @zh 获取当前颜色的 Red 通道。
      */
-    get rf (): number {
+    get rf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         return this._dataFloat[R_INDEX];
     }
 
@@ -372,7 +376,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的 Green 通道。
      * @deprecated Use get gf() instead.
      */
-    get g (): number {
+    get g(): number {
         return this._data[G_INDEX];
     }
 
@@ -380,8 +384,10 @@ export class Color extends ValueType implements Modifiable {
      * @en Set green channel value.
      * @zh 设置当前颜色的 Green 通道。
      */
-    set g (green: number) {
+    set g(green: number) {
         this._data[G_INDEX] = green;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[G_INDEX] = this.clampFloatData(green);
     }
 
@@ -389,7 +395,9 @@ export class Color extends ValueType implements Modifiable {
      * @en Get green channel value.
      * @zh 获取当前颜色的 Green 通道。
      */
-    get gf (): number {
+    get gf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         return this._dataFloat[G_INDEX];
     }
 
@@ -398,7 +406,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的 Blue 通道。
      * @deprecated Use get bf() instead.
      */
-    get b (): number {
+    get b(): number {
         return this._data[B_INDEX];
     }
 
@@ -406,8 +414,10 @@ export class Color extends ValueType implements Modifiable {
      * @en Set blue channel value.
      * @zh 设置当前颜色的 Blue 通道。
      */
-    set b (blue: number) {
+    set b(blue: number) {
         this._data[B_INDEX] = blue;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[B_INDEX] = this.clampFloatData(blue);
     }
 
@@ -415,7 +425,9 @@ export class Color extends ValueType implements Modifiable {
      * @en Get blue channel value.
      * @zh 获取当前颜色的 Blue 通道。
      */
-    get bf (): number {
+    get bf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         return this._dataFloat[B_INDEX];
     }
 
@@ -424,7 +436,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的透明度通道。
      * @deprecated Use get af() instead.
      */
-    get a (): number {
+    get a(): number {
         return this._data[A_INDEX];
     }
 
@@ -432,8 +444,10 @@ export class Color extends ValueType implements Modifiable {
      * @en Set alpha channel value.
      * @zh 设置当前颜色的透明度通道。
      */
-    set a (alpha: number) {
+    set a(alpha: number) {
         this._data[A_INDEX] = alpha;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[A_INDEX] = this.clampFloatData(alpha);
     }
 
@@ -441,43 +455,69 @@ export class Color extends ValueType implements Modifiable {
      * @en Get alpha channel value.
      * @zh 获取当前颜色的透明度通道。
      */
-    get af (): number {
+    get af(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         return this._dataFloat[A_INDEX];
     }
 
     // compatibility with vector interfaces
-    get x (): number { return this._data[R_INDEX] * toFloat; }
-    set x (value: number) {
+    get x(): number { return this._data[R_INDEX] * toFloat; }
+    set x(value: number) {
         this._data[R_INDEX] = value * 255;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[R_INDEX] = this.clampFloatData(value * 255);
     }
-    get y (): number { return this._data[G_INDEX] * toFloat; }
-    set y (value: number) {
+    get y(): number { return this._data[G_INDEX] * toFloat; }
+    set y(value: number) {
         this._data[G_INDEX] = value * 255;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[G_INDEX] = this.clampFloatData(value * 255);
     }
-    get z (): number { return this._data[B_INDEX] * toFloat; }
-    set z (value: number) {
+    get z(): number { return this._data[B_INDEX] * toFloat; }
+    set z(value: number) {
         this._data[B_INDEX] = value * 255;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[B_INDEX] = this.clampFloatData(value * 255);
     }
-    get w (): number { return this._data[A_INDEX] * toFloat; }
-    set w (value: number) {
+    get w(): number { return this._data[A_INDEX] * toFloat; }
+    set w(value: number) {
         this._data[A_INDEX] = value * 255;
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         this._dataFloat[A_INDEX] = this.clampFloatData(value * 255);
     }
 
-    get xf (): number { return this._dataFloat[R_INDEX] * toFloat; }
-    get yf (): number { return this._dataFloat[G_INDEX] * toFloat; }
-    get zf (): number { return this._dataFloat[B_INDEX] * toFloat; }
-    get wf (): number { return this._dataFloat[A_INDEX] * toFloat; }
+    get xf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
+        return this._dataFloat[R_INDEX] * toFloat;
+    }
+    get yf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
+        return this._dataFloat[G_INDEX] * toFloat;
+    }
+    get zf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
+        return this._dataFloat[B_INDEX] * toFloat;
+    }
+    get wf(): number {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
+        return this._dataFloat[A_INDEX] * toFloat;
+    }
 
     /**
      * @en Construct a same color from the given color
      * @zh 构造与指定颜色相等的颜色。
      * @param other Specified color
      */
-    constructor (other: Readonly<Color>);
+    constructor(other: Readonly<Color>);
 
     /**
      * @en Construct a color form the hex color string
@@ -485,7 +525,7 @@ export class Color extends ValueType implements Modifiable {
      * @param hexString Hexadecimal color string.
      */
 
-    constructor (hexString: string);
+    constructor(hexString: string);
 
     /**
      * @en Construct a color
@@ -495,9 +535,9 @@ export class Color extends ValueType implements Modifiable {
      * @param b blue component of the color, default value is 0.
      * @param a alpha component of the color, default value is 255.
      */
-    constructor (r?: number, g?: number, b?: number, a?: number);
+    constructor(r?: number, g?: number, b?: number, a?: number);
 
-    constructor (r?: number | Readonly<Color> | string, g?: number, b?: number, a?: number) {
+    constructor(r?: number | Readonly<Color> | string, g?: number, b?: number, a?: number) {
         super();
         if (typeof r === 'string') {
             this.fromHEX(r);
@@ -508,14 +548,16 @@ export class Color extends ValueType implements Modifiable {
         }
     }
 
-    private syncData (): void {
+    private syncData(): void {
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
         const colorLen: number = 4;
         for (let i = 0; i < colorLen; ++i) {
             this._dataFloat[i] = this._data[i];
         }
     }
 
-    private clampFloatData (value: number): number {
+    private clampFloatData(value: number): number {
         let result: number = value;
         result = result > 255.0 ? 255.0 : result;
         result = result < 0.0 ? 0.0 : result;
@@ -526,10 +568,15 @@ export class Color extends ValueType implements Modifiable {
      * @en Clone a new color from the current color.
      * @zh 克隆当前颜色。
      */
-    public clone (): Color {
+    public clone(): Color {
         const ret = new Color();
         ret._data.set(this._data);
-        ret._dataFloat.set(this._dataFloat);
+        if (this._dataFloat === undefined)
+            this._dataFloat = [0, 0, 0, 0];
+        ret._dataFloat[R_INDEX] = this._dataFloat[R_INDEX];
+        ret._dataFloat[G_INDEX] = this._dataFloat[G_INDEX];
+        ret._dataFloat[B_INDEX] = this._dataFloat[B_INDEX];
+        ret._dataFloat[A_INDEX] = this._dataFloat[A_INDEX];
 
         return ret;
     }
@@ -540,14 +587,14 @@ export class Color extends ValueType implements Modifiable {
      * @param other Specified color
      * @returns Returns `true` when all channels of both colors are equal; otherwise returns `false`.
      */
-    public equals (other: Readonly<Color>): boolean {
+    public equals(other: Readonly<Color>): boolean {
         const otherColor = other as Color;
         const thisData = this._data;
         // otherColor may not be Color instance if invoked by tween action, so use getter to get property values.
         return other && thisData[R_INDEX] === otherColor.r
-                     && thisData[G_INDEX] === otherColor.g
-                     && thisData[B_INDEX] === otherColor.b
-                     && thisData[A_INDEX] === otherColor.a;
+            && thisData[G_INDEX] === otherColor.g
+            && thisData[B_INDEX] === otherColor.b
+            && thisData[A_INDEX] === otherColor.a;
     }
 
     /**
@@ -556,7 +603,7 @@ export class Color extends ValueType implements Modifiable {
      * @param to Target color
      * @param ratio The interpolation coefficient.The range is [0,1].
      */
-    public lerp (to: Readonly<Color>, ratio: number): Color {
+    public lerp(to: Readonly<Color>, ratio: number): Color {
         Color.lerp(this, this, to, ratio);
         return this;
     }
@@ -566,7 +613,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 返回当前颜色的字符串表示。
      * @returns A string representation of the current color.
      */
-    public toString (): string {
+    public toString(): string {
         return `rgba(${this.r.toFixed()}, ${this.g.toFixed()}, ${this.b.toFixed()}, ${this.a.toFixed()})`;
     }
 
@@ -585,7 +632,7 @@ export class Color extends ValueType implements Modifiable {
      * color.toCSS("#rrggbb"); // "#000000";
      * ```
      */
-    public toCSS (opt: ('rgba' | 'rgb' | '#rrggbb' | '#rrggbbaa') = 'rgba'): string {
+    public toCSS(opt: ('rgba' | 'rgb' | '#rrggbb' | '#rrggbbaa') = 'rgba'): string {
         if (opt === 'rgba') {
             return `rgba(${this.r},${this.g},${this.b},${(this.a * toFloat).toFixed(2)})`;
         } else if (opt === 'rgb') {
@@ -607,7 +654,7 @@ export class Color extends ValueType implements Modifiable {
      * @param hex the hex-string or hex-number
      * @returns `this`
      */
-    fromHEX (hex: string | number): Color {
+    fromHEX(hex: string | number): Color {
         let hexNumber: number;
         if (typeof hex === 'string') {
             hex = hex[0] === '#' ? hex.substring(1) : hex;
@@ -649,7 +696,7 @@ export class Color extends ValueType implements Modifiable {
      * color.toHEX("#rrggbb");   // "ff0e00"
      * ```
      */
-    public toHEX (fmt: '#rgb' | '#rrggbb' | '#rrggbbaa' = '#rrggbb'): string {
+    public toHEX(fmt: '#rgb' | '#rrggbb' | '#rrggbbaa' = '#rrggbb'): string {
         const thisData = this._data;
         const prefix = '0';
         // #rrggbb
@@ -679,7 +726,7 @@ export class Color extends ValueType implements Modifiable {
      * color.toRGBValue();
      * ```
      */
-    public toRGBValue (): number {
+    public toRGBValue(): number {
         return (this._data[B_INDEX] << 16 | this._data[G_INDEX] << 8 | this._data[R_INDEX]);
     }
 
@@ -696,7 +743,7 @@ export class Color extends ValueType implements Modifiable {
      * color.fromHSV(0, 0, 1); // Color {r: 255, g: 255, b: 255, a: 255};
      * ```
      */
-    public fromHSV (h: number, s: number, v: number): Color {
+    public fromHSV(h: number, s: number, v: number): Color {
         let r = 0;
         let g = 0;
         let b = 0;
@@ -713,44 +760,44 @@ export class Color extends ValueType implements Modifiable {
             const q = v * (1 - (s * f));
             const t = v * (1 - (s * (1 - f)));
             switch (i) {
-            default:
-                assertIsTrue(false);
+                default:
+                    assertIsTrue(false);
                 // eslint-disable-next-line no-fallthrough
-            case 0:
-                r = v;
-                g = t;
-                b = p;
-                break;
+                case 0:
+                    r = v;
+                    g = t;
+                    b = p;
+                    break;
 
-            case 1:
-                r = q;
-                g = v;
-                b = p;
-                break;
+                case 1:
+                    r = q;
+                    g = v;
+                    b = p;
+                    break;
 
-            case 2:
-                r = p;
-                g = v;
-                b = t;
-                break;
+                case 2:
+                    r = p;
+                    g = v;
+                    b = t;
+                    break;
 
-            case 3:
-                r = p;
-                g = q;
-                b = v;
-                break;
+                case 3:
+                    r = p;
+                    g = q;
+                    b = v;
+                    break;
 
-            case 4:
-                r = t;
-                g = p;
-                b = v;
-                break;
+                case 4:
+                    r = t;
+                    g = p;
+                    b = v;
+                    break;
 
-            case 5:
-                r = v;
-                g = p;
-                b = q;
-                break;
+                case 5:
+                    r = v;
+                    g = p;
+                    b = q;
+                    break;
             }
         }
         const thisData = this._data;
@@ -772,7 +819,7 @@ export class Color extends ValueType implements Modifiable {
      * color.toHSV(); // {h: 0.1533864541832669, s: 0.9843137254901961, v: 1}
      * ```
      */
-    public toHSV (): { h: number; s: number; v: number; } {
+    public toHSV(): { h: number; s: number; v: number; } {
         const r = this._data[R_INDEX] * toFloat;
         const g = this._data[G_INDEX] * toFloat;
         const b = this._data[B_INDEX] * toFloat;
@@ -810,7 +857,7 @@ export class Color extends ValueType implements Modifiable {
      */
     public set(other: Readonly<Color>): Color;
     public set(r?: number, g?: number, b?: number, a?: number): Color;
-    public set (r?: number | Readonly<Color>, g?: number, b?: number, a?: number): Color {
+    public set(r?: number | Readonly<Color>, g?: number, b?: number, a?: number): Color {
         const thisData = this._data;
         if (typeof r === 'object') {
             const other = r as Color;
@@ -839,7 +886,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 将当前颜色乘以与指定颜色
      * @param other The specified color.
      */
-    public multiply (other: Color): Color {
+    public multiply(other: Color): Color {
         const thisData = this._data;
         // FIXME: not sure if other is really Color, so use getter.
         thisData[R_INDEX] *= other.r / 255;
@@ -855,7 +902,7 @@ export class Color extends ValueType implements Modifiable {
      * @zn 被 tween action 使用。因为不能直接修改 this._data，所以返回用于修改的属性。
      * @returns @en ['r', 'g', 'b', 'a'] @zh ['r', 'g', 'b', 'a']
      */
-    public getModifiableProperties (): string[] {
+    public getModifiableProperties(): string[] {
         return ['r', 'g', 'b', 'a'];
     }
 }
@@ -863,35 +910,35 @@ export class Color extends ValueType implements Modifiable {
 CCClass.fastDefine('cc.Color', Color, { r: 0, g: 0, b: 0, a: 255 });
 legacyCC.Color = Color;
 
-export function color (other: Color | string): Color;
-export function color (r?: number, g?: number, b?: number, a?: number): Color;
+export function color(other: Color | string): Color;
+export function color(r?: number, g?: number, b?: number, a?: number): Color;
 
-export function color (r?: number | Color | string, g?: number, b?: number, a?: number): Color {
+export function color(r?: number | Color | string, g?: number, b?: number, a?: number): Color {
     return new Color(r as number, g, b, a);
 }
 
 legacyCC.color = color;
 
-export function srgbToLinear (x: number): number {
+export function srgbToLinear(x: number): number {
     if (x <= 0) return 0;
     else if (x >= 1) return 1;
     else if (x < 0.04045) return x / 12.92;
     else return ((x + 0.055) / 1.055) ** 2.4;
 }
 
-export function srgb8BitToLinear (x: number): number {
+export function srgb8BitToLinear(x: number): number {
     if ((x | 0) !== x || (x >>> 8) !== 0) { throw new RangeError('Value out of 8-bit range'); }
     return SRGB_8BIT_TO_LINEAR[x];
 }
 
-export function linearToSrgb (x: number): number {
+export function linearToSrgb(x: number): number {
     if (x <= 0) return 0;
     else if (x >= 1) return 1;
     else if (x < 0.0031308) return x * 12.92;
     else return x ** (1 / 2.4) * 1.055 - 0.055;
 }
 
-export function linearToSrgb8Bit (x: number): number {
+export function linearToSrgb8Bit(x: number): number {
     if (x <= 0) { return 0; }
     const TABLE: Array<number> = SRGB_8BIT_TO_LINEAR;
     if (x >= 1) { return TABLE.length - 1; }
@@ -906,7 +953,7 @@ export function linearToSrgb8Bit (x: number): number {
 let SRGB_8BIT_TO_LINEAR: Array<number> = [];
 for (let i = 0; i < 256; i++) { SRGB_8BIT_TO_LINEAR.push(srgbToLinear(i / 255.0)); }
 
-export function clampVec3 (val: Vec3, min: Vec3, max: Vec3): Vec3 {
+export function clampVec3(val: Vec3, min: Vec3, max: Vec3): Vec3 {
     if (min > max) {
         const temp = min;
         min = max;
@@ -915,7 +962,7 @@ export function clampVec3 (val: Vec3, min: Vec3, max: Vec3): Vec3 {
     return val < min ? min : val > max ? max : val;
 }
 
-export function floorVec3 (val: Vec3): Vec3 {
+export function floorVec3(val: Vec3): Vec3 {
     const temp = val.clone();
     temp.x = Math.floor(val.x);
     temp.y = Math.floor(val.y);
@@ -923,7 +970,7 @@ export function floorVec3 (val: Vec3): Vec3 {
     return temp;
 }
 
-export function stepVec3 (a: Vec3, b: Vec3): Vec3 {
+export function stepVec3(a: Vec3, b: Vec3): Vec3 {
     if (a < b) {
         return b;
     } else {
@@ -936,7 +983,7 @@ export function stepVec3 (a: Vec3, b: Vec3): Vec3 {
  * @zh 三通道rgb颜色pack成四通道rbge格式
  * @param rgb Vec3
  */
-export function packRGBE (rgb: Vec3): Vec4 {
+export function packRGBE(rgb: Vec3): Vec4 {
     const maxComp = Math.max(Math.max(rgb.x, rgb.y), rgb.z);
     let e = 128.0;
     if (maxComp > 0.0001) {
