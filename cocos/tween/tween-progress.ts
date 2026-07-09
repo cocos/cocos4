@@ -60,7 +60,7 @@ function createSplineProperty (mode: SplineMode, knots: ReadonlyArray<Vec3>): IT
                     if (reversed) {
                         // Skip the start point ( i = 0 )
                         if (i > 0) {
-                            // addKnot will copy the knot, so use a temporary Vec3 object here to avoid GC object being generated. 
+                            // addKnot will copy the knot, so use a temporary Vec3 object here to avoid GC object being generated.
                             spline.addKnot(Vec3.copy(_v3_tmp_1, reversedLast!).add(v));
                         }
                     } else {

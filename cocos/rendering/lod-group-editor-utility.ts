@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { LODGroup } from "../3d/lod/lodgroup-component";
+import { LODGroup } from '../3d/lod/lodgroup-component';
 import { Vec3, assertIsTrue } from '../core';
 import { Camera, CameraProjection } from '../render-scene/scene';
 import { scene } from '../render-scene';

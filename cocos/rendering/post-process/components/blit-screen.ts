@@ -19,7 +19,7 @@ class BlitScreenMaterial {
     }
 
     @property({
-        serializable: true
+        serializable: true,
     })
     enable = true;
 }

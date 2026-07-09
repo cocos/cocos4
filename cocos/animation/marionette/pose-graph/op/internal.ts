@@ -80,7 +80,7 @@ export const getOutputKeys = (() => {
     };
 })();
 
-export function getOutputType(node: PoseGraphNode, outputId: OutputKey) {
+export function getOutputType (node: PoseGraphNode, outputId: OutputKey) {
     if (node instanceof PoseNode) {
         return PoseGraphType.POSE;
     } else if (node instanceof PureValueNode) {
@@ -109,7 +109,7 @@ export function connectNode (graph: PoseGraph, node: PoseGraphNode, key: PoseGra
         return;
     }
 
-    let outputIndex = 0;
+    const outputIndex = 0;
     let outputType: PoseGraphType;
     if (producer instanceof PureValueNode) {
         if (typeof outputKey !== 'number') {
@@ -129,7 +129,7 @@ export function connectNode (graph: PoseGraph, node: PoseGraphNode, key: PoseGra
         }
         outputType = PoseGraphType.POSE;
     }
-    
+
     const inputType = inputMetadata.type;
     if (inputType !== outputType) {
         error(`Type mismatch: input has type ${PoseGraphType[inputType]}, output has type ${PoseGraphType[outputType]}.`);
@@ -167,7 +167,7 @@ export function disconnectNode (graph: PoseGraph, node: PoseGraphNode, key: Pose
     graph.getShell(node)?.deleteBinding(key);
 }
 
-export function connectOutputNode(graph: PoseGraph, producer: PoseNode) {
+export function connectOutputNode (graph: PoseGraph, producer: PoseNode) {
     const { outputNode } = graph;
     const outputNodeInputKeys = getInputKeys(outputNode);
     assertIsTrue(outputNodeInputKeys.length === 1);
@@ -192,7 +192,7 @@ function getPureValueInputConstantValue (node: PoseGraphNode, inputKey: PoseGrap
     const [
         propertyKey,
         elementIndex = -1,
-     ] = inputKey;
+    ] = inputKey;
     const property = node[propertyKey];
     if (!Array.isArray(property)) {
         return property;
@@ -203,7 +203,7 @@ function getPureValueInputConstantValue (node: PoseGraphNode, inputKey: PoseGrap
     return property[elementIndex];
 }
 
-export function isWellFormedInputKey(test: unknown): test is PoseGraphInputKey {
+export function isWellFormedInputKey (test: unknown): test is PoseGraphInputKey {
     if (!Array.isArray(test)) {
         return false;
     }

@@ -49,11 +49,11 @@ import { EffectAsset } from '../../asset/assets/effect-asset';
 import { RenderPassStage } from '../../rendering/define';
 import { CCString, Enum, Color } from '../../core';
 
-function isNumber(obj: any) {
+function isNumber (obj: any) {
     return typeof obj === 'number' && !isNaN(obj);
 }
 
-function getEnumData(enumObj: any) {
+function getEnumData (enumObj: any) {
     const enumData: any = {};
     Object.keys(enumObj).forEach((key) => {
         if (!isNumber(Number(key))) {
@@ -67,15 +67,15 @@ function getEnumData(enumObj: any) {
 const toEnum = (() => {
     const copyAsCCEnum = <T>(e: T) => Enum(getEnumData(e));
     return {
-        PolygonMode:copyAsCCEnum(PolygonMode),
-        ShadeModel:copyAsCCEnum(ShadeModel),
-        CullMode:copyAsCCEnum(CullMode),
-        ComparisonFunc:copyAsCCEnum(ComparisonFunc),
-        StencilOp:copyAsCCEnum(StencilOp),
-        PrimitiveMode:copyAsCCEnum(PrimitiveMode),
-        RenderPassStage:copyAsCCEnum(RenderPassStage),
-        DynamicStateFlagBit:copyAsCCEnum(DynamicStateFlagBit),
-    }
+        PolygonMode: copyAsCCEnum(PolygonMode),
+        ShadeModel: copyAsCCEnum(ShadeModel),
+        CullMode: copyAsCCEnum(CullMode),
+        ComparisonFunc: copyAsCCEnum(ComparisonFunc),
+        StencilOp: copyAsCCEnum(StencilOp),
+        PrimitiveMode: copyAsCCEnum(PrimitiveMode),
+        RenderPassStage: copyAsCCEnum(RenderPassStage),
+        DynamicStateFlagBit: copyAsCCEnum(DynamicStateFlagBit),
+    };
 })();
 
 @ccclass('RasterizerState')
