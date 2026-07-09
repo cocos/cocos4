@@ -431,10 +431,10 @@ export class Simulator {
                 }
 
                 // color
-                particle.color.r += particle.deltaColor.r * dt;
-                particle.color.g += particle.deltaColor.g * dt;
-                particle.color.b += particle.deltaColor.b * dt;
-                particle.color.a += particle.deltaColor.a * dt;
+                particle.color.r = particle.color.rf + particle.deltaColor.r * dt;
+                particle.color.g = particle.color.gf + particle.deltaColor.g * dt;
+                particle.color.b = particle.color.bf + particle.deltaColor.b * dt;
+                particle.color.a = particle.color.af + particle.deltaColor.a * dt;
 
                 // size
                 particle.size += particle.deltaSize * dt;

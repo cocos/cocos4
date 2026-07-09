@@ -135,6 +135,7 @@ export class Color extends ValueType implements Modifiable {
         outData[G_INDEX] = value.y / toFloat;
         outData[B_INDEX] = value.z / toFloat;
         outData[A_INDEX] = value.w / toFloat;
+        out.syncData();
         return out;
     }
     /**
@@ -337,7 +338,8 @@ export class Color extends ValueType implements Modifiable {
         return ((a.r * 255) << 24 | (a.g * 255) << 16 | (a.b * 255) << 8 | a.a * 255) >>> 0;
     }
 
-    private _data = new Uint8ClampedArray(4);
+    private _data = new Uint8ClampedArray(4); // Do not use this to do color calculation or will clamp float part
+    private _dataFloat = new Float32Array(4); // Use this float version do color calculation
 
     /**
      * @en Get or set red channel value.
@@ -349,6 +351,11 @@ export class Color extends ValueType implements Modifiable {
 
     set r (red: number) {
         this._data[R_INDEX] = red;
+        this._dataFloat[R_INDEX] = red;
+    }
+
+    get rf (): number {
+        return this._dataFloat[R_INDEX];
     }
 
     /**
@@ -361,6 +368,11 @@ export class Color extends ValueType implements Modifiable {
 
     set g (green: number) {
         this._data[G_INDEX] = green;
+        this._dataFloat[G_INDEX] = green;
+    }
+
+    get gf (): number {
+        return this._dataFloat[G_INDEX];
     }
 
     /**
@@ -373,6 +385,11 @@ export class Color extends ValueType implements Modifiable {
 
     set b (blue: number) {
         this._data[B_INDEX] = blue;
+        this._dataFloat[B_INDEX] = blue;
+    }
+
+    get bf (): number {
+        return this._dataFloat[B_INDEX];
     }
 
     /** @en Get or set alpha channel value.
@@ -384,17 +401,39 @@ export class Color extends ValueType implements Modifiable {
 
     set a (alpha: number) {
         this._data[A_INDEX] = alpha;
+        this._dataFloat[A_INDEX] = alpha;
+    }
+
+    get af (): number {
+        return this._dataFloat[A_INDEX];
     }
 
     // compatibility with vector interfaces
     get x (): number { return this._data[R_INDEX] * toFloat; }
-    set x (value: number) { this._data[R_INDEX] = value * 255; }
+    set x (value: number) {
+        this._data[R_INDEX] = value * 255;
+        this._dataFloat[R_INDEX] = value * 255;
+    }
     get y (): number { return this._data[G_INDEX] * toFloat; }
-    set y (value: number) { this._data[G_INDEX] = value * 255; }
+    set y (value: number) {
+        this._data[G_INDEX] = value * 255;
+        this._dataFloat[G_INDEX] = value * 255;
+    }
     get z (): number { return this._data[B_INDEX] * toFloat; }
-    set z (value: number) { this._data[B_INDEX] = value * 255; }
+    set z (value: number) {
+        this._data[B_INDEX] = value * 255;
+        this._dataFloat[B_INDEX] = value * 255;
+    }
     get w (): number { return this._data[A_INDEX] * toFloat; }
-    set w (value: number) { this._data[A_INDEX] = value * 255; }
+    set w (value: number) {
+        this._data[A_INDEX] = value * 255;
+        this._dataFloat[A_INDEX] = value * 255;
+    }
+
+    get xf (): number { return this._dataFloat[R_INDEX] * toFloat; }
+    get yf (): number { return this._dataFloat[G_INDEX] * toFloat; }
+    get zf (): number { return this._dataFloat[B_INDEX] * toFloat; }
+    get wf (): number { return this._dataFloat[A_INDEX] * toFloat; }
 
     /**
      * @en Construct a same color from the given color
@@ -432,6 +471,13 @@ export class Color extends ValueType implements Modifiable {
         }
     }
 
+    private syncData () {
+        const colorLen: number = 4;
+        for (let i = 0; i < colorLen; ++i) {
+            this._dataFloat[i] = this._data[i];
+        }
+    }
+
     /**
      * @en Clone a new color from the current color.
      * @zh 克隆当前颜色。
@@ -439,6 +485,7 @@ export class Color extends ValueType implements Modifiable {
     public clone (): Color {
         const ret = new Color();
         ret._data.set(this._data);
+        ret._dataFloat.set(this._dataFloat);
 
         return ret;
     }
@@ -666,6 +713,7 @@ export class Color extends ValueType implements Modifiable {
         thisData[R_INDEX] = r * 255;
         thisData[G_INDEX] = g * 255;
         thisData[B_INDEX] = b * 255;
+        this.syncData();
         return this;
     }
 
@@ -738,6 +786,7 @@ export class Color extends ValueType implements Modifiable {
             thisData[B_INDEX] = b ?? 0;
             thisData[A_INDEX] = a ?? 255;
         }
+        this.syncData();
         return this;
     }
 
@@ -753,6 +802,7 @@ export class Color extends ValueType implements Modifiable {
         thisData[G_INDEX] *= other.g / 255;
         thisData[B_INDEX] *= other.b / 255;
         thisData[A_INDEX] *= other.a / 255;
+        this.syncData();
         return this;
     }
 
