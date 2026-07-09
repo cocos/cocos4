@@ -697,13 +697,13 @@ export class MeshRenderData extends BaseRenderData {
         if (this._byteLength > vertexBuffer.size) {
             vertexBuffer.resize(this._byteLength);
         }
-        vertexBuffer.update(verticesData);
+        vertexBuffer.update(verticesData.buffer as ArrayBuffer, this._byteLength);
 
         const indexBytes = indexCount << 1;
         if (indexBytes > this._indexBuffer.size) {
             this._indexBuffer.resize(indexBytes);
         }
-        this._indexBuffer.update(indicesData);
+        this._indexBuffer.update(indicesData.buffer as ArrayBuffer, indexBytes);
     }
 
     public freeIAPool (): void {
