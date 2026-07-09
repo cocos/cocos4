@@ -342,68 +342,105 @@ export class Color extends ValueType implements Modifiable {
     private _dataFloat = new Float32Array(4); // Use this float version do color calculation
 
     /**
-     * @en Get or set red channel value.
-     * @zh 获取或设置当前颜色的 Red 通道。
+     * @en Get red channel value.
+     * @zh 获取当前颜色的 Red 通道。
+     * @deprecated Use get rf() instead.
      */
     get r (): number {
         return this._data[R_INDEX];
     }
 
+    /**
+     * @en Set red channel value.
+     * @zh 设置当前颜色的 Red 通道。
+     */
     set r (red: number) {
         this._data[R_INDEX] = red;
         this._dataFloat[R_INDEX] = this.clampFloatData(red);
     }
 
+    /**
+     * @en Get red channel value.
+     * @zh 获取当前颜色的 Red 通道。
+     */
     get rf (): number {
         return this._dataFloat[R_INDEX];
     }
 
     /**
-     * @en Get or set green channel value.
-     * @zh 获取或设置当前颜色的 Green 通道。
+     * @en Get green channel value.
+     * @zh 获取当前颜色的 Green 通道。
+     * @deprecated Use get gf() instead.
      */
     get g (): number {
         return this._data[G_INDEX];
     }
-
+    
+    /**
+     * @en Set green channel value.
+     * @zh 设置当前颜色的 Green 通道。
+     */
     set g (green: number) {
         this._data[G_INDEX] = green;
         this._dataFloat[G_INDEX] = this.clampFloatData(green);
     }
 
+    /**
+     * @en Get green channel value.
+     * @zh 获取当前颜色的 Green 通道。
+     */
     get gf (): number {
         return this._dataFloat[G_INDEX];
     }
 
     /**
-     * @en Get or set blue channel value.
-     * @zh 获取或设置当前颜色的 Blue 通道。
+     * @en Get blue channel value.
+     * @zh 获取当前颜色的 Blue 通道。
+     * @deprecated Use get bf() instead.
      */
     get b (): number {
         return this._data[B_INDEX];
     }
 
+    /**
+     * @en Set blue channel value.
+     * @zh 设置当前颜色的 Blue 通道。
+     */
     set b (blue: number) {
         this._data[B_INDEX] = blue;
         this._dataFloat[B_INDEX] = this.clampFloatData(blue);
     }
 
+    /**
+     * @en Get blue channel value.
+     * @zh 获取当前颜色的 Blue 通道。
+     */
     get bf (): number {
         return this._dataFloat[B_INDEX];
     }
 
-    /** @en Get or set alpha channel value.
-     * @zh 获取或设置当前颜色的透明度通道。
+    /** 
+     * @en Get alpha channel value.
+     * @zh 获取当前颜色的透明度通道。
+     * @deprecated Use get af() instead.
      */
     get a (): number {
         return this._data[A_INDEX];
     }
 
+    /** 
+     * @en Set alpha channel value.
+     * @zh 设置当前颜色的透明度通道。
+     */
     set a (alpha: number) {
         this._data[A_INDEX] = alpha;
         this._dataFloat[A_INDEX] = this.clampFloatData(alpha);
     }
 
+    /** 
+     * @en Get alpha channel value.
+     * @zh 获取当前颜色的透明度通道。
+     */
     get af (): number {
         return this._dataFloat[A_INDEX];
     }
@@ -482,7 +519,7 @@ export class Color extends ValueType implements Modifiable {
         let result: number = value;
         result = result > 255.0 ? 255.0 : result;
         result = result < 0.0 ? 0.0 : result;
-        return result; 
+        return result;
     }
 
     /**
