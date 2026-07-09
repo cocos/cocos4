@@ -375,7 +375,7 @@ export class Color extends ValueType implements Modifiable {
     get g (): number {
         return this._data[G_INDEX];
     }
-    
+
     /**
      * @en Set green channel value.
      * @zh 设置当前颜色的 Green 通道。
@@ -419,7 +419,7 @@ export class Color extends ValueType implements Modifiable {
         return this._dataFloat[B_INDEX];
     }
 
-    /** 
+    /**
      * @en Get alpha channel value.
      * @zh 获取当前颜色的透明度通道。
      * @deprecated Use get af() instead.
@@ -428,7 +428,7 @@ export class Color extends ValueType implements Modifiable {
         return this._data[A_INDEX];
     }
 
-    /** 
+    /**
      * @en Set alpha channel value.
      * @zh 设置当前颜色的透明度通道。
      */
@@ -437,7 +437,7 @@ export class Color extends ValueType implements Modifiable {
         this._dataFloat[A_INDEX] = this.clampFloatData(alpha);
     }
 
-    /** 
+    /**
      * @en Get alpha channel value.
      * @zh 获取当前颜色的透明度通道。
      */
