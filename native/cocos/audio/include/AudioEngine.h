@@ -184,7 +184,7 @@ public:
     /** Resume all suspended audio instances. */
     static void resumeAll();
 
-    /**  
+    /** 
      * Stop an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
