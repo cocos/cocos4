@@ -113,7 +113,7 @@ public:
      */
     static AudioProfile *getDefaultProfile();
 
-    /**  
+    /** 
      * Play 2d sound.
      *
      * @param filePath The path of an audio file.
@@ -126,7 +126,7 @@ public:
      */
     static int play2d(const ccstd::string &filePath, bool loop = false, float volume = 1.0F, const AudioProfile *profile = nullptr);
 
-    /**  
+    /** 
      * Sets whether an audio instance loop or not.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -134,7 +134,7 @@ public:
      */
     static void setLoop(int audioID, bool loop);
 
-    /**  
+    /** 
      * Checks whether an audio instance is loop.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -142,7 +142,7 @@ public:
      */
     static bool isLoop(int audioID);
 
-    /**  
+    /** 
      * Sets volume for an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -164,7 +164,7 @@ public:
      */
     static float getVolume(int audioID);
 
-    /**  
+    /** 
      * Pause an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -174,7 +174,7 @@ public:
     /** Pause all playing audio instances. */
     static void pauseAll();
 
-    /**  
+    /** 
      * Resume an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -203,7 +203,7 @@ public:
      */
     static bool setCurrentTime(int audioID, float time);
 
-    /**  
+    /** 
      * Gets the current playback position of an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -211,7 +211,7 @@ public:
      */
     static float getCurrentTime(int audioID);
 
-    /**  
+    /** 
      * Gets the duration of an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -271,7 +271,7 @@ public:
      */
     static void uncacheAll();
 
-    /** 
+    /**  
      * Gets the audio profile by id of audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -279,7 +279,7 @@ public:
      */
     static AudioProfile *getProfile(int audioID);
 
-    /** 
+    /**  
      * Gets an audio profile by name.
      *
      * @param profileName A name of audio profile.
