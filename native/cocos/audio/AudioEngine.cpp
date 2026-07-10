@@ -602,19 +602,39 @@ AudioEngineImpl *AudioEngine::getDecoderImpl() {
     if (AudioEngine::sAudioEngineImpl != nullptr) {
         return AudioEngine::sAudioEngineImpl;
     }
-    // OpenAL unavailable — use a decoder-only fallback instance.
+    // On oalsoft platforms, PCM decoding via AudioDecoderManager works
+    // independently of OpenAL — create a decoder-only fallback instance.
+    // On Android/OpenHarmony and Apple, AudioEngineImpl::getPCMHeader/
+    // getOriginalPCMBuffer dereferences _audioPlayerProvider/_engineEngine
+    // which are only set up by init(). Returning nullptr here lets callers
+    // fail gracefully instead of crashing.
+#if CC_PLATFORM == CC_PLATFORM_WINDOWS || CC_PLATFORM == CC_PLATFORM_OHOS || \
+    CC_PLATFORM == CC_PLATFORM_LINUX || CC_PLATFORM == CC_PLATFORM_QNX
     if (AudioEngine::sDecoderImpl == nullptr) {
         AudioEngine::sDecoderImpl = ccnew AudioEngineImpl();
         AudioEngineImpl::initDecoder();
     }
     return AudioEngine::sDecoderImpl;
+#else
+    return nullptr;
+#endif
 }
 
 PCMHeader AudioEngine::getPCMHeader(const char *url) {
-    return AudioEngine::getDecoderImpl()->getPCMHeader(url);
+    AudioEngineImpl *impl = AudioEngine::getDecoderImpl();
+    if (impl == nullptr) {
+        CC_LOG_WARNING("AudioEngine::getPCMHeader: audio engine unavailable, url: %s", url);
+        return {};
+    }
+    return impl->getPCMHeader(url);
 }
 
 ccstd::vector<uint8_t> AudioEngine::getOriginalPCMBuffer(const char *url, uint32_t channelID) {
-    return AudioEngine::getDecoderImpl()->getOriginalPCMBuffer(url, channelID);
+    AudioEngineImpl *impl = AudioEngine::getDecoderImpl();
+    if (impl == nullptr) {
+        CC_LOG_WARNING("AudioEngine::getOriginalPCMBuffer: audio engine unavailable, url: %s", url);
+        return {};
+    }
+    return impl->getOriginalPCMBuffer(url, channelID);
 }
 } // namespace cc
