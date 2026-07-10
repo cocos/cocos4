@@ -62,7 +62,7 @@
 // log, CC_LOG_DEBUG aren't threadsafe, since we uses sub threads for parsing pcm data, threadsafe log output
 // is needed. Define the following macros (ALOGV, ALOGD, ALOGI, ALOGW, ALOGE) for threadsafe log output.
 
-//IDEA: Move _winLog, winLog to a separated file
+// IDEA: Move _winLog, winLog to a separated file
 static void _winLog(const char *format, va_list args) {
     static const int MAX_LOG_LENGTH = 16 * 1024;
     int bufferSize = MAX_LOG_LENGTH;
@@ -120,7 +120,7 @@ void audioLog(const char *format, ...) {
 
 #endif
 
-using namespace cc; //NOLINT
+using namespace cc; // NOLINT
 
 static ALCdevice *sALDevice = nullptr;
 static ALCcontext *sALContext = nullptr;
@@ -153,31 +153,45 @@ AudioEngineImpl::~AudioEngineImpl() {
     AudioDecoderManager::destroy();
 }
 
+bool AudioEngineImpl::initDecoder() {
+    return AudioDecoderManager::init();
+}
+
 bool AudioEngineImpl::init() {
     bool ret = false;
     do {
         sALDevice = alcOpenDevice(nullptr);
-
-        if (sALDevice) {
-            alGetError();
-            sALContext = alcCreateContext(sALDevice, nullptr);
-            alcMakeContextCurrent(sALContext);
-
-            alGenSources(MAX_AUDIOINSTANCES, _alSources);
-            auto alError = alGetError();
-            if (alError != AL_NO_ERROR) {
-                CC_LOG_ERROR("%s:generating sources failed! error = %x\n", __FUNCTION__, alError);
-                break;
-            }
-
-            for (unsigned int src : _alSources) {
-                _alSourceUsed[src] = false;
-            }
-
-            _scheduler = CC_CURRENT_ENGINE()->getScheduler();
-            ret = AudioDecoderManager::init();
-            CC_LOG_DEBUG("OpenAL was initialized successfully!");
+        if (sALDevice == nullptr) {
+            // alcGetError(nullptr) is valid when no device is open
+            ALCenum alcErr = alcGetError(nullptr);
+            CC_LOG_ERROR("%s: alcOpenDevice failed, ALC error = 0x%x", __FUNCTION__, alcErr);
+            break;
         }
+
+        alGetError();
+        sALContext = alcCreateContext(sALDevice, nullptr);
+        if (sALContext == nullptr) {
+            ALCenum alcErr = alcGetError(sALDevice);
+            CC_LOG_ERROR("%s: alcCreateContext failed, ALC error = 0x%x", __FUNCTION__, alcErr);
+            break;
+        }
+
+        alcMakeContextCurrent(sALContext);
+
+        alGenSources(MAX_AUDIOINSTANCES, _alSources);
+        auto alError = alGetError();
+        if (alError != AL_NO_ERROR) {
+            CC_LOG_ERROR("%s:generating sources failed! error = %x\n", __FUNCTION__, alError);
+            break;
+        }
+
+        for (unsigned int src : _alSources) {
+            _alSourceUsed[src] = false;
+        }
+
+        _scheduler = CC_CURRENT_ENGINE()->getScheduler();
+        ret = initDecoder();
+        CC_LOG_DEBUG("OpenAL was initialized successfully!");
     } while (false);
 
     return ret;
@@ -264,7 +278,7 @@ int AudioEngineImpl::play2d(const ccstd::string &filePath, bool loop, float volu
 }
 
 void AudioEngineImpl::play2dImpl(AudioCache *cache, int audioID) {
-    //Note: It may bn in sub thread or main thread :(
+    // Note: It may bn in sub thread or main thread :(
     if (!*cache->_isDestroyed && cache->_state == AudioCache::State::READY) {
         _threadMutex.lock();
         auto playerIt = _audioPlayers.find(audioID);
@@ -368,9 +382,9 @@ void AudioEngineImpl::stop(int audioID) {
     }
     auto player = _audioPlayers[audioID];
     player->destroy();
-    //Note: Don't set the flag to false here, it should be set in 'update' function.
-    // Otherwise, the state got from alSourceState may be wrong
-    //    _alSourceUsed[player->_alSource] = false;
+    // Note: Don't set the flag to false here, it should be set in 'update' function.
+    //  Otherwise, the state got from alSourceState may be wrong
+    //     _alSourceUsed[player->_alSource] = false;
 
     // Call 'update' method to cleanup immediately since the schedule may be cancelled without any notification.
     update(0.0F);
@@ -380,12 +394,12 @@ void AudioEngineImpl::stopAll() {
     for (auto &&player : _audioPlayers) {
         player.second->destroy();
     }
-    //Note: Don't set the flag to false here, it should be set in 'update' function.
-    // Otherwise, the state got from alSourceState may be wrong
-    //    for(int index = 0; index < MAX_AUDIOINSTANCES; ++index)
-    //    {
-    //        _alSourceUsed[_alSources[index]] = false;
-    //    }
+    // Note: Don't set the flag to false here, it should be set in 'update' function.
+    //  Otherwise, the state got from alSourceState may be wrong
+    //     for(int index = 0; index < MAX_AUDIOINSTANCES; ++index)
+    //     {
+    //         _alSourceUsed[_alSources[index]] = false;
+    //     }
 
     // Call 'update' method to cleanup immediately since the schedule may be cancelled without any notification.
     update(0.0F);
@@ -515,7 +529,7 @@ void AudioEngineImpl::update(float /*dt*/) {
             _threadMutex.unlock();
 
             if (player->_finishCallbak) {
-                player->_finishCallbak(audioID, filePath); //IDEA: callback will delay 50ms
+                player->_finishCallbak(audioID, filePath); // IDEA: callback will delay 50ms
             }
             delete player;
             _alSourceUsed[alSource] = false;
