@@ -554,8 +554,9 @@ export class Color extends ValueType implements Modifiable {
     public clone(): Color {
         const ret = new Color();
         ret._data.set(this._data);
-        if (this._dataFloat === undefined)
+        if (this._dataFloat === undefined) {
             this._dataFloat = [0, 0, 0, 0];
+        }
         ret._dataFloat[R_INDEX] = this._dataFloat[R_INDEX];
         ret._dataFloat[G_INDEX] = this._dataFloat[G_INDEX];
         ret._dataFloat[B_INDEX] = this._dataFloat[B_INDEX];
