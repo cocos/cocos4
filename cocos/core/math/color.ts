@@ -356,9 +356,7 @@ export class Color extends ValueType implements Modifiable {
      */
     set r(red: number) {
         this._data[R_INDEX] = red;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[R_INDEX] = this.clampFloatData(red);
+        this.setFloatData(R_INDEX, this.clampFloatData(red));
     }
 
     /**
@@ -366,9 +364,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的 Red 通道。
      */
     get rf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[R_INDEX];
+        return this.getFloatData(R_INDEX);
     }
 
     /**
@@ -386,9 +382,7 @@ export class Color extends ValueType implements Modifiable {
      */
     set g(green: number) {
         this._data[G_INDEX] = green;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[G_INDEX] = this.clampFloatData(green);
+        this.setFloatData(G_INDEX, this.clampFloatData(green));
     }
 
     /**
@@ -396,9 +390,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的 Green 通道。
      */
     get gf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[G_INDEX];
+        return this.getFloatData(G_INDEX);
     }
 
     /**
@@ -416,9 +408,7 @@ export class Color extends ValueType implements Modifiable {
      */
     set b(blue: number) {
         this._data[B_INDEX] = blue;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[B_INDEX] = this.clampFloatData(blue);
+        this.setFloatData(B_INDEX, this.clampFloatData(blue));
     }
 
     /**
@@ -426,9 +416,7 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的 Blue 通道。
      */
     get bf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[B_INDEX];
+        return this.getFloatData(B_INDEX);
     }
 
     /**
@@ -446,9 +434,7 @@ export class Color extends ValueType implements Modifiable {
      */
     set a(alpha: number) {
         this._data[A_INDEX] = alpha;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[A_INDEX] = this.clampFloatData(alpha);
+        this.setFloatData(A_INDEX, this.clampFloatData(alpha));
     }
 
     /**
@@ -456,60 +442,42 @@ export class Color extends ValueType implements Modifiable {
      * @zh 获取当前颜色的透明度通道。
      */
     get af(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[A_INDEX];
+        return this.getFloatData(A_INDEX);
     }
 
     // compatibility with vector interfaces
     get x(): number { return this._data[R_INDEX] * toFloat; }
     set x(value: number) {
         this._data[R_INDEX] = value * 255;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[R_INDEX] = this.clampFloatData(value * 255);
+        this.setFloatData(R_INDEX, this.clampFloatData(value * 255));
     }
     get y(): number { return this._data[G_INDEX] * toFloat; }
     set y(value: number) {
         this._data[G_INDEX] = value * 255;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[G_INDEX] = this.clampFloatData(value * 255);
+        this.setFloatData(G_INDEX, this.clampFloatData(value * 255));
     }
     get z(): number { return this._data[B_INDEX] * toFloat; }
     set z(value: number) {
         this._data[B_INDEX] = value * 255;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[B_INDEX] = this.clampFloatData(value * 255);
+        this.setFloatData(B_INDEX, this.clampFloatData(value * 255));
     }
     get w(): number { return this._data[A_INDEX] * toFloat; }
     set w(value: number) {
         this._data[A_INDEX] = value * 255;
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        this._dataFloat[A_INDEX] = this.clampFloatData(value * 255);
+        this.setFloatData(A_INDEX, this.clampFloatData(value * 255));
     }
 
     get xf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[R_INDEX] * toFloat;
+        return this.getFloatData(R_INDEX) * toFloat;
     }
     get yf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[G_INDEX] * toFloat;
+        return this.getFloatData(G_INDEX) * toFloat;
     }
     get zf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[B_INDEX] * toFloat;
+        return this.getFloatData(B_INDEX) * toFloat;
     }
     get wf(): number {
-        if (this._dataFloat === undefined)
-            this._dataFloat = [0, 0, 0, 0];
-        return this._dataFloat[A_INDEX] * toFloat;
+        return this.getFloatData(A_INDEX) * toFloat;
     }
 
     /**
@@ -549,12 +517,27 @@ export class Color extends ValueType implements Modifiable {
     }
 
     private syncData(): void {
-        if (this._dataFloat === undefined)
+        if (this._dataFloat === undefined) {
             this._dataFloat = [0, 0, 0, 0];
+        }
         const colorLen: number = 4;
         for (let i = 0; i < colorLen; ++i) {
             this._dataFloat[i] = this._data[i];
         }
+    }
+
+    private setFloatData(index: number, value: number): void {
+        if (this._dataFloat === undefined) {
+            this._dataFloat = [0, 0, 0, 0];
+        }
+        this._dataFloat[index] = value;
+    }
+
+    private getFloatData(index: number): number {
+        if (this._dataFloat === undefined) {
+            this._dataFloat = [0, 0, 0, 0];
+        }
+        return this._dataFloat[index];
     }
 
     private clampFloatData(value: number): number {
