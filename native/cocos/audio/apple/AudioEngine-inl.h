@@ -43,7 +43,7 @@ public:
     ~AudioEngineImpl();
 
     bool init();
-    bool initDecoder();
+    static bool initDecoder();
     int play2d(const ccstd::string &fileFullPath, bool loop, float volume);
     void setVolume(int audioID, float volume);
     void setLoop(int audioID, bool loop);

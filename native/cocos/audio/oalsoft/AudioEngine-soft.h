@@ -47,7 +47,7 @@ public:
     bool init();
     // Initialize only the PCM decoder subsystem (AudioDecoderManager).
     // Does not require an OpenAL device. Safe to call when init() failed.
-    bool initDecoder();
+    static bool initDecoder();
     int play2d(const ccstd::string &filePath, bool loop, float volume);
     void setVolume(int audioID, float volume);
     void setLoop(int audioID, bool loop);

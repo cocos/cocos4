@@ -55,7 +55,7 @@ public:
     ~AudioEngineImpl() override;
 
     bool init();
-    bool initDecoder();
+    static bool initDecoder();
     int play2d(const ccstd::string &filePath, bool loop, float volume);
     void setVolume(int audioID, float volume);
     void setLoop(int audioID, bool loop);

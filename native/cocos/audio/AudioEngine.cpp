@@ -605,7 +605,7 @@ AudioEngineImpl *AudioEngine::getDecoderImpl() {
     // OpenAL unavailable — use a decoder-only fallback instance.
     if (AudioEngine::sDecoderImpl == nullptr) {
         AudioEngine::sDecoderImpl = ccnew AudioEngineImpl();
-        AudioEngine::sDecoderImpl->initDecoder();
+        AudioEngineImpl::initDecoder();
     }
     return AudioEngine::sDecoderImpl;
 }
