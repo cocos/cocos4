@@ -29,9 +29,9 @@
 #include <unistd.h>
 // for native asset manager
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
+    #include <android/asset_manager.h>
+    #include <android/asset_manager_jni.h>
+    #include <android/log.h>
 #endif
 
 #include <sys/types.h>
@@ -45,11 +45,11 @@
 #include "base/UTF8.h"
 #include "base/memory/Memory.h"
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include "platform/android/FileUtils-android.h"
-#include "platform/java/jni/JniHelper.h"
-#include "platform/java/jni/JniImp.h"
+    #include "platform/android/FileUtils-android.h"
+    #include "platform/java/jni/JniHelper.h"
+    #include "platform/java/jni/JniImp.h"
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include "cocos/platform/openharmony/FileUtils-OpenHarmony.h"
+    #include "cocos/platform/openharmony/FileUtils-OpenHarmony.h"
 #endif
 
 #include "audio/android/AudioDecoder.h"
@@ -61,27 +61,27 @@
 #include "audio/android/cutils/log.h"
 #include "engine/EngineEvents.h"
 
-using namespace cc; //NOLINT
+using namespace cc; // NOLINT
 
 // Audio focus values synchronized with which in cocos/platform/android/java/src/com/cocos/lib/CocosNativeActivity.java
 namespace {
 AudioEngineImpl *gAudioImpl = nullptr;
 int outputSampleRate = 44100;
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-int              bufferSizeInFrames = 192;
+int bufferSizeInFrames = 192;
 #endif
 
 void getAudioInfo() {
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-    JNIEnv *  env         = JniHelper::getEnv();
-    jclass    audioSystem = env->FindClass("android/media/AudioSystem");
-    jmethodID method      = env->GetStaticMethodID(audioSystem, "getPrimaryOutputSamplingRate", "()I");
-    outputSampleRate      = env->CallStaticIntMethod(audioSystem, method);
-    method                = env->GetStaticMethodID(audioSystem, "getPrimaryOutputFrameCount", "()I");
-    bufferSizeInFrames    = env->CallStaticIntMethod(audioSystem, method);
+    JNIEnv *env = JniHelper::getEnv();
+    jclass audioSystem = env->FindClass("android/media/AudioSystem");
+    jmethodID method = env->GetStaticMethodID(audioSystem, "getPrimaryOutputSamplingRate", "()I");
+    outputSampleRate = env->CallStaticIntMethod(audioSystem, method);
+    method = env->GetStaticMethodID(audioSystem, "getPrimaryOutputFrameCount", "()I");
+    bufferSizeInFrames = env->CallStaticIntMethod(audioSystem, method);
 #else
     // In openharmony, setting to 48K does not cause audio delays
-    outputSampleRate      = 48000;
+    outputSampleRate = 48000;
 #endif
 }
 } // namespace
@@ -123,8 +123,8 @@ static int fdGetter(const ccstd::string &url, off_t *start, off_t *length) {
         AAsset_close(asset);
     }
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-    FileUtilsOpenHarmony* fileUtils = dynamic_cast<FileUtilsOpenHarmony*>(FileUtils::getInstance());
-    if(fileUtils) {
+    FileUtilsOpenHarmony *fileUtils = dynamic_cast<FileUtilsOpenHarmony *>(FileUtils::getInstance());
+    if (fileUtils) {
         RawFileDescriptor64 descriptor;
         fileUtils->getRawFileDescriptor(url, descriptor);
         fd = descriptor.fd;
@@ -189,27 +189,27 @@ bool AudioEngineImpl::init() {
             CC_LOG_ERROR("get the engine interface fail");
             break;
         }
-		#if CC_PLATFORM == CC_PLATFORM_ANDROID
-	        // create output mix
-	        const SLInterfaceID outputMixIIDs[] = {};
-	        const SLboolean outputMixReqs[] = {};
-	        result = (*_engineEngine)->CreateOutputMix(_engineEngine, &_outputMixObject, 0, outputMixIIDs, outputMixReqs);
-	        if (SL_RESULT_SUCCESS != result) {
-	            CC_LOG_ERROR("create output mix fail");
-	            break;
-	        }
+#if CC_PLATFORM == CC_PLATFORM_ANDROID
+        // create output mix
+        const SLInterfaceID outputMixIIDs[] = {};
+        const SLboolean outputMixReqs[] = {};
+        result = (*_engineEngine)->CreateOutputMix(_engineEngine, &_outputMixObject, 0, outputMixIIDs, outputMixReqs);
+        if (SL_RESULT_SUCCESS != result) {
+            CC_LOG_ERROR("create output mix fail");
+            break;
+        }
 
-	        // realize the output mix
-	        result = (*_outputMixObject)->Realize(_outputMixObject, SL_BOOLEAN_FALSE);
-	        if (SL_RESULT_SUCCESS != result) {
-	            CC_LOG_ERROR("realize the output mix fail");
-	            break;
-	        }
+        // realize the output mix
+        result = (*_outputMixObject)->Realize(_outputMixObject, SL_BOOLEAN_FALSE);
+        if (SL_RESULT_SUCCESS != result) {
+            CC_LOG_ERROR("realize the output mix fail");
+            break;
+        }
 
-	        _audioPlayerProvider = ccnew AudioPlayerProvider(_engineEngine, _outputMixObject, outputSampleRate, bufferSizeInFrames, fdGetter, &gCallerThreadUtils);
-	    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-	        _audioPlayerProvider = ccnew AudioPlayerProvider(_engineEngine, outputSampleRate, fdGetter, &gCallerThreadUtils);
-	    #endif
+        _audioPlayerProvider = ccnew AudioPlayerProvider(_engineEngine, _outputMixObject, outputSampleRate, bufferSizeInFrames, fdGetter, &gCallerThreadUtils);
+#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        _audioPlayerProvider = ccnew AudioPlayerProvider(_engineEngine, outputSampleRate, fdGetter, &gCallerThreadUtils);
+#endif
         ret = true;
     } while (false);
 
@@ -227,14 +227,14 @@ int AudioEngineImpl::play2d(const ccstd::string &filePath, bool loop, float volu
     auto audioId = AudioEngine::INVALID_AUDIO_ID;
 
     do {
-		#if CC_PLATFORM == CC_PLATFORM_ANDROID
-	        if (_engineEngine == nullptr || _audioPlayerProvider == nullptr) {
-	            break;
-	        }
-        #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-	        if (_audioPlayerProvider == nullptr)
-	            break;
-        #endif
+#if CC_PLATFORM == CC_PLATFORM_ANDROID
+        if (_engineEngine == nullptr || _audioPlayerProvider == nullptr) {
+            break;
+        }
+#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        if (_audioPlayerProvider == nullptr)
+            break;
+#endif
 
         auto fullPath = FileUtils::getInstance()->fullPathForFilename(filePath);
 
@@ -426,6 +426,12 @@ void AudioEngineImpl::onResume() {
     }
 }
 
+bool AudioEngineImpl::initDecoder() {
+    // On Android the decoder infrastructure is set up by init().
+    // This method exists so AudioEngine.cpp compiles uniformly across all platforms.
+    return true;
+}
+
 PCMHeader AudioEngineImpl::getPCMHeader(const char *url) {
     PCMHeader header{};
     ccstd::string fileFullPath = FileUtils::getInstance()->fullPathForFilename(url);
@@ -437,12 +443,12 @@ PCMHeader AudioEngineImpl::getPCMHeader(const char *url) {
         CC_LOG_DEBUG("file %s pcm data already cached", url);
         return header;
     }
-    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+#if CC_PLATFORM == CC_PLATFORM_ANDROID
     AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(_engineEngine, fileFullPath, bufferSizeInFrames, outputSampleRate, fdGetter);
-    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
     AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(
         _engineEngine, fileFullPath, _audioPlayerProvider->getBufferSizeInFrames(), outputSampleRate, fdGetter);
-    #endif
+#endif
     if (decoder == nullptr) {
         CC_LOG_DEBUG("decode %s failed, the file formate might not support", url);
         return header;
@@ -476,12 +482,12 @@ ccstd::vector<uint8_t> AudioEngineImpl::getOriginalPCMBuffer(const char *url, ui
     if (_audioPlayerProvider->getPcmData(url, data)) {
         CC_LOG_DEBUG("file %s pcm data already cached", url);
     } else {
-        #if CC_PLATFORM == CC_PLATFORM_ANDROID
+#if CC_PLATFORM == CC_PLATFORM_ANDROID
         AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(_engineEngine, fileFullPath, bufferSizeInFrames, outputSampleRate, fdGetter);
-        #else 
+#else
         AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(
             _engineEngine, fileFullPath, _audioPlayerProvider->getBufferSizeInFrames(), outputSampleRate, fdGetter);
-        #endif
+#endif
         if (decoder == nullptr) {
             CC_LOG_DEBUG("decode %s failed, the file formate might not support", url);
             return pcmData;

@@ -26,9 +26,9 @@
 
 #include <SLES/OpenSLES.h>
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <SLES/OpenSLES_Android.h>
+    #include <SLES/OpenSLES_Android.h>
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include <SLES/OpenSLES_Platform.h>
+    #include <SLES/OpenSLES_Platform.h>
 #endif
 #include <functional>
 #include "audio/include/AudioDef.h"
@@ -55,6 +55,7 @@ public:
     ~AudioEngineImpl() override;
 
     bool init();
+    bool initDecoder();
     int play2d(const ccstd::string &filePath, bool loop, float volume);
     void setVolume(int audioID, float volume);
     void setLoop(int audioID, bool loop);
@@ -88,7 +89,7 @@ private:
     // output mix interfaces
     SLObjectItf _outputMixObject;
 
-    //audioID,AudioInfo
+    // audioID,AudioInfo
     ccstd::unordered_map<int, IAudioPlayer *> _audioPlayers;
     ccstd::unordered_map<int, std::function<void(int, const ccstd::string &)>> _callbackMap;
 

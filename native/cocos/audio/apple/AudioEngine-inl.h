@@ -43,6 +43,7 @@ public:
     ~AudioEngineImpl();
 
     bool init();
+    bool initDecoder();
     int play2d(const ccstd::string &fileFullPath, bool loop, float volume);
     void setVolume(int audioID, float volume);
     void setLoop(int audioID, bool loop);
@@ -73,13 +74,13 @@ private:
 
     ALuint _alSources[MAX_AUDIOINSTANCES];
 
-    //source,used
+    // source,used
     ccstd::list<ALuint> _unusedSourcesPool;
 
-    //filePath,bufferInfo
+    // filePath,bufferInfo
     ccstd::unordered_map<ccstd::string, AudioCache> _audioCaches;
 
-    //audioID,AudioInfo
+    // audioID,AudioInfo
     ccstd::unordered_map<int, AudioPlayer *> _audioPlayers;
     std::mutex _threadMutex;
 
