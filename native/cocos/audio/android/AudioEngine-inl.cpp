@@ -189,7 +189,7 @@ bool AudioEngineImpl::init() {
             CC_LOG_ERROR("get the engine interface fail");
             break;
         }
-        #if CC_PLATFORM == CC_PLATFORM_ANDROID
+		#if CC_PLATFORM == CC_PLATFORM_ANDROID
 	        // create output mix
 	        const SLInterfaceID outputMixIIDs[] = {};
 	        const SLboolean outputMixReqs[] = {};
@@ -227,7 +227,7 @@ int AudioEngineImpl::play2d(const ccstd::string &filePath, bool loop, float volu
     auto audioId = AudioEngine::INVALID_AUDIO_ID;
 
     do {
-        #if CC_PLATFORM == CC_PLATFORM_ANDROID
+		#if CC_PLATFORM == CC_PLATFORM_ANDROID
 	        if (_engineEngine == nullptr || _audioPlayerProvider == nullptr) {
 	            break;
 	        }
@@ -482,12 +482,12 @@ ccstd::vector<uint8_t> AudioEngineImpl::getOriginalPCMBuffer(const char *url, ui
     if (_audioPlayerProvider->getPcmData(url, data)) {
         CC_LOG_DEBUG("file %s pcm data already cached", url);
     } else {
-    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+        #if CC_PLATFORM == CC_PLATFORM_ANDROID
         AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(_engineEngine, fileFullPath, bufferSizeInFrames, outputSampleRate, fdGetter);
-    #else
+        #else 
         AudioDecoder *decoder = AudioDecoderProvider::createAudioDecoder(
             _engineEngine, fileFullPath, _audioPlayerProvider->getBufferSizeInFrames(), outputSampleRate, fdGetter);
-    #endif
+        #endif
         if (decoder == nullptr) {
             CC_LOG_DEBUG("decode %s failed, the file formate might not support", url);
             return pcmData;
