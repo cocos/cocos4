@@ -120,7 +120,7 @@ void audioLog(const char *format, ...) {
 
 #endif
 
-using namespace cc; // NOLINT
+using namespace cc; //NOLINT
 
 static ALCdevice *sALDevice = nullptr;
 static ALCcontext *sALContext = nullptr;
@@ -388,9 +388,9 @@ void AudioEngineImpl::stop(int audioID) {
     }
     auto player = _audioPlayers[audioID];
     player->destroy();
-    // Note: Don't set the flag to false here, it should be set in 'update' function.
-    //  Otherwise, the state got from alSourceState may be wrong
-    //     _alSourceUsed[player->_alSource] = false;
+    //Note: Don't set the flag to false here, it should be set in 'update' function.
+    // Otherwise, the state got from alSourceState may be wrong
+    //    _alSourceUsed[player->_alSource] = false;
 
     // Call 'update' method to cleanup immediately since the schedule may be cancelled without any notification.
     update(0.0F);
@@ -400,12 +400,12 @@ void AudioEngineImpl::stopAll() {
     for (auto &&player : _audioPlayers) {
         player.second->destroy();
     }
-    // Note: Don't set the flag to false here, it should be set in 'update' function.
-    //  Otherwise, the state got from alSourceState may be wrong
-    //     for(int index = 0; index < MAX_AUDIOINSTANCES; ++index)
-    //     {
-    //         _alSourceUsed[_alSources[index]] = false;
-    //     }
+    //Note: Don't set the flag to false here, it should be set in 'update' function.
+    // Otherwise, the state got from alSourceState may be wrong
+    //    for(int index = 0; index < MAX_AUDIOINSTANCES; ++index)
+    //    {
+    //        _alSourceUsed[_alSources[index]] = false;
+    //    }
 
     // Call 'update' method to cleanup immediately since the schedule may be cancelled without any notification.
     update(0.0F);
@@ -535,7 +535,7 @@ void AudioEngineImpl::update(float /*dt*/) {
             _threadMutex.unlock();
 
             if (player->_finishCallbak) {
-                player->_finishCallbak(audioID, filePath); // IDEA: callback will delay 50ms
+                player->_finishCallbak(audioID, filePath); //IDEA: callback will delay 50ms
             }
             delete player;
             _alSourceUsed[alSource] = false;

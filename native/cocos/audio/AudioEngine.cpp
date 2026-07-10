@@ -60,9 +60,9 @@ namespace cc {
 const int AudioEngine::INVALID_AUDIO_ID = -1;
 const float AudioEngine::TIME_UNKNOWN = -1.0F;
 
-// audio file path,audio IDs
+//audio file path,audio IDs
 ccstd::unordered_map<ccstd::string, ccstd::list<int>> AudioEngine::sAudioPathIDMap;
-// profileName,ProfileHelper
+//profileName,ProfileHelper
 ccstd::unordered_map<ccstd::string, AudioEngine::ProfileHelper> AudioEngine::sAudioPathProfileHelperMap;
 unsigned int AudioEngine::sMaxInstances = MAX_AUDIOINSTANCES;
 AudioEngine::ProfileHelper *AudioEngine::sDefaultProfileHelper = nullptr;

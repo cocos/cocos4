@@ -55,9 +55,9 @@ namespace cc {
  */
 class EXPORT_DLL AudioProfile {
 public:
-    // Profile name can't be empty.
+    //Profile name can't be empty.
     ccstd::string name;
-    // The maximum number of simultaneous audio instance.
+    //The maximum number of simultaneous audio instance.
     unsigned int maxInstances{};
 
     /* Minimum delay in between sounds */
@@ -106,14 +106,14 @@ public:
      */
     static void end();
 
-    /**
+    /**  
      * Gets the default profile of audio instances.
      *
      * @return The default profile of audio instances.
      */
     static AudioProfile *getDefaultProfile();
 
-    /**
+    /**  
      * Play 2d sound.
      *
      * @param filePath The path of an audio file.
@@ -126,7 +126,7 @@ public:
      */
     static int play2d(const ccstd::string &filePath, bool loop = false, float volume = 1.0F, const AudioProfile *profile = nullptr);
 
-    /**
+    /**  
      * Sets whether an audio instance loop or not.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -134,7 +134,7 @@ public:
      */
     static void setLoop(int audioID, bool loop);
 
-    /**
+    /**  
      * Checks whether an audio instance is loop.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -142,7 +142,7 @@ public:
      */
     static bool isLoop(int audioID);
 
-    /**
+    /**  
      * Sets volume for an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -164,7 +164,7 @@ public:
      */
     static float getVolume(int audioID);
 
-    /**
+    /**  
      * Pause an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -174,7 +174,7 @@ public:
     /** Pause all playing audio instances. */
     static void pauseAll();
 
-    /**
+    /**  
      * Resume an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -184,7 +184,7 @@ public:
     /** Resume all suspended audio instances. */
     static void resumeAll();
 
-    /**
+    /**  
      * Stop an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -199,11 +199,11 @@ public:
      *
      * @param audioID   An audioID returned by the play2d function.
      * @param time      The offset in seconds from the start to seek to.
-     * @return
+     * @return 
      */
     static bool setCurrentTime(int audioID, float time);
 
-    /**
+    /**  
      * Gets the current playback position of an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -211,7 +211,7 @@ public:
      */
     static float getCurrentTime(int audioID);
 
-    /**
+    /**  
      * Gets the duration of an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -219,15 +219,15 @@ public:
      */
     static float getDuration(int audioID);
 
-    /**
-     * Gets the duration of an audio file.
-     *
-     * @param filePath The path of an audio file.
-     * @return The duration of an audio file.
-     */
+    /** 
+    * Gets the duration of an audio file.
+    *
+    * @param filePath The path of an audio file.
+    * @return The duration of an audio file.
+    */
     static float getDurationFromFile(const ccstd::string &filePath);
 
-    /**
+    /** 
      * Returns the state of an audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -235,7 +235,7 @@ public:
      */
     static AudioState getState(int audioID);
 
-    /**
+    /** 
      * Register a callback to be invoked when an audio instance has completed playing.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -255,7 +255,7 @@ public:
      */
     static bool setMaxAudioInstance(int maxInstances);
 
-    /**
+    /** 
      * Uncache the audio data from internal buffer.
      * AudioEngine cache audio data on ios,mac, and oalsoft platform.
      *
@@ -264,14 +264,14 @@ public:
      */
     static void uncache(const ccstd::string &filePath);
 
-    /**
+    /** 
      * Uncache all audio data from internal buffer.
      *
      * @warning All audio will be stopped first.
      */
     static void uncacheAll();
 
-    /**
+    /** 
      * Gets the audio profile by id of audio instance.
      *
      * @param audioID An audioID returned by the play2d function.
@@ -279,7 +279,7 @@ public:
      */
     static AudioProfile *getProfile(int audioID);
 
-    /**
+    /** 
      * Gets an audio profile by name.
      *
      * @param profileName A name of audio profile.
@@ -317,7 +317,7 @@ public:
 
     /**
      * @brief Get the PCMHeader of audio
-     *
+     * 
      * @param url The file url of an audio. same as filePath
      * @return PCMHeader of audio
      */
@@ -325,8 +325,8 @@ public:
 
     /**
      * @brief Get the Buffer object
-     *
-     * @param channelID as there might be several channels at same time, select one to get buffer.
+     * 
+     * @param channelID as there might be several channels at same time, select one to get buffer. 
      * Start from 0
      * @return PCM datas behave as a ccstd::vector<char>. You can check byte length in PCMHeader.
      */
@@ -381,13 +381,13 @@ protected:
         AudioInfo &operator=(AudioInfo &&info) noexcept;
     };
 
-    // audioID,audioAttribute
+    //audioID,audioAttribute
     static ccstd::unordered_map<int, AudioInfo> sAudioIDInfoMap;
 
-    // audio file path,audio IDs
+    //audio file path,audio IDs
     static ccstd::unordered_map<ccstd::string, ccstd::list<int>> sAudioPathIDMap;
 
-    // profileName,ProfileHelper
+    //profileName,ProfileHelper
     static ccstd::unordered_map<ccstd::string, ProfileHelper> sAudioPathProfileHelperMap;
 
     static unsigned int sMaxInstances;

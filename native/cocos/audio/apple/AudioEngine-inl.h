@@ -74,13 +74,13 @@ private:
 
     ALuint _alSources[MAX_AUDIOINSTANCES];
 
-    // source,used
+    //source,used
     ccstd::list<ALuint> _unusedSourcesPool;
 
-    // filePath,bufferInfo
+    //filePath,bufferInfo
     ccstd::unordered_map<ccstd::string, AudioCache> _audioCaches;
 
-    // audioID,AudioInfo
+    //audioID,AudioInfo
     ccstd::unordered_map<int, AudioPlayer *> _audioPlayers;
     std::mutex _threadMutex;
 
