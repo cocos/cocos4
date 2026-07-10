@@ -637,13 +637,13 @@ export class Graphics extends UIRenderer {
             const vertexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65535 * stride,
+                65536 * stride, // Uint16 can address 65536 vertices (indices 0–65535)
                 stride,
             ));
             const indexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.INDEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65535 * Uint16Array.BYTES_PER_ELEMENT * 2,
+                65536 * Uint16Array.BYTES_PER_ELEMENT * 2,  // Uint16 can address 65536 vertices (indices 0–65535)
                 Uint16Array.BYTES_PER_ELEMENT,
             ));
 
