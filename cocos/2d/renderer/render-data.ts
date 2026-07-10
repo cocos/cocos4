@@ -634,7 +634,7 @@ export class MeshRenderData extends BaseRenderData {
         const newVBytes = this._byteLength + vertexCount * this.stride;
         const newICount = this.indexCount + indexCount;
 
-        if (vertexCount + this.vertexCount > 65535) {
+        if (vertexCount + this.vertexCount > 65536) { // Uint16 can address 65536 vertices (indices 0–65535)
             return false;
         }
 

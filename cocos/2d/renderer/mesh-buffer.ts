@@ -23,7 +23,7 @@
 */
 
 import { JSB } from 'internal:constants';
-import { Device, BufferUsageBit, MemoryUsageBit, Attribute, Buffer, BufferInfo, InputAssembler, InputAssemblerInfo, Feature, API } from '../../gfx';
+import { Device, BufferUsageBit, MemoryUsageBit, Attribute, Buffer, BufferInfo, InputAssembler, InputAssemblerInfo, Feature } from '../../gfx';
 import { getAttributeStride } from './vertex-format';
 import { sys, getError, warnID, assertIsTrue } from '../../core';
 import { NativeUIMeshBuffer } from './native-2d';
@@ -251,11 +251,10 @@ export class MeshBuffer {
 
         this.floatsPerVertex = getAttributeStride(attrs) >> 2;
 
-        var vDataCountLimit = 65536; // 2^16 - 1
-        const glApi = device.gfxAPI;
-        if (glApi === API.WEBGPU || glApi === API.WEBGL2 || glApi === API.WEBGL && device.hasFeature(Feature.ELEMENT_INDEX_UINT)) {
-            vDataCountLimit = 4294967295; // 2^32 - 1
-        }
+        // Use the GPU's actual reported capability to determine max addressable vertex count.
+        // Feature.ELEMENT_INDEX_UINT is set to true in: WebGL2, WebGPU, Vulkan, Metal, GLES3, GLES2+ext.
+        // vDataCountLimit is a vertex COUNT limit (max index value + 1), not the max index value itself.
+        const vDataCountLimit = device.hasFeature(Feature.ELEMENT_INDEX_UINT) ? 4294967296 : 65536; // Uint32 or Uint16 can address 2^32 or 2^16 vertices (indices 0–2^32-1 or 0–2^16-1)
         assertIsTrue(this._initVDataCount / this._floatsPerVertex < vDataCountLimit, getError(9005));
 
         if (!this.vData || !this.iData) {

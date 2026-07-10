@@ -753,7 +753,7 @@ uint32_t LightResource::addLight(
     // already added
     auto iter = lightIndex.find(light);
     if (iter != lightIndex.end()) {
-        return iter->second;
+        return iter->second * elementSize;
     }
 
     // resize buffer
