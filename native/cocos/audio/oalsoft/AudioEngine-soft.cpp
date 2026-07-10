@@ -178,10 +178,16 @@ bool AudioEngineImpl::init() {
 
         alcMakeContextCurrent(sALContext);
 
+        for (auto &src : _alSources) {
+            src = 0;
+        }
         alGenSources(MAX_AUDIOINSTANCES, _alSources);
         auto alError = alGetError();
         if (alError != AL_NO_ERROR) {
             CC_LOG_ERROR("%s:generating sources failed! error = %x\n", __FUNCTION__, alError);
+            alcMakeContextCurrent(nullptr);
+            alcDestroyContext(sALContext);
+            sALContext = nullptr;
             break;
         }
 
