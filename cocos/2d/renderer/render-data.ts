@@ -76,7 +76,7 @@ export class BaseRenderData {
     }
     set drawInfoType (type: RenderDrawInfoType) {
         this._drawInfoType = type;
-        if (JSB && this._renderDrawInfo) {
+        if (this._renderDrawInfo) {
             this._renderDrawInfo.setDrawInfoType(type);
         }
     }
@@ -95,7 +95,7 @@ export class BaseRenderData {
     }
     set material (val: Material | null) {
         this._material = val;
-        if (JSB && this._renderDrawInfo) {
+        if (this._renderDrawInfo) {
             this._renderDrawInfo.setMaterial(val!);
         }
     }
@@ -106,7 +106,7 @@ export class BaseRenderData {
     }
     set dataHash (val: number) {
         this._dataHash = val;
-        if (JSB && this._renderDrawInfo) {
+        if (this._renderDrawInfo) {
             this._renderDrawInfo.setDataHash(val);
         }
     }
@@ -145,41 +145,40 @@ export class BaseRenderData {
     public initRenderDrawInfo (comp: UIRenderer, drawInfoType: RenderDrawInfoType = RenderDrawInfoType.COMP): void {
         this.drawInfoType = drawInfoType;
 
-        if (JSB) {
-            const renderEntity: RenderEntity = comp.renderEntity;
+        // Populate the RenderEntity -> RenderDrawInfo[] model on BOTH platforms. On JSB the setters
+        // mirror to the native shared buffer/object; on Web they store TS fields that WebBatcherCore
+        // reads. (Previously this whole body was if(JSB) and Web had no draw infos.)
+        const renderEntity: RenderEntity = comp.renderEntity;
 
-            if (renderEntity.renderEntityType === RenderEntityType.STATIC) {
-                if (!this._renderDrawInfo) {
-                    // initialization should be in native
-                    const drawInfo = renderEntity.getStaticRenderDrawInfo();
-                    if (drawInfo) {
-                        this._renderDrawInfo = drawInfo;
-                    }
-                }
-            } else if (this.multiOwner === false) {
-                if (!this._renderDrawInfo) {
-                    this._renderDrawInfo = new RenderDrawInfo();
-                    // for no resize() invoking components
-                    //this.setRenderDrawInfoAttributes();
-                    renderEntity.addDynamicRenderDrawInfo(this._renderDrawInfo);
+        if (renderEntity.renderEntityType === RenderEntityType.STATIC) {
+            if (!this._renderDrawInfo) {
+                // initialization should be in native
+                const drawInfo = renderEntity.getStaticRenderDrawInfo();
+                if (drawInfo) {
+                    this._renderDrawInfo = drawInfo;
                 }
             }
-
-            this.setRenderDrawInfoAttributes();
+        } else if (this.multiOwner === false) {
+            if (!this._renderDrawInfo) {
+                this._renderDrawInfo = new RenderDrawInfo();
+                renderEntity.addDynamicRenderDrawInfo(this._renderDrawInfo);
+            }
         }
+
+        this.setRenderDrawInfoAttributes();
     }
 
     /**
      * @deprecated Please use RenderEntity.clearRenderDrawInfos instead.
      */
     public removeRenderDrawInfo (comp: UIRenderer): void {
-        if (JSB) {
-            const renderEntity: RenderEntity = comp.renderEntity;
-            if (renderEntity.renderEntityType === RenderEntityType.DYNAMIC) {
-                renderEntity.removeDynamicRenderDrawInfo();
-            } else if (renderEntity.renderEntityType === RenderEntityType.STATIC) {
-                renderEntity.clearStaticRenderDrawInfos();
-            }
+        // Must run on Web too, otherwise recreating a RenderData would leave a stale draw info in the
+        // entity's array (duplicate / garbage geometry once WebBatcherCore reads it).
+        const renderEntity: RenderEntity = comp.renderEntity;
+        if (renderEntity.renderEntityType === RenderEntityType.DYNAMIC) {
+            renderEntity.removeDynamicRenderDrawInfo();
+        } else if (renderEntity.renderEntityType === RenderEntityType.STATIC) {
+            renderEntity.clearStaticRenderDrawInfos();
         }
     }
 
@@ -188,33 +187,32 @@ export class BaseRenderData {
      * @mangle
      */
     protected setRenderDrawInfoAttributes (): void {
-        if (JSB) {
-            const renderDrawInfo = this._renderDrawInfo;
-            if (!renderDrawInfo) {
-                return;
-            }
-            const chunk = this.chunk;
-            if (chunk) {
-                renderDrawInfo.setBufferId(chunk.bufferId);
-                renderDrawInfo.setVertexOffset(chunk.vertexOffset);
-                renderDrawInfo.setVB(chunk.vb);
-                // TODO: on TS 4.2, argument of type 'Readonly<Uint16Array>' is not assignable to parameter of type 'Uint16Array'.
-                renderDrawInfo.setIB(chunk.ib as Uint16Array);
-                const meshBuffer = chunk.meshBuffer;
-                if (meshBuffer) {
-                    renderDrawInfo.setIndexOffset(meshBuffer.indexOffset);
-                    renderDrawInfo.setVData(meshBuffer.vData.buffer);
-                    renderDrawInfo.setIData(meshBuffer.iData.buffer);
-                }
-            }
-            renderDrawInfo.setVBCount(this._vc);
-            renderDrawInfo.setIBCount(this._ic);
-
-            renderDrawInfo.setDataHash(this.dataHash);
-            renderDrawInfo.setIsMeshBuffer(this._isMeshBuffer);
-            renderDrawInfo.setMaterial(this.material!);
-            renderDrawInfo.setDrawInfoType(this._drawInfoType);
+        const renderDrawInfo = this._renderDrawInfo;
+        if (!renderDrawInfo) {
+            return;
         }
+        const chunk = this.chunk;
+        if (chunk) {
+            renderDrawInfo.setBufferId(chunk.bufferId);
+            renderDrawInfo.setVertexOffset(chunk.vertexOffset);
+            renderDrawInfo.setVB(chunk.vb);
+            // TODO: on TS 4.2, argument of type 'Readonly<Uint16Array>' is not assignable to parameter of type 'Uint16Array'.
+            renderDrawInfo.setIB(chunk.ib as Uint16Array);
+            const meshBuffer = chunk.meshBuffer;
+            if (meshBuffer) {
+                renderDrawInfo.setIndexOffset(meshBuffer.indexOffset);
+                renderDrawInfo.setVData(meshBuffer.vData.buffer);
+                renderDrawInfo.setIData(meshBuffer.iData.buffer);
+            }
+        }
+        renderDrawInfo.setVBCount(this._vc);
+        renderDrawInfo.setIBCount(this._ic);
+
+        renderDrawInfo.setDataHash(this.dataHash);
+        renderDrawInfo.setIsMeshBuffer(this._isMeshBuffer);
+        renderDrawInfo.setMaterial(this.material!);
+        renderDrawInfo.setDrawInfoType(this._drawInfoType);
+        renderDrawInfo.setStride(this._floatStride);
     }
 }
 
@@ -277,7 +275,7 @@ export class RenderData extends BaseRenderData {
     }
     set vertDirty (val: boolean) {
         this._vertDirty = val;
-        if (JSB && this._renderDrawInfo && val) {
+        if (this._renderDrawInfo && val) {
             this._renderDrawInfo.setVertDirty(val);
         }
     }
@@ -294,7 +292,7 @@ export class RenderData extends BaseRenderData {
 
     public set frame (val: SpriteFrame | TextureBase | null) {
         this._frame = val;
-        if (JSB && this._renderDrawInfo) {
+        if (this._renderDrawInfo) {
             if (this._frame) {
                 this._renderDrawInfo.setTexture(this._frame.getGFXTexture());
                 this._renderDrawInfo.setSampler(this._frame.getGFXSampler());
@@ -342,11 +340,11 @@ export class RenderData extends BaseRenderData {
         this.chunk = this._accessor.allocateChunk(vertexCount, indexCount)!;
         this.updateHash();
 
-        if (JSB && this.multiOwner === false && this._renderDrawInfo) {
+        if (this.multiOwner === false && this._renderDrawInfo) {
             const renderDrawInfo = this._renderDrawInfo;
             const chunk = this.chunk;
             const meshBuffer = chunk.meshBuffer;
-            // for sync vData and iData address to native
+            // for sync vData and iData address to native (and TS fields WebBatcherCore reads)
             renderDrawInfo.setDrawInfoType(this._drawInfoType);
             renderDrawInfo.setBufferId(chunk.bufferId);
             renderDrawInfo.setVertexOffset(chunk.vertexOffset);
@@ -358,6 +356,8 @@ export class RenderData extends BaseRenderData {
             renderDrawInfo.setIData(meshBuffer.iData.buffer);
             renderDrawInfo.setVBCount(this._vc);
             renderDrawInfo.setIBCount(this._ic);
+            renderDrawInfo.setStride(this._floatStride);
+            if (!JSB) renderDrawInfo.localData = this._data;
         }
     }
 
@@ -368,39 +368,39 @@ export class RenderData extends BaseRenderData {
 
     /** @mangle */
     protected override setRenderDrawInfoAttributes (): void {
-        if (JSB) {
-            if (!this._renderDrawInfo) {
-                return;
-            }
-            this._renderDrawInfo.setAccId(this._accessor.id);
-            super.setRenderDrawInfoAttributes();
-            this._renderDrawInfo.setTexture(this.frame ? this.frame.getGFXTexture() : null);
-            this._renderDrawInfo.setSampler(this.frame ? this.frame.getGFXSampler() : null);
+        if (!this._renderDrawInfo) {
+            return;
         }
+        this._renderDrawInfo.setAccId(this._accessor.id);
+        super.setRenderDrawInfoAttributes();
+        this._renderDrawInfo.setTexture(this.frame ? this.frame.getGFXTexture() : null);
+        this._renderDrawInfo.setSampler(this.frame ? this.frame.getGFXSampler() : null);
+        // Web local vertex source (see RenderDrawInfo.localData); JSB uses native render2dBuffer.
+        if (!JSB) this._renderDrawInfo.localData = this._data;
     }
     /**
      * @internal
      * @mangle
      */
     public fillDrawInfoAttributes (drawInfo: RenderDrawInfo): void {
-        if (JSB) {
-            if (!drawInfo) {
-                return;
-            }
-            drawInfo.setDrawInfoType(this._drawInfoType);
-            drawInfo.setAccAndBuffer(this._accessor.id, this.chunk.bufferId);
-            drawInfo.setVertexOffset(this.chunk.vertexOffset);
-            drawInfo.setIndexOffset(this.chunk.meshBuffer.indexOffset);
-            drawInfo.setVB(this.chunk.vb);
-            // TODO: on TS 4.2, argument of type 'Readonly<Uint16Array>' is not assignable to parameter of type 'Uint16Array'.
-            drawInfo.setIB(this.chunk.ib as Uint16Array);
-            drawInfo.setVData(this.chunk.meshBuffer.vData.buffer);
-            drawInfo.setIData(this.chunk.meshBuffer.iData.buffer);
-            drawInfo.setVBCount(this._vc);
-            drawInfo.setIBCount(this._ic);
-            drawInfo.setDataHash(this.dataHash);
-            drawInfo.setIsMeshBuffer(this._isMeshBuffer);
+        if (!drawInfo) {
+            return;
         }
+        drawInfo.setDrawInfoType(this._drawInfoType);
+        drawInfo.setAccAndBuffer(this._accessor.id, this.chunk.bufferId);
+        drawInfo.setVertexOffset(this.chunk.vertexOffset);
+        drawInfo.setIndexOffset(this.chunk.meshBuffer.indexOffset);
+        drawInfo.setVB(this.chunk.vb);
+        // TODO: on TS 4.2, argument of type 'Readonly<Uint16Array>' is not assignable to parameter of type 'Uint16Array'.
+        drawInfo.setIB(this.chunk.ib as Uint16Array);
+        drawInfo.setVData(this.chunk.meshBuffer.vData.buffer);
+        drawInfo.setIData(this.chunk.meshBuffer.iData.buffer);
+        drawInfo.setVBCount(this._vc);
+        drawInfo.setIBCount(this._ic);
+        drawInfo.setDataHash(this.dataHash);
+        drawInfo.setIsMeshBuffer(this._isMeshBuffer);
+        drawInfo.setStride(this._floatStride);
+        if (!JSB) drawInfo.localData = this._data;
     }
 
     // Initial advance render data for native
@@ -470,10 +470,6 @@ export class RenderData extends BaseRenderData {
             this.material = comp.getRenderMaterial(0)!;
             this.passDirty = false;
             this.hashDirty = true;
-
-            if (JSB && this._renderDrawInfo) {
-                this._renderDrawInfo.setMaterial(this.material);
-            }
         }
         if (this.nodeDirty) {
             const renderScene = comp.node.scene ? comp._getRenderScene() : null;
@@ -489,21 +485,15 @@ export class RenderData extends BaseRenderData {
             this.textureHash = frame.getHash();
             this.textureDirty = false;
             this.hashDirty = true;
-
-            if (JSB && this._renderDrawInfo) {
-                this._renderDrawInfo.setTexture(this.frame ? this.frame.getGFXTexture() : null);
-                this._renderDrawInfo.setSampler(this.frame ? this.frame.getGFXSampler() : null);
-            }
         }
         if (this.hashDirty) {
             this.updateHash();
-
-            if (JSB && this._renderDrawInfo) {
-                this._renderDrawInfo.setDataHash(this.dataHash);
-            }
         }
 
-        // Hack Do not update pre frame
+        // The material/texture/dataHash pushes to the RenderDrawInfo now happen inside the
+        // (un-gated) `set material` / `set frame` / `set dataHash` setters above, on both platforms.
+
+        // Hack Do not update pre frame — native-only render2dBuffer sync.
         if (JSB && this.multiOwner === false) {
             if (DEBUG) {
                 if (this._renderDrawInfo && this._renderDrawInfo.render2dBuffer) {
@@ -782,26 +772,25 @@ export class MeshRenderData extends BaseRenderData {
     }
 
     public override setRenderDrawInfoAttributes (): void {
-        if (JSB) {
-            const renderDrawInfo = this._renderDrawInfo;
-            if (!renderDrawInfo) {
-                return;
-            }
-            renderDrawInfo.setVData(this.vData.buffer);
-            renderDrawInfo.setIData(this.iData.buffer);
-            renderDrawInfo.setVBCount(this._vc);
-            renderDrawInfo.setIBCount(this._ic);
-            renderDrawInfo.setVertexOffset(this.vertexStart);
-            renderDrawInfo.setIndexOffset(this.indexStart);
-
-            renderDrawInfo.setIsMeshBuffer(this._isMeshBuffer);
-            renderDrawInfo.setMaterial(this.material!);
-            const frame = this.frame;
-            if (frame) {
-                renderDrawInfo.setTexture(frame.getGFXTexture());
-                renderDrawInfo.setSampler(frame.getGFXSampler());
-            }
+        const renderDrawInfo = this._renderDrawInfo;
+        if (!renderDrawInfo) {
+            return;
         }
+        renderDrawInfo.setVData(this.vData.buffer);
+        renderDrawInfo.setIData(this.iData.buffer);
+        renderDrawInfo.setVBCount(this._vc);
+        renderDrawInfo.setIBCount(this._ic);
+        renderDrawInfo.setVertexOffset(this.vertexStart);
+        renderDrawInfo.setIndexOffset(this.indexStart);
+
+        renderDrawInfo.setIsMeshBuffer(this._isMeshBuffer);
+        renderDrawInfo.setMaterial(this.material!);
+        const frame = this.frame;
+        if (frame) {
+            renderDrawInfo.setTexture(frame.getGFXTexture());
+            renderDrawInfo.setSampler(frame.getGFXSampler());
+        }
+        if (!JSB) renderDrawInfo.meshRenderData = this;
     }
 
     /**
@@ -810,14 +799,12 @@ export class MeshRenderData extends BaseRenderData {
      * @mangle
      */
     public particleInitRenderDrawInfo (entity: RenderEntity): void {
-        if (JSB) {
-            if (entity.renderEntityType === RenderEntityType.STATIC) {
-                if (!this._renderDrawInfo) {
-                    // initialization should be in native
-                    const drawInfo = entity.getStaticRenderDrawInfo();
-                    if (drawInfo) {
-                        this._renderDrawInfo = drawInfo;
-                    }
+        if (entity.renderEntityType === RenderEntityType.STATIC) {
+            if (!this._renderDrawInfo) {
+                // initialization should be in native
+                const drawInfo = entity.getStaticRenderDrawInfo();
+                if (drawInfo) {
+                    this._renderDrawInfo = drawInfo;
                 }
             }
         }
