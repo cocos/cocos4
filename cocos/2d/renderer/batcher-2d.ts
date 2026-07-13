@@ -367,18 +367,12 @@ export class Batcher2D implements IBatcher {
                 this.updateBuffer(renderData.vertexFormat, bufferID);
             }
 
-            gen.setBatchState(
-                comp.customMaterial !== null,
-                comp.getRenderMaterial(0)!,
-                depthStencilStateStage,
-                comp.node.layer,
-                transform,
-                renderData as MeshRenderData,
-                frame,
+            this._applyBatchState(
+                comp, comp.getRenderMaterial(0)!, depthStencilStateStage,
+                transform, renderData as MeshRenderData, frame,
             );
         }
 
-        if (assembler.fillBuffers) assembler.fillBuffers(comp, this);
     }
 
     /**
@@ -457,14 +451,9 @@ export class Batcher2D implements IBatcher {
             this.autoMergeBatches();
             this.resetRenderStates();
 
-            gen.setBatchState(
-                comp.customMaterial !== null,
-                mat,
-                comp.stencilStage,
-                comp.node.layer,
-                enableBatch ? null : comp.node,
-                null,
-                tex,
+            this._applyBatchState(
+                comp, mat, comp.stencilStage,
+                enableBatch ? null : comp.node, null, tex,
             );
             gen.setMiddlewareBatchState(meshBuffer, indexOffset, indexCount);
         }
@@ -524,6 +513,30 @@ export class Batcher2D implements IBatcher {
     }
 
     // ── Helpers ──────────────────────────────────────────────────
+
+    /**
+     * @en Extracts commonly repeated batch-state params from a UIRenderer and
+     * delegates to {@link BatchGenerator.setBatchState}.
+     * @zh 从 UIRenderer 提取重复的批次状态参数，委托给 {@link BatchGenerator.setBatchState}。
+     */
+    private _applyBatchState (
+        comp: UIRenderer,
+        material: Material,
+        stencilStage: Stage,
+        transform: Node | null,
+        renderData: MeshRenderData | null,
+        frame: TextureBase | null,
+    ): void {
+        this._core.generator!.setBatchState(
+            comp.customMaterial !== null,
+            material,
+            stencilStage,
+            comp.node.layer,
+            transform,
+            renderData,
+            frame,
+        );
+    }
 
     private _screenSort (a: RenderRoot2D, b: RenderRoot2D): number {
         return a.node.siblingIndex - b.node.siblingIndex;

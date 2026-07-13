@@ -374,14 +374,15 @@ class RadialFilled implements IAssembler {
                 renderData.dataLength = 0;
             }
             renderData.resize(offset, offset);
+            // On Web, WebBatcherCore._fillBuffers reads indices from renderData.indices and
+            // only writes position/color (not UV), so index generation + updateWorldUVData
+            // must run on Web too. setIndexBuffer + renderEntity.colorDirty stay JSB-only.
+            const indexCount = renderData.indexCount;
+            this.createQuadIndices(indexCount);
+            renderData.indices = QUAD_INDICES;
+            this.updateWorldUVData(sprite);
             if (JSB) {
-                const indexCount = renderData.indexCount;
-                this.createQuadIndices(indexCount);
                 renderData.chunk.setIndexBuffer(QUAD_INDICES!);
-                // may can update color & uv here
-                // need dirty
-                this.updateWorldUVData(sprite);
-                //this.updateColorLate(sprite);
                 sprite.renderEntity.colorDirty = true;
             }
             renderData.updateRenderData(sprite, frame);
@@ -389,7 +390,6 @@ class RadialFilled implements IAssembler {
     }
 
     private createQuadIndices (indexCount: number): void {
-        if (!JSB) return;
         QUAD_INDICES = null;
         QUAD_INDICES = new Uint16Array(indexCount);
         let offset = 0;
@@ -398,34 +398,8 @@ class RadialFilled implements IAssembler {
         }
     }
 
-    fillBuffers (comp: Sprite, renderer: IBatcher): void {
-        const node = comp.node;
-        const renderData = comp.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        if (comp._flagChangedVersion !== node.flagChangedVersion || renderData.vertDirty) {
-            this.updateWorldVertexAndUVData(comp, chunk);
-            renderData.vertDirty = false;
-            comp._flagChangedVersion = node.flagChangedVersion;
-        }
-
-        // forColor
-        this.updateColorLate(comp);
-
-        const bid = chunk.bufferId;
-        const vid = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        const indexOffset = meshBuffer.indexOffset;
-        for (let i = 0; i < renderData.indexCount; i++) {
-            ib[indexOffset + i] = vid + i;
-        }
-        meshBuffer.indexOffset += renderData.indexCount;
-        meshBuffer.setDirty();
-    }
 
     private updateWorldUVData (sprite: Sprite): void {
-        if (!JSB) return;
         const renderData = sprite.renderData;
         if (!renderData) return;
         const stride = renderData.floatStride;
@@ -439,33 +413,6 @@ class RadialFilled implements IAssembler {
     }
 
     // only for TS
-    private updateWorldVertexAndUVData (sprite: Sprite, chunk: StaticVBChunk): void {
-        const node = sprite.node;
-        node.getWorldMatrix(m);
-
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const stride = renderData.floatStride;
-        const dataList = sprite.renderData.data;
-        const vData = chunk.vb;
-        const vertexCount = renderData.vertexCount;
-
-        let vertexOffset = 0;
-        for (let i = 0; i < vertexCount; i++) {
-            const vert = dataList[i];
-            const x = vert.x;
-            const y = vert.y;
-            let rhw = m.m03 * x + m.m07 * y + m.m15;
-            rhw = rhw ? 1 / rhw : 1;
-
-            vData[vertexOffset + 0] = (m.m00 * x + m.m04 * y + m.m12) * rhw;
-            vData[vertexOffset + 1] = (m.m01 * x + m.m05 * y + m.m13) * rhw;
-            vData[vertexOffset + 2] = (m.m02 * x + m.m06 * y + m.m14) * rhw;
-            vData[vertexOffset + 3] = vert.u;
-            vData[vertexOffset + 4] = vert.v;
-            vertexOffset += stride;
-        }
-    }
 
     // dirty Mark
     // the real update uv is on updateWorldUVData
@@ -477,27 +424,6 @@ class RadialFilled implements IAssembler {
     }
 
     // fill color here
-    private updateColorLate (sprite: Sprite): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const vData = renderData.chunk.vb;
-        const stride = renderData.floatStride;
-        const vertexCount = renderData.vertexCount;
-
-        let colorOffset = 5;
-        const color = sprite.color;
-        const colorR = color.r / 255;
-        const colorG = color.g / 255;
-        const colorB = color.b / 255;
-        const colorA = sprite.node._uiProps.opacity;
-        for (let i = 0; i < vertexCount; i++) {
-            vData[colorOffset] = colorR;
-            vData[colorOffset + 1] = colorG;
-            vData[colorOffset + 2] = colorB;
-            vData[colorOffset + 3] = colorA;
-            colorOffset += stride;
-        }
-    }
 
     // Too early
     updateColor (sprite: Sprite): void {

@@ -49,6 +49,9 @@ class Sliced implements IAssembler {
         renderData.resize(16, 54);
         const quadIndices = this.QUAD_INDICES = new Uint16Array(54);
         this.createQuadIndices(4, 4);
+        // Web (non-JSB) reads indices from renderData.indices in WebBatcherCore._fillBuffers;
+        // chunk.setIndexBuffer is a JSB-only no-op on Web, so indices must be set here.
+        renderData.indices = quadIndices;
         renderData.chunk.setIndexBuffer(quadIndices);
         return renderData;
     }
@@ -153,65 +156,7 @@ class Sliced implements IAssembler {
         }
     }
 
-    fillBuffers (sprite: Sprite, renderer: IBatcher): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        if (sprite._flagChangedVersion !== sprite.node.flagChangedVersion || renderData.vertDirty) {
-            this.updateWorldVertexData(sprite, chunk);
-            renderData.vertDirty = false;
-            sprite._flagChangedVersion = sprite.node.flagChangedVersion;
-        }
 
-        const bid = chunk.bufferId;
-        const vid = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        let indexOffset = meshBuffer.indexOffset;
-        for (let r = 0; r < 3; ++r) {
-            for (let c = 0; c < 3; ++c) {
-                const start = vid + r * 4 + c;
-                ib[indexOffset++] = start;
-                ib[indexOffset++] = start + 1;
-                ib[indexOffset++] = start + 4;
-                ib[indexOffset++] = start + 1;
-                ib[indexOffset++] = start + 5;
-                ib[indexOffset++] = start + 4;
-            }
-        }
-        meshBuffer.indexOffset = indexOffset;
-    }
-
-    private updateWorldVertexData (sprite: Sprite, chunk: StaticVBChunk): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const stride = renderData.floatStride;
-        const dataList: IRenderData[] = renderData.data;
-        const vData = chunk.vb;
-        const node = sprite.node;
-        const m = node.worldMatrix;
-
-        const m00 = m.m00; const m01 = m.m01; const m02 = m.m02; const m03 = m.m03;
-        const m04 = m.m04; const m05 = m.m05; const m06 = m.m06; const m07 = m.m07;
-        const m12 = m.m12; const m13 = m.m13; const m14 = m.m14; const m15 = m.m15;
-
-        let offset = 0;
-        for (let row = 0; row < 4; ++row) {
-            const rowD = dataList[row * 4];
-            for (let col = 0; col < 4; ++col) {
-                const colD = dataList[col];
-                const x = colD.x;
-                const y = rowD.y;
-                let rhw = m03 * x + m07 * y + m15;
-                rhw = rhw ? 1 / rhw : 1;
-
-                offset = (row * 4 + col) * stride;
-                vData[offset + 0] = (m00 * x + m04 * y + m12) * rhw;
-                vData[offset + 1] = (m01 * x + m05 * y + m13) * rhw;
-                vData[offset + 2] = (m02 * x + m06 * y + m14) * rhw;
-            }
-        }
-    }
 
     updateUVs (sprite: Sprite): void {
         const renderData = sprite.renderData;

@@ -143,6 +143,8 @@ export class BaseRenderData {
 
     // it should be invoked at where a render data is allocated.
     public initRenderDrawInfo (comp: UIRenderer, drawInfoType: RenderDrawInfoType = RenderDrawInfoType.COMP): void {
+        this.drawInfoType = drawInfoType;
+
         if (JSB) {
             const renderEntity: RenderEntity = comp.renderEntity;
 
@@ -163,7 +165,6 @@ export class BaseRenderData {
                 }
             }
 
-            this.drawInfoType = drawInfoType;
             this.setRenderDrawInfoAttributes();
         }
     }

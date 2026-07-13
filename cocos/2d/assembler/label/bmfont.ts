@@ -43,13 +43,6 @@ class Bmfont extends BmfontUtils implements IAssembler {
         return renderData;
     }
 
-    fillBuffers (comp: Label, renderer: IBatcher): void {
-        const node = comp.node;
-        tempColor.set(comp.color);
-        tempColor.a = node._uiProps.opacity * 255;
-        // Fill All
-        fillMeshVertices3D(node, renderer, comp.renderData, tempColor);
-    }
 }
 
 export const bmfont = new Bmfont();

@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { USE_SORTING_2D } from 'internal:constants';
+import { DEBUG, USE_SORTING_2D } from 'internal:constants';
 import { Device, Sampler, Texture } from '../../../gfx';
 import { Node } from '../../../scene-graph';
 import { MeshBuffer as UIMeshBuffer } from '../mesh-buffer';
@@ -40,9 +40,9 @@ import { UIRenderer } from '../../framework';
 import type { MaskHandler } from './mask-handler';
 import type { Director } from '../../../game/director';
 
-import { updateOpacity } from '../../assembler/utils';
-import { approx, EPSILON, RecyclePool, cclegacy } from '../../../core';
+import { approx, EPSILON, RecyclePool, cclegacy, Mat4 } from '../../../core';
 import { RenderEntityFillColorType } from '../render-entity';
+import type { RenderData } from '../render-data';
 
 // ── RecordedRendererInfo ──────────────────────────────────────────
 
@@ -288,30 +288,119 @@ export class WebBatcherCore implements IBatcherCore {
     // ── Walk helpers ─────────────────────────────────────────────
 
     private _handleUIRenderer (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
-        const renderData = render ? render.renderData : null;
-        const vertexCount = renderData ? renderData.vertexCount : 0;
-
         if (render && render.enabledInHierarchy) {
+            // ① Batch state management.
+            // Despite the name, render.fillBuffers does NOT fill any vertex buffer.
+            // It dispatches through UIRenderer._render → batcher.commitComp, which:
+            //   - Checks the 4-condition batch break test
+            //   - Archives the previous batch (autoMergeBatches) on break
+            //   - Records the new batch identity (setBatchState)
+            // This must run BEFORE ② so vertex data lands in the correct VB slot.
             render.fillBuffers(this._batcher);
+
+            // ② Universal vertex / color / index fill.
+            // Replaces the per-Assembler fillBuffers that were removed.
+            this._fillBuffers(render, finalOpacity, opacityDirty);
+        }
+    }
+
+    // ── Universal vertex / index / color filling ─────────────────
+
+    /**
+     * @en Fills vertex position, color and index data for a UIRenderer.
+     * Replaces the per-Assembler fillBuffers with a universal implementation.
+     * @zh 填充 UIRenderer 的顶点位置、颜色和索引数据。
+     */
+    private _fillBuffers (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
+        const renderData = render.renderData;
+        if (!renderData) return;
+        const chunk = renderData.chunk;
+        const node = render.node;
+
+        // ① Dirty check + world transform
+        const transformDirty = (render as any)._flagChangedVersion !== node.flagChangedVersion || renderData.vertDirty;
+        let bufferDirty = false;
+        if (transformDirty) {
+            this._transformVerts(renderData, node.worldMatrix);
+            renderData.vertDirty = false;
+            (render as any)._flagChangedVersion = node.flagChangedVersion;
+            bufferDirty = true;
         }
 
-        if (opacityDirty && vertexCount > 0) {
-            switch (render.getFillColorType()) {
-            case RenderEntityFillColorType.COLOR: {
-                updateOpacity(renderData!, finalOpacity);
-                break;
+        // ② Color fill (COLOR mode: write per-vertex color from render.color;
+        //    VERTEX mode: skip, colors are baked into vertex data).
+        //    Mirrors native Batcher2d::fillColor, which only runs when the entity's VB color
+        //    is dirty and always writes the cascaded opacity:
+        //    - Gate: opacityDirty (self/ancestor color or opacity changed this frame) OR
+        //      transformDirty (geometry rebuilt into a fresh chunk region → color must be
+        //      re-written). Without the gate, every static sprite rewrites its VB and forces
+        //      a full re-upload every frame, defeating dirty tracking.
+        //    - Alpha MUST be the cascaded finalOpacity (walk recomputes it every frame),
+        //      never the local color.a — otherwise a faded parent's children snap back to
+        //      full opacity on non-dirty frames.
+        if ((opacityDirty || transformDirty) && render.getFillColorType() === RenderEntityFillColorType.COLOR) {
+            const color = render.color;
+            const vData = renderData.chunk.vb;
+            const stride = renderData.floatStride;
+            const len = renderData.dataLength;
+            const r = color.r / 255;
+            const g = color.g / 255;
+            const b = color.b / 255;
+            const a = finalOpacity;
+            let offset = 5;
+            for (let i = 0; i < len; i++, offset += stride) {
+                vData[offset + 0] = r;
+                vData[offset + 1] = g;
+                vData[offset + 2] = b;
+                vData[offset + 3] = a;
             }
-            case RenderEntityFillColorType.VERTEX: {
-                break;
-            }
-            default:
-                break;
-            }
+            bufferDirty = true;
+        }
 
-            const buffer = renderData!.getMeshBuffer();
-            if (buffer) {
-                buffer.setDirty();
+        if (bufferDirty && renderData.getMeshBuffer()) {
+            renderData.getMeshBuffer()!.setDirty();
+        }
+
+        // ③ Index write
+        const indices = renderData.indices;
+        if (indices && indices.length > 0) {
+            const vid = chunk.vertexOffset;
+            const ib = chunk.meshBuffer.iData;
+            let indexOffset = chunk.meshBuffer.indexOffset;
+            for (let i = 0; i < indices.length; i++) {
+                ib[indexOffset++] = vid + indices[i];
             }
+            chunk.meshBuffer.indexOffset = indexOffset;
+        } else if (DEBUG && renderData.indexCount > 0) {
+            // Guard against silently dropping primitives: WebBatcherCore reads indices
+            // exclusively from renderData.indices. An assembler that forgets to populate
+            // it (see docs/batcher2d-issues-and-native-analysis.md §1.3 / §2.2) renders
+            // nothing on Web. Warn so the regression surfaces instead of going silent.
+            // eslint-disable-next-line no-console
+            console.warn(`[Batcher2D] ${render.node.name ?? ''} has indexCount=${renderData.indexCount} but renderData.indices is empty; primitives dropped on Web.`);
+        }
+    }
+
+    /**
+     * @en Transforms local vertex positions to world space using the node's world matrix.
+     * @zh 使用节点的世界矩阵将本地顶点位置转换到世界空间。
+     */
+    private _transformVerts (renderData: RenderData, worldMatrix: Mat4): void {
+        const dataList = renderData.data;
+        const vData = renderData.chunk.vb;
+        const stride = renderData.floatStride;
+
+        const m = worldMatrix;
+        let offset = 0;
+        for (let i = 0; i < dataList.length; i++) {
+            const { x, y } = dataList[i];
+            const z = dataList[i].z ?? 0;
+            let rhw = m.m03 * x + m.m07 * y + m.m11 * z + m.m15;
+            rhw = rhw ? 1 / rhw : 1;
+            offset = i * stride;
+            vData[offset + 0] = (m.m00 * x + m.m04 * y + m.m08 * z + m.m12) * rhw;
+            vData[offset + 1] = (m.m01 * x + m.m05 * y + m.m09 * z + m.m13) * rhw;
+            vData[offset + 2] = (m.m02 * x + m.m06 * y + m.m10 * z + m.m14) * rhw;
         }
     }
 

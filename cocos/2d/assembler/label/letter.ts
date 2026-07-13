@@ -44,16 +44,6 @@ class Letter extends LetterFont implements IAssembler {
         return renderData;
     }
 
-    fillBuffers (comp: Label, renderer: IBatcher): void {
-        if (!comp.renderData) {
-            return;
-        }
-
-        const node = comp.node;
-        tempColor.a = node._uiProps.opacity * 255;
-        // Fill All
-        fillMeshVertices3D(node, renderer, comp.renderData, tempColor);
-    }
 
     updateColor (label: Label): void {
         const renderData = label.renderData;
