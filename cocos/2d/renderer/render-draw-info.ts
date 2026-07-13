@@ -79,10 +79,6 @@ export class RenderDrawInfo {
     protected _bufferId = -1;
     protected _vertexOffset = 0;
     protected _indexOffset = 0;
-    protected _vb: Float32Array | null = null;
-    protected _ib: Uint16Array | null = null;
-    protected _vData: ArrayBufferLike | null = null;
-    protected _iData: ArrayBufferLike | null = null;
     protected _vertDirty = false;
     protected _vbCount = 0;
     protected _ibCount = 0;
@@ -99,20 +95,6 @@ export class RenderDrawInfo {
     protected _drawInfoType: RenderDrawInfoType = RenderDrawInfoType.COMP;
     protected _subNode: Node | null = null;
     protected _meshBuffer: MeshBuffer | null = null;
-
-    /**
-     * @en (Web only) Reference to the owning RenderData's local-space vertex source
-     * (`RenderData.data`). Mirrors the role of native RenderDrawInfo's render2dBuffer/`_sharedBuffer`,
-     * but held by REFERENCE (no per-frame copy): WebBatcherCore transforms straight from
-     * `renderData.data` into `_vb`, so there is no need for native's intermediate render2d buffer.
-     * Unused on JSB (native fills its own render2dBuffer).
-     * @zh （仅 Web）指向所属 RenderData 的本地坐标顶点源（`RenderData.data`）的引用。对应 native
-     * RenderDrawInfo 的 render2dBuffer/`_sharedBuffer`，但用**引用**而非每帧拷贝：WebBatcherCore 直接从
-     * `renderData.data` 变换写入 `_vb`，无需 native 的中转缓冲。JSB 不使用（native 自填 render2dBuffer）。
-     * @engineInternal
-     * @mangle
-     */
-    public localData: IRenderData[] | null = null;
 
     /**
      * @en (Web only) Back-reference to the owning MeshRenderData for isMeshBuffer COMP drawInfo
@@ -158,10 +140,6 @@ export class RenderDrawInfo {
     get bufferId (): number { return this._bufferId; }
     get vertexOffset (): number { return this._vertexOffset; }
     get indexOffset (): number { return this._indexOffset; }
-    get vb (): Float32Array | null { return this._vb; }
-    get ib (): Uint16Array | null { return this._ib; }
-    get vData (): ArrayBufferLike | null { return this._vData; }
-    get iData (): ArrayBufferLike | null { return this._iData; }
     get vertDirty (): boolean { return this._vertDirty; }
     get vbCount (): number { return this._vbCount; }
     get ibCount (): number { return this._ibCount; }
@@ -246,32 +224,24 @@ export class RenderDrawInfo {
     public setVB (vbBuffer: Float32Array): void {
         if (JSB) {
             this._nativeObj.vbBuffer = vbBuffer;
-        } else {
-            this._vb = vbBuffer;
         }
     }
 
     public setIB (ibBuffer: Uint16Array): void {
         if (JSB) {
             this._nativeObj.ibBuffer = ibBuffer;
-        } else {
-            this._ib = ibBuffer;
         }
     }
 
     public setVData (vDataBuffer: ArrayBufferLike): void {
         if (JSB) {
             this._nativeObj.vDataBuffer = vDataBuffer;
-        } else {
-            this._vData = vDataBuffer;
         }
     }
 
     public setIData (iDataBuffer: ArrayBufferLike): void {
         if (JSB) {
             this._nativeObj.iDataBuffer = iDataBuffer;
-        } else {
-            this._iData = iDataBuffer;
         }
     }
 

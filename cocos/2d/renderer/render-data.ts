@@ -357,7 +357,6 @@ export class RenderData extends BaseRenderData {
             renderDrawInfo.setVBCount(this._vc);
             renderDrawInfo.setIBCount(this._ic);
             renderDrawInfo.setStride(this._floatStride);
-            if (!JSB) renderDrawInfo.localData = this._data;
         }
     }
 
@@ -375,8 +374,6 @@ export class RenderData extends BaseRenderData {
         super.setRenderDrawInfoAttributes();
         this._renderDrawInfo.setTexture(this.frame ? this.frame.getGFXTexture() : null);
         this._renderDrawInfo.setSampler(this.frame ? this.frame.getGFXSampler() : null);
-        // Web local vertex source (see RenderDrawInfo.localData); JSB uses native render2dBuffer.
-        if (!JSB) this._renderDrawInfo.localData = this._data;
     }
     /**
      * @internal
@@ -400,7 +397,6 @@ export class RenderData extends BaseRenderData {
         drawInfo.setDataHash(this.dataHash);
         drawInfo.setIsMeshBuffer(this._isMeshBuffer);
         drawInfo.setStride(this._floatStride);
-        if (!JSB) drawInfo.localData = this._data;
     }
 
     // Initial advance render data for native

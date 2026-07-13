@@ -53,31 +53,45 @@ export class NativeBatcherCore implements IBatcherCore {
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
-    initialize (): boolean {
+    public initialize (): boolean {
         return true;
     }
 
-    update (): void {
+    /**
+     * @en
+     * Per-frame entry point for the 2D rendering pipeline (Native/JSB platform).
+     * Delegates entirely to the C++ `cc::Batcher2d::update()` via JSB. The native
+     * implementation handles the full pipeline internally: scene-graph walk,
+     * RenderDrawInfo dispatch, vertex/index filling, batch merging, descriptor set
+     * assignment, and RenderScene submission — all in C++ for maximum performance.
+     *
+     * @zh
+     * 2D 渲染管线的逐帧入口（Native/JSB 平台）。
+     * 完全委托给 C++ `cc::Batcher2d::update()`。原生实现在内部处理完整管线：
+     * 场景图遍历、RenderDrawInfo 分发、顶点/索引填充、批次合并、descriptor set
+     * 分配和 RenderScene 提交——全部在 C++ 中执行以获得最大性能。
+     */
+    public update (): void {
         this._nativeObj!.update();
     }
 
-    uploadBuffers (): void {
+    public uploadBuffers (): void {
         this._nativeObj!.uploadBuffers();
     }
 
-    reset (): void {
+    public reset (): void {
         this._nativeObj!.reset();
     }
 
-    destroy (): void {}
+    public destroy (): void {}
 
     // ── Data sync ─────────────────────────────────────────────────
 
-    syncRootNodes (rootNodes: Node[]): void {
+    public syncRootNodes (rootNodes: Node[]): void {
         this._nativeObj!.syncRootNodesToNative(rootNodes);
     }
 
-    syncMeshBuffersToNative (accId: number, buffers: UIMeshBuffer[]): void {
+    public syncMeshBuffersToNative (accId: number, buffers: UIMeshBuffer[]): void {
         // JSB boundary: UIMeshBuffer.nativeObj is untyped
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         const nativeBuffers = buffers.map((buf) => (buf as any).nativeObj);
@@ -87,22 +101,11 @@ export class NativeBatcherCore implements IBatcherCore {
 
     // ── Cache management ──────────────────────────────────────────
 
-    releaseDescriptorSetCache (textureOrHash: number | Texture | null, sampler: Sampler | null): void {
+    public releaseDescriptorSetCache (textureOrHash: number | Texture | null, sampler: Sampler | null): void {
         if (typeof textureOrHash === 'number') {
             return;
         }
         this._nativeObj!.releaseDescriptorSetCache(textureOrHash as Texture, sampler as Sampler);
     }
 
-    // ── Batch runtime — no-op: C++ handles the full pipeline ──────
-
-    get generator (): BatchGenerator | null { return null; }
-
-    autoMergeBatches (_staticRoot: any): void {}
-    insertMaskBatch (_comp: any, _frameCount: number): void {}
-    walk (_node: any): void {}
-    forceMergeBatches (_material: any, _frame: any, _customMaterial: boolean, _stencil: any, _layer: number): void {}
-    resetRenderStates (): void {}
-    finishMergeBatches (): void {}
-    flushMaterial (_mat: any): void {}
 }

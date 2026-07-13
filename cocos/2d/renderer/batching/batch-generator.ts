@@ -26,7 +26,7 @@ import { DepthStencilState, Device, InputAssembler, Sampler, Texture } from '../
 import { CachedArray, Pool } from '../../../core';
 import { Node } from '../../../scene-graph';
 import { Material } from '../../../asset/assets';
-import { SpriteFrame } from '../../../asset/assets/sprite-frame';
+import { SpriteFrame } from '../../assets/sprite-frame';
 import { TextureBase } from '../../../asset/assets/texture-base';
 import { DrawBatch2D } from '../draw-batch';
 import { MeshRenderData } from '../render-data';
@@ -115,7 +115,7 @@ export class BatchGenerator {
      * @zh
      * 原子性设置新批次段的所有状态。当 4 条件合批检查触发断批时调用。
      */
-    setBatchState (
+    public setBatchState (
         hasCustomMaterial: boolean,
         material: Material,
         stencilStage: Stage,
@@ -164,7 +164,7 @@ export class BatchGenerator {
      * 设置中间件特有的批次状态（MeshBuffer 和索引范围）。
      * 中间件组件开新批次时与 {@link setBatchState} 一起调用。
      */
-    setMiddlewareBatchState (
+    public setMiddlewareBatchState (
         meshBuffer: any,
         indexOffset: number,
         indexCount: number,
@@ -198,7 +198,7 @@ export class BatchGenerator {
      * @zh
      * 根据合批条件，结束一段渲染数据并提交。解耦自 UIRenderer。
      */
-    mergeBatches (
+    public mergeBatches (
         params: BatchMergeParams,
         bufferId: number,
         indexStart: number,
@@ -269,7 +269,7 @@ export class BatchGenerator {
      * @zh
      * 中间件（Spine、DragonBones）渲染的合批。
      */
-    mergeBatchesForMiddleware (
+    public mergeBatchesForMiddleware (
         params: BatchMergeParams,
         staticBatchProvider: { _requireDrawBatch(): DrawBatch2D } | null,
     ): void {
@@ -313,7 +313,7 @@ export class BatchGenerator {
      * @zh
      * 重置所有批次状态——开始新的合批段。
      */
-    resetBatchStates (): void {
+    public resetBatchStates (): void {
         this._currHash = 0;
         this._currHasCustomMaterial = false;
         this._currMaterial = null;
@@ -333,7 +333,7 @@ export class BatchGenerator {
 
     // ── Lifecycle ────────────────────────────────────────────────
 
-    uploadBuffers (): void {
+    public uploadBuffers (): void {
         if (this._batches.length > 0) {
             const length = this._meshDataArray.length;
             for (let i = 0; i < length; i++) {
@@ -344,7 +344,7 @@ export class BatchGenerator {
         }
     }
 
-    reset (): void {
+    public reset (): void {
         for (let i = 0; i < this._batches.length; ++i) {
             const batch = this._batches.array[i];
             if (batch && !batch.isStatic) {
@@ -364,7 +364,7 @@ export class BatchGenerator {
         StencilManager.sharedManager!.reset();
     }
 
-    destroy (): void {
+    public destroy (): void {
         for (let i = 0; i < this._batches.length; i++) {
             if (this._batches.array[i]) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-argument

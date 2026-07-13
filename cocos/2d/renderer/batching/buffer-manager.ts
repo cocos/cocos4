@@ -63,7 +63,7 @@ export class BufferManager {
      * @zh
      * 强制指定某个 accessor 为当前活跃的（UIStaticBatch 使用）。
      */
-    setActiveAccessor (accessor: StaticVBAccessor | null): void {
+    public setActiveAccessor (accessor: StaticVBAccessor | null): void {
         this._activeAccessor = accessor;
     }
 
@@ -83,7 +83,7 @@ export class BufferManager {
      * @param attributes Vertex format attributes, defaults to vfmtPosUvColor.
      * @returns The active StaticVBAccessor for the requested vertex format.
      */
-    switchAccessor (attributes: Attribute[] = vfmtPosUvColor): StaticVBAccessor {
+    public switchAccessor (attributes: Attribute[] = vfmtPosUvColor): StaticVBAccessor {
         const strideBytes = attributes === vfmtPosUvColor
             ? DEFAULT_STRIDE_BYTES
             : getAttributeStride(attributes);
@@ -107,7 +107,7 @@ export class BufferManager {
      * @zh
      * 注册一个外部创建的访问器（例如自定义顶点格式）。
      */
-    registerAccessor (key: number, accessor: StaticVBAccessor): void {
+    public registerAccessor (key: number, accessor: StaticVBAccessor): void {
         this._accessors.set(key, accessor);
     }
 
@@ -124,7 +124,7 @@ export class BufferManager {
      * @param attributes The requested vertex format.
      * @param bid        The buffer ID that will be written to.
      */
-    trackBuffer (attributes: Attribute[], bid: number): void {
+    public trackBuffer (attributes: Attribute[], bid: number): void {
         const accessor = this.switchAccessor(attributes);
         if (this._currentBufferId !== bid) {
             this._currentBufferId = bid;
@@ -140,7 +140,7 @@ export class BufferManager {
      * @zh
      * 将所有脏缓冲区上传到 GPU。
      */
-    uploadBuffers (): void {
+    public uploadBuffers (): void {
         for (const accessor of this._accessors.values()) {
             accessor.uploadBuffers();
             accessor.reset();
@@ -153,7 +153,7 @@ export class BufferManager {
      * @zh
      * 重置所有访问器状态。每帧结束时调用。
      */
-    reset (): void {
+    public reset (): void {
         for (const accessor of this._accessors.values()) {
             accessor.reset();
         }
@@ -168,7 +168,7 @@ export class BufferManager {
      * @zh
      * 销毁所有访问器并释放 GPU 资源。
      */
-    destroy (): void {
+    public destroy (): void {
         for (const accessor of this._accessors.values()) {
             accessor.destroy();
         }

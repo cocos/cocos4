@@ -35,7 +35,6 @@ import { TMXMapInfo } from './tmx-xml-parser';
 import { Color, IVec2Like, Mat4, Size, Vec2, Vec3, logID, warnID } from '../core';
 import { TiledTile } from './tiled-tile';
 import { RenderData } from '../2d/renderer/render-data';
-import { IBatcher } from '../2d/renderer/i-batcher';
 import {
     MixedGID, GID, Orientation, TiledTextureGrids, TMXTilesetInfo, RenderOrder, StaggerAxis, StaggerIndex, TileFlag,
     GIDFlags, TiledAnimationType, PropertiesInfo, TMXLayerInfo,
@@ -1504,25 +1503,6 @@ export class TiledLayer extends UIRenderer {
       * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
       */
     public _tiledDataArrayIdx = 0;
-    protected _render (ui: IBatcher): void {
-        for (let i = 0; i < this._tiledDataArray.length; i++) {
-            this._tiledDataArrayIdx = i;
-            const m = this._tiledDataArray[i];
-            if ((m as TiledSubNodeData).subNodes) {
-                // 提前处理 User Nodes
-                (m as TiledSubNodeData).subNodes.forEach((c) => {
-                    if (c) ui.walk(c.node);
-                });
-            } else {
-                const td = m as TiledRenderData;
-                if (td.texture) {
-                    // NOTE: 由于 commitComp 只支持单张纹理, 故分多次提交
-                    ui.commitComp(this, td.renderData, td.texture, this._assembler, null);
-                }
-            }
-        }
-        this.node._static = true;
-    }
 
     protected createRenderEntity (): RenderEntity {
         return new RenderEntity(RenderEntityType.CROSSED);

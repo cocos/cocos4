@@ -36,7 +36,6 @@ import type { Graphics } from '../2d/components/graphics';
 import { CCArmatureDisplay } from './CCArmatureDisplay';
 import { MaterialInstance } from '../render-scene/core/material-instance';
 import { ArmatureSystem } from './ArmatureSystem';
-import { Batcher2D } from '../2d/renderer/batcher-2d';
 import { RenderEntity, RenderEntityType } from '../2d/renderer/render-entity';
 import { RenderDrawInfo, RenderDrawInfoType } from '../2d/renderer/render-draw-info';
 import { Material, Texture2D } from '../asset/assets';
@@ -719,36 +718,6 @@ export class ArmatureDisplay extends UIRenderer {
         else mat = this._updateBuiltinMaterial();
         this.setSharedMaterial(mat, 0);
         this._cleanMaterialCache();
-    }
-
-    protected _render (batcher: Batcher2D): void {
-        let indicesCount = 0;
-        if (this.renderData && this._drawList) {
-            const rd = this.renderData;
-            const chunk = rd.chunk;
-            const accessor = chunk.vertexAccessor;
-            const meshBuffer = rd.getMeshBuffer()!;
-            const origin = meshBuffer.indexOffset;
-            // Fill index buffer
-            for (let i = 0; i < this._drawList.length; i++) {
-                this._drawIdx = i;
-                const dc = this._drawList.data[i];
-                if (dc.texture) {
-                    batcher.commitMiddleware(
-                        this,
-                        meshBuffer,
-                        origin + dc.indexOffset,
-                        dc.indexCount,
-                        dc.texture,
-                        dc.material!,
-                        this._enableBatch,
-                    );
-                }
-                indicesCount += dc.indexCount;
-            }
-            const subIndices = rd.indices!.subarray(0, indicesCount);
-            accessor.appendIndices(chunk.bufferId, subIndices);
-        }
     }
 
     /**

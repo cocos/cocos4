@@ -70,7 +70,7 @@ export class MaskHandler {
      * @param frameCount        Current total frame count from Director.
      * @returns Array of generated DrawBatch2D entries (to be appended to _batches).
      */
-    createMaskBatches (
+    public createMaskBatches (
         node: Node,
         stencilStage: Stage,
         drawBatchPool: Pool<DrawBatch2D>,
@@ -124,7 +124,7 @@ export class MaskHandler {
      * @zh
      * 释放 Mask Clear 持有的所有 GPU 资源。
      */
-    destroy (): void {
+    public destroy (): void {
         if (this._maskClearModel && this._maskModelMesh) {
             (cclegacy.director.root as Root).destroyModel(this._maskClearModel);
             this._maskModelMesh.destroy();

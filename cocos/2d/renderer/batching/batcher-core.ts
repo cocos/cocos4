@@ -90,18 +90,6 @@ export interface IBatcherCore {
     // ── Native injection (JSB path) ───────────────────────────────
     set nativeObj (value: any);
 
-    // ── Batch runtime (Web path: real logic; Native path: no-op) ──
-    /** The BatchGenerator for direct state access by the facade's commit methods. */
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-    readonly generator: BatchGenerator | null;
-
-    autoMergeBatches (staticRoot: any): void;
-    insertMaskBatch (comp: any, frameCount: number): void;
-    walk (node: any): void;
-    forceMergeBatches (material: any, frame: any, customMaterial: boolean, stencil: any, layer: number): void;
-    resetRenderStates (): void;
-    finishMergeBatches (): void;
-    flushMaterial (mat: any): void;
 }
 
 // ══════════════════════════════════════════════════════════════════

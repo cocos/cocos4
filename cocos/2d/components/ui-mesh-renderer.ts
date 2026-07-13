@@ -124,39 +124,6 @@ export class UIMeshRenderer extends Component {
     }
 
     /**
-     * @en Render data submission procedure, it update and assemble the render data to 2D data buffers before all children submission process.
-     * Usually called each frame when the ui flow assemble all render data to geometry buffers.
-     * Don't call it unless you know what you are doing.
-     * @zh 渲染数据组装程序，这个方法会在所有子节点数据组装之前更新并组装当前组件的渲染数据到 UI 的顶点数据缓冲区中。
-     * 一般在 UI 渲染流程中调用，用于组装所有的渲染数据到顶点数据缓冲区。
-     * 注意：不要手动调用该函数，除非你理解整个流程。
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     */
-    public _render (render: IBatcher): boolean {
-        if (this._modelComponent) {
-            const models = this._modelComponent._collectModels();
-            this._modelComponent._detachFromScene();
-            for (let i = 0; i < models.length; i++) {
-                if (models[i].enabled) {
-                    render.commitModel(this, models[i], this._modelComponent.material);
-                }
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     */
-    public fillBuffers (render: IBatcher): void {
-        if (this.enabled) {
-            this._render(render);
-        }
-    }
-
-    /**
      * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
      */
     // Native updateAssembler
@@ -188,7 +155,6 @@ export class UIMeshRenderer extends Component {
             if (this._modelComponent) {
                 const models = this._modelComponent._collectModels();
                 this._modelComponent._detachFromScene();
-                const mat = this._modelComponent.material;
                 let idx = 0;
                 for (let i = 0; i < models.length; i++) {
                     if (models[i].enabled) {
@@ -199,7 +165,10 @@ export class UIMeshRenderer extends Component {
                         }
                         drawInfo.setDrawInfoType(RenderDrawInfoType.MODEL);
                         drawInfo.setModel(models[i]);
-                        drawInfo.setMaterial(mat!);
+                        // Per-model material instance, mirroring the JSB _uploadRenderData path
+                        // (getMaterialInstance(index)); a single shared material is wrong when
+                        // models map to distinct material slots.
+                        drawInfo.setMaterial(this._modelComponent.getMaterialInstance(i)!);
                         entity.addDynamicRenderDrawInfo(drawInfo);
                         idx++;
                     }

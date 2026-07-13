@@ -111,15 +111,51 @@ export class WebBatcherCore implements IBatcherCore {
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
-    initialize (): boolean { return true; }
+    public initialize (): boolean { return true; }
 
-    update (): void {
+    /**
+     * @en
+     * Per-frame entry point for the 2D rendering pipeline (Web platform).
+     * Executes the following phases for each registered screen (Canvas):
+     *   1. **Walk** — depth-first traversal of the scene graph starting from
+     *      the screen root node. For every active UIRenderer, cascaded opacity
+     *      is computed, RenderDrawInfo entries are dispatched to type-specific
+     *      handlers (COMP / MODEL / MIDDLEWARE / SUB_NODE), vertex/index data
+     *      is filled, and batch-break conditions are evaluated.
+     *   2. **Merge** — after the full walk, the last pending batch is flushed
+     *      via `autoMergeBatches`, and batch states are reset for the next screen.
+     *   3. **Assign** — each DrawBatch2D is given a descriptorSet (either from
+     *      the shared DescriptorCache or from the model's own subModel) and
+     *      a monotonically increasing priority for draw-order, then added to
+     *      the RenderScene for the rendering pipeline to consume.
+     *   4. (uploadBuffers / reset are called separately by the facade after
+     *      all screens have been processed.)
+     *
+     * @zh
+     * 2D 渲染管线的逐帧入口（Web 平台）。
+     * 对每个已注册的屏幕（Canvas）执行以下阶段：
+     *   1. **遍历（Walk）** — 从屏幕根节点开始深度优先遍历场景图。对每个
+     *      活跃的 UIRenderer 计算级联透明度，将 RenderDrawInfo 分发到类型
+     *      对应的处理器（COMP / MODEL / MIDDLEWARE / SUB_NODE），填充顶点/索引
+     *      数据，并评估断批条件。
+     *   2. **合批（Merge）** — 遍历完成后，通过 `autoMergeBatches` 刷新最后
+     *      一个待处理批次，并重置批次状态以备下一个屏幕使用。
+     *   3. **分配（Assign）** — 为每个 DrawBatch2D 分配 descriptorSet（来自
+     *      共享的 DescriptorCache 或 model 自身的 subModel），设置单调递增的
+     *      priority 以确定绘制顺序，然后添加到 RenderScene 供渲染管线消费。
+     *   4. （uploadBuffers / reset 由门面在所有屏幕处理完后单独调用。）
+     */
+    public update (): void {
         const gen = this._generator;
         const screens = this._screens;
         let offset = 0;
 
         for (let i = 0; i < screens.length; ++i) {
             const screenNode = screens[i];
+            // Skip inactive screen roots. A disabled RenderRoot2D already removes itself via
+            // removeScreen; this also covers a root whose node went inactive (mirrors the old
+            // enabledInHierarchy guard without coupling the core to RenderRoot2D).
+            if (!screenNode.activeInHierarchy) continue;
             const scene = screenNode.scene ? screenNode.scene.renderScene : null;
             if (!scene) continue;
 
@@ -153,18 +189,18 @@ export class WebBatcherCore implements IBatcherCore {
         }
     }
 
-    uploadBuffers (): void { this._generator.uploadBuffers(); }
-    reset (): void { this._generator.reset(); }
-    destroy (): void { this._generator.destroy(); }
+    public uploadBuffers (): void { this._generator.uploadBuffers(); }
+    public reset (): void { this._generator.reset(); }
+    public destroy (): void { this._generator.destroy(); }
 
     // ── Data sync ─────────────────────────────────────────────────
 
-    syncRootNodes (rootNodes: Node[]): void { this._screens = rootNodes; }
-    syncMeshBuffersToNative (_accId: number, _buffers: UIMeshBuffer[]): void {}
+    public syncRootNodes (rootNodes: Node[]): void { this._screens = rootNodes; }
+    public syncMeshBuffersToNative (_accId: number, _buffers: UIMeshBuffer[]): void {}
 
     // ── Cache ─────────────────────────────────────────────────────
 
-    releaseDescriptorSetCache (textureOrHash: number | Texture | null, _sampler: Sampler | null): void {
+    public releaseDescriptorSetCache (textureOrHash: number | Texture | null, _sampler: Sampler | null): void {
         if (typeof textureOrHash === 'number') {
             this._descriptorCache.releaseByTexture(textureOrHash);
         } else if (textureOrHash) {
@@ -175,9 +211,7 @@ export class WebBatcherCore implements IBatcherCore {
 
     // ── Batch runtime ─────────────────────────────────────────────
 
-    get generator (): BatchGenerator { return this._generator; }
-
-    autoMergeBatches (staticRoot: UIStaticBatch | null): void {
+    public autoMergeBatches (staticRoot: UIStaticBatch | null): void {
         const gen = this._generator;
 
         const params = {
@@ -194,26 +228,26 @@ export class WebBatcherCore implements IBatcherCore {
         gen.mergeBatches(params, this._bufferManager.currentBufferId, this._bufferManager.indexStart, staticRoot);
     }
 
-    forceMergeBatches (material: any, frame: any, customMaterial: boolean, stencil: any, layer: number): void {
+    public forceMergeBatches (material: any, frame: any, customMaterial: boolean, stencil: any, layer: number): void {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         this._generator.setBatchState(customMaterial, material, stencil, layer, null, null, frame);
         this.autoMergeBatches(null);
     }
 
-    finishMergeBatches (): void {
+    public finishMergeBatches (): void {
         this.autoMergeBatches(null);
         this._generator.resetBatchStates();
     }
 
-    resetRenderStates (): void { this._generator.resetBatchStates(); }
-    flushMaterial (mat: any): void { this._generator.currMaterial = mat; }
+    public resetRenderStates (): void { this._generator.resetBatchStates(); }
+    public flushMaterial (mat: any): void { this._generator.currMaterial = mat; }
 
     // ══════════════════════════════════════════════════════════════
     // Scene-graph walk (Web-only)
     //
-    // The walk traverses the node tree depth-first, triggering
-    // Assembler.fillBuffers on each UIRenderer via the IBatcher
-    // callbacks, calculating cascaded opacity, and handling
+    // The walk traverses the node tree depth-first, dispatching
+    // each UIRenderer's RenderDrawInfo list to the appropriate
+    // handler, calculating cascaded opacity, and handling
     // Mask stencil transitions.
     // ══════════════════════════════════════════════════════════════
 
@@ -221,7 +255,7 @@ export class WebBatcherCore implements IBatcherCore {
      * @en Walk through the scene graph and update rendering data for each UI node.
      * @zh 遍历场景图并更新每个 UI 节点的渲染数据。
      */
-    walk (node: Node, level = 0): void {
+    public walk (node: Node, level = 0): void {
         if (!node.activeInHierarchy) {
             return;
         }
@@ -254,7 +288,7 @@ export class WebBatcherCore implements IBatcherCore {
                 }
             }
 
-            if (children.length > 0 && !(node as any)._static) {
+            if (children.length > 0) {
                 const entity = render ? render.renderEntity : null;
                 const isCrossed = entity && entity.renderEntityType === RenderEntityType.CROSSED
                     && entity.getRenderDrawInfosSize() > 0;
@@ -274,7 +308,7 @@ export class WebBatcherCore implements IBatcherCore {
         this._pOpacity = parentOpacity;
 
         if (render && render.enabledInHierarchy) {
-            if (!USE_SORTING_2D) {
+            if (!USE_SORTING_2D || getSorting2DCount() === 0) {
                 render.postUpdateAssembler(this._batcher);
             }
             if (visible && (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED)) {
@@ -300,17 +334,6 @@ export class WebBatcherCore implements IBatcherCore {
 
         const entity: RenderEntity = render.renderEntity;
         const size = entity.getRenderDrawInfosSize();
-        if (size === 0) {
-            // Migration bridge: components that do not yet populate the RenderDrawInfo model on Web
-            // (Graphics/UIMeshRenderer MODEL, Spine/DragonBones MIDDLEWARE, Particle, TiledLayer)
-            // keep the legacy commit path. This branch is removed at P5 once every type produces
-            // draw infos (P2–P4), so `size === 0` can no longer happen.
-            this._commitLegacy(render, finalOpacity, opacityDirty);
-            return;
-        }
-        // Native-style dispatch: iterate the entity's draw infos and switch on drawInfoType,
-        // mirroring Batcher2d::handleUIRenderer → handleDrawInfo. In P1 only COMP draw infos exist
-        // on Web (Sprite/Label/MotionStreak), so only _handleComponentDraw is reached.
         for (let i = 0; i < size; i++) {
             const drawInfo = entity.getRenderDrawInfoAt(i);
             this._handleDrawInfo(render, drawInfo, finalOpacity, opacityDirty);
@@ -346,12 +369,12 @@ export class WebBatcherCore implements IBatcherCore {
     }
 
     /**
-     * @en Inlined MODEL commit — the TS mirror of native `Batcher2d::handleModelDraw` and the body of
-     * `Batcher2D.commitModel`. Reads the model + material from the RenderDrawInfo and emits one
+     * @en Inlined MODEL commit — the TS mirror of native `Batcher2d::handleModelDraw`.
+     * Reads the model + material from the RenderDrawInfo and emits one
      * DrawBatch2D per subModel (MODEL draws never batch with anything, so the current batch is flushed
      * first). Used by Graphics and UIMeshRenderer.
-     * @zh 内联的 MODEL 提交，对应 native `handleModelDraw` 与 `Batcher2D.commitModel`。从 RenderDrawInfo
-     * 读取 model + material，为每个 subModel 产出一个 DrawBatch2D（MODEL 不与任何批合并，先 flush 当前批）。
+     * @zh 内联的 MODEL 提交，对应 native `handleModelDraw`。从 RenderDrawInfo
+     * 读取 model + material，为每个 subModel 产出一个 DrawBatch2D。
      */
     private _handleModelDraw (render: UIRenderer, drawInfo: RenderDrawInfo): void {
         const gen = this._generator;
@@ -360,7 +383,7 @@ export class WebBatcherCore implements IBatcherCore {
 
         // MODEL draws never merge — flush the pending batch first.
         if (gen.currMaterial !== null) {
-            this._batcher.autoMergeBatches();
+            this.autoMergeBatches(null);
             this.resetRenderStates();
         }
 
@@ -424,7 +447,7 @@ export class WebBatcherCore implements IBatcherCore {
             && gen.currLayer === render.node.layer) {
             gen.middlewareIndexCount += ibCount;
         } else {
-            this._batcher.autoMergeBatches();
+            this.autoMergeBatches(null);
             this.resetRenderStates();
 
             if (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
@@ -462,13 +485,11 @@ export class WebBatcherCore implements IBatcherCore {
     }
 
     /**
-     * @en Inlined COMP commit — the TS mirror of native `Batcher2d::handleComponentDraw` and the body
-     * of `Batcher2D.commitComp`. Reads the batch keys (dataHash / material / isMeshBuffer / bufferId)
-     * from the RenderDrawInfo model instead of going through `render.fillBuffers → _render → commitComp`;
-     * the universal vertex/color/index fill is reused from `_fillBuffers`.
-     * @zh 内联的 COMP 提交，对应 native `handleComponentDraw` 与 `Batcher2D.commitComp`。批次关键字段
-     * 读自 RenderDrawInfo，不再经 `render.fillBuffers → _render → commitComp` 虚分发；顶点/颜色/索引
-     * 填充复用 `_fillBuffers`。
+     * @en Inlined COMP commit — the TS mirror of native `Batcher2d::handleComponentDraw`.
+     * Reads the batch keys (dataHash / material / isMeshBuffer / bufferId)
+     * from the RenderDrawInfo model; the universal vertex/color/index fill is handled by `_fillBuffers`.
+     * @zh 内联的 COMP 提交，对应 native `handleComponentDraw`。批次关键字段
+     * 读自 RenderDrawInfo；顶点/颜色/索引填充由 `_fillBuffers` 处理。
      */
     private _handleComponentDraw (
         render: UIRenderer,
@@ -481,14 +502,11 @@ export class WebBatcherCore implements IBatcherCore {
             this._handleMeshBufferComp(render, drawInfo);
             return;
         }
-
         const rd = render.renderData;
-        // Present-but-invalid renderData: mirror commitComp's early return (skip batch state), but
-        // still run the fill (a no-op for empty data), matching the old fillBuffers→_fillBuffers order.
         if (rd && rd.chunk && !rd.isValid()) {
-            this._fillBuffers(render, finalOpacity, opacityDirty);
             return;
         }
+
         const dataHash = drawInfo.dataHash;
 
         // Mask: entering a stencil level inserts the mask batch; otherwise adopt the current stage.
@@ -499,14 +517,14 @@ export class WebBatcherCore implements IBatcherCore {
         }
         const dss = render.stencilStage;
 
-        // 4-condition batch-break test (identical to Batcher2D.commitComp), keyed off the draw info.
+        // 4-condition batch-break test, keyed off the draw info.
         const gen = this._generator;
         if (gen.currHash !== dataHash || dataHash === 0
             || gen.currMaterial !== drawInfo.material
             || gen.currDepthStencilStateStage !== dss) {
             // Facade autoMergeBatches preserves UIStaticBatch static-root threading; trackBuffer is the
             // buffer-manager side of the old facade updateBuffer.
-            this._batcher.autoMergeBatches();
+            this.autoMergeBatches(null);
             if (rd) {
                 this._bufferManager.trackBuffer(rd.vertexFormat, drawInfo.bufferId);
             }
@@ -522,7 +540,7 @@ export class WebBatcherCore implements IBatcherCore {
         }
 
         // Universal vertex / color / index fill (unchanged; reads renderData, same bytes as the draw info).
-        this._fillBuffers(render, finalOpacity, opacityDirty);
+        this._fillBuffers(render, drawInfo, finalOpacity, opacityDirty);
     }
 
     /**
@@ -537,7 +555,7 @@ export class WebBatcherCore implements IBatcherCore {
         if (!meshRD) return;
 
         if (gen.currMaterial !== null) {
-            this._batcher.autoMergeBatches();
+            this.autoMergeBatches(null);
             this.resetRenderStates();
         }
 
@@ -558,33 +576,29 @@ export class WebBatcherCore implements IBatcherCore {
         );
     }
 
-    /**
-     * @en Legacy commit path used by the migration bridge (draw types not yet inlined). Builds batch
-     * state via the component's virtual dispatch (`render.fillBuffers` → `_render` → `commitComp/etc.`),
-     * then runs the universal fill. Removed at P5 once all types produce draw infos.
-     * @zh 迁移期回退路径（尚未内联的绘制类型）：经组件虚分发建立批次状态，再执行统一填充。P5 移除。
-     */
-    private _commitLegacy (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
-        render.fillBuffers(this._batcher);
-        this._fillBuffers(render, finalOpacity, opacityDirty);
-    }
-
     // ── Universal vertex / index / color filling ─────────────────
 
     /**
      * @en Fills vertex position, color and index data for a UIRenderer.
-     * Replaces the per-Assembler fillBuffers with a universal implementation.
      * @zh 填充 UIRenderer 的顶点位置、颜色和索引数据。
      */
-    private _fillBuffers (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
+    private _fillBuffers (render: UIRenderer, drawInfo: RenderDrawInfo, finalOpacity: number, opacityDirty: boolean): void {
         const renderData = render.renderData;
         if (!renderData) return;
         const chunk = renderData.chunk;
         const node = render.node;
 
-        // ① Dirty check + world transform
-        const transformDirty = (render as any)._flagChangedVersion !== node.flagChangedVersion || renderData.vertDirty;
-        let bufferDirty = false;
+        // Components such as MotionStreak bake fully-transformed world-space vertices — with uv and
+        // per-vertex color — straight into the chunk themselves, flagging the draw info with
+        // isVertexPositionInWorld (mirrors native fillVertexBuffers honouring getIsVertexPositionInWorld).
+        // For those we must never re-transform or recolor; just flag the chunk dirty so the
+        // assembler-written data is uploaded, then write the index buffer below.
+        const worldVerts = drawInfo.isVertexPositionInWorld;
+
+        // ① Dirty check + world transform (skipped when the verts are already in world space)
+        const transformDirty = !worldVerts
+            && ((render as any)._flagChangedVersion !== node.flagChangedVersion || renderData.vertDirty);
+        let bufferDirty = worldVerts;
         if (transformDirty) {
             this._transformVerts(renderData, node.worldMatrix);
             renderData.vertDirty = false;
@@ -603,7 +617,7 @@ export class WebBatcherCore implements IBatcherCore {
         //    - Alpha MUST be the cascaded finalOpacity (walk recomputes it every frame),
         //      never the local color.a — otherwise a faded parent's children snap back to
         //      full opacity on non-dirty frames.
-        if ((opacityDirty || transformDirty) && render.getFillColorType() === RenderEntityFillColorType.COLOR) {
+        if (!worldVerts && (opacityDirty || transformDirty) && render.getFillColorType() === RenderEntityFillColorType.COLOR) {
             const color = render.color;
             const vData = renderData.chunk.vb;
             const stride = renderData.floatStride;
@@ -654,18 +668,38 @@ export class WebBatcherCore implements IBatcherCore {
         const dataList = renderData.data;
         const vData = renderData.chunk.vb;
         const stride = renderData.floatStride;
+        const len = dataList.length;
 
-        const m = worldMatrix;
+        const m00 = worldMatrix.m00, m01 = worldMatrix.m01, m02 = worldMatrix.m02, m03 = worldMatrix.m03;
+        const m04 = worldMatrix.m04, m05 = worldMatrix.m05, m06 = worldMatrix.m06, m07 = worldMatrix.m07;
+        const m08 = worldMatrix.m08, m09 = worldMatrix.m09, m10 = worldMatrix.m10, m11 = worldMatrix.m11;
+        const m12 = worldMatrix.m12, m13 = worldMatrix.m13, m14 = worldMatrix.m14, m15 = worldMatrix.m15;
+
+        const needPerspective = m03 !== 0 || m07 !== 0 || m11 !== 0 || m15 !== 1;
+
         let offset = 0;
-        for (let i = 0; i < dataList.length; i++) {
-            const { x, y } = dataList[i];
-            const z = dataList[i].z ?? 0;
-            let rhw = m.m03 * x + m.m07 * y + m.m11 * z + m.m15;
-            rhw = rhw ? 1 / rhw : 1;
-            offset = i * stride;
-            vData[offset + 0] = (m.m00 * x + m.m04 * y + m.m08 * z + m.m12) * rhw;
-            vData[offset + 1] = (m.m01 * x + m.m05 * y + m.m09 * z + m.m13) * rhw;
-            vData[offset + 2] = (m.m02 * x + m.m06 * y + m.m10 * z + m.m14) * rhw;
+        for (let i = 0; i < len; i++) {
+            const vert = dataList[i];
+            const x = vert.x;
+            const y = vert.y;
+            const z = vert.z ?? 0;
+
+            let wx = m00 * x + m04 * y + m08 * z + m12;
+            let wy = m01 * x + m05 * y + m09 * z + m13;
+            let wz = m02 * x + m06 * y + m10 * z + m14;
+
+            if (needPerspective) {
+                let rhw = m03 * x + m07 * y + m11 * z + m15;
+                rhw = rhw ? 1 / rhw : 1;
+                wx *= rhw;
+                wy *= rhw;
+                wz *= rhw;
+            }
+
+            vData[offset]     = wx;
+            vData[offset + 1] = wy;
+            vData[offset + 2] = wz;
+            offset += stride;
         }
     }
 
@@ -706,7 +740,7 @@ export class WebBatcherCore implements IBatcherCore {
 
     // ── Mask ─────────────────────────────────────────────────────
 
-    insertMaskBatch (comp: UIRenderer | UIMeshRenderer, frameCount: number): void {
+    public insertMaskBatch (comp: UIRenderer | UIMeshRenderer, frameCount: number): void {
         this.autoMergeBatches(null);
         this.resetRenderStates();
 

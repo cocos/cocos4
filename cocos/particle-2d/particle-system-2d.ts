@@ -38,7 +38,6 @@ import { BlendFactor } from '../gfx';
 import { PNGReader } from './png-reader';
 import { tiffReader } from './tiff-reader';
 import codec from '../../external/compression/ZipUtils';
-import type { IBatcher } from '../2d/renderer/i-batcher';
 import { assetManager, builtinResMgr } from '../asset/asset-manager';
 import { PositionType, EmitterMode, DURATION_INFINITY, START_RADIUS_EQUAL_TO_END_RADIUS, START_SIZE_EQUAL_TO_END_SIZE } from './define';
 import { ccwindow } from '../core/global-exports';
@@ -1226,16 +1225,6 @@ export class ParticleSystem2D extends UIRenderer {
 
     protected _canRender (): boolean {
         return super._canRender() && !this._stopped && this._renderSpriteFrame !== null && this._renderSpriteFrame !== undefined;
-    }
-
-    protected _render (render: IBatcher): void {
-        if (this._positionType === PositionType.RELATIVE) {
-            render.commitComp(this, this._simulator.renderData, this._renderSpriteFrame, this._assembler, this.node.parent);
-        } else if (this.positionType === PositionType.GROUPED) {
-            render.commitComp(this, this._simulator.renderData, this._renderSpriteFrame, this._assembler, this.node);
-        } else {
-            render.commitComp(this, this._simulator.renderData, this._renderSpriteFrame, this._assembler, null);
-        }
     }
 
     protected _updatePositionType (): void {

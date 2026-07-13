@@ -29,7 +29,6 @@ import { SpriteAtlas } from '../assets/sprite-atlas';
 import { SpriteFrame, SpriteFrameEvent } from '../assets/sprite-frame';
 import { builtinResMgr } from '../../asset/asset-manager/builtin-res-mgr';
 import { Vec2, cclegacy, ccenum, clamp, warnID } from '../../core';
-import { IBatcher } from '../renderer/i-batcher';
 import { UIRenderer, InstanceMaterialType } from '../framework/ui-renderer';
 import { PixelFormat } from '../../asset/assets/asset-enum';
 import { TextureBase } from '../../asset/assets/texture-base';
@@ -575,10 +574,6 @@ export class Sprite extends UIRenderer {
             mat = rtMat;
         }
         return mat;
-    }
-
-    protected _render (render: IBatcher): void {
-        render.commitComp(this, this.renderData, this._spriteFrame, this._assembler, null);
     }
 
     protected _canRender (): boolean {

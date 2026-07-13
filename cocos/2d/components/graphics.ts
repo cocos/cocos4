@@ -30,7 +30,6 @@ import { InstanceMaterialType, UIRenderer } from '../framework/ui-renderer';
 import { director } from '../../game/director';
 import { Color, warnID, cclegacy } from '../../core';
 import { scene } from '../../render-scene';
-import type { IBatcher } from '../renderer/i-batcher';
 import { LineCap, LineJoin } from '../assembler/graphics/types';
 import { Impl } from '../assembler/graphics/webgl/impl';
 import { Material, RenderingSubMesh } from '../../asset/assets';
@@ -691,23 +690,6 @@ export class Graphics extends UIRenderer {
         this._isNeedUploadData = false;
     }
 
-    protected _render (render: IBatcher): void {
-        if (this._isNeedUploadData) {
-            if (this.impl) {
-                const renderDataList = this.impl.getRenderDataList();
-                const len = this.model!.subModels.length;
-                if (renderDataList.length > len) {
-                    for (let i = len; i < renderDataList.length; i++) {
-                        this.activeSubModel(i);
-                    }
-                }
-            }
-            this._uploadData();
-        }
-
-        render.commitModel(this, this.model, this.getMaterialInstance(0));
-    }
-
     protected _flushAssembler (): void {
         const assembler = Graphics.Assembler.getAssembler(this);
 
@@ -780,7 +762,6 @@ export class Graphics extends UIRenderer {
             drawInfo.setMaterial(this.getMaterialInstance(0)!);
             entity.addDynamicRenderDrawInfo(drawInfo);
         }
-    }
     }
 
     protected createRenderEntity (): RenderEntity {

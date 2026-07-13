@@ -31,7 +31,6 @@ import { CCObjectFlags, Color, RecyclePool, js } from '../core';
 import { SkeletonData } from './skeleton-data';
 import type { Graphics } from '../2d/components/graphics';
 import { UIRenderer } from '../2d/framework/ui-renderer';
-import { Batcher2D } from '../2d/renderer/batcher-2d';
 import { BlendFactor, BlendOp } from '../gfx';
 import { MaterialInstance } from '../render-scene';
 import { assetManager, builtinResMgr } from '../asset/asset-manager';
@@ -1185,28 +1184,6 @@ export class Skeleton extends UIRenderer {
             this._renderData = this._assembler.createData(this) as RenderData;
             this._markForUpdateRenderData();
             this._updateColor();
-        }
-    }
-
-    protected _render (batcher: Batcher2D): void {
-        let indicesCount = 0;
-        if (this.renderData && this._drawList.length > 0) {
-            const rd = this.renderData;
-            const chunk = rd.chunk;
-            const accessor = chunk.vertexAccessor;
-            const meshBuffer = rd.getMeshBuffer()!;
-            const origin = meshBuffer.indexOffset;
-            // Fill index buffer
-            for (let i = 0; i < this._drawList.length; i++) {
-                const dc = this._drawList.data[i];
-                if (dc.texture) {
-                    batcher.commitMiddleware(this, meshBuffer, origin + dc.indexOffset, dc.indexCount, dc.texture, dc.material!, this._enableBatch);
-                }
-                indicesCount += dc.indexCount;
-            }
-            const subIndices = rd.indices!.subarray(0, indicesCount);
-            accessor.appendIndices(chunk.bufferId, subIndices);
-            accessor.getMeshBuffer(chunk.bufferId).setDirty();
         }
     }
 
