@@ -216,7 +216,10 @@ void RenderAdditiveLightQueue::addRenderQueue(scene::SubModel *subModel, const s
                     auto *buffer = pass->getInstancedBuffer(lightIdx);
                     buffer->merge(subModel, lightPassIdx);
                     buffer->setDynamicOffset(0, _lightBufferStride * lightIdx);
-                    if (!_instancedQueues[lightIdx]) { _instancedQueues[lightIdx] = ccnew RenderInstancedQueue(); }
+                    if (_instancedQueues.size() <= lightIdx || !_instancedQueues[lightIdx]) {
+                        _instancedQueues.resize(lightIdx + 1);
+                        _instancedQueues[lightIdx] = ccnew RenderInstancedQueue();
+                    }
                     _instancedQueues[lightIdx]->add(buffer);
                 } break;
                 case scene::BatchingSchemes::NONE: {

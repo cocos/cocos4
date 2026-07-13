@@ -322,7 +322,10 @@ export class RenderAdditiveLightQueue {
                     const buffer = pass.getInstancedBuffer(lightIdx);
                     buffer.merge(subModel, lightPassIdx);
                     buffer.dynamicOffsets[0] = this._lightBufferStride * lightIdx;
-                    if (!this._instancedQueues[lightIdx]) { this._instancedQueues[lightIdx] = new RenderInstancedQueue(); }
+                    if (this._instancedQueues.length <= lightIdx || !this._instancedQueues[lightIdx]) {
+                        this._instancedQueues.length = lightIdx + 1;
+                        this._instancedQueues[lightIdx] = new RenderInstancedQueue();
+                    }
                     this._instancedQueues[lightIdx].queue.add(buffer);
                 } break;
                 default:
