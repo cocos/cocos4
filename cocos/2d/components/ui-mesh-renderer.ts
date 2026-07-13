@@ -35,7 +35,7 @@ import { uiRendererManager } from '../framework/ui-renderer-manager';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
 import { MeshRenderData, RenderData } from '../renderer/render-data';
 import { assert, cclegacy, warnID } from '../../core';
-import { RenderDrawInfoType } from '../renderer/render-draw-info';
+import { RenderDrawInfo, RenderDrawInfoType } from '../renderer/render-draw-info';
 import type { UIRenderer } from '../framework/ui-renderer';
 
 /**
@@ -177,8 +177,39 @@ export class UIMeshRenderer extends Component {
                 }
                 this._UIModelNativeProxy.attachDrawInfo();
             }
+        } else {
+            // Web: mirror the JSB path but populate TS MODEL draw infos WebBatcherCore reads (there is
+            // no native proxy). Runs every frame (see update()) so the detach-from-scene keeps pace
+            // with the 3D MeshRenderer re-attaching. WebBatcherCore.handleModelDraw does updateTransform/
+            // updateUBOs + per-subModel batch.
+            const entity = this.renderEntity;
+            entity.enabled = this._canRender();
+            entity.clearDynamicRenderDrawInfos();
+            if (this._modelComponent) {
+                const models = this._modelComponent._collectModels();
+                this._modelComponent._detachFromScene();
+                const mat = this._modelComponent.material;
+                let idx = 0;
+                for (let i = 0; i < models.length; i++) {
+                    if (models[i].enabled) {
+                        let drawInfo = this._modelDrawInfos[idx];
+                        if (!drawInfo) {
+                            drawInfo = new RenderDrawInfo();
+                            this._modelDrawInfos[idx] = drawInfo;
+                        }
+                        drawInfo.setDrawInfoType(RenderDrawInfoType.MODEL);
+                        drawInfo.setModel(models[i]);
+                        drawInfo.setMaterial(mat!);
+                        entity.addDynamicRenderDrawInfo(drawInfo);
+                        idx++;
+                    }
+                }
+            }
         }
     }
+
+    // Web-only: cached MODEL draw infos (one per enabled model) reused across frames.
+    private _modelDrawInfos: RenderDrawInfo[] = [];
 
     private _uploadRenderData (index: number): void {
         if (JSB) {
@@ -210,10 +241,10 @@ export class UIMeshRenderer extends Component {
     }
 
     public update (): void {
-        if (JSB) {
-            if (this._modelComponent) {
-                this._markForUpdateRenderData();
-            }
+        if (this._modelComponent) {
+            // Both platforms: keep the per-frame collect + detach-from-scene + draw-info populate
+            // running (the sibling 3D MeshRenderer re-attaches its model to the 3D scene each frame).
+            this._markForUpdateRenderData();
         }
         this._fitUIRenderQueue();
     }

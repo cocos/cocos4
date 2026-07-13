@@ -38,6 +38,7 @@ import { Format, PrimitiveMode, Attribute, Device, BufferUsageBit, BufferInfo, M
 import { vfmtPosColor, getAttributeStride, getComponentPerVertex } from '../renderer/vertex-format';
 import { NativeUIModelProxy } from '../renderer/native-2d';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
+import { RenderDrawInfo, RenderDrawInfoType } from '../renderer/render-draw-info';
 import type { GraphicsAssembler } from '../assembler/graphics/webgl/graphics-assembler';
 
 const attributes = vfmtPosColor.concat([
@@ -222,6 +223,9 @@ export class Graphics extends UIRenderer {
 
     protected _isDrawing = false;
     protected _isNeedUploadData = true;
+    // Web-only: cached MODEL draw info the batcher reads (native binds model->drawInfo via the
+    // native proxy; on Web WebBatcherCore reads drawInfo.model, so we populate it here).
+    private _modelDrawInfo: RenderDrawInfo | null = null;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
 
@@ -741,7 +745,42 @@ export class Graphics extends UIRenderer {
                 this._graphicsNativeProxy.uploadData();
                 this._isNeedUploadData = false;
             }
+        } else {
+            // Web: the model geometry prep (moved here from _render, which no longer runs once the
+            // batcher dispatches via the RenderDrawInfo model), plus populating the MODEL draw info.
+            if (this._isNeedUploadData) {
+                if (this.impl) {
+                    const renderDataList = this.impl.getRenderDataList();
+                    const len = this.model!.subModels.length;
+                    if (renderDataList.length > len) {
+                        for (let i = len; i < renderDataList.length; i++) {
+                            this.activeSubModel(i);
+                        }
+                    }
+                }
+                this._uploadData();
+            }
+            this._updateModelDrawInfo();
         }
+    }
+
+    /**
+     * @en Web-only: (re)populate the entity's MODEL draw info so WebBatcherCore.handleModelDraw can
+     * emit batches without the render.fillBuffers -> _render -> commitModel path.
+     * @zh 仅 Web：填充实体的 MODEL draw info，供 WebBatcherCore 直接出批。
+     */
+    private _updateModelDrawInfo (): void {
+        const entity = this.renderEntity;
+        entity.clearDynamicRenderDrawInfos();
+        if (this._canRender() && this.model) {
+            if (!this._modelDrawInfo) this._modelDrawInfo = new RenderDrawInfo();
+            const drawInfo = this._modelDrawInfo;
+            drawInfo.setDrawInfoType(RenderDrawInfoType.MODEL);
+            drawInfo.setModel(this.model);
+            drawInfo.setMaterial(this.getMaterialInstance(0)!);
+            entity.addDynamicRenderDrawInfo(drawInfo);
+        }
+    }
     }
 
     protected createRenderEntity (): RenderEntity {

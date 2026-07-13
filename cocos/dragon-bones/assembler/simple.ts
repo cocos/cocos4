@@ -22,6 +22,7 @@
  THE SOFTWARE.
 */
 
+import { JSB } from 'internal:constants';
 import { Armature, BlendMode } from '@cocos/dragonbones-js';
 import { Color, Mat4, Vec3, cclegacy } from '../../core';
 import { BlendFactor } from '../../gfx';
@@ -175,6 +176,9 @@ class Simple implements IAssembler {
         const armature = comp._armature;
         if (armature) {
             updateComponentRenderData(comp);
+        }
+        if (!JSB) {
+            comp._populateMiddlewareDrawInfos();
         }
     }
 

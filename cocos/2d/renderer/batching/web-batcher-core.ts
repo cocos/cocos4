@@ -23,7 +23,7 @@
 */
 
 import { DEBUG, USE_SORTING_2D } from 'internal:constants';
-import { Device, Sampler, Texture } from '../../../gfx';
+import { Device, Sampler, Texture, DepthStencilState } from '../../../gfx';
 import { Node } from '../../../scene-graph';
 import { MeshBuffer as UIMeshBuffer } from '../mesh-buffer';
 import { DrawBatch2D } from '../draw-batch';
@@ -41,8 +41,11 @@ import type { MaskHandler } from './mask-handler';
 import type { Director } from '../../../game/director';
 
 import { approx, EPSILON, RecyclePool, cclegacy, Mat4 } from '../../../core';
-import { RenderEntityFillColorType } from '../render-entity';
-import type { RenderData } from '../render-data';
+import { RenderEntityFillColorType, RenderEntityType } from '../render-entity';
+import type { RenderEntity } from '../render-entity';
+import { RenderDrawInfoType } from '../render-draw-info';
+import type { RenderDrawInfo } from '../render-draw-info';
+import type { RenderData, MeshRenderData } from '../render-data';
 
 // ── RecordedRendererInfo ──────────────────────────────────────────
 
@@ -252,9 +255,14 @@ export class WebBatcherCore implements IBatcherCore {
             }
 
             if (children.length > 0 && !(node as any)._static) {
-                for (let i = 0; i < children.length; ++i) {
-                    const child = children[i];
-                    this.walk(child, level);
+                const entity = render ? render.renderEntity : null;
+                const isCrossed = entity && entity.renderEntityType === RenderEntityType.CROSSED
+                    && entity.getRenderDrawInfosSize() > 0;
+                if (!isCrossed) {
+                    for (let i = 0; i < children.length; ++i) {
+                        const child = children[i];
+                        this.walk(child, level);
+                    }
                 }
             }
 
@@ -288,20 +296,277 @@ export class WebBatcherCore implements IBatcherCore {
     // ── Walk helpers ─────────────────────────────────────────────
 
     private _handleUIRenderer (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
-        if (render && render.enabledInHierarchy) {
-            // ① Batch state management.
-            // Despite the name, render.fillBuffers does NOT fill any vertex buffer.
-            // It dispatches through UIRenderer._render → batcher.commitComp, which:
-            //   - Checks the 4-condition batch break test
-            //   - Archives the previous batch (autoMergeBatches) on break
-            //   - Records the new batch identity (setBatchState)
-            // This must run BEFORE ② so vertex data lands in the correct VB slot.
-            render.fillBuffers(this._batcher);
+        if (!render || !render.enabledInHierarchy) return;
 
-            // ② Universal vertex / color / index fill.
-            // Replaces the per-Assembler fillBuffers that were removed.
-            this._fillBuffers(render, finalOpacity, opacityDirty);
+        const entity: RenderEntity = render.renderEntity;
+        const size = entity.getRenderDrawInfosSize();
+        if (size === 0) {
+            // Migration bridge: components that do not yet populate the RenderDrawInfo model on Web
+            // (Graphics/UIMeshRenderer MODEL, Spine/DragonBones MIDDLEWARE, Particle, TiledLayer)
+            // keep the legacy commit path. This branch is removed at P5 once every type produces
+            // draw infos (P2–P4), so `size === 0` can no longer happen.
+            this._commitLegacy(render, finalOpacity, opacityDirty);
+            return;
         }
+        // Native-style dispatch: iterate the entity's draw infos and switch on drawInfoType,
+        // mirroring Batcher2d::handleUIRenderer → handleDrawInfo. In P1 only COMP draw infos exist
+        // on Web (Sprite/Label/MotionStreak), so only _handleComponentDraw is reached.
+        for (let i = 0; i < size; i++) {
+            const drawInfo = entity.getRenderDrawInfoAt(i);
+            this._handleDrawInfo(render, drawInfo, finalOpacity, opacityDirty);
+        }
+    }
+
+    /**
+     * @en Dispatch a single draw info by its type — the TS mirror of native `Batcher2d::handleDrawInfo`.
+     * @zh 按类型分发单个 draw info —— 对应 native `Batcher2d::handleDrawInfo`。
+     */
+    private _handleDrawInfo (
+        render: UIRenderer,
+        drawInfo: RenderDrawInfo,
+        finalOpacity: number,
+        opacityDirty: boolean,
+    ): void {
+        switch (drawInfo.drawInfoType) {
+        case RenderDrawInfoType.COMP:
+            this._handleComponentDraw(render, drawInfo, finalOpacity, opacityDirty);
+            break;
+        case RenderDrawInfoType.MODEL:
+            this._handleModelDraw(render, drawInfo);
+            break;
+        case RenderDrawInfoType.MIDDLEWARE:
+            this._handleMiddlewareDraw(render, drawInfo);
+            break;
+        case RenderDrawInfoType.SUB_NODE:
+            this._handleSubNode(drawInfo);
+            break;
+        default:
+            break;
+        }
+    }
+
+    /**
+     * @en Inlined MODEL commit — the TS mirror of native `Batcher2d::handleModelDraw` and the body of
+     * `Batcher2D.commitModel`. Reads the model + material from the RenderDrawInfo and emits one
+     * DrawBatch2D per subModel (MODEL draws never batch with anything, so the current batch is flushed
+     * first). Used by Graphics and UIMeshRenderer.
+     * @zh 内联的 MODEL 提交，对应 native `handleModelDraw` 与 `Batcher2D.commitModel`。从 RenderDrawInfo
+     * 读取 model + material，为每个 subModel 产出一个 DrawBatch2D（MODEL 不与任何批合并，先 flush 当前批）。
+     */
+    private _handleModelDraw (render: UIRenderer, drawInfo: RenderDrawInfo): void {
+        const gen = this._generator;
+        const model = drawInfo.model;
+        const mat = drawInfo.material;
+
+        // MODEL draws never merge — flush the pending batch first.
+        if (gen.currMaterial !== null) {
+            this._batcher.autoMergeBatches();
+            this.resetRenderStates();
+        }
+
+        let depthStencil: DepthStencilState | null = null;
+        let dssHash = 0;
+        if (mat) {
+            if (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
+                this.insertMaskBatch(render, (cclegacy.director as Director).getTotalFrames());
+            } else {
+                render.stencilStage = StencilManager.sharedManager!.stage;
+            }
+            depthStencil = StencilManager.sharedManager!.getStencilStage(render.stencilStage, mat);
+            dssHash = StencilManager.sharedManager!.getStencilHash(render.stencilStage);
+        }
+
+        if (!model) return;
+        const stamp = (cclegacy.director as Director).getTotalFrames();
+        model.updateTransform(stamp);
+        model.updateUBOs(stamp);
+
+        const subModels = model.subModels;
+        for (let i = 0; i < subModels.length; i++) {
+            const subModel = subModels[i];
+            const curDrawBatch = gen.drawBatchPool.alloc();
+            curDrawBatch.visFlags = render.node.layer;
+            curDrawBatch.model = model;
+            curDrawBatch.texture = null;
+            curDrawBatch.sampler = null;
+            curDrawBatch.useLocalData = null;
+            curDrawBatch.fillPasses(mat, depthStencil, dssHash, subModel.patches);
+            curDrawBatch.inputAssembler = subModel.inputAssembler;
+            curDrawBatch.model!.visFlags = curDrawBatch.visFlags;
+            curDrawBatch.descriptorSet = subModel.descriptorSet;
+            gen.batches.push(curDrawBatch);
+        }
+    }
+
+    /**
+     * @en Inlined MIDDLEWARE commit — the TS mirror of native `Batcher2d::handleMiddlewareDraw`.
+     * Reads material/texture/meshBuffer/indexOffset/ibCount from the RenderDrawInfo and merges
+     * contiguous segments (same texture/material/meshBuffer/layer and adjacent index ranges).
+     * Used by Spine, DragonBones, and TiledLayer (tile geometry).
+     * @zh 内联的 MIDDLEWARE 提交，对应 native `handleMiddlewareDraw`。从 RenderDrawInfo 读取
+     * material/texture/meshBuffer/indexOffset/ibCount，按索引连续性合并相邻段。
+     */
+    private _handleMiddlewareDraw (render: UIRenderer, drawInfo: RenderDrawInfo): void {
+        const gen = this._generator;
+        const entity = render.renderEntity;
+        const texture = drawInfo.texture;
+        const material = drawInfo.material;
+        const meshBuffer = drawInfo.meshBuffer;
+        const indexOffset = drawInfo.indexOffset;
+        const ibCount = drawInfo.ibCount;
+
+        const enableBatch = !entity.useLocal;
+
+        if (enableBatch && gen.currIsMiddleware && gen.middlewareBuffer === meshBuffer
+            && gen.currTexture === texture
+            && (gen.currMaterial && gen.currMaterial.hash === material!.hash)
+            && gen.middlewareIndexStart + gen.middlewareIndexCount === indexOffset
+            && gen.currLayer === render.node.layer) {
+            gen.middlewareIndexCount += ibCount;
+        } else {
+            this._batcher.autoMergeBatches();
+            this.resetRenderStates();
+
+            if (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
+                this.insertMaskBatch(render, (cclegacy.director as Director).getTotalFrames());
+            } else {
+                render.stencilStage = StencilManager.sharedManager!.stage;
+            }
+
+            gen.currHash = 0;
+            gen.currHasCustomMaterial = render.customMaterial !== null;
+            gen.currMaterial = material;
+            gen.currDepthStencilStateStage = render.stencilStage;
+            gen.currLayer = render.node.layer;
+            gen.currTransform = enableBatch ? null : render.node;
+            gen.currTexture = texture;
+            gen.currSampler = drawInfo.sampler;
+            gen.currTextureHash = texture ? texture.objectID : 0;
+            gen.currSamplerHash = drawInfo.sampler ? drawInfo.sampler.hash : 0;
+            gen.setMiddlewareBatchState(meshBuffer, indexOffset, ibCount);
+        }
+    }
+
+    /**
+     * @en Inlined SUB_NODE dispatch — the TS mirror of native `Batcher2d::handleSubNode`.
+     * Re-enters `walk` on the sub-node so its children are rendered at the correct z-order
+     * position within the parent's draw info sequence (used by TiledLayer for embedded user nodes).
+     * @zh 内联的 SUB_NODE 分发，对应 native `handleSubNode`。在子节点上重入 `walk`，使其在父节点
+     * drawInfo 序列中的正确 z-order 位置渲染（TiledLayer 内嵌用户节点使用）。
+     */
+    private _handleSubNode (drawInfo: RenderDrawInfo): void {
+        const subNode = drawInfo.subNode;
+        if (subNode) {
+            this.walk(subNode, 0);
+        }
+    }
+
+    /**
+     * @en Inlined COMP commit — the TS mirror of native `Batcher2d::handleComponentDraw` and the body
+     * of `Batcher2D.commitComp`. Reads the batch keys (dataHash / material / isMeshBuffer / bufferId)
+     * from the RenderDrawInfo model instead of going through `render.fillBuffers → _render → commitComp`;
+     * the universal vertex/color/index fill is reused from `_fillBuffers`.
+     * @zh 内联的 COMP 提交，对应 native `handleComponentDraw` 与 `Batcher2D.commitComp`。批次关键字段
+     * 读自 RenderDrawInfo，不再经 `render.fillBuffers → _render → commitComp` 虚分发；顶点/颜色/索引
+     * 填充复用 `_fillBuffers`。
+     */
+    private _handleComponentDraw (
+        render: UIRenderer,
+        drawInfo: RenderDrawInfo,
+        finalOpacity: number,
+        opacityDirty: boolean,
+    ): void {
+        // isMeshBuffer branch (Particle2D): independent IA, no chunk-based fill.
+        if (drawInfo.isMeshBuffer) {
+            this._handleMeshBufferComp(render, drawInfo);
+            return;
+        }
+
+        const rd = render.renderData;
+        // Present-but-invalid renderData: mirror commitComp's early return (skip batch state), but
+        // still run the fill (a no-op for empty data), matching the old fillBuffers→_fillBuffers order.
+        if (rd && rd.chunk && !rd.isValid()) {
+            this._fillBuffers(render, finalOpacity, opacityDirty);
+            return;
+        }
+        const dataHash = drawInfo.dataHash;
+
+        // Mask: entering a stencil level inserts the mask batch; otherwise adopt the current stage.
+        if (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
+            this.insertMaskBatch(render, (cclegacy.director as Director).getTotalFrames());
+        } else {
+            render.stencilStage = StencilManager.sharedManager!.stage;
+        }
+        const dss = render.stencilStage;
+
+        // 4-condition batch-break test (identical to Batcher2D.commitComp), keyed off the draw info.
+        const gen = this._generator;
+        if (gen.currHash !== dataHash || dataHash === 0
+            || gen.currMaterial !== drawInfo.material
+            || gen.currDepthStencilStateStage !== dss) {
+            // Facade autoMergeBatches preserves UIStaticBatch static-root threading; trackBuffer is the
+            // buffer-manager side of the old facade updateBuffer.
+            this._batcher.autoMergeBatches();
+            if (rd) {
+                this._bufferManager.trackBuffer(rd.vertexFormat, drawInfo.bufferId);
+            }
+            gen.setBatchState(
+                render.customMaterial !== null,
+                drawInfo.material!,
+                dss,
+                render.node.layer,
+                null,
+                rd as unknown as MeshRenderData,
+                rd ? rd.frame : null,
+            );
+        }
+
+        // Universal vertex / color / index fill (unchanged; reads renderData, same bytes as the draw info).
+        this._fillBuffers(render, finalOpacity, opacityDirty);
+    }
+
+    /**
+     * @en isMeshBuffer COMP branch (Particle2D). Each batch has its own MeshRenderData with independent
+     * VB/IB that are uploaded separately (not through the chunk system). Mirrors native
+     * `generateBatch` for `isMeshBuffer=true` which calls `drawInfo->requestIA(device)`.
+     * @zh isMeshBuffer COMP 分支（Particle2D）。每批有独立的 MeshRenderData，VB/IB 独立上传。
+     */
+    private _handleMeshBufferComp (render: UIRenderer, drawInfo: RenderDrawInfo): void {
+        const gen = this._generator;
+        const meshRD = drawInfo.meshRenderData;
+        if (!meshRD) return;
+
+        if (gen.currMaterial !== null) {
+            this._batcher.autoMergeBatches();
+            this.resetRenderStates();
+        }
+
+        if (render.stencilStage === Stage.ENTER_LEVEL || render.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
+            this.insertMaskBatch(render, (cclegacy.director as Director).getTotalFrames());
+        } else {
+            render.stencilStage = StencilManager.sharedManager!.stage;
+        }
+
+        gen.setBatchState(
+            render.customMaterial !== null,
+            drawInfo.material!,
+            render.stencilStage,
+            render.node.layer,
+            render.renderEntity.useLocal ? render.renderEntity.renderTransform : null,
+            meshRD,
+            meshRD.frame,
+        );
+    }
+
+    /**
+     * @en Legacy commit path used by the migration bridge (draw types not yet inlined). Builds batch
+     * state via the component's virtual dispatch (`render.fillBuffers` → `_render` → `commitComp/etc.`),
+     * then runs the universal fill. Removed at P5 once all types produce draw infos.
+     * @zh 迁移期回退路径（尚未内联的绘制类型）：经组件虚分发建立批次状态，再执行统一填充。P5 移除。
+     */
+    private _commitLegacy (render: UIRenderer, finalOpacity: number, opacityDirty: boolean): void {
+        render.fillBuffers(this._batcher);
+        this._fillBuffers(render, finalOpacity, opacityDirty);
     }
 
     // ── Universal vertex / index / color filling ─────────────────

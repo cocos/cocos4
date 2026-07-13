@@ -26,6 +26,7 @@ import { DepthStencilState, Device, InputAssembler, Sampler, Texture } from '../
 import { CachedArray, Pool } from '../../../core';
 import { Node } from '../../../scene-graph';
 import { Material } from '../../../asset/assets';
+import { SpriteFrame } from '../../../asset/assets/sprite-frame';
 import { TextureBase } from '../../../asset/assets/texture-base';
 import { DrawBatch2D } from '../draw-batch';
 import { MeshRenderData } from '../render-data';
@@ -121,7 +122,7 @@ export class BatchGenerator {
         layer: number,
         transform: Node | null,
         renderData: MeshRenderData | null,
-        frame: TextureBase | null,
+        frame: TextureBase | SpriteFrame | null,
     ): void {
         this._currHash = renderData ? renderData.dataHash : 0;
         this._currHasCustomMaterial = hasCustomMaterial;

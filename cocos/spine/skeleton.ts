@@ -38,6 +38,7 @@ import { assetManager, builtinResMgr } from '../asset/asset-manager';
 import { legacyCC } from '../core/global-exports';
 import { SkeletonSystem } from './skeleton-system';
 import { RenderEntity, RenderEntityType } from '../2d/renderer/render-entity';
+import { RenderDrawInfo, RenderDrawInfoType } from '../2d/renderer/render-draw-info';
 import { AttachUtil } from './attach-util';
 import spine from './lib/spine-core';
 import { VertexEffectDelegate } from './vertex-effect-delegate';
@@ -260,6 +261,7 @@ export class Skeleton extends UIRenderer {
         indexOffset: 0,
         indexCount: 0,
     }), 1);
+    protected _drawInfoList: RenderDrawInfo[] = [];
     protected _materialCache: { [key: string]: MaterialInstance } = {} as any;
     public paused = false;
     protected _enumSkins: EnumType = Enum({});
@@ -551,6 +553,7 @@ export class Skeleton extends UIRenderer {
     set enableBatch (value) {
         if (value !== this._enableBatch) {
             this._enableBatch = value;
+            this._renderEntity.setUseLocal(!value);
             this._updateBatch();
         }
     }
@@ -1204,6 +1207,53 @@ export class Skeleton extends UIRenderer {
             const subIndices = rd.indices!.subarray(0, indicesCount);
             accessor.appendIndices(chunk.bufferId, subIndices);
             accessor.getMeshBuffer(chunk.bufferId).setDirty();
+        }
+    }
+
+    /**
+     * @engineInternal
+     */
+    public _populateMiddlewareDrawInfos (): void {
+        const rd = this.renderData;
+        if (!rd || this._drawList.length === 0) return;
+
+        const chunk = rd.chunk;
+        const accessor = chunk.vertexAccessor;
+        const meshBuffer = rd.getMeshBuffer()!;
+
+        // Capture origin before appendIndices advances meshBuffer.indexOffset
+        const origin = meshBuffer.indexOffset;
+
+        // Copy index data from rd.indices into meshBuffer.iData
+        let indicesCount = 0;
+        for (let i = 0; i < this._drawList.length; i++) {
+            indicesCount += this._drawList.data[i].indexCount;
+        }
+        const subIndices = rd.indices!.subarray(0, indicesCount);
+        accessor.appendIndices(chunk.bufferId, subIndices);
+        meshBuffer.setDirty();
+
+        // Build MIDDLEWARE drawInfos from _drawList
+        const entity = this.renderEntity;
+        entity.clearDynamicRenderDrawInfos();
+        let idx = 0;
+        for (let i = 0; i < this._drawList.length; i++) {
+            const dc = this._drawList.data[i];
+            if (!dc.texture) continue;
+
+            if (!this._drawInfoList[idx]) {
+                this._drawInfoList[idx] = new RenderDrawInfo();
+            }
+            const drawInfo = this._drawInfoList[idx];
+            drawInfo.setDrawInfoType(RenderDrawInfoType.MIDDLEWARE);
+            drawInfo.setMaterial(dc.material!);
+            drawInfo.setTexture(dc.texture.getGFXTexture());
+            drawInfo.setSampler(dc.texture.getGFXSampler());
+            drawInfo.setMeshBuffer(meshBuffer);
+            drawInfo.setIndexOffset(origin + dc.indexOffset);
+            drawInfo.setIBCount(dc.indexCount);
+            entity.setDynamicRenderDrawInfo(drawInfo, idx);
+            idx++;
         }
     }
 

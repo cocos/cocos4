@@ -1529,7 +1529,8 @@ export class TiledLayer extends UIRenderer {
     }
 
     private fillIndicesBuffer (renderData: RenderData, drawInfo: RenderDrawInfo): void {
-        const iBuf = renderData.chunk.meshBuffer.iData;
+        const meshBuffer = renderData.chunk.meshBuffer;
+        const iBuf = meshBuffer.iData;
         let vertexId = renderData.chunk.vertexOffset;
         const quadCount = renderData.vertexCount / 4;
         let indexOffset = (vertexId / 4) * 6;
@@ -1544,7 +1545,8 @@ export class TiledLayer extends UIRenderer {
             indexOffset += 6;
             vertexId += 4;
         }
-        renderData.chunk.meshBuffer.indexOffset = indexOffset;
+        meshBuffer.indexOffset = indexOffset;
+        meshBuffer.setDirty();
         drawInfo.setIBCount(quadCount * 6);
     }
 
@@ -1581,6 +1583,7 @@ export class TiledLayer extends UIRenderer {
                     drawInfo.setSampler(td.texture.getGFXSampler());
                     drawInfo.setMaterial(this.getRenderMaterial(0)!);
                     this.fillIndicesBuffer(td.renderData, drawInfo);
+                    drawInfo.setMeshBuffer(td.renderData.chunk.meshBuffer);
                     entity.setDynamicRenderDrawInfo(drawInfo, idx);
                     idx++;
                 }
