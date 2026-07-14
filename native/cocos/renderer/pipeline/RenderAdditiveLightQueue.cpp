@@ -110,12 +110,11 @@ void RenderAdditiveLightQueue::gatherLightPasses(const scene::Camera *camera, gf
 
     clear();
 
-    _validPunctualLights = _pipeline->getPipelineSceneData()->getValidPunctualLights();
-
-    if (_validPunctualLights.empty()) return;
-
     updateUBOs(camera, cmdBuffer);
     updateLightDescriptorSet(camera, cmdBuffer);
+
+    _validPunctualLights = _pipeline->getPipelineSceneData()->getValidPunctualLights();
+    if (_validPunctualLights.empty()) return;
 
     const auto &renderObjects = _pipeline->getPipelineSceneData()->getRenderObjects();
     for (const auto &renderObject : renderObjects) {
