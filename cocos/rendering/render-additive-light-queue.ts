@@ -196,7 +196,7 @@ export class RenderAdditiveLightQueue {
 
             this._lightCulling(model, validPunctualLights);
 
-            if (!_lightIndices.length && validPunctualLights.length > 0) { continue; }
+            if (!_lightIndices.length) { continue; }
 
             for (let j = 0; j < subModels.length; j++) {
                 const lightPassIdx = _lightPassIndices[j];
@@ -220,14 +220,11 @@ export class RenderAdditiveLightQueue {
         this.clear();
 
         const validPunctualLights = this._pipeline.pipelineSceneData.validPunctualLights;
-        if (!validPunctualLights.length) {
-            this._bindForwardAddLight(validPunctualLights, passLayout);
-            return;
-        }
+        this._bindForwardAddLight(validPunctualLights, passLayout);
+        if (!validPunctualLights.length) { return; }
 
         this._updateUBOs(camera, cmdBuff);
         this._updateLightDescriptorSet(camera, cmdBuff);
-        this._bindForwardAddLight(validPunctualLights, passLayout);
         // only for instanced and batched, no light culling applied
         for (let l = 0; l < validPunctualLights.length; l++) {
             const light = validPunctualLights[l];
@@ -374,9 +371,6 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 1] = packing;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 2] = 0.0;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 3] = 0.0;
-
-                // Reserve sphere light shadow interface
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
                 break;
             }
             case LightType.SPOT: {
@@ -441,8 +435,6 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_PROJ_INFO_OFFSET + 2] = 1.0 / matShadowProj.m00;
                 this._shadowUBO[UBOShadowEnum.SHADOW_PROJ_INFO_OFFSET + 3] = 1.0 / matShadowProj.m05;
 
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
-
                 // Spot light sampler binding
                 if (shadowFrameBufferMap.has(light)) {
                     const texture = shadowFrameBufferMap.get(light)?.colorTextures[0];
@@ -467,15 +459,15 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 1] = packing;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 2] = 0.0;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 3] = 0.0;
-
-                // Reserve point light shadow interface
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
                 break;
             }
             default:
             }
+            Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
+
             globalDSManager.update();
-            cmdBuff.updateBuffer(descriptorSet.getBuffer(UBOShadow.BINDING)!, this._shadowUBO);
+
+            cmdBuff.updateBuffer(descriptorSet.getBuffer(UBOShadow.BINDING)!, this._shadowUBO.buffer, this._shadowUBO.byteLength);
         }
     }
 
@@ -631,6 +623,6 @@ export class RenderAdditiveLightQueue {
             }
         }
 
-        cmdBuff.updateBuffer(this._lightBuffer, this._lightBufferData);
+        cmdBuff.updateBuffer(this._lightBuffer, this._lightBufferData.buffer as ArrayBuffer, this._lightBufferData.byteLength);
     }
 }

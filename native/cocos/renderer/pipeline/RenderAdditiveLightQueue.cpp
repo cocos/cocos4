@@ -164,11 +164,6 @@ void RenderAdditiveLightQueue::clear() {
         instancedQueue->clear();
     }
     _instancedQueues.clear();
-
-    for (auto lightPass : _lightPasses) {
-        lightPass.dynamicOffsets.clear();
-        lightPass.lights.clear();
-    }
     _lightPasses.clear();
 
     _instancedLightPass.dynamicOffsets.clear();
@@ -245,6 +240,7 @@ void RenderAdditiveLightQueue::updateUBOs(const scene::Camera *camera, gfx::Comm
 
     size_t offset = 0;
     if (validLightCount > _lightBufferCount) {
+        _firstLightBufferView->destroy();
         _lightBufferCount = nextPow2(static_cast<uint32_t>(validLightCount));
         _lightBuffer->resize(utils::toUint(_lightBufferStride * _lightBufferCount));
         _lightBufferData.resize(static_cast<size_t>(_lightBufferElementCount) * _lightBufferCount);
@@ -434,7 +430,7 @@ void RenderAdditiveLightQueue::updateLightDescriptorSet(const scene::Camera *cam
                 memcpy(_shadowUBO.data() + UBOShadow::MAT_LIGHT_VIEW_PROJ_OFFSET, matShadowViewProj.m, sizeof(matShadowViewProj));
 
                 // shadow info
-                float shadowNFLSInfos[4] = {0.1F, spotLight->getRange(), 0.0F, 0.0F};
+                float shadowNFLSInfos[4] = {0.01F, spotLight->getRange(), 0.0F, 0.0F};
                 memcpy(_shadowUBO.data() + UBOShadow::SHADOW_NEAR_FAR_LINEAR_SATURATION_INFO_OFFSET, &shadowNFLSInfos, sizeof(shadowNFLSInfos));
 
                 const auto &shadowSize = shadowInfo->getSize();
@@ -493,15 +489,17 @@ bool RenderAdditiveLightQueue::getLightPassIndex(const scene::Model *model, ccst
     bool hasValidLightPass = false;
 
     for (const auto &subModel : model->getSubModels()) {
-        int lightPassIndex = 0;
+        int lightPassIndex = -1; // use -1 to indicate no valid light pass found
+        int k = 0;
         for (const auto &pass : *(subModel->getPasses())) {
             if (pass->getPhase() == _phaseID) {
+                lightPassIndex = k;
                 hasValidLightPass = true;
                 break;
             }
-            ++lightPassIndex;
+            ++k;
         }
-        lightPassIndices->push_back(lightPassIndex);
+        lightPassIndices->push_back(static_cast<uint32_t>(lightPassIndex)); 
     }
 
     return hasValidLightPass;
@@ -519,7 +517,7 @@ void RenderAdditiveLightQueue::lightCulling(const scene::Model *model) {
                 isCulled = cullSpotLight(static_cast<const scene::SpotLight *>(light), model);
                 break;
             case scene::LightType::POINT:
-                isCulled = cullSphereLight(static_cast<const scene::SphereLight *>(light), model);
+                isCulled = cullPointLight(static_cast<const scene::PointLight *>(light), model);
                 break;
             case scene::LightType::RANGED_DIRECTIONAL:
                 isCulled = cullRangedDirLight(static_cast<const scene::RangedDirectionalLight *>(light), model);
