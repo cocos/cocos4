@@ -33,11 +33,6 @@ import legacyCC from '../../../predefine';
 import { checkPalIntegrity, withImpl } from '../../integrity-check';
 import { OS } from '../../system-info/enum-type';
 
-interface ICachedStyle {
-    width: string;
-    height: string;
-}
-
 const EVENT_TIMEOUT = EDITOR ? 5 : 200;
 const orientationMap: Record<ConfigOrientation, Orientation> = {
     auto: Orientation.AUTO,
@@ -178,8 +173,7 @@ class ScreenAdapter extends EventTarget {
     private _gameContainer?: HTMLDivElement;
     private _gameCanvas?: HTMLCanvasElement;
     private _isProportionalToFrame = false;
-    private _cachedFrameStyle: ICachedStyle = { width: '0px', height: '0px' };
-    private _cachedContainerStyle: ICachedStyle = { width: '0px', height: '0px' };
+    private _cachedWindowSizeInCssPixels = new Size(0, 0);
     private _cbToUpdateFrameBuffer?: () => void;
     private _supportFullScreen = false;
     private _touchEventName: string;
@@ -641,19 +635,13 @@ class ScreenAdapter extends EventTarget {
             containerStyle.height = '100%';
         }
 
-        // Cache Test
-        if (this._gameFrame
-            && (this._cachedFrameStyle.width !== this._gameFrame.style.width
-            || this._cachedFrameStyle.height !== this._gameFrame.style.height
-            || this._cachedContainerStyle.width !== this._gameContainer.style.width
-            || this._cachedContainerStyle.height !== this._gameContainer.style.height)) {
-            this.emit('window-resize', this.windowSize.width, this.windowSize.height);
-
-            // Update Cache
-            this._cachedFrameStyle.width = this._gameFrame.style.width;
-            this._cachedFrameStyle.height = this._gameFrame.style.height;
-            this._cachedContainerStyle.width = this._gameContainer.style.width;
-            this._cachedContainerStyle.height = this._gameContainer.style.height;
+        if (this._gameFrame) {
+            const windowSizeInCssPixels = this._windowSizeInCssPixels;
+            if (!this._cachedWindowSizeInCssPixels.equals(windowSizeInCssPixels)) {
+                this._cachedWindowSizeInCssPixels.set(windowSizeInCssPixels);
+                const dpr = this.devicePixelRatio;
+                this.emit('window-resize', windowSizeInCssPixels.width * dpr, windowSizeInCssPixels.height * dpr);
+            }
         }
     }
 }
