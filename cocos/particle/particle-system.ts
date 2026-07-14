@@ -233,8 +233,8 @@ export class ParticleSystem extends ModelRenderer {
     public startLifetime = new CurveRange();
 
     /**
-     * @en Particle system duration time.
-     * @zh 粒子系统运行时间。
+     * @en Particle system emitter duration time.
+     * @zh 粒子系统发射器运行时间。
      */
     @serializable
     @displayOrder(0)
