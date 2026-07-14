@@ -219,12 +219,14 @@ export class RenderAdditiveLightQueue {
     public gatherLightPasses (camera: Camera, cmdBuff: CommandBuffer, passLayout = 'default'): void {
         this.clear();
 
-        const validPunctualLights = this._pipeline.pipelineSceneData.validPunctualLights;
-        this._bindForwardAddLight(validPunctualLights, passLayout);
-        if (!validPunctualLights.length) { return; }
-
         this._updateUBOs(camera, cmdBuff);
         this._updateLightDescriptorSet(camera, cmdBuff);
+
+        const validPunctualLights = this._pipeline.pipelineSceneData.validPunctualLights;
+        if (!validPunctualLights.length) { return; }
+
+        this._bindForwardAddLight(validPunctualLights, passLayout);
+
         // only for instanced and batched, no light culling applied
         for (let l = 0; l < validPunctualLights.length; l++) {
             const light = validPunctualLights[l];
@@ -465,7 +467,7 @@ export class RenderAdditiveLightQueue {
             }
             Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
 
-            globalDSManager.update();
+            descriptorSet.update();
 
             cmdBuff.updateBuffer(descriptorSet.getBuffer(UBOShadow.BINDING)!, this._shadowUBO.buffer, this._shadowUBO.byteLength);
         }
