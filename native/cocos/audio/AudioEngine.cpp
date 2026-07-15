@@ -68,6 +68,9 @@ unsigned int AudioEngine::sMaxInstances = MAX_AUDIOINSTANCES;
 AudioEngine::ProfileHelper *AudioEngine::sDefaultProfileHelper = nullptr;
 ccstd::unordered_map<int, AudioEngine::AudioInfo> AudioEngine::sAudioIDInfoMap;
 AudioEngineImpl *AudioEngine::sAudioEngineImpl = nullptr;
+// Decoder-only fallback instance, defined here to keep AudioDecoderManager
+// initialization separate from OpenAL initialization.
+AudioEngineImpl *AudioEngine::sDecoderImpl = nullptr;
 
 float AudioEngine::sVolumeFactor = 1.0F;
 events::EnterBackground::Listener AudioEngine::sOnPauseListenerID;
@@ -155,6 +158,9 @@ void AudioEngine::end() {
 
     delete sAudioEngineImpl;
     sAudioEngineImpl = nullptr;
+
+    delete sDecoderImpl;
+    sDecoderImpl = nullptr;
 
     delete sDefaultProfileHelper;
     sDefaultProfileHelper = nullptr;
@@ -587,12 +593,48 @@ bool AudioEngine::isEnabled() {
     return sIsEnabled;
 }
 
-PCMHeader AudioEngine::getPCMHeader(const char *url) {
-    lazyInit();
-    return sAudioEngineImpl->getPCMHeader(url);
+AudioEngineImpl *AudioEngine::getDecoderImpl() {
+    if (AudioEngine::sAudioEngineImpl != nullptr) {
+        return AudioEngine::sAudioEngineImpl;
+    }
+    // Try full init first; if it succeeds we get OpenAL + decoder.
+    AudioEngine::lazyInit();
+    if (AudioEngine::sAudioEngineImpl != nullptr) {
+        return AudioEngine::sAudioEngineImpl;
+    }
+    // On oalsoft platforms, PCM decoding via AudioDecoderManager works
+    // independently of OpenAL — create a decoder-only fallback instance.
+    // On Android/OpenHarmony and Apple, AudioEngineImpl::getPCMHeader/
+    // getOriginalPCMBuffer dereferences _audioPlayerProvider/_engineEngine
+    // which are only set up by init(). Returning nullptr here lets callers
+    // fail gracefully instead of crashing.
+#if CC_PLATFORM == CC_PLATFORM_WINDOWS || CC_PLATFORM == CC_PLATFORM_OHOS || \
+    CC_PLATFORM == CC_PLATFORM_LINUX || CC_PLATFORM == CC_PLATFORM_QNX
+    if (AudioEngine::sDecoderImpl == nullptr) {
+        AudioEngine::sDecoderImpl = ccnew AudioEngineImpl();
+        AudioEngineImpl::initDecoder();
+    }
+    return AudioEngine::sDecoderImpl;
+#else
+    return nullptr;
+#endif
 }
+
+PCMHeader AudioEngine::getPCMHeader(const char *url) {
+    AudioEngineImpl *impl = AudioEngine::getDecoderImpl();
+    if (impl == nullptr) {
+        CC_LOG_WARNING("AudioEngine::getPCMHeader: audio engine unavailable, url: %s", url);
+        return {};
+    }
+    return impl->getPCMHeader(url);
+}
+
 ccstd::vector<uint8_t> AudioEngine::getOriginalPCMBuffer(const char *url, uint32_t channelID) {
-    lazyInit();
-    return sAudioEngineImpl->getOriginalPCMBuffer(url, channelID);
+    AudioEngineImpl *impl = AudioEngine::getDecoderImpl();
+    if (impl == nullptr) {
+        CC_LOG_WARNING("AudioEngine::getOriginalPCMBuffer: audio engine unavailable, url: %s", url);
+        return {};
+    }
+    return impl->getOriginalPCMBuffer(url, channelID);
 }
 } // namespace cc
