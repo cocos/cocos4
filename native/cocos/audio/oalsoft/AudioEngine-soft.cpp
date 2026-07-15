@@ -179,8 +179,7 @@ bool AudioEngineImpl::init() {
         alcMakeContextCurrent(sALContext);
 
         std::fill(std::begin(_alSources), std::end(_alSources), 0); 
-            src = 0;
-        }
+
         alGenSources(MAX_AUDIOINSTANCES, _alSources);
         auto alError = alGetError();
         if (alError != AL_NO_ERROR) {
