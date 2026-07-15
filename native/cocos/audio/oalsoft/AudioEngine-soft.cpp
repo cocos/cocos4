@@ -178,7 +178,7 @@ bool AudioEngineImpl::init() {
 
         alcMakeContextCurrent(sALContext);
 
-        for (auto &src : _alSources) {
+        std::fill(std::begin(_alSources), std::end(_alSources), 0); 
             src = 0;
         }
         alGenSources(MAX_AUDIOINSTANCES, _alSources);
