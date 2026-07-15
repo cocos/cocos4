@@ -426,6 +426,12 @@ void AudioEngineImpl::onResume() {
     }
 }
 
+bool AudioEngineImpl::initDecoder() {
+    // On Android the decoder infrastructure is set up by init().
+    // This method exists so AudioEngine.cpp compiles uniformly across all platforms.
+    return true;
+}
+
 PCMHeader AudioEngineImpl::getPCMHeader(const char *url) {
     PCMHeader header{};
     ccstd::string fileFullPath = FileUtils::getInstance()->fullPathForFilename(url);
