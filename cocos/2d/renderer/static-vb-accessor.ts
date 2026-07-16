@@ -165,6 +165,10 @@ export class StaticVBAccessor extends BufferAccessor {
             errorID(9004, byteLength);
             return null;
         }
+        if (vertexCount > 65536) { // Vertex count must less than 65536 for index is uint16 (0 to 65535)
+            errorID(9004, byteLength);
+            return null;
+        }
         let buf: MeshBuffer = null!;
         let freeList: IFreeEntry[];
         let bid = 0;
@@ -176,8 +180,10 @@ export class StaticVBAccessor extends BufferAccessor {
             freeList = this._freeLists[i];
             // Loop entries
             for (let e = 0; e < freeList.length; ++e) {
+                const freeEntry = freeList[e];
+                const vertexOffset: number = freeEntry.offset / this.vertexFormatBytes;
                 // Found suitable free entry
-                if (freeList[e].length >= byteLength) {
+                if (freeList[e].length >= byteLength && vertexOffset + (vertexCount - 1) <= 65535) {
                     entry = freeList[e];
                     bid = i;
                     eid = e;
