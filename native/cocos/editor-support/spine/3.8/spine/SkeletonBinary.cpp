@@ -278,7 +278,17 @@ SkeletonData *SkeletonBinary::readSkeletonData(const unsigned char *binary, cons
     if (defaultSkin) {
         skeletonData->_defaultSkin = defaultSkin;
         skeletonData->_skins.add(defaultSkin);
+    } else {
+        delete input;
+        delete skeletonData;
+        return NULL;
     }
+    
+    if (!getError().isEmpty()) {
+		delete input;
+		delete skeletonData;
+		return NULL;
+	}
 
     /* Skins. */
     for (size_t i = 0, n = (size_t)readVarint(input, true); i < n; ++i) {
@@ -511,6 +521,7 @@ Attachment *SkeletonBinary::readAttachment(DataInput *input, Skin *skin, int slo
 
             RegionAttachment *region = _attachmentLoader->newRegionAttachment(*skin, String(name), String(path));
             if (region == NULL) {
+                setError("Error reading attachment: ", name.buffer());
                 return NULL;
             }
             region->_path = path;
