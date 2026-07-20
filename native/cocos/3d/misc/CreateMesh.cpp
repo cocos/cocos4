@@ -185,7 +185,11 @@ Mesh::ICreateInfo MeshUtils::createMeshInfo(const IGeometry &geometry, const ccs
 
     if (geometry.customAttributes.has_value()) {
         for (const auto &ca : geometry.customAttributes.value()) {
-            const auto &info = gfx::GFX_FORMAT_INFOS[static_cast<uint32_t>(attr->format)];
+            if (ca.values.empty()) {
+                CC_LOG_WARNING("Custom attribute %s has no values, skipped.", ca.attr.name.c_str());
+                continue;
+            }
+            const auto &info = gfx::GFX_FORMAT_INFOS[static_cast<uint32_t>(ca.attr.format)];
             attributes.emplace_back(ca.attr);
             vertCount = std::max(vertCount, static_cast<uint32_t>(std::floor(ca.values.size() / info.count)));
             channels.emplace_back(Channel{stride, ca.values, ca.attr});
