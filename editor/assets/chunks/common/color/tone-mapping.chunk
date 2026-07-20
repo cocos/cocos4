@@ -10,7 +10,7 @@ vec3 HDRToLDR(vec3 color)
     #endif
     {
     // linear exposure has already applied to light intensity
-    #if CC_TONE_MAPPING_TYPE == HDR_TONE_MAPPING_ACES
+    #if CC_TONE_MAPPING_TYPE == TONE_MAPPING_ACES
       color.rgb = ACESToneMap(color.rgb);
     #endif
     }
