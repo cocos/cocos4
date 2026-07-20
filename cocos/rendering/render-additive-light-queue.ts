@@ -196,7 +196,7 @@ export class RenderAdditiveLightQueue {
 
             this._lightCulling(model, validPunctualLights);
 
-            if (!_lightIndices.length && validPunctualLights.length > 0) { continue; }
+            if (!_lightIndices.length) { continue; }
 
             for (let j = 0; j < subModels.length; j++) {
                 const lightPassIdx = _lightPassIndices[j];
@@ -219,15 +219,14 @@ export class RenderAdditiveLightQueue {
     public gatherLightPasses (camera: Camera, cmdBuff: CommandBuffer, passLayout = 'default'): void {
         this.clear();
 
-        const validPunctualLights = this._pipeline.pipelineSceneData.validPunctualLights;
-        if (!validPunctualLights.length) {
-            this._bindForwardAddLight(validPunctualLights, passLayout);
-            return;
-        }
-
         this._updateUBOs(camera, cmdBuff);
         this._updateLightDescriptorSet(camera, cmdBuff);
+
+        const validPunctualLights = this._pipeline.pipelineSceneData.validPunctualLights;
+        if (!validPunctualLights.length) { return; }
+
         this._bindForwardAddLight(validPunctualLights, passLayout);
+
         // only for instanced and batched, no light culling applied
         for (let l = 0; l < validPunctualLights.length; l++) {
             const light = validPunctualLights[l];
@@ -243,6 +242,7 @@ export class RenderAdditiveLightQueue {
     public recordCommandBuffer (device: Device, renderPass: RenderPass, cmdBuff: CommandBuffer): void {
         const globalDSManager: GlobalDSManager = this._pipeline.globalDSManager;
         for (let j = 0; j < this._instancedQueues.length; ++j) {
+            if (!this._instancedQueues[j]) { continue; }
             const light = this._instancedLightPassPool.lights[j];
             _dynamicOffsets[0] = this._instancedLightPassPool.dynamicOffsets[j];
             const descriptorSet = globalDSManager.getOrCreateDescriptorSet(light);
@@ -318,11 +318,14 @@ export class RenderAdditiveLightQueue {
             if (((visibility & model.node.layer) === model.node.layer)) {
                 switch (batchingScheme) {
                 case BatchingSchemes.INSTANCING: {
-                    const buffer = pass.getInstancedBuffer(l);
+                    const buffer = pass.getInstancedBuffer(lightIdx);
                     buffer.merge(subModel, lightPassIdx);
-                    buffer.dynamicOffsets[0] = this._lightBufferStride;
-                    if (!this._instancedQueues[l]) { this._instancedQueues[l] = new RenderInstancedQueue(); }
-                    this._instancedQueues[l].queue.add(buffer);
+                    buffer.dynamicOffsets[0] = this._lightBufferStride * lightIdx;
+                    if (this._instancedQueues.length <= lightIdx || !this._instancedQueues[lightIdx]) {
+                        this._instancedQueues.length = lightIdx + 1;
+                        this._instancedQueues[lightIdx] = new RenderInstancedQueue();
+                    }
+                    this._instancedQueues[lightIdx].queue.add(buffer);
                 } break;
                 default:
                     lp!.lights.push(light);
@@ -370,9 +373,6 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 1] = packing;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 2] = 0.0;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 3] = 0.0;
-
-                // Reserve sphere light shadow interface
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
                 break;
             }
             case LightType.SPOT: {
@@ -437,8 +437,6 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_PROJ_INFO_OFFSET + 2] = 1.0 / matShadowProj.m00;
                 this._shadowUBO[UBOShadowEnum.SHADOW_PROJ_INFO_OFFSET + 3] = 1.0 / matShadowProj.m05;
 
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
-
                 // Spot light sampler binding
                 if (shadowFrameBufferMap.has(light)) {
                     const texture = shadowFrameBufferMap.get(light)?.colorTextures[0];
@@ -463,15 +461,15 @@ export class RenderAdditiveLightQueue {
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 1] = packing;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 2] = 0.0;
                 this._shadowUBO[UBOShadowEnum.SHADOW_LIGHT_PACKING_NBIAS_NULL_INFO_OFFSET + 3] = 0.0;
-
-                // Reserve point light shadow interface
-                Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
                 break;
             }
             default:
             }
-            globalDSManager.update();
-            cmdBuff.updateBuffer(descriptorSet.getBuffer(UBOShadow.BINDING)!, this._shadowUBO);
+            Color.toArray(this._shadowUBO, shadowInfo.shadowColor, UBOShadowEnum.SHADOW_COLOR_OFFSET);
+
+            descriptorSet.update();
+
+            cmdBuff.updateBuffer(descriptorSet.getBuffer(UBOShadow.BINDING)!, this._shadowUBO.buffer, this._shadowUBO.byteLength);
         }
     }
 
@@ -627,6 +625,6 @@ export class RenderAdditiveLightQueue {
             }
         }
 
-        cmdBuff.updateBuffer(this._lightBuffer, this._lightBufferData);
+        cmdBuff.updateBuffer(this._lightBuffer, this._lightBufferData.buffer as ArrayBuffer, this._lightBufferData.byteLength);
     }
 }
