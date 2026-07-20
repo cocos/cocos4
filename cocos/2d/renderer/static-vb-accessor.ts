@@ -183,8 +183,8 @@ export class StaticVBAccessor extends BufferAccessor {
                 const freeEntry = freeList[e];
                 const vertexOffset: number = freeEntry.offset / this.vertexFormatBytes;
                 // Found suitable free entry
-                if (freeList[e].length >= byteLength && vertexOffset + (vertexCount - 1) <= 65535) {
-                    entry = freeList[e];
+                if (freeEntry.length >= byteLength && vertexOffset + (vertexCount - 1) <= 65535) {
+                    entry = freeEntry;
                     bid = i;
                     eid = e;
                     break;
