@@ -699,7 +699,7 @@ static bool js_Model_setInstancedAttribute(se::State &s) // NOLINT(readability-i
                     value[i] = dataVal.toFloat();
                 }
 
-                cobj->setInstancedAttribute(name, value);
+                cobj->setInstancedAttribute(name, std::move(value));
                 return true;
             }
 
