@@ -151,7 +151,9 @@ export class RenderAdditiveLightQueue {
 
     public clear (): void {
         this._instancedQueues.forEach((instancedQueue) => {
-            instancedQueue.clear();
+            if (instancedQueue) {
+                instancedQueue.clear();
+            }
         });
         this._instancedQueues.length = 0;
 
@@ -235,7 +237,9 @@ export class RenderAdditiveLightQueue {
         }
 
         this._instancedQueues.forEach((instancedQueue) => {
-            instancedQueue.uploadBuffers(cmdBuff);
+            if (instancedQueue) {
+                instancedQueue.uploadBuffers(cmdBuff);
+            }
         });
     }
 

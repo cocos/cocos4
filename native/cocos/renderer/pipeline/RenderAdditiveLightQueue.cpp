@@ -154,13 +154,17 @@ void RenderAdditiveLightQueue::gatherLightPasses(const scene::Camera *camera, gf
         _instancedLightPass.dynamicOffsets.emplace_back(_lightBufferStride * l);
     }
     for (const auto &instancedQueue : _instancedQueues) {
-        instancedQueue->uploadBuffers(cmdBuffer);
+        if (instancedQueue) {
+            instancedQueue->uploadBuffers(cmdBuffer);
+        }
     }
 }
 
 void RenderAdditiveLightQueue::clear() {
     for (const auto &instancedQueue : _instancedQueues) {
-        instancedQueue->clear();
+        if (instancedQueue) {
+            instancedQueue->clear();
+        }
     }
     _instancedQueues.clear();
     _lightPasses.clear();
