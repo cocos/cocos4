@@ -1883,10 +1883,15 @@ export class Skeleton extends UIRenderer {
      */
     public setTrackCompleteListener (entry: spine.TrackEntry, listener: TrackListener2): void {
         const onComplete = (trackEntry: spine.TrackEntry): void => {
-            const loopCount = Math.floor(trackEntry.trackTime / trackEntry.animationEnd);
-            listener(trackEntry, loopCount);
-            // this._instance.setListener(listenerID, spine.EventType.event);
-            // this._listener!.event = listener;
+            const duration = trackEntry.animationEnd - trackEntry.animationStart;
+            if (duration > 0) {
+                const loopCount = Math.floor(trackEntry.trackTime / duration);
+                listener(trackEntry, loopCount);
+                // this._instance.setListener(listenerID, spine.EventType.event);
+                // this._listener!.event = listener;
+            } else {
+                console.log("Start time must bigger than end time!");
+            }
         };
         TrackEntryListeners.getListeners(entry, this._instance!).complete = onComplete;
     }
