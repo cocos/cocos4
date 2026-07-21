@@ -24,7 +24,7 @@
 import { EDITOR_NOT_IN_PREVIEW, JSB } from 'internal:constants';
 import { ccclass, executeInEditMode, help, menu, serializable, type, override, displayOrder, editable, visible } from 'cc.decorator';
 import { Material, Texture2D } from '../asset/assets';
-import { error, errorID, logID, warn, warnID } from '../core/platform/debug';
+import { error, errorID, logID, warnID } from '../core/platform/debug';
 import { Enum, EnumType, ccenum } from '../core/value-types/enum';
 import { Node, NodeEventType } from '../scene-graph';
 import { CCObjectFlags, Color, RecyclePool, js } from '../core';
@@ -1890,7 +1890,7 @@ export class Skeleton extends UIRenderer {
                 // this._instance.setListener(listenerID, spine.EventType.event);
                 // this._listener!.event = listener;
             } else {
-                warn("Start time must bigger than end time!");
+                warnID(16420);
             }
         };
         TrackEntryListeners.getListeners(entry, this._instance!).complete = onComplete;
