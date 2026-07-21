@@ -151,7 +151,7 @@ export class RenderAdditiveLightQueue {
 
     public clear (): void {
         this._instancedQueues.forEach((instancedQueue) => {
-            if (instancedQueue) {
+            if (instancedQueue && instancedQueue !== undefined) {
                 instancedQueue.clear();
             }
         });
@@ -237,7 +237,7 @@ export class RenderAdditiveLightQueue {
         }
 
         this._instancedQueues.forEach((instancedQueue) => {
-            if (instancedQueue) {
+            if (instancedQueue && instancedQueue !== undefined) {
                 instancedQueue.uploadBuffers(cmdBuff);
             }
         });
@@ -247,7 +247,7 @@ export class RenderAdditiveLightQueue {
         const globalDSManager: GlobalDSManager = this._pipeline.globalDSManager;
         for (let j = 0; j < this._instancedQueues.length; ++j) {
             const queue = this._instancedQueues[j];
-            if (!queue) { continue; }
+            if (!queue || queue === undefined) { continue; }
             const light = this._instancedLightPassPool.lights[j];
             _dynamicOffsets[0] = this._instancedLightPassPool.dynamicOffsets[j];
             const descriptorSet = globalDSManager.getOrCreateDescriptorSet(light);
@@ -326,7 +326,9 @@ export class RenderAdditiveLightQueue {
                     const buffer = pass.getInstancedBuffer(lightIdx);
                     buffer.merge(subModel, lightPassIdx);
                     buffer.dynamicOffsets[0] = this._lightBufferStride * lightIdx;
-                    if (this._instancedQueues.length <= lightIdx || !this._instancedQueues[lightIdx]) {
+                    if (this._instancedQueues.length <= lightIdx
+                        || !this._instancedQueues[lightIdx]
+                        || this._instancedQueues[lightIdx] === undefined) {
                         this._instancedQueues.length = lightIdx + 1;
                         this._instancedQueues[lightIdx] = new RenderInstancedQueue();
                     }
