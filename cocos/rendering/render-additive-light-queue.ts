@@ -126,7 +126,7 @@ export class RenderAdditiveLightQueue {
     private declare _lightBuffer: Buffer;
     private declare _firstLightBufferView: Buffer;
     private declare _lightBufferData: Float32Array;
-    private _instancedQueues: RenderInstancedQueue[] = [];
+    private _instancedQueues: (RenderInstancedQueue | undefined)[] = [];
     private _lightMeterScale = 10000.0;
 
     constructor (pipeline: PipelineRuntime) {
@@ -246,11 +246,12 @@ export class RenderAdditiveLightQueue {
     public recordCommandBuffer (device: Device, renderPass: RenderPass, cmdBuff: CommandBuffer): void {
         const globalDSManager: GlobalDSManager = this._pipeline.globalDSManager;
         for (let j = 0; j < this._instancedQueues.length; ++j) {
-            if (!this._instancedQueues[j]) { continue; }
+            const queue = this._instancedQueues[j];
+            if (!queue) { continue; }
             const light = this._instancedLightPassPool.lights[j];
             _dynamicOffsets[0] = this._instancedLightPassPool.dynamicOffsets[j];
             const descriptorSet = globalDSManager.getOrCreateDescriptorSet(light);
-            this._instancedQueues[j].recordCommandBuffer(device, renderPass, cmdBuff, descriptorSet, _dynamicOffsets);
+            queue.recordCommandBuffer(device, renderPass, cmdBuff, descriptorSet, _dynamicOffsets);
         }
 
         for (let i = 0; i < this._lightPasses.length; i++) {
