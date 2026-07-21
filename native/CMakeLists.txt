@@ -3725,9 +3725,14 @@ if(APPLE)
         "$(inherited)"
         ${CC_EXTERNAL_LIBS}
     )
+    if(CMAKE_OSX_ARCHITECTURES)
+        set(_CC_ENGINE_ARCHS "${CMAKE_OSX_ARCHITECTURES}")
+    else()
+        set(_CC_ENGINE_ARCHS "arm64;x86_64")
+    endif()
     set_target_properties(${ENGINE_NAME} PROPERTIES
         XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH "YES"
-        OSX_ARCHITECTURES "arm64;x86_64"
+        OSX_ARCHITECTURES "${_CC_ENGINE_ARCHS}"
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/archives
     )
     if(MACOSX)
