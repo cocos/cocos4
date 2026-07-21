@@ -160,7 +160,7 @@ const cacheManager = require('./jsb-cache-manager');
                 const loopCount = Math.floor(trackEntry.trackTime / duration);
                 this._compeleteListener && this._compeleteListener(trackEntry, loopCount);
             } else {
-                console.log("Start time must bigger than end time!");
+                cc.warn("Start time must bigger than end time!");
             }
         });
     };
@@ -174,7 +174,7 @@ const cacheManager = require('./jsb-cache-manager');
                 const loopCount = Math.floor(trackEntryNative.trackTime / duration);
                 this._trackCompeleteListener && this._trackCompeleteListener(trackEntryNative, loopCount);
             } else {
-                console.log("Start time must bigger than end time!");
+                cc.warn("Start time must bigger than end time!");
             }
         });
     };
