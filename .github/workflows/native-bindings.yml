@@ -11,6 +11,9 @@ jobs:
       matrix:
         node-version: [18.x]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - name: Install CMake & Clang Tidy
@@ -55,7 +58,7 @@ jobs:
           node ./cmake/scripts/engine-version.js
 
       - name: Create Pull Request 
-        uses: fish9167/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v6
         if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
         with:
             title: '[ci skip][AUTO]: Automated PR to generate code'
@@ -65,7 +68,8 @@ jobs:
             committer: cocos-robot <cocos-robot@cocos.com>
             author: cocos-robot <cocos-robot@cocos.com>
             commit-message: "[ci skip][AUTO]: Automated code generating update: ${{ github.event.pull_request.head.sha }}  (#${{ github.event.number }})"
-            token: ${{ secrets.PR_TOKEN }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            git-token: ${{ secrets.PR_TOKEN }}
             push-to-fork: cocos-robot/cocos4
             branch: t/bot/genbindings
             branch-suffix: short-commit-hash
