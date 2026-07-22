@@ -493,7 +493,6 @@ jobs:
           RES_DIR=$GITHUB_WORKSPACE/templates/mac/build-mac
           cd build-mac
           cmake ../ -GXcode -DCMAKE_OSX_ARCHITECTURES=${{ matrix.config.arch }} -DRES_DIR=$RES_DIR -DCOCOS_X_PATH=$NATIVE_ROOT
-          set +e
           cmake --build . --config Release -- -jobs $NUM_OF_CORES -arch ${{ matrix.config.arch }}
           echo "Compile MacOSX Release Done!"
 
@@ -548,7 +547,6 @@ jobs:
               -DCMAKE_OSX_ARCHITECTURES=${{ matrix.config.arch }} \
               -DRES_DIR=$RES_DIR \
               -DCOCOS_X_PATH=$NATIVE_ROOT
-          set +e
           #cmake --build . --config Debug -- -quiet -jobs $NUM_OF_CORES -allowProvisioningUpdates CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           cmake --build . --config Debug -- -jobs $NUM_OF_CORES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           echo "Compile iOS Done!"
