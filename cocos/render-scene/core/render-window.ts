@@ -262,7 +262,7 @@ export class RenderWindow {
             if (DEBUG && surfaceTransform === undefined) {
                 warn(`Unexpected screen orientation: ${screenAdapter.orientation}`);
             }
-            this._swapchain.resize(width, height, surfaceTransform ?? SurfaceTransform.IDENTITY);
+            this._swapchain.resize(width, height, surfaceTransform || SurfaceTransform.IDENTITY);
             this._width = this._swapchain.width;
             this._height = this._swapchain.height;
         } else {
