@@ -83,8 +83,8 @@
     "@cocos/cannon": "1.2.8",
     "@cocos/ccbuild": "^2.3.21",
     "@cocos/dragonbones-js": "^1.0.1",
-    "@cocos/engine-pal": "^1.0.3",
-    "@cocos/engine-platforms": "^1.0.2",
+    "@cocos/engine-pal": "^1.0.4",
+    "@cocos/engine-platforms": "^1.0.3",
     "@types/jest": "^24.9.1"
   },
   "creator": {
