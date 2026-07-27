@@ -317,6 +317,16 @@
             "cmakeConfig": "USE_VIDEO",
             "enginePlugin": true
         },
+        "animated-image": {
+            "default": true,
+            "label": "i18n:ENGINE.features.animated_image.label",
+            "description": "i18n:ENGINE.features.animated_image.description",
+            "enginePlugin": false,
+            "category": "2d",
+            "dependencies": [
+                "2d"
+            ]
+        },
         "webview": {
             "default": true,
             "label": "i18n:ENGINE.features.webview.label",

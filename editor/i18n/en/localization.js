@@ -654,6 +654,15 @@ module.exports = link(mixin({
         videoPlayerEvent:
             "The video player's callback, it will be triggered when certain event occurs, <br>like: playing, paused, stopped and completed.",
     },
+    animated_image: {
+        sourceType: 'Source of the image: IMAGE references an image asset imported the default way (recommended), REMOTE is a remote URL, LOCAL is a local BufferAsset.',
+        image: 'The image asset to play (an animated WebP imported as a normal image). Import the webp as an image and drag it here.',
+        clip: 'A local BufferAsset holding the encoded bytes (used when the source is LOCAL).',
+        remoteURL: 'The remote URL of the animated image (used when the source is REMOTE; watch out for CORS).',
+        playOnAwake: 'Whether to start playing automatically after the image is loaded?',
+        loop: 'Whether the animation loops.',
+        playbackRate: 'The playback rate (0.0 ~ 10.0).',
+    },
     webview: {
         url: 'A given URL to be loaded by the Webview, <br>it should have a http or https prefix.',
         webviewEvents: "The Webview's event callback , <br>it will be triggered when certain Webview event occurs.",
@@ -1044,6 +1053,10 @@ module.exports = link(mixin({
         video: {
             label: "Video",
             description: "Video playing support.",
+        },
+        animated_image: {
+            label: "Animated Image",
+            description: "Animated image (animated WebP) playback support.",
         },
         webview: {
             label: "Web View",

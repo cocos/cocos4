@@ -639,6 +639,15 @@ module.exports = link(mixin({
         stayOnBottom: '永远在游戏视图最底层（这个属性只有在 Web 平台上有效果。注意：具体效果无法保证一致，跟各个浏览器是否支持与限制有关）',
         videoPlayerEvent: '视频播放回调函数，该回调函数会在特定情况被触发，比如播放中，暂时，停止和完成播放。',
     },
+    animated_image: {
+        sourceType: '图片来源：IMAGE 表示引用一个按默认方式导入的图片资源（推荐），REMOTE 表示远程 URL，LOCAL 表示本地 BufferAsset。',
+        image: '要播放的图片资源（按默认方式导入的动画 WebP）。把 webp 当普通图片导入后拖到这里即可。',
+        clip: '持有编码字节的本地 BufferAsset（LOCAL 来源时使用）。',
+        remoteURL: '动画图片的远程 URL（REMOTE 来源时使用，注意跨域 CORS）。',
+        playOnAwake: '图片加载完成后是否自动开始播放？',
+        loop: '动画是否循环播放。',
+        playbackRate: '播放速率（0.0 ~ 10.0）。',
+    },
     webview: {
         url: '指定一个 URL 地址，这个地址以 http 或者 https 开头，请填写一个有效的 URL 地址。',
         webviewEvents: 'Webview 的回调事件，当网页加载过程中，加载完成后或者加载出错时都会回调此函数',
@@ -1022,6 +1031,10 @@ module.exports = link(mixin({
         video: {
             label: "视频",
             description: "视频播放支持。",
+        },
+        animated_image: {
+            label: "动画图片",
+            description: "动画图片（动画 WebP）播放支持。",
         },
         webview: {
             label: "Web View",

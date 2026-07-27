@@ -174,6 +174,10 @@
         "video": {
             "modules": ["video"]
         },
+        "animated-image": {
+            "modules": ["animated-image"],
+            "dependentModules": ["2d"]
+        },
         "xr": {
             "modules": ["xr"],
             "overrideConstants": {
@@ -389,7 +393,8 @@
                 "pal/input": "pal/input/web/index.ts",
                 "pal/env": "pal/env/web/env.ts",
                 "pal/pacer": "pal/pacer/pacer-web.ts",
-                "pal/wasm": "pal/wasm/wasm-web.ts"
+                "pal/wasm": "pal/wasm/wasm-web.ts",
+                "pal/image-decoder": "pal/image-decoder/web/image-decoder-web.ts"
             }
         },
         {
@@ -403,7 +408,8 @@
                 "pal/input": "pal/input/native/index.ts",
                 "pal/env": "pal/env/native/env.ts",
                 "pal/pacer": "pal/pacer/pacer-native.ts",
-                "pal/wasm": "pal/wasm/wasm-native.ts"
+                "pal/wasm": "pal/wasm/wasm-native.ts",
+                "pal/image-decoder": "pal/image-decoder/native/image-decoder-native.ts"
             }
         },
         {
@@ -417,7 +423,8 @@
                 "pal/input": "pal/input/minigame/index.ts",
                 "pal/env": "pal/env/minigame/env.ts",
                 "pal/pacer": "pal/pacer/pacer-minigame.ts",
-                "pal/wasm": "pal/wasm/wasm-minigame.ts"
+                "pal/wasm": "pal/wasm/wasm-minigame.ts",
+                "pal/image-decoder": "pal/image-decoder/minigame/image-decoder-minigame.ts"
             }
         },
         {
@@ -431,7 +438,8 @@
                 "pal/input": "pal/input/minigame/index.ts",
                 "pal/env": "pal/env/runtime/env.ts",
                 "pal/pacer": "pal/pacer/pacer-minigame.ts",
-                "pal/wasm": "pal/wasm/wasm-minigame.ts"
+                "pal/wasm": "pal/wasm/wasm-minigame.ts",
+                "pal/image-decoder": "pal/image-decoder/minigame/image-decoder-minigame.ts"
             }
         },
         {
@@ -445,7 +453,8 @@
                 "pal/input": "pal/input/nodejs/index.ts",
                 "pal/env": "pal/env/nodejs/env.ts",
                 "pal/pacer": "pal/pacer/pacer-nodejs.ts",
-                "pal/wasm": "pal/wasm/wasm-nodejs.ts"
+                "pal/wasm": "pal/wasm/wasm-nodejs.ts",
+                "pal/image-decoder": "pal/image-decoder/nodejs/image-decoder-nodejs.ts"
             }
         },
         {

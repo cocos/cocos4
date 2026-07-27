@@ -40,6 +40,7 @@
       "./native/external/emscripten/spine/spine",
       "./native/external/emscripten/meshopt/meshopt_decoder",
       "./native/external/emscripten/box2d/box2d",
+      "./native/external/emscripten/webp/webpxmux",
 
       // pal
       "./@types/pal/system-info",
@@ -49,7 +50,8 @@
       "./@types/pal/input",
       "./@types/pal/env",
       "./@types/pal/pacer",
-      "./@types/pal/wasm"
+      "./@types/pal/wasm",
+      "./@types/pal/image-decoder"
     ]
   },
   "include": [

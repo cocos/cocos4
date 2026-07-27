@@ -112,4 +112,12 @@ export enum Feature {
      * @zh 运行时检测是否支持 Webassembly，一般在宏 `NATIVE_CODE_BUNDLE_MODE` 为 2 时需要检测，如果不支持，需要回滚到 Asm 方案
      */
     WASM = 'WASM',
+    /**
+     * @en Feature to support native per-frame decoding of animated images (e.g. animated WebP), such as
+     * the WebCodecs `ImageDecoder` on Web. When unsupported, the engine falls back to the bundled libwebp
+     * WASM decoder, so animated images still play.
+     * @zh 是否支持原生逐帧解码动画图片（如动画 WebP），例如 Web 上的 WebCodecs `ImageDecoder`。
+     * 不支持时，引擎会回退到自带的 libwebp WASM 解码器，动画图片依然可以播放。
+     */
+    IMAGE_DECODER = 'IMAGE_DECODER',
 }
