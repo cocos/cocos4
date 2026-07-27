@@ -27,7 +27,7 @@ import { Material, Texture2D } from '../asset/assets';
 import { error, errorID, logID, warnID } from '../core/platform/debug';
 import { Enum, EnumType, ccenum } from '../core/value-types/enum';
 import { Node, NodeEventType } from '../scene-graph';
-import { CCObjectFlags, Color, RecyclePool, js } from '../core';
+import { CCObjectFlags, Color, RecyclePool, js, math } from '../core';
 import { SkeletonData } from './skeleton-data';
 import type { Graphics } from '../2d/components/graphics';
 import { UIRenderer } from '../2d/framework/ui-renderer';
@@ -1883,7 +1883,8 @@ export class Skeleton extends UIRenderer {
      */
     public setTrackCompleteListener (entry: spine.TrackEntry, listener: TrackListener2): void {
         const onComplete = (trackEntry: spine.TrackEntry): void => {
-            const duration = trackEntry.animationEnd - trackEntry.animationStart;
+            const animEnd = math.equals(trackEntry.animationEnd, -1.0) ? trackEntry.animation.duration : trackEntry.animationEnd;
+            const duration = animEnd - trackEntry.animationStart;
             if (duration > 0) {
                 const loopCount = Math.floor(trackEntry.trackTime / duration);
                 listener(trackEntry, loopCount);

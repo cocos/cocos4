@@ -155,7 +155,8 @@ const cacheManager = require('./jsb-cache-manager');
     animation.setCompleteListener = function (listener) {
         this._compeleteListener = listener;
         this.setCompleteListenerNative(function (trackEntry) {
-            const duration = trackEntry.animationEnd - trackEntry.animationStart;
+            const animEnd = math.equals(trackEntry.animationEnd, -1.0) ? trackEntry.animation.duration : trackEntry.animationEnd;
+            const duration = animEnd - trackEntry.animationStart;
             if (duration > 0) {
                 const loopCount = Math.floor(trackEntry.trackTime / duration);
                 this._compeleteListener && this._compeleteListener(trackEntry, loopCount);
@@ -169,7 +170,8 @@ const cacheManager = require('./jsb-cache-manager');
     animation.setTrackCompleteListener = function (trackEntry, listener) {
         this._trackCompeleteListener = listener;
         this.setTrackCompleteListenerNative(trackEntry, function (trackEntryNative) {
-            const duration = trackEntryNative.animationEnd - trackEntryNative.animationStart;
+            const animEnd = math.equals(trackEntryNative.animationEnd, -1.0) ? trackEntryNative.animation.duration : trackEntryNative.animationEnd;
+            const duration = animEnd - trackEntryNative.animationStart;
             if (duration > 0) {
                 const loopCount = Math.floor(trackEntryNative.trackTime / duration);
                 this._trackCompeleteListener && this._trackCompeleteListener(trackEntryNative, loopCount);
