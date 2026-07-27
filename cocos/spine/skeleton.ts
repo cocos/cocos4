@@ -1886,7 +1886,7 @@ export class Skeleton extends UIRenderer {
             const animEnd = math.equals(trackEntry.animationEnd, -1.0) ? trackEntry.animation.duration : trackEntry.animationEnd;
             const duration = animEnd - trackEntry.animationStart;
             if (duration > 0) {
-                const loopCount = Math.floor(trackEntry.trackTime / duration);
+                const loopCount = trackEntry.loop ? Math.floor(trackEntry.trackTime / duration) : 1;
                 listener(trackEntry, loopCount);
                 // this._instance.setListener(listenerID, spine.EventType.event);
                 // this._listener!.event = listener;

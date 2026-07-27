@@ -158,7 +158,7 @@ const cacheManager = require('./jsb-cache-manager');
             const animEnd = math.equals(trackEntry.animationEnd, -1.0) ? trackEntry.animation.duration : trackEntry.animationEnd;
             const duration = animEnd - trackEntry.animationStart;
             if (duration > 0) {
-                const loopCount = Math.floor(trackEntry.trackTime / duration);
+                const loopCount = trackEntry.loop ? Math.floor(trackEntry.trackTime / duration) : 1;
                 this._compeleteListener && this._compeleteListener(trackEntry, loopCount);
             } else {
                 cc.errorID(16420);
@@ -173,7 +173,7 @@ const cacheManager = require('./jsb-cache-manager');
             const animEnd = math.equals(trackEntryNative.animationEnd, -1.0) ? trackEntryNative.animation.duration : trackEntryNative.animationEnd;
             const duration = animEnd - trackEntryNative.animationStart;
             if (duration > 0) {
-                const loopCount = Math.floor(trackEntryNative.trackTime / duration);
+                const loopCount = trackEntryNative.loop ? Math.floor(trackEntryNative.trackTime / duration) : 1;
                 this._trackCompeleteListener && this._trackCompeleteListener(trackEntryNative, loopCount);
             } else {
                 cc.errorID(16420);
