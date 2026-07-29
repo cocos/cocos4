@@ -139,6 +139,14 @@ export class Pass {
             if (bsInfo.isA2C !== undefined) { bs.isA2C = bsInfo.isA2C; }
             if (bsInfo.isIndepend !== undefined) { bs.isIndepend = bsInfo.isIndepend; }
             if (bsInfo.blendColor !== undefined) { bs.blendColor = bsInfo.blendColor as Color; }
+
+            // A2C (Alpha to Coverage) and alpha blending are mutually exclusive:
+            // A2C converts alpha to MSAA coverage masks and is only meaningful for opaque rendering.
+            // When any blend target has blending enabled, A2C produces incorrect results
+            // (e.g. hard alpha cutoff at 0.5 instead of smooth transparency), so force it off.
+            if (bs.isA2C && bs.targets.some((t): boolean => t.blend)) {
+                bs.isA2C = false;
+            }
         }
         pass._rs.assign(info.rasterizerState as RasterizerState);
         pass._dss.assign(info.depthStencilState as DepthStencilState);

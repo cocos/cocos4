@@ -364,6 +364,19 @@ struct BlendStateInfo {
         if (blendColor.has_value()) {
             bs.blendColor = blendColor.value();
         }
+
+        // A2C (Alpha to Coverage) and alpha blending are mutually exclusive:
+        // A2C converts alpha to MSAA coverage masks and is only meaningful for opaque rendering.
+        // When any blend target has blending enabled, A2C produces incorrect results
+        // (e.g. hard alpha cutoff at ~0.5 instead of smooth transparency), so force it off.
+        if (bs.isA2C) {
+            for (const auto &target : bs.targets) {
+                if (target.blend) {
+                    bs.isA2C = 0;
+                    break;
+                }
+            }
+        }
     }
 };
 
