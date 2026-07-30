@@ -31,7 +31,7 @@ import { murmurhash2_32_gc, errorID, assertID, cclegacy, warnID } from '../../co
 import {
     BufferUsageBit, DynamicStateFlagBit, DynamicStateFlags, Feature, GetTypeSize, MemoryUsageBit, PrimitiveMode, Type, Color,
     BlendState, BlendTarget, Buffer, BufferInfo, BufferViewInfo, DepthStencilState, DescriptorSet,
-    DescriptorSetInfo, DescriptorSetLayout, Device, RasterizerState, Sampler, Texture, Shader, PipelineLayout, deviceManager, UniformBlock,
+    DescriptorSetInfo, DescriptorSetLayout, Device, RasterizerState, Sampler, SampleCount, Texture, Shader, PipelineLayout, deviceManager, UniformBlock,
 } from '../../gfx';
 import { EffectAsset } from '../../asset/assets/effect-asset';
 import { IProgramInfo, programLib } from './program-lib';
@@ -142,10 +142,18 @@ export class Pass {
 
             // A2C (Alpha to Coverage) and alpha blending are mutually exclusive:
             // A2C converts alpha to MSAA coverage masks and is only meaningful for opaque rendering.
-            // When any blend target has blending enabled, A2C produces incorrect results
-            // (e.g. hard alpha cutoff at 0.5 instead of smooth transparency), so force it off.
-            if (bs.isA2C && bs.targets.some((t): boolean => t.blend)) {
-                bs.isA2C = false;
+            // Disable A2C when:
+            //   1. Any blend target has blending enabled (A2C causes hard alpha cutoff at ~0.5), OR
+            //   2. Neither the pass nor the global framebuffer has MSAA enabled
+            //      (A2C has no effect without multiple subsamples, behaves as alpha-test at 0.5).
+            if (bs.isA2C) {
+                const hasBlend = bs.targets.some((t): boolean => t.blend);
+                const passWantsMultisample = info.rasterizerState?.isMultisample === true
+                    || pass._rs.isMultisample;
+                const globalMsaaEnabled = (deviceManager.swapchain?.colorTexture?.samples ?? SampleCount.X1) > SampleCount.X1;
+                if (hasBlend || (!passWantsMultisample && !globalMsaaEnabled)) {
+                    bs.isA2C = false;
+                }
             }
         }
         pass._rs.assign(info.rasterizerState as RasterizerState);

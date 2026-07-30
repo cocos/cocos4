@@ -119,6 +119,35 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
 
     if (info.blendState.has_value()) {
         info.blendState.value().assignToGFXBlendState(pass->_blendState);
+
+        // Disable A2C when:
+        //   1. Any blend target has blending enabled (A2C and blend are mutually exclusive), OR
+        //   2. Neither the pass nor the global framebuffer has MSAA enabled
+        //      (A2C has no effect without multiple subsamples, behaves as alpha-test at ~0.5).
+        if (pass->_blendState.isA2C) {
+            bool hasBlend = false;
+            for (const auto &target : pass->_blendState.targets) {
+                if (target.blend) { hasBlend = true; break; }
+            }
+
+            const bool passWantsMultisample =
+                (info.rasterizerState.has_value() && info.rasterizerState.value().isMultisample.has_value()
+                    ? info.rasterizerState.value().isMultisample.value() != 0
+                    : pass->_rs.isMultisample != 0);
+
+            bool globalMsaaEnabled = false;
+            const auto *device = gfx::Device::getInstance();
+            if (device) {
+                const auto &swapchains = device->getSwapchains();
+                if (!swapchains.empty() && swapchains[0] && swapchains[0]->getColorTexture()) {
+                    globalMsaaEnabled = swapchains[0]->getColorTexture()->getInfo().samples > gfx::SampleCount::X1;
+                }
+            }
+
+            if (hasBlend || (!passWantsMultisample && !globalMsaaEnabled)) {
+                pass->_blendState.isA2C = 0;
+            }
+        }
     }
 
     if (info.rasterizerState.has_value()) {
