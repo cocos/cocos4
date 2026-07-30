@@ -154,7 +154,7 @@ export class Pass {
                     || pass._rs.isMultisample;
                 const globalMsaaEnabled = (deviceManager.swapchain?.colorTexture?.samples ?? SampleCount.X1) > SampleCount.X1
                     || antialias;
-                if (!passWantsMultisample && !globalMsaaEnabled) {
+                if (!passWantsMultisample || !globalMsaaEnabled) {
                     bs.isA2C = false;
                 }
             }

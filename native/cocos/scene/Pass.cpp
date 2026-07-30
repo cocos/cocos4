@@ -141,7 +141,7 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
                 }
             }
 
-            if (!passWantsMultisample && !globalMsaaEnabled) {
+            if (!passWantsMultisample || !globalMsaaEnabled) {
                 pass->_blendState.isA2C = 0;
             }
         }
