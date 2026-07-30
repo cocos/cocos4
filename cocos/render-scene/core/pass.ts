@@ -140,18 +140,21 @@ export class Pass {
             if (bsInfo.isIndepend !== undefined) { bs.isIndepend = bsInfo.isIndepend; }
             if (bsInfo.blendColor !== undefined) { bs.blendColor = bsInfo.blendColor as Color; }
 
-            // A2C (Alpha to Coverage) and alpha blending are mutually exclusive:
-            // A2C converts alpha to MSAA coverage masks and is only meaningful for opaque rendering.
-            // Disable A2C when:
-            //   1. Any blend target has blending enabled (A2C causes hard alpha cutoff at ~0.5), OR
-            //   2. Neither the pass nor the global framebuffer has MSAA enabled
-            //      (A2C has no effect without multiple subsamples, behaves as alpha-test at 0.5).
+            // A2C (Alpha to Coverage) requires MSAA to be effective.
+            // Without multiple subsamples, A2C behaves like alpha-test at ~0.5 and should be disabled.
+            // Disable A2C when neither the pass nor the global framebuffer has MSAA enabled:
+            //   - passWantsMultisample: pass explicitly requests isMultisample
+            //   - globalMsaaEnabled: swapchain has MSAA (native: colorTexture.samples > X1;
+            //                        WebGL: antialias from gl.getContextAttributes(), since WebGL
+            //                        MSAA is controlled at context level, not texture level)
             if (bs.isA2C) {
-                const hasBlend = bs.targets.some((t): boolean => t.blend);
+                const gl: WebGL2RenderingContext | WebGLRenderingContext | null = (deviceManager.gfxDevice as any).gl ?? null;
+                const antialias = gl?.getContextAttributes()?.antialias ?? false;
                 const passWantsMultisample = info.rasterizerState?.isMultisample === true
                     || pass._rs.isMultisample;
-                const globalMsaaEnabled = (deviceManager.swapchain?.colorTexture?.samples ?? SampleCount.X1) > SampleCount.X1;
-                if (hasBlend || (!passWantsMultisample && !globalMsaaEnabled)) {
+                const globalMsaaEnabled = (deviceManager.swapchain?.colorTexture?.samples ?? SampleCount.X1) > SampleCount.X1
+                    || antialias;
+                if (!passWantsMultisample && !globalMsaaEnabled) {
                     bs.isA2C = false;
                 }
             }

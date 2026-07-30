@@ -120,16 +120,13 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
     if (info.blendState.has_value()) {
         info.blendState.value().assignToGFXBlendState(pass->_blendState);
 
-        // Disable A2C when:
-        //   1. Any blend target has blending enabled (A2C and blend are mutually exclusive), OR
-        //   2. Neither the pass nor the global framebuffer has MSAA enabled
-        //      (A2C has no effect without multiple subsamples, behaves as alpha-test at ~0.5).
+        // A2C (Alpha to Coverage) requires MSAA to be effective.
+        // Without multiple subsamples, A2C behaves like alpha-test at ~0.5 and should be disabled.
+        // Disable A2C when neither the pass nor the global framebuffer has MSAA enabled:
+        //   - passWantsMultisample: pass explicitly requests isMultisample
+        //   - globalMsaaEnabled: swapchain colorTexture.samples > X1 (native backends only;
+        //                        WebGL MSAA is checked via gl.getContextAttributes() on the TS side)
         if (pass->_blendState.isA2C) {
-            bool hasBlend = false;
-            for (const auto &target : pass->_blendState.targets) {
-                if (target.blend) { hasBlend = true; break; }
-            }
-
             const bool passWantsMultisample =
                 (info.rasterizerState.has_value() && info.rasterizerState.value().isMultisample.has_value()
                     ? info.rasterizerState.value().isMultisample.value() != 0
@@ -144,7 +141,7 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
                 }
             }
 
-            if (hasBlend || (!passWantsMultisample && !globalMsaaEnabled)) {
+            if (!passWantsMultisample && !globalMsaaEnabled) {
                 pass->_blendState.isA2C = 0;
             }
         }
