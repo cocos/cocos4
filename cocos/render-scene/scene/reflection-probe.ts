@@ -72,6 +72,8 @@ export class ReflectionProbe {
      */
     private _camera: Camera | null = null;
 
+    private _previewCamera: Camera | null = null;
+
     /**
      * @en Unique id of probe.
      * @zh probe的唯一id
@@ -320,6 +322,32 @@ export class ReflectionProbe {
         this._needRender = true;
     }
 
+    public renderPreviewPlanarReflection (sourceCamera: Camera): Camera {
+        if (!this._previewCamera) {
+            const root = cclegacy.director.root;
+            const cameraNode = new Node(`${this.cameraNode.name} Preview Reflection`);
+            const previewCamera = root.createCamera();
+            previewCamera.initialize({
+                name: cameraNode.name,
+                node: cameraNode,
+                projection: CameraProjection.PERSPECTIVE,
+                window: root.mainWindow,
+                priority: 0,
+                cameraType: CameraType.DEFAULT,
+                trackingType: TrackingType.NO_TRACKING,
+            });
+            previewCamera.setViewportInOrientedSpace(new Rect(0, 0, 1, 1));
+            previewCamera.fovAxis = CameraFOVAxis.VERTICAL;
+            previewCamera.visibility = this._visibility;
+            this._previewCamera = previewCamera;
+        }
+        const previewCamera = this._previewCamera!;
+        this._syncCameraParams(sourceCamera, previewCamera);
+        this._transformReflectionCamera(sourceCamera, previewCamera);
+        this._needRender = true;
+        return previewCamera;
+    }
+
     public switchProbeType (type: ProbeType, sourceCamera: Camera | null): void {
         if (type === ProbeType.CUBE) {
             this._needRender = false;
@@ -356,6 +384,12 @@ export class ReflectionProbe {
         if (this._camera) {
             this._camera.destroy();
             this._camera = null;
+        }
+        if (this._previewCamera) {
+            const cameraNode = this._previewCamera.node;
+            this._previewCamera.destroy();
+            this._previewCamera = null;
+            cameraNode.destroy();
         }
         for (let i = 0; i < this.bakedCubeTextures.length; i++) {
             this.bakedCubeTextures[i].destroy();
@@ -410,16 +444,16 @@ export class ReflectionProbe {
         return true;
     }
 
-    private _syncCameraParams (camera: Camera): void {
-        this.camera.projectionType = camera.projectionType;
-        this.camera.orthoHeight = camera.orthoHeight;
-        this.camera.nearClip = camera.nearClip;
-        this.camera.farClip = camera.farClip;
-        this.camera.fov = camera.fov;
-        this.camera.clearFlag = camera.clearFlag;
-        this.camera.clearColor = camera.clearColor;
-        this.camera.priority = camera.priority - 1;
-        this.camera.resize(camera.width, camera.height);
+    private _syncCameraParams (camera: Camera, targetCamera: Camera = this.camera): void {
+        targetCamera.projectionType = camera.projectionType;
+        targetCamera.orthoHeight = camera.orthoHeight;
+        targetCamera.nearClip = camera.nearClip;
+        targetCamera.farClip = camera.farClip;
+        targetCamera.fov = camera.fov;
+        targetCamera.clearFlag = camera.clearFlag;
+        targetCamera.clearColor = camera.clearColor;
+        targetCamera.priority = camera.priority - 1;
+        targetCamera.resize(camera.width, camera.height);
     }
 
     private _createCamera (cameraNode: Node): Camera | null {
@@ -478,10 +512,10 @@ export class ReflectionProbe {
         return rt;
     }
 
-    private _transformReflectionCamera (sourceCamera: Camera): void {
+    private _transformReflectionCamera (sourceCamera: Camera, targetCamera: Camera = this.camera): void {
         const offset = Vec3.dot(this.node.worldPosition, this.node.up);
         this._reflect(this._cameraWorldPos, sourceCamera.node.worldPosition, this.node.up, offset);
-        this.cameraNode.worldPosition = this._cameraWorldPos;
+        targetCamera.node.worldPosition = this._cameraWorldPos;
 
         Vec3.transformQuat(this._forward, Vec3.FORWARD, sourceCamera.node.worldRotation);
         this._reflect(this._forward, this._forward, this.node.up, 0);
@@ -494,14 +528,14 @@ export class ReflectionProbe {
 
         Quat.fromViewUp(this._cameraWorldRotation, this._forward, this._up);
 
-        this.cameraNode.worldRotation = this._cameraWorldRotation;
+        targetCamera.node.worldRotation = this._cameraWorldRotation;
 
-        this.camera.update(true);
+        targetCamera.update(true);
 
         // Transform the plane from world space to reflection camera space use the inverse transpose matrix
         const viewSpaceProbe = new Vec4(this.node.up.x, this.node.up.y, this.node.up.z, -Vec3.dot(this.node.up, this.node.worldPosition));
-        viewSpaceProbe.transformMat4(this.camera.matView.clone().invert().transpose());
-        this.camera.calculateObliqueMat(viewSpaceProbe);
+        viewSpaceProbe.transformMat4(targetCamera.matView.clone().invert().transpose());
+        targetCamera.calculateObliqueMat(viewSpaceProbe);
     }
 
     private _reflect (out: Vec3, point: Vec3, normal: Vec3, offset: number): Vec3 {

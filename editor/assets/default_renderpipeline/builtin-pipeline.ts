@@ -653,7 +653,12 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 if (!cameraConfigs.enablePlanarReflectionProbe) {
                     continue;
                 }
-                probe.renderPlanarReflection(sourceCamera);
+                let reflectionCamera = probe.camera;
+                if (sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
+                    reflectionCamera = probe.renderPreviewPlanarReflection(sourceCamera);
+                } else {
+                    probe.renderPlanarReflection(sourceCamera);
+                }
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;
                 const depthStencilName = `PlanarProbeDS${probeID}`;
@@ -666,7 +671,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 // Rendering
                 const probePass = ppl.addRenderPass(width, height, 'default');
                 probePass.name = `PlanarReflectionProbe${probeID}`;
-                this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
+                this._buildReflectionProbePass(probePass, cameraConfigs, id, reflectionCamera,
                     colorName, depthStencilName, mainLight, scene);
             } else if (EDITOR) {
                 for (let faceIdx = 0; faceIdx < probe.bakedCubeTextures.length; faceIdx++) {
