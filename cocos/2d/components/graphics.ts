@@ -266,6 +266,15 @@ export class Graphics extends UIRenderer {
         this._updateMtlForGraphics();
     }
 
+    protected override get _keepRenderData (): boolean {
+        // Graphics is a retained-mode renderer: its MeshRenderData is the result of the
+        // user's previous fill()/stroke() calls. Destroying it here would leave Impl's
+        // render-data list pointing at cleared geometry, so re-enabling the node on native
+        // platforms would require the user to draw the paths again. Keep it attached to the
+        // disabled RenderEntity; clear() and onDestroy() remain the owning release points.
+        return true;
+    }
+
     public onDestroy (): void {
         this._sceneGetter = null;
         if (JSB) {
