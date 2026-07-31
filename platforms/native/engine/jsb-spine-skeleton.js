@@ -155,8 +155,14 @@ const cacheManager = require('./jsb-cache-manager');
     animation.setCompleteListener = function (listener) {
         this._compeleteListener = listener;
         this.setCompleteListenerNative(function (trackEntry) {
-            const loopCount = Math.floor(trackEntry.trackTime / trackEntry.animationEnd);
-            this._compeleteListener && this._compeleteListener(trackEntry, loopCount);
+            const animEnd = Math.abs(trackEntry.animationEnd - (-1.0)) < Number.EPSILON ? trackEntry.animation.duration : trackEntry.animationEnd;
+            const duration = animEnd - trackEntry.animationStart;
+            if (duration > 0) {
+                const loopCount = trackEntry.loop ? Math.floor(trackEntry.trackTime / duration) : 1;
+                this._compeleteListener && this._compeleteListener(trackEntry, loopCount);
+            } else {
+                cc.errorID(16420);
+            }
         });
     };
 
@@ -164,8 +170,14 @@ const cacheManager = require('./jsb-cache-manager');
     animation.setTrackCompleteListener = function (trackEntry, listener) {
         this._trackCompeleteListener = listener;
         this.setTrackCompleteListenerNative(trackEntry, function (trackEntryNative) {
-            const loopCount = Math.floor(trackEntryNative.trackTime / trackEntryNative.animationEnd);
-            this._trackCompeleteListener && this._trackCompeleteListener(trackEntryNative, loopCount);
+            const animEnd = Math.abs(trackEntryNative.animationEnd - (-1.0)) < Number.EPSILON ? trackEntryNative.animation.duration : trackEntryNative.animationEnd;
+            const duration = animEnd - trackEntryNative.animationStart;
+            if (duration > 0) {
+                const loopCount = trackEntryNative.loop ? Math.floor(trackEntryNative.trackTime / duration) : 1;
+                this._trackCompeleteListener && this._trackCompeleteListener(trackEntryNative, loopCount);
+            } else {
+                cc.errorID(16420);
+            }
         });
     };
 

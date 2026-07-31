@@ -3980,3 +3980,7 @@ Debug bones or slots is invalid in cached mode.
 ### 16419
 
 Spine version not supported.
+
+### 16420
+
+Start time must bigger than end time.
