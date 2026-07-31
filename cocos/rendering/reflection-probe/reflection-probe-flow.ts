@@ -65,7 +65,10 @@ export class ReflectionProbeFlow extends RenderFlow {
         const probes = cclegacy.internal.reflectionProbeManager.getProbes() as ReflectionProbe[];
         for (let i = 0; i < probes.length; i++) {
             if (probes[i].needRender) {
-                if (EDITOR || probes[i].probeType === ProbeType.PLANAR) {
+                if (probes[i].probeType === ProbeType.PLANAR) {
+                    probes[i].renderPlanarReflection(camera);
+                    this._renderStage(camera, probes[i]);
+                } else if (EDITOR) {
                     this._renderStage(camera, probes[i]);
                 }
             }
