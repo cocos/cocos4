@@ -320,7 +320,8 @@ export class RenderAdditiveLightQueue {
             const lightIdx = _lightIndices[l];
             const light = validPunctualLights[lightIdx];
             const visibility = light.visibility;
-            if (((visibility & model.node.layer) === model.node.layer)) {
+            if (((visibility & model.node.layer) === model.node.layer)
+                || (visibility & model.visFlags)) {
                 switch (batchingScheme) {
                 case BatchingSchemes.INSTANCING: {
                     const buffer = pass.getInstancedBuffer(lightIdx);
