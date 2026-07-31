@@ -152,13 +152,12 @@ export class Pass {
                 const gl: WebGL2RenderingContext | WebGLRenderingContext | null = gfxDevice.gl || null;
                 const ctxAttrs = gl && gl.getContextAttributes();
                 const antialias: boolean = !!(ctxAttrs && ctxAttrs.antialias);
-                const passWantsMultisample = (info.rasterizerState && info.rasterizerState.isMultisample === true)
-                    || pass._rs.isMultisample;
+                const passWantsMultisample = (info.rasterizerState && info.rasterizerState.isMultisample === true);
                 const swapchain = deviceManager.swapchain;
                 const colorTex = swapchain && swapchain.colorTexture;
-                const globalMsaaEnabled = (colorTex && colorTex.samples > SampleCount.X1)
-                    || antialias;
-                if (!passWantsMultisample || !globalMsaaEnabled) {
+                const msaaDisabled = (!colorTex || (colorTex && colorTex.samples <= SampleCount.X1))
+                    || !antialias || !passWantsMultisample;
+                if (msaaDisabled) {
                     bs.isA2C = false;
                 }
             }

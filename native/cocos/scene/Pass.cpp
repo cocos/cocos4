@@ -132,16 +132,16 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
                     ? info.rasterizerState.value().isMultisample.value() != 0
                     : pass->_rs.isMultisample != 0);
 
-            bool globalMsaaEnabled = false;
+            bool msaaDisabled = true;
             const auto *device = gfx::Device::getInstance();
             if (device) {
                 const auto &swapchains = device->getSwapchains();
                 if (!swapchains.empty() && swapchains[0] && swapchains[0]->getColorTexture()) {
-                    globalMsaaEnabled = swapchains[0]->getColorTexture()->getInfo().samples > gfx::SampleCount::X1;
+                    msaaDisabled = (swapchains[0]->getColorTexture()->getInfo().samples <= gfx::SampleCount::X1) || !passWantsMultisample;
                 }
             }
 
-            if (!passWantsMultisample || !globalMsaaEnabled) {
+            if (msaaDisabled) {
                 pass->_blendState.isA2C = 0;
             }
         }
