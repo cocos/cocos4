@@ -208,7 +208,8 @@ void RenderAdditiveLightQueue::addRenderQueue(scene::SubModel *subModel, const s
         const auto lightIdx = _lightIndices[i];
         const auto *light = _validPunctualLights[lightIdx];
         const auto visibility = light->getVisibility();
-        if ((visibility & model->getNode()->getLayer()) == model->getNode()->getLayer()) {
+        if (((visibility & model->getNode()->getLayer()) == model->getNode()->getLayer()) ||
+            (visibility & static_cast<uint32_t>(model->getVisFlags()))) {
             switch (batchingScheme) {
                 case scene::BatchingSchemes::INSTANCING: {
                     auto *buffer = pass->getInstancedBuffer(lightIdx);
