@@ -483,8 +483,8 @@ jobs:
           echo "set(CC_USE_GLES3 OFF)" >> build-mac/proj/cfg.cmake
           echo "set(CC_USE_METAL ON)" >> build-mac/proj/cfg.cmake
           # Test JSVM v8 backend on macOS.
-          echo "set(USE_SE_V8 OFF)" >> build-mac/proj/cfg.cmake
-          echo "set(USE_SE_JSVM ON)" >> build-mac/proj/cfg.cmake
+          echo "set(USE_SE_V8 ON)" >> build-mac/proj/cfg.cmake
+          echo "set(USE_SE_JSVM OFF)" >> build-mac/proj/cfg.cmake
           echo "set(USE_WEBSOCKET_SERVER OFF)" >> build-mac/proj/cfg.cmake
           echo "set(CMAKE_CXX_STANDARD_REQUIRED ON)" >> build-mac/proj/cfg.cmake
           echo "set(CC_EXECUTABLE_NAME \"\")" >> build-mac/proj/cfg.cmake
@@ -493,7 +493,6 @@ jobs:
           RES_DIR=$GITHUB_WORKSPACE/templates/mac/build-mac
           cd build-mac
           cmake ../ -GXcode -DCMAKE_OSX_ARCHITECTURES=${{ matrix.config.arch }} -DRES_DIR=$RES_DIR -DCOCOS_X_PATH=$NATIVE_ROOT
-          set +e
           cmake --build . --config Release -- -jobs $NUM_OF_CORES -arch ${{ matrix.config.arch }}
           echo "Compile MacOSX Release Done!"
 
@@ -534,7 +533,7 @@ jobs:
           echo "set(CC_USE_VULKAN OFF)" >> build-ios/proj/cfg.cmake
           echo "set(CC_USE_GLES2 OFF)" >> build-ios/proj/cfg.cmake
           echo "set(CC_USE_METAL ON)" >> build-ios/proj/cfg.cmake
-          echo "set(TARGET_IOS_VERSION 12.0)" >> build-ios/proj/cfg.cmake
+          echo "set(TARGET_IOS_VERSION 13.0)" >> build-ios/proj/cfg.cmake
           echo "set(USE_WEBSOCKET_SERVER OFF)" >> build-ios/proj/cfg.cmake
           echo "set(USE_DRAGONBONES OFF)" >> build-ios/proj/cfg.cmake
           echo "set(CMAKE_CXX_STANDARD_REQUIRED OFF)" >> build-ios/proj/cfg.cmake
@@ -548,7 +547,6 @@ jobs:
               -DCMAKE_OSX_ARCHITECTURES=${{ matrix.config.arch }} \
               -DRES_DIR=$RES_DIR \
               -DCOCOS_X_PATH=$NATIVE_ROOT
-          set +e
           #cmake --build . --config Debug -- -quiet -jobs $NUM_OF_CORES -allowProvisioningUpdates CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           cmake --build . --config Debug -- -jobs $NUM_OF_CORES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           echo "Compile iOS Done!"
