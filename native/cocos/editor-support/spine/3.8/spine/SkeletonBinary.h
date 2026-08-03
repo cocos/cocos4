@@ -80,6 +80,8 @@ public:
 
     String& getError() { return _error; }
 
+    void setOwnsLoader(bool owns) { _ownsLoader = owns; }
+
 private:
     struct DataInput : public SpineObject {
         const unsigned char* cursor;
