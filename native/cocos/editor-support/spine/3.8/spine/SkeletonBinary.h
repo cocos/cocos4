@@ -92,7 +92,7 @@ private:
     Vector<LinkedMesh*> _linkedMeshes;
     String _error;
     float _scale;
-    const bool _ownsLoader;
+    bool _ownsLoader;
 
     void setError(const char* value1, const char* value2);
 
