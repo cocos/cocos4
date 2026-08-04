@@ -76,20 +76,24 @@ export class ReflectionProbeFlow extends RenderFlow {
         super.destroy();
     }
     private _renderStage (camera: Camera, probe: ReflectionProbe): void {
+        const useFloatRT = probe.useFloatIntermediateRT() && probe.intermediateFramebuffers.length > 0;
         for (let i = 0; i < this._stages.length; i++) {
             const probeStage = this._stages[i] as ReflectionProbeStage;
             if (probe.probeType === ProbeType.PLANAR) {
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, null);
-                probeStage.setUsageInfo(probe, probe.realtimePlanarTexture!.window!.framebuffer);
+                const outputFb = probe.realtimePlanarTexture!.window!.framebuffer;
+                const fb = useFloatRT ? probe.intermediateFramebuffers[0] : outputFb;
+                probeStage.setUsageInfo(probe, fb, useFloatRT ? outputFb : null);
                 probeStage.render(camera);
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, probe.realtimePlanarTexture!.getGFXTexture());
             } else {
                 for (let faceIdx = 0; faceIdx < 6; faceIdx++) {
                     const renderTexture = probe.bakedCubeTextures[faceIdx];
                     if (!renderTexture) return;
-                    //update camera dirction
                     probe.updateCameraDir(faceIdx);
-                    probeStage.setUsageInfo(probe, renderTexture.window!.framebuffer);
+                    const outputFb = renderTexture.window!.framebuffer;
+                    const fb = useFloatRT ? probe.intermediateFramebuffers[faceIdx] : outputFb;
+                    probeStage.setUsageInfo(probe, fb, useFloatRT ? outputFb : null);
                     probeStage.render(camera);
                 }
                 probe.needRender = false;

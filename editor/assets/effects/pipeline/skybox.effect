@@ -78,7 +78,9 @@ CCProgram sky-fs %{
     #endif
 
     vec4 color = vec4(c * cc_ambientSky.w, 1.0);
-    #if CC_USE_RGBE_OUTPUT
+    #if CC_USE_FLOAT_PROBE_OUTPUT
+      // output linear HDR for float probe RT
+    #elif CC_USE_RGBE_OUTPUT
       color = packRGBE(color.rgb);
     #else
       color.rgb = HDRToLDR(color.rgb);

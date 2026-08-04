@@ -651,37 +651,59 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 if (!cameraConfigs.enablePlanarReflectionProbe) {
                     continue;
                 }
+                const useFloatRT = probe.useFloatIntermediateRT();
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;
                 const depthStencilName = `PlanarProbeDS${probeID}`;
-                // ProbeResource
                 ppl.addRenderWindow(colorName,
                     cameraConfigs.radianceFormat, width, height, window);
                 ppl.addDepthStencil(depthStencilName,
                     gfx.Format.DEPTH_STENCIL, width, height, ResourceResidency.MEMORYLESS);
 
+                let sceneColorName = colorName;
+                if (useFloatRT) {
+                    sceneColorName = `PlanarProbeFloatRT${probeID}`;
+                    ppl.addRenderTarget(sceneColorName, gfx.Format.RGBA16F, width, height);
+                }
+
                 // Rendering
                 const probePass = ppl.addRenderPass(width, height, 'default');
                 probePass.name = `PlanarReflectionProbe${probeID}`;
                 this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
-                    colorName, depthStencilName, mainLight, scene);
+                    sceneColorName, depthStencilName, mainLight, scene, useFloatRT);
+
+                if (useFloatRT) {
+                    this._buildProbeConvertPass(ppl, width, height,
+                        sceneColorName, colorName, `PlanarProbeConvert${probeID}`);
+                }
             } else if (EDITOR) {
+                const useFloatRT = probe.useFloatIntermediateRT();
                 for (let faceIdx = 0; faceIdx < probe.bakedCubeTextures.length; faceIdx++) {
                     probe.updateCameraDir(faceIdx);
                     const window: renderer.RenderWindow = probe.bakedCubeTextures[faceIdx].window!;
                     const colorName = `CubeProbeRT${probeID}${faceIdx}`;
                     const depthStencilName = `CubeProbeDS${probeID}${faceIdx}`;
-                    // ProbeResource
                     ppl.addRenderWindow(colorName,
                         cameraConfigs.radianceFormat, width, height, window);
                     ppl.addDepthStencil(depthStencilName,
                         gfx.Format.DEPTH_STENCIL, width, height, ResourceResidency.MEMORYLESS);
 
+                    let sceneColorName = colorName;
+                    if (useFloatRT) {
+                        sceneColorName = `CubeProbeFloatRT${probeID}${faceIdx}`;
+                        ppl.addRenderTarget(sceneColorName, gfx.Format.RGBA16F, width, height);
+                    }
+
                     // Rendering
                     const probePass = ppl.addRenderPass(width, height, 'default');
                     probePass.name = `CubeProbe${probeID}${faceIdx}`;
                     this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
-                        colorName, depthStencilName, mainLight, scene);
+                        sceneColorName, depthStencilName, mainLight, scene, useFloatRT);
+
+                    if (useFloatRT) {
+                        this._buildProbeConvertPass(ppl, width, height,
+                            sceneColorName, colorName, `CubeProbeConvert${probeID}${faceIdx}`);
+                    }
                 }
                 probe.needRender = false;
             }
@@ -690,6 +712,31 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 break;
             }
         }
+    }
+
+    private _getProbeConvertMaterial (): Material {
+        if (!this._probeRGBEConvertMaterial) {
+            this._probeRGBEConvertMaterial = new Material();
+            this._probeRGBEConvertMaterial._uuid = `builtin-pipeline-probe-rgbe-convert-material`;
+            this._probeRGBEConvertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert' });
+        }
+        return this._probeRGBEConvertMaterial;
+    }
+
+    private _buildProbeConvertPass (
+        ppl: rendering.BasicPipeline,
+        width: number,
+        height: number,
+        floatColorName: string,
+        outputColorName: string,
+        passName: string,
+    ): void {
+        const convertPass = ppl.addRenderPass(width, height, 'probe-rgbe-convert');
+        convertPass.name = passName;
+        convertPass.addRenderTarget(outputColorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
+        convertPass.addTexture(floatColorName, 'probeColorTex');
+        convertPass.addQueue(rendering.QueueHint.OPAQUE)
+            .addFullscreenQuad(this._getProbeConvertMaterial(), 0);
     }
     private _buildReflectionProbePass(
         pass: rendering.BasicRenderPassBuilder,
@@ -700,6 +747,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         depthStencilName: string,
         mainLight: renderer.scene.DirectionalLight | null,
         scene: renderer.RenderScene | null = null,
+        useFloatRT = false,
     ): void {
         const QueueHint = rendering.QueueHint;
         const SceneFlags = rendering.SceneFlags;
@@ -708,14 +756,21 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
 
         // bind output render target
         if (forwardNeedClearColor(camera)) {
-            this._reflectionProbeClearColor.x = camera.clearColor.x;
-            this._reflectionProbeClearColor.y = camera.clearColor.y;
-            this._reflectionProbeClearColor.z = camera.clearColor.z;
-            const clearColor = rendering.packRGBE(this._reflectionProbeClearColor);
-            this._clearColor.x = clearColor.x;
-            this._clearColor.y = clearColor.y;
-            this._clearColor.z = clearColor.z;
-            this._clearColor.w = clearColor.w;
+            if (useFloatRT) {
+                this._clearColor.x = camera.clearColor.x;
+                this._clearColor.y = camera.clearColor.y;
+                this._clearColor.z = camera.clearColor.z;
+                this._clearColor.w = camera.clearColor.w;
+            } else {
+                this._reflectionProbeClearColor.x = camera.clearColor.x;
+                this._reflectionProbeClearColor.y = camera.clearColor.y;
+                this._reflectionProbeClearColor.z = camera.clearColor.z;
+                const clearColor = rendering.packRGBE(this._reflectionProbeClearColor);
+                this._clearColor.x = clearColor.x;
+                this._clearColor.y = clearColor.y;
+                this._clearColor.z = clearColor.z;
+                this._clearColor.w = clearColor.w;
+            }
             pass.addRenderTarget(colorName, LoadOp.CLEAR, colorStoreOp, this._clearColor);
         } else {
             pass.addRenderTarget(colorName, LoadOp.LOAD, colorStoreOp);
@@ -748,6 +803,14 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 SceneFlags.OPAQUE | SceneFlags.MASK | SceneFlags.REFLECTION_PROBE,
                 mainLight || undefined,
                 scene ? scene : undefined);
+
+        if (useFloatRT) {
+            pass.addQueue(QueueHint.BLEND, 'reflect-map')
+                .addScene(camera,
+                    SceneFlags.BLEND | SceneFlags.REFLECTION_PROBE,
+                    mainLight || undefined,
+                    scene ? scene : undefined);
+        }
     }
     private _addForwardRadiancePasses(
         ppl: rendering.BasicPipeline,
@@ -982,6 +1045,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
     private readonly _viewport = new Viewport();
     private readonly _clearColor = new Color(0, 0, 0, 1);
     private readonly _reflectionProbeClearColor = new Vec3(0, 0, 0);
+    private _probeRGBEConvertMaterial: Material | null = null;
 }
 
 export interface BloomPassConfigs {

@@ -36,6 +36,7 @@ import { RenderInstancedQueue } from './render-instanced-queue';
 import { cclegacy, geometry } from '../core';
 
 const CC_USE_RGBE_OUTPUT = 'CC_USE_RGBE_OUTPUT';
+const CC_USE_FLOAT_PROBE_OUTPUT = 'CC_USE_FLOAT_PROBE_OUTPUT';
 let _phaseID = getPhaseID('default');
 let _phaseReflectMapID = getPhaseID('reflect-map');
 function getPassIndex (subModel: SubModel): number {
@@ -72,15 +73,20 @@ export class RenderReflectionProbeQueue {
     private _subModelsArray: SubModel[] = [];
     private _passArray: Pass[] = [];
     private _shaderArray: Shader[] = [];
+    private _transparentSubModelsArray: SubModel[] = [];
+    private _transparentPassArray: Pass[] = [];
+    private _transparentShaderArray: Shader[] = [];
     private _rgbeSubModelsArray: SubModel[] = [];
     private _instancedQueue: RenderInstancedQueue = new RenderInstancedQueue();
     private _patches: IMacroPatch[] = [];
+    private _useFloatRT = false;
 
     public constructor (pipeline: PipelineRuntime) {
         this._pipeline = pipeline;
     }
     public gatherRenderObjects (probe: ReflectionProbe, camera: Camera, cmdBuff: CommandBuffer): void {
         this.clear();
+        this._useFloatRT = probe.useFloatIntermediateRT();
         const scene = camera.scene!;
         const sceneData = this._pipeline.pipelineSceneData;
         const skybox = sceneData.skybox;
@@ -117,6 +123,9 @@ export class RenderReflectionProbeQueue {
         this._subModelsArray.length = 0;
         this._shaderArray.length = 0;
         this._passArray.length = 0;
+        this._transparentSubModelsArray.length = 0;
+        this._transparentShaderArray.length = 0;
+        this._transparentPassArray.length = 0;
         this._instancedQueue.clear();
         this._rgbeSubModelsArray.length = 0;
     }
@@ -126,9 +135,8 @@ export class RenderReflectionProbeQueue {
         for (let j = 0; j < subModels.length; j++) {
             const subModel = subModels[j];
 
-            //Filter transparent objects
             const isTransparent = subModel.passes[0].blendState.targets[0].blend;
-            if (isTransparent) {
+            if (isTransparent && !this._useFloatRT) {
                 continue;
             }
 
@@ -143,21 +151,24 @@ export class RenderReflectionProbeQueue {
             const pass = subModel.passes[passIdx];
             const batchingScheme = pass.batchingScheme;
 
-            if (!bUseReflectPass) {
+            if (!bUseReflectPass || this._useFloatRT) {
+                const macroName = this._useFloatRT ? CC_USE_FLOAT_PROBE_OUTPUT : CC_USE_RGBE_OUTPUT;
                 this._patches = [];
                 this._patches = this._patches.concat(subModel.patches!);
-                const useRGBEPatchs: IMacroPatch[] = [
-                    { name: CC_USE_RGBE_OUTPUT, value: true },
-                ];
-                this._patches = this._patches.concat(useRGBEPatchs);
+                this._patches.push({ name: macroName, value: true });
                 subModel.onMacroPatchesStateChanged(this._patches);
                 this._rgbeSubModelsArray.push(subModel);
             }
 
-            if (batchingScheme === BatchingSchemes.INSTANCING) {            // instancing
+            if (batchingScheme === BatchingSchemes.INSTANCING) {
                 const buffer = pass.getInstancedBuffer();
                 buffer.merge(subModel, passIdx);
                 this._instancedQueue.queue.add(buffer);
+            } else if (isTransparent) {
+                const shader = subModel.shaders[passIdx];
+                this._transparentSubModelsArray.push(subModel);
+                if (shader) this._transparentShaderArray.push(shader);
+                this._transparentPassArray.push(pass);
             } else {
                 const shader = subModel.shaders[passIdx];
                 this._subModelsArray.push(subModel);
@@ -188,19 +199,35 @@ export class RenderReflectionProbeQueue {
             cmdBuff.bindInputAssembler(ia);
             cmdBuff.draw(ia);
         }
-        this.resetRGBEMacro();
+
+        for (let i = 0; i < this._transparentSubModelsArray.length; ++i) {
+            const subModel = this._transparentSubModelsArray[i];
+            const shader = this._transparentShaderArray[i];
+            const pass = this._transparentPassArray[i];
+            const ia = subModel.inputAssembler;
+            const pso = PipelineStateManager.getOrCreatePipelineState(device, pass, shader, renderPass, ia);
+            const descriptorSet = pass.descriptorSet;
+
+            cmdBuff.bindPipelineState(pso);
+            cmdBuff.bindDescriptorSet(SetIndex.MATERIAL, descriptorSet);
+            cmdBuff.bindDescriptorSet(SetIndex.LOCAL, subModel.descriptorSet);
+            cmdBuff.bindInputAssembler(ia);
+            cmdBuff.draw(ia);
+        }
+
+        this.resetProbeMacro();
         this._instancedQueue.clear();
     }
-    public resetRGBEMacro (): void {
+
+    public resetProbeMacro (): void {
         for (let i = 0; i < this._rgbeSubModelsArray.length; i++) {
             this._patches = [];
             const subModel = this._rgbeSubModelsArray[i];
-            // eslint-disable-next-line prefer-const
             this._patches = this._patches.concat(subModel.patches!);
             if (!this._patches) continue;
             for (let j = 0; j < this._patches.length; j++) {
                 const patch = this._patches[j];
-                if (patch.name === CC_USE_RGBE_OUTPUT) {
+                if (patch.name === CC_USE_RGBE_OUTPUT || patch.name === CC_USE_FLOAT_PROBE_OUTPUT) {
                     this._patches.splice(j, 1);
                     break;
                 }

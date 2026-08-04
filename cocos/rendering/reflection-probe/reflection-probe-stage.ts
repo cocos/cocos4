@@ -23,7 +23,7 @@
 */
 
 import { ccclass } from 'cc.decorator';
-import { Color, Rect, Framebuffer, ClearFlagBit } from '../../gfx';
+import { Color, Rect, Framebuffer, ClearFlagBit, Device, CommandBuffer } from '../../gfx';
 import { IRenderStageInfo, RenderStage } from '../render-stage';
 import { ForwardStagePriority } from '../enum';
 import { ForwardPipeline } from '../forward/forward-pipeline';
@@ -33,6 +33,8 @@ import { Camera, ReflectionProbe } from '../../render-scene/scene';
 import { RenderReflectionProbeQueue } from '../render-reflection-probe-queue';
 import { Vec3 } from '../../core';
 import { packRGBE } from '../../core/math/color';
+import { Material } from '../../asset/assets/material';
+import { PipelineStateManager } from '../pipeline-state-manager';
 
 const colors: Color[] = [new Color(1, 1, 1, 1)];
 
@@ -53,10 +55,12 @@ export class ReflectionProbeStage extends RenderStage {
     };
 
     private _frameBuffer: Framebuffer | null = null;
+    private _outputFrameBuffer: Framebuffer | null = null;
     private _renderArea = new Rect();
     private _probe: ReflectionProbe | null = null;
     private _probeRenderQueue!: RenderReflectionProbeQueue;
     private _rgbeColor = new Vec3();
+    private _convertMaterial: Material | null = null;
 
     constructor () {
         super();
@@ -68,9 +72,10 @@ export class ReflectionProbeStage extends RenderStage {
      * @param probe
      * @param frameBuffer
      */
-    public setUsageInfo (probe: ReflectionProbe, frameBuffer: Framebuffer): void {
+    public setUsageInfo (probe: ReflectionProbe, frameBuffer: Framebuffer, outputFrameBuffer: Framebuffer | null = null): void {
         this._probe = probe;
         this._frameBuffer = frameBuffer;
+        this._outputFrameBuffer = outputFrameBuffer;
     }
 
     public destroy (): void {
@@ -119,14 +124,21 @@ export class ReflectionProbeStage extends RenderStage {
         const renderPass = this._frameBuffer!.renderPass;
 
         if (this._probe!.camera.clearFlag & ClearFlagBit.COLOR) {
-            this._rgbeColor.x = this._probe!.camera.clearColor.x;
-            this._rgbeColor.y = this._probe!.camera.clearColor.y;
-            this._rgbeColor.z = this._probe!.camera.clearColor.z;
-            const rgbe = packRGBE(this._rgbeColor);
-            colors[0].x = rgbe.x;
-            colors[0].y = rgbe.y;
-            colors[0].z = rgbe.z;
-            colors[0].w = rgbe.w;
+            if (this._probe!.useFloatIntermediateRT()) {
+                colors[0].x = this._probe!.camera.clearColor.x;
+                colors[0].y = this._probe!.camera.clearColor.y;
+                colors[0].z = this._probe!.camera.clearColor.z;
+                colors[0].w = this._probe!.camera.clearColor.w;
+            } else {
+                this._rgbeColor.x = this._probe!.camera.clearColor.x;
+                this._rgbeColor.y = this._probe!.camera.clearColor.y;
+                this._rgbeColor.z = this._probe!.camera.clearColor.z;
+                const rgbe = packRGBE(this._rgbeColor);
+                colors[0].x = rgbe.x;
+                colors[0].y = rgbe.y;
+                colors[0].z = rgbe.z;
+                colors[0].w = rgbe.w;
+            }
         }
         const device = pipeline.device;
         cmdBuff.beginRenderPass(
@@ -142,7 +154,79 @@ export class ReflectionProbeStage extends RenderStage {
         this._probeRenderQueue.recordCommandBuffer(device, renderPass, cmdBuff);
         cmdBuff.endRenderPass();
 
+        if (this._outputFrameBuffer) {
+            this._renderConvertPass(device, cmdBuff);
+        }
+
         pipeline.pipelineUBO.updateCameraUBO(camera);
+    }
+
+    private _renderConvertPass (device: Device, cmdBuff: CommandBuffer): void {
+        const mat = this._getConvertMaterial();
+        if (!mat || !mat.passes.length) return;
+
+        const pass = mat.passes[0];
+        const shader = pass.getShaderVariant();
+        if (!pass || !shader) return;
+
+        const fwdPipeline = this._pipeline as ForwardPipeline;
+        const inputAssembler = fwdPipeline.quadIAOffscreen;
+        if (!inputAssembler) return;
+
+        const intermediateColorTex = this._frameBuffer!.colorTextures[0]!;
+        const binding = pass.getBinding('probeColorTex');
+        if (binding < 0) return;
+
+        const w = this._renderArea.width;
+        const h = this._renderArea.height;
+        const minX = this._renderArea.x / w;
+        const maxX = (this._renderArea.x + w) / w;
+        let minY = this._renderArea.y / h;
+        let maxY = (this._renderArea.y + h) / h;
+        if (device.capabilities.screenSpaceSignY > 0) {
+            const temp = maxY;
+            maxY = minY;
+            minY = temp;
+        }
+        const vbData = new Float32Array(16);
+        let n = 0;
+        vbData[n++] = -1.0; vbData[n++] = -1.0; vbData[n++] = minX; vbData[n++] = maxY;
+        vbData[n++] = 1.0; vbData[n++] = -1.0; vbData[n++] = maxX; vbData[n++] = maxY;
+        vbData[n++] = -1.0; vbData[n++] = 1.0; vbData[n++] = minX; vbData[n++] = minY;
+        vbData[n++] = 1.0; vbData[n++] = 1.0; vbData[n++] = maxX; vbData[n++] = minY;
+        inputAssembler.vertexBuffers[0].update(vbData.buffer);
+
+        const outputRenderPass = this._outputFrameBuffer!.renderPass;
+
+        colors[0].x = 0;
+        colors[0].y = 0;
+        colors[0].z = 0;
+        colors[0].w = 0;
+
+        cmdBuff.beginRenderPass(outputRenderPass, this._outputFrameBuffer!, this._renderArea, colors, 1.0, 0);
+        cmdBuff.bindDescriptorSet(SetIndex.GLOBAL, fwdPipeline.descriptorSet);
+
+        const sampler = fwdPipeline.globalDSManager.linearSampler;
+        pass.descriptorSet.bindTexture(binding, intermediateColorTex);
+        pass.descriptorSet.bindSampler(binding, sampler);
+        pass.descriptorSet.update();
+        cmdBuff.bindDescriptorSet(SetIndex.MATERIAL, pass.descriptorSet);
+
+        const pso = PipelineStateManager.getOrCreatePipelineState(device, pass, shader, outputRenderPass, inputAssembler);
+        cmdBuff.bindPipelineState(pso);
+        cmdBuff.bindInputAssembler(inputAssembler);
+        cmdBuff.draw(inputAssembler);
+
+        cmdBuff.endRenderPass();
+    }
+
+    private _getConvertMaterial (): Material {
+        if (!this._convertMaterial) {
+            this._convertMaterial = new Material();
+            this._convertMaterial._uuid = 'reflection-probe-rgbe-convert-material';
+            this._convertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert' });
+        }
+        return this._convertMaterial;
     }
 
     public activate (pipeline: ForwardPipeline, flow: ReflectionProbeFlow): void {

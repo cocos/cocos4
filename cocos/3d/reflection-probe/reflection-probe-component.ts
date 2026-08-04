@@ -98,6 +98,9 @@ export class ReflectionProbe extends Component {
     @serializable
     private _fastBake = false;
 
+    @serializable
+    private _supportTransparency = false;
+
     protected _probe: scene.ReflectionProbe | null = null;
 
     protected _previewSphere: Node | null = null;
@@ -264,6 +267,26 @@ export class ReflectionProbe extends Component {
 
     set fastBake (val) {
         this._fastBake = val;
+    }
+
+    /**
+     * @en Whether to support transparent objects in reflection probe rendering.
+     * When enabled, uses RGBA16F intermediate RT for correct alpha blending.
+     * @zh 是否支持半透明物体参与反射探针渲染。
+     * 开启后使用 RGBA16F 中间 RT 以支持正确的 alpha 混合。
+     */
+    @visible(function (this: ReflectionProbe) { return this.probeType === ProbeType.CUBE; })
+    @type(CCBoolean)
+    @tooltip('i18n:reflection_probe.supportTransparency')
+    get supportTransparency (): boolean {
+        return this._supportTransparency;
+    }
+
+    set supportTransparency (val) {
+        this._supportTransparency = val;
+        if (this._probe) {
+            this._probe.supportTransparency = val;
+        }
     }
 
     set cubemap (val: TextureCube | null) {
@@ -441,6 +464,7 @@ export class ReflectionProbe extends Component {
             this._probe.probeType = this._probeType;
             this._probe.size = this._size;
             this._probe.cubemap = this._cubemap!;
+            this._probe.supportTransparency = this._supportTransparency;
         }
     }
 }

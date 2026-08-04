@@ -477,6 +477,10 @@ export class SceneCulling {
             // Get or create render queue
             const renderQueueID = this.getOrCreateRenderQueue(renderQueueKey, sceneData.flags, sceneData.camera);
 
+            if (sceneData.light.probe && sceneData.light.probe.useFloatIntermediateRT()) {
+                this.renderQueues[renderQueueID].probeQueue.useFloatOutput = true;
+            }
+
             // add render queue query
             const renderQueueQuery = this.cullingPools.renderQueueQueryRecycle.add();
             renderQueueQuery.update(frustumCulledResultID, lightBoundsCullingID, renderQueueID);

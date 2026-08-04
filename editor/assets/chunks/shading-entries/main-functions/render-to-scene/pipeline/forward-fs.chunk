@@ -141,7 +141,9 @@ void main()  {
   #endif
 
   // Color output
-  #if CC_USE_RGBE_OUTPUT
+  #if CC_USE_FLOAT_PROBE_OUTPUT
+    // Float probe RT: output linear HDR with alpha for transparency blending
+  #elif CC_USE_RGBE_OUTPUT
     color = packRGBE(color.rgb); // for reflection-map
   #else
     color = CCSurfacesDebugDisplayInvalidNumber(color);

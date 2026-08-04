@@ -145,6 +145,14 @@ export class ForwardPipeline extends RenderPipeline {
 
         descriptorSet.update();
 
+        const inputAssemblerData = this._createQuadInputAssembler();
+        if (!inputAssemblerData.quadIB || !inputAssemblerData.quadVB || !inputAssemblerData.quadIA) {
+            return false;
+        }
+        this._quadVBOffscreen = inputAssemblerData.quadVB;
+        this._quadIB = inputAssemblerData.quadIB;
+        this._quadIAOffscreen = inputAssemblerData.quadIA;
+
         return true;
     }
 

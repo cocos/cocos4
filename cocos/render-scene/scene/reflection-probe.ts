@@ -26,7 +26,14 @@ import { Camera, CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, Cam
 import { Node } from '../../scene-graph/node';
 import { Color, Quat, Rect, toRadian, Vec2, Vec3, geometry, cclegacy, Vec4, Size, v3, quat } from '../../core';
 import { CAMERA_DEFAULT_MASK } from '../../rendering/define';
-import { ClearFlagBit, Framebuffer } from '../../gfx';
+import {
+    ClearFlagBit, Framebuffer,
+    ColorAttachment, DepthStencilAttachment,
+    Format, LoadOp, StoreOp,
+    RenderPassInfo, RenderPass,
+    Texture, TextureInfo, TextureType, TextureUsageBit,
+    FramebufferInfo,
+} from '../../gfx';
 import { TextureCube } from '../../asset/assets/texture-cube';
 import { RenderTexture } from '../../asset/assets/render-texture';
 
@@ -122,6 +129,13 @@ export class ReflectionProbe {
     protected _previewSphere: Node | null = null;
 
     protected _previewPlane: Node | null = null;
+
+    private _supportTransparency = false;
+    private _intermediateRenderPass: RenderPass | null = null;
+    private _intermediateDepthStencil: Texture | null = null;
+
+    public intermediateTextures: Texture[] = [];
+    public intermediateFramebuffers: Framebuffer[] = [];
 
     /**
      * @en Set probe type,cube or planar.
@@ -275,6 +289,24 @@ export class ReflectionProbe {
         return this._previewPlane!;
     }
 
+    set supportTransparency (value: boolean) {
+        this._supportTransparency = value;
+    }
+    get supportTransparency (): boolean {
+        return this._supportTransparency;
+    }
+
+    /**
+     * @en Whether to use RGBA16F intermediate render target for transparency support.
+     * Callers should also check device capability (supportsRGBA16HalfFloatTexture) before using the float path.
+     * @zh 是否使用 RGBA16F 中间渲染目标以支持半透明渲染。
+     * 当前等价于 supportTransparency，未来可能加入设备能力等额外判断条件。
+     * 调用方在实际使用浮点路径前，还需自行检查设备是否支持 RGBA16F。
+     */
+    public useFloatIntermediateRT (): boolean {
+        return this._supportTransparency;
+    }
+
     constructor (id: number) {
         this._probeId = id;
     }
@@ -295,6 +327,9 @@ export class ReflectionProbe {
                 this.bakedCubeTextures.push(renderTexture);
             }
         }
+        if (this._supportTransparency && this.intermediateTextures.length === 0) {
+            this.initIntermediateTextures(this._resolution, this._resolution, 6);
+        }
     }
 
     public captureCubemap (): void {
@@ -314,6 +349,9 @@ export class ReflectionProbe {
             const canvasSize = cclegacy.view.getDesignResolutionSize() as Size;
             this.realtimePlanarTexture = this._createTargetTexture(canvasSize.width, canvasSize.height);
             cclegacy.internal.reflectionProbeManager.updatePlanarMap(this, this.realtimePlanarTexture.getGFXTexture());
+            if (this._supportTransparency) {
+                this.initIntermediateTextures(canvasSize.width, canvasSize.height, 1);
+            }
         }
         this._syncCameraParams(sourceCamera);
         this._transformReflectionCamera(sourceCamera);
@@ -366,6 +404,8 @@ export class ReflectionProbe {
             this.realtimePlanarTexture.destroy();
             this.realtimePlanarTexture = null;
         }
+
+        this._destroyIntermediateTextures();
     }
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     public enable (): void {
@@ -470,6 +510,80 @@ export class ReflectionProbe {
         this.cameraNode.worldPosition = this.node.worldPosition;
         this.cameraNode.worldRotation = this.node.worldRotation;
         this.camera.update(true);
+    }
+
+    /**
+     * @en Create RGBA16F intermediate textures and framebuffers using GFX API directly.
+     * @zh 直接使用 GFX API 创建 RGBA16F 中间纹理和 Framebuffer。
+     */
+    public initIntermediateTextures (width: number, height: number, count: number): void {
+        this._destroyIntermediateTextures();
+
+        const root = cclegacy.director.root;
+        const device = root.device;
+
+        const colorAttachment = new ColorAttachment();
+        colorAttachment.format = Format.RGBA16F;
+        colorAttachment.loadOp = LoadOp.CLEAR;
+        colorAttachment.storeOp = StoreOp.STORE;
+
+        const depthStencilAttachment = new DepthStencilAttachment();
+        depthStencilAttachment.format = Format.DEPTH_STENCIL;
+        depthStencilAttachment.depthLoadOp = LoadOp.CLEAR;
+        depthStencilAttachment.depthStoreOp = StoreOp.STORE;
+        depthStencilAttachment.stencilLoadOp = LoadOp.CLEAR;
+        depthStencilAttachment.stencilStoreOp = StoreOp.STORE;
+
+        const renderPassInfo = new RenderPassInfo([colorAttachment], depthStencilAttachment);
+        this._intermediateRenderPass = device.createRenderPass(renderPassInfo) as RenderPass;
+
+        this._intermediateDepthStencil = device.createTexture(new TextureInfo(
+            TextureType.TEX2D,
+            TextureUsageBit.DEPTH_STENCIL_ATTACHMENT,
+            Format.DEPTH_STENCIL,
+            width,
+            height,
+        )) as Texture;
+
+        for (let i = 0; i < count; i++) {
+            const colorTex: Texture = device.createTexture(new TextureInfo(
+                TextureType.TEX2D,
+                TextureUsageBit.COLOR_ATTACHMENT | TextureUsageBit.SAMPLED,
+                Format.RGBA16F,
+                width,
+                height,
+            )) as Texture;
+            this.intermediateTextures.push(colorTex);
+
+            const fb: Framebuffer = device.createFramebuffer(new FramebufferInfo(
+                this._intermediateRenderPass,
+                [colorTex],
+                this._intermediateDepthStencil,
+            ));
+            this.intermediateFramebuffers.push(fb);
+        }
+    }
+
+    private _destroyIntermediateTextures (): void {
+        for (let i = 0; i < this.intermediateFramebuffers.length; i++) {
+            this.intermediateFramebuffers[i].destroy();
+        }
+        this.intermediateFramebuffers.length = 0;
+
+        for (let i = 0; i < this.intermediateTextures.length; i++) {
+            this.intermediateTextures[i].destroy();
+        }
+        this.intermediateTextures.length = 0;
+
+        if (this._intermediateDepthStencil) {
+            this._intermediateDepthStencil.destroy();
+            this._intermediateDepthStencil = null;
+        }
+
+        if (this._intermediateRenderPass) {
+            this._intermediateRenderPass.destroy();
+            this._intermediateRenderPass = null;
+        }
     }
 
     private _createTargetTexture (width: number, height: number): RenderTexture {
