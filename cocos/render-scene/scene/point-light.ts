@@ -91,6 +91,9 @@ export class PointLight extends Light {
      * @en The luminance of the light source in LDR mode.
      * @zh LDR 模式下光源的亮度。
      */
+    get luminanceLDR (): number {
+        return this._luminanceLDR;
+    }
     set luminanceLDR (value: number) {
         this._luminanceLDR = value;
     }
