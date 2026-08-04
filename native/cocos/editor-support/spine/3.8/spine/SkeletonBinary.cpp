@@ -100,8 +100,10 @@ SkeletonBinary::SkeletonBinary(Atlas *atlasArray) : _attachmentLoader(
                                                     _ownsLoader(true) {
 }
 
-SkeletonBinary::SkeletonBinary(AttachmentLoader *attachmentLoader) : _attachmentLoader(attachmentLoader), _error(), _scale(1), _ownsLoader(false) {
-    assert(_attachmentLoader != NULL);
+SkeletonBinary::SkeletonBinary(AttachmentLoader* attachmentLoader, bool ownsLoader) : _attachmentLoader(attachmentLoader), _error(),
+_scale(1), _ownsLoader(ownsLoader)
+{
+	assert(_attachmentLoader != NULL);
 }
 
 SkeletonBinary::~SkeletonBinary() {
@@ -273,12 +275,18 @@ SkeletonData *SkeletonBinary::readSkeletonData(const unsigned char *binary, cons
         skeletonData->_pathConstraints[i] = data;
     }
 
-    /* Default skin. */
-    Skin *defaultSkin = readSkin(input, true, skeletonData, nonessential);
-    if (defaultSkin) {
-        skeletonData->_defaultSkin = defaultSkin;
-        skeletonData->_skins.add(defaultSkin);
-    }
+	/* Default skin. */
+	Skin* defaultSkin = readSkin(input, true, skeletonData, nonessential);
+	if (defaultSkin) {
+		skeletonData->_defaultSkin = defaultSkin;
+		skeletonData->_skins.add(defaultSkin);
+	}
+
+	if (!getError().isEmpty()) {
+		delete input;
+		delete skeletonData;
+		return NULL;
+	}
 
     /* Skins. */
     for (size_t i = 0, n = (size_t)readVarint(input, true); i < n; ++i) {
@@ -511,6 +519,7 @@ Attachment *SkeletonBinary::readAttachment(DataInput *input, Skin *skin, int slo
 
             RegionAttachment *region = _attachmentLoader->newRegionAttachment(*skin, String(name), String(path));
             if (region == NULL) {
+				setError("Error reading attachment: ", name.buffer());
                 return NULL;
             }
             region->_path = path;

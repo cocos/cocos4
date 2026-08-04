@@ -217,11 +217,7 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize
     }
     {
         AttachmentLoader* attachmentLoader = new AtlasAttachmentLoaderExtension(atlas);
-        #ifdef CC_SPINE_VERSION_3_8
-        SkeletonBinary binary(attachmentLoader);
-        #else
         SkeletonBinary binary(attachmentLoader, true);
-        #endif
         binary.setScale(1.0F);
         skeletonData = binary.readSkeletonData(s_mem, byteSize);
         auto& errorMsg = binary.getError();
