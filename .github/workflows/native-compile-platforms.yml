@@ -463,7 +463,7 @@ jobs:
         shell: bash
         run: |
           EXT_VERSION=`node ./.github/workflows/get-native-external-version.js`
-          git clone --branch $EXT_VERSION --depth 1 https://github.com/cocos/cocos-engine-external native/external
+          git clone --branch libwebp --depth 1 https://github.com/oahcy/cocos-engine-external native/external
 
       - name: Compile
         env:
@@ -514,7 +514,7 @@ jobs:
         shell: bash
         run: |
           EXT_VERSION=`node ./.github/workflows/get-native-external-version.js`
-          git clone --branch $EXT_VERSION --depth 1 https://github.com/cocos/cocos-engine-external native/external
+          git clone --branch libwebp --depth 1 https://github.com/oahcy/cocos-engine-external native/external
       - name: Compile
         env:
           COCOS_ENGINE_DEV: 1
