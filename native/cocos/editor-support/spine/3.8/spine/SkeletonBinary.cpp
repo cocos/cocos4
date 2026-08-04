@@ -278,10 +278,6 @@ SkeletonData *SkeletonBinary::readSkeletonData(const unsigned char *binary, cons
     if (defaultSkin) {
         skeletonData->_defaultSkin = defaultSkin;
         skeletonData->_skins.add(defaultSkin);
-    } else {
-        delete input;
-        delete skeletonData;
-        return NULL;
     }
     
     if (!getError().isEmpty()) {
