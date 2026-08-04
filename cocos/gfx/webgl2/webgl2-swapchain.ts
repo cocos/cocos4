@@ -185,7 +185,7 @@ export class WebGL2Swapchain extends Swapchain {
         self._canvas = info.windowHandle;
 
         self._webGL2ContextLostHandler = self._onWebGLContextLost.bind(self);
-        self._canvas.addEventListener(eventWebGLContextLost, self._onWebGLContextLost);
+        self._canvas.addEventListener(eventWebGLContextLost, self._webGL2ContextLostHandler);
 
         const { instance } = WebGL2DeviceManager;
         const { gl, capabilities } = instance;

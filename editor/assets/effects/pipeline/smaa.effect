@@ -70,7 +70,9 @@ CCProgram smaa-edge-fs %{
   vec3 ToLDR(vec3 color) {
   #if CC_USE_HDR
     color *= cc_exposure.x * FP_SCALE_INV;
-    color = ACESToneMap(color);
+    #if CC_TONE_MAPPING_TYPE == TONE_MAPPING_ACES
+      color = ACESToneMap(color);
+    #endif
     color = LinearToSRGB(color);
   #endif
     return color;
