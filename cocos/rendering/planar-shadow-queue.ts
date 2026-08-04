@@ -29,7 +29,6 @@ import { PipelineStateManager } from './pipeline-state-manager';
 import { Model, Camera, SubModel } from '../render-scene/scene';
 import { RenderInstancedQueue } from './render-instanced-queue';
 import { ShadowType } from '../render-scene/scene/shadows';
-import { Layers } from '../scene-graph/layers';
 import { PipelineRuntime } from './custom/pipeline';
 import { BatchingSchemes, Pass } from '../render-scene/core/pass';
 import { getPhaseID } from './pass-phase';
@@ -83,18 +82,16 @@ export class PlanarShadowQueue {
 
         const scene = camera.scene!;
         const frustum = camera.frustum;
-        const shadowVisible =  (camera.visibility & Layers.BitMask.DEFAULT) !== 0;
+        const shadowVisible = camera.visibility !== 0;
         if (!scene.mainLight || !shadowVisible) { return; }
 
         const models = scene.models;
-        const visibility = camera.visibility;
         for (let i = 0; i < models.length; i++) {
             const model = models[i];
             if (scene.isCulledByLod(camera, model)) {
                 continue;
             }
-            if (model.enabled && model.node && model.castShadow
-                && (model.node && ((visibility & model.node.layer) === model.node.layer))) {
+            if (model.enabled && model.node && model.castShadow) {
                 this._castModels.push(model);
             }
         }

@@ -377,7 +377,10 @@ export default class TrailModule {
         if (this.lifeTime.getMax() < 1.0) {
             warnID(6036);
         }
-        this._trailNum = Math.ceil(psTime * Math.ceil(this.lifeTime.getMax()) * 60 * (psRate * duration + burstCount));
+        let pCount: number = psRate * duration; // potential particle count
+        pCount = ps.prewarm ? pCount * 2 : pCount; // if prewarm we need double space
+        pCount = pCount > ps.capacity ? ps.capacity : pCount; // max particle count is less/equal than capacity
+        this._trailNum = Math.ceil(psTime * Math.ceil(this.lifeTime.getMax()) * 60 * (pCount + burstCount));
         this._trailSegments = new Pool(
             (): TrailSegment => new TrailSegment(10),
             Math.ceil(psRate * duration),

@@ -195,8 +195,8 @@ export function sceneCulling (sceneData: PipelineSceneData, pipelineUBO: Pipelin
                 csmLayerObjects.push(getRenderObject(model, camera));
             }
 
-            if (model.node && ((visibility & model.node.layer) === model.node.layer)
-                 || (visibility & model.visFlags)) {
+            if ((model.node && ((visibility & model.node.layer) === model.node.layer))
+                || (visibility & model.visFlags)) {
                 // frustum culling
                 if (model.worldBounds && !geometry.intersect.aabbFrustum(model.worldBounds, camera.frustum)) {
                     return;

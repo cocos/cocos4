@@ -79,8 +79,12 @@ vec4 saturate(vec4 value) { return clamp(value, vec4(0.0), vec4(1.0)); }
 #define IS_RANGED_DIRECTIONAL_LIGHT(light_type) equalf_lowp(light_type, LIGHT_TYPE_RANGED_DIRECTIONAL)
 
 // CC_TONE_MAPPING_TYPE Values
-#define TONE_MAPPING_ACES 0
-#define TONE_MAPPING_LINEAR 1
+#ifndef TONE_MAPPING_ACES
+  #define TONE_MAPPING_ACES 0
+#endif
+#ifndef TONE_MAPPING_LINEAR
+  #define TONE_MAPPING_LINEAR 1
+#endif
 
 // Material
 #define SURFACES_MAX_TRANSMIT_DEPTH_VALUE 999999.0
