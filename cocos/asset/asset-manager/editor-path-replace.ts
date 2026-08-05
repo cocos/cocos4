@@ -89,7 +89,8 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
         try {
             let text = '';
             if (EDITOR) {
-                const info: { library: { ['.bin']: any } } = await Editor.Message.request('asset-db', 'query-asset-info', uuid);
+                // eslint-disable-next-line max-len
+                const info: { library: { ['.bin']: any } } = await fetch(`/cocos-api/assets/queryAssetInfo/?uuid=${uuid}`).then((response) => response.json());
                 // Current rule: If an asset has only one .bin file, then it is in CCON format.
                 if (info && info.library['.bin'] && Object.keys(info.library).length === 1) {
                     text = '.cconb';
@@ -99,7 +100,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                 let useAssetDB = true;
                 if (importBase && (importBase.startsWith('http://') || importBase.startsWith('https://'))) {
                     // cli：场景使用的是网络路径
-                    const requestUrl = `${importBase}/query-extname/${uuid}`;
+                    const requestUrl = `${importBase}/cocos-api/engine/queryExtname/${uuid}`;
                     try {
                         text = await fetchText(requestUrl) as string;
                         useAssetDB = false;
@@ -122,7 +123,7 @@ if ((EDITOR || PREVIEW || NODEJS) && !TEST) {
                     previewServer = settings.querySettings<string>(SettingsCategory.PATH, 'previewServer') || '';
                     assert(Boolean(previewServer));
                 }
-                text = await fetchText(`${previewServer}/query-extname/${uuid}`) as string;
+                text = await fetchText(`${previewServer}/cocos-api/engine/queryExtname/${uuid}`) as string;
             }
             cache[uuid] = text;
             if (resolveMap[uuid]) {

@@ -34,11 +34,13 @@ export function fetchBuffer (binaryUrl: string): Promise<ArrayBuffer> {
         try {
             // NOTE: when it's in EDITOR, binaryUrl is a url with `external:` protocol.
             if (EDITOR) {
-                Editor.Message.request('engine', 'query-engine-info').then((info) => {
+                fetch('/cocos-file/engine/engineExternal').then((response) => response.json().then((info: any) => {
                     const externalRoot = `${info.native.path}/external/`;
                     binaryUrl = binaryUrl.replace('external:', externalRoot);
                     const arrayBuffer = native.fileUtils.getDataFromFile(binaryUrl);
                     resolve(arrayBuffer);
+                })).catch((e) => {
+                    reject(e);
                 });
                 return;
             }
@@ -56,10 +58,12 @@ export function fetchUrl (binaryUrl: string): Promise<string> {
         try {
             // NOTE: when it's in EDITOR, binaryUrl is a url with `external:` protocol.
             if (EDITOR) {
-                Editor.Message.request('engine', 'query-engine-info').then((info) => {
+                fetch('/cocos-file/engine/engineExternal').then((response) => response.json().then((info: any) => {
                     const externalRoot = `${info.native.path}/external/`;
                     binaryUrl = binaryUrl.replace('external:', externalRoot);
                     resolve(binaryUrl);
+                })).catch((e) => {
+                    reject(e);
                 });
                 return;
             }
