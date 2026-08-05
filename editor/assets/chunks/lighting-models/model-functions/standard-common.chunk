@@ -99,7 +99,10 @@ vec3 SampleEnvironmentSpecular(samplerCube tex, in LightingIntermediateData ligh
     vec4 fixedR = CalculateBoxProjectedDirection(R, worldPos, cubeCenterPos, boxHalfSize);
     R = fixedR.xyz;
 
-    vec3 envmap = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).xyz * cc_ambientSky.w;
+    vec3 envmap = vec3(0.0);
+    #if CC_USE_IBL
+      envmap = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).xyz * cc_ambientSky.w;
+    #endif
     #if CC_SURFACES_LIGHTING_ANISOTROPIC && CC_SURFACES_LIGHTING_ANISOTROPIC_ENVCONVOLUTION_COUNT
       envSpec = EnvAnisotropicReflection(tex, fixedR.xyz, roughness, mipCount, lightingData.anisotropyShape, lightingData.V, lightingData.N, lightingData.T, lightingData.B);
       #if CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_CUBE
@@ -159,7 +162,9 @@ vec3 CalculateEnvironmentSpecular(in LightingIntermediateData lightingData, floa
 
   #if CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_CUBE
     if(FSInput_reflectionProbeId < 0.0){
+      #if CC_USE_IBL
         envSpec = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w);
+      #endif
     }else{
       vec3 centerPos, boxHalfSize;
       float mipCount;
@@ -181,7 +186,9 @@ vec3 CalculateEnvironmentSpecular(in LightingIntermediateData lightingData, floa
     }
   #elif CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_BLEND || CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_BLEND_AND_SKYBOX
     if(FSInput_reflectionProbeId < 0.0){
+      #if CC_USE_IBL
         envSpec = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w);
+      #endif
     }else{
       vec3 centerPos, boxHalfSize;
       float mipCount;
@@ -197,7 +204,10 @@ vec3 CalculateEnvironmentSpecular(in LightingIntermediateData lightingData, floa
 
       if(FSInput_reflectionProbeBlendId < 0.0)
       {
-        vec3 skyBoxEnv = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).rgb * lightIntensity;
+        vec3 skyBoxEnv = vec3(0.0);
+        #if CC_USE_IBL
+          vec3 skyBoxEnv = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).rgb * lightIntensity;
+        #endif
         #if CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_BLEND_AND_SKYBOX
           //blend with skybox
           envSpec = mix(envSpec, skyBoxEnv, blendFactor);
