@@ -163,19 +163,19 @@ export class ReflectionProbeStage extends RenderStage {
 
     private _renderConvertPass (device: Device, cmdBuff: CommandBuffer): void {
         const mat = this._getConvertMaterial();
-        if (!mat || !mat.passes.length) return;
+        if (!mat || !mat.passes.length) { return; }
 
         const pass = mat.passes[0];
         const shader = pass.getShaderVariant();
-        if (!pass || !shader) return;
+        if (!shader) { return; }
 
         const fwdPipeline = this._pipeline as ForwardPipeline;
         const inputAssembler = fwdPipeline.quadIAOffscreen;
-        if (!inputAssembler) return;
+        if (!inputAssembler) { return; }
 
         const intermediateColorTex = this._frameBuffer!.colorTextures[0]!;
-        const binding = pass.getBinding('outputResultMap');
-        if (binding < 0) return;
+        const binding = pass.getBinding('probeInputTex');
+        if (binding < 0) { return; }
 
         const w = this._renderArea.width;
         const h = this._renderArea.height;
