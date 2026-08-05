@@ -206,7 +206,7 @@ vec3 CalculateEnvironmentSpecular(in LightingIntermediateData lightingData, floa
       {
         vec3 skyBoxEnv = vec3(0.0);
         #if CC_USE_IBL
-          vec3 skyBoxEnv = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).rgb * lightIntensity;
+          skyBoxEnv = SampleEnvironmentSpecular(cc_environment, lightingData, cc_ambientGround.w).rgb * lightIntensity;
         #endif
         #if CC_USE_REFLECTION_PROBE == REFLECTION_PROBE_TYPE_BLEND_AND_SKYBOX
           //blend with skybox
