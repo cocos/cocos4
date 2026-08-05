@@ -250,6 +250,7 @@ class SystemInfo extends EventTarget {
             [Feature.EVENT_HMD]: supportXR,
             [Feature.EVENT_HANDHELD]: supportXR,
             [Feature.WASM]: supportWasm,
+            [Feature.IMAGE_DECODER]: typeof (globalThis as { ImageDecoder?: unknown }).ImageDecoder !== 'undefined',
         };
 
         this._initPromise.push(this._supportsImageBitmapPromise());

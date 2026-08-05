@@ -271,6 +271,7 @@ class SystemInfo extends EventTarget {
             [Feature.EVENT_HMD]: this.isXR,
             [Feature.EVENT_HANDHELD]: false,
             [Feature.WASM]: supportWasm,
+            [Feature.IMAGE_DECODER]: false,
         };
 
         this._initPromise.push(this._supportsWebpPromise());

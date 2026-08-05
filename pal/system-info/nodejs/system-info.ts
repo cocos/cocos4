@@ -106,6 +106,7 @@ class SystemInfo extends EventTarget {
             [Feature.EVENT_HMD]: false,
             [Feature.EVENT_HANDHELD]: false,
             [Feature.WASM]: true,
+            [Feature.IMAGE_DECODER]: false,
         };
 
     }
