@@ -1033,6 +1033,7 @@ bool SkeletonRenderer::setAttachment(const std::string &slotName, const char *at
 
 void SkeletonRenderer::setUseTint(bool enabled) {
     _useTint = enabled;
+    _needClearMaterialCaches = true;
 }
 
 #if CC_USE_SPINE_3_8

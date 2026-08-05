@@ -4,7 +4,7 @@ set(RES_DIR             ""  CACHE STRING "Resource path")
 set(COCOS_X_PATH        ""  CACHE STRING "Path to engine/native/")
 
 set(TARGET_OSX_VERSION "10.14" CACHE STRING "Target MacOSX version" FORCE)
-set(TARGET_IOS_VERSION "11.0"  CACHE STRING "Target iOS version" FORCE)
+set(TARGET_IOS_VERSION "13.0"  CACHE STRING "Target iOS version" FORCE)
 
 set(CMAKE_CXX_STANDARD 17)
 option(CC_DEBUG_FORCE           "Force enable CC_DEBUG in release mode" OFF)

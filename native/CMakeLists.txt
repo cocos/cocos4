@@ -3725,9 +3725,14 @@ if(APPLE)
         "$(inherited)"
         ${CC_EXTERNAL_LIBS}
     )
+    if(CMAKE_OSX_ARCHITECTURES)
+        set(_CC_ENGINE_ARCHS "${CMAKE_OSX_ARCHITECTURES}")
+    else()
+        set(_CC_ENGINE_ARCHS "arm64;x86_64")
+    endif()
     set_target_properties(${ENGINE_NAME} PROPERTIES
         XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH "YES"
-        OSX_ARCHITECTURES "arm64;x86_64"
+        OSX_ARCHITECTURES "${_CC_ENGINE_ARCHS}"
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/archives
     )
     if(MACOSX)
@@ -3739,9 +3744,9 @@ if(APPLE)
         )
     elseif(IOS)
 
-        if("${XCODE_VERSION}" VERSION_GREATER_EQUAL "15.0")
-            # For Xcode 15 and newer, add extra link flags to fix crash in __cxx_global_var_init.
-            message(STATUS "Using Xcode 15 or newer, adding extra link flags: -Wl,-ld_classic.")
+        if("${XCODE_VERSION}" VERSION_GREATER_EQUAL "15.0" AND "${XCODE_VERSION}" VERSION_LESS "15.1")
+            # Xcode 15.0 new linker crashes on weak symbols (114813650), fixed in 15.1.
+            message(STATUS "Xcode ${XCODE_VERSION}: adding -Wl,-ld_classic to work around weak symbol crash.")
             target_link_options(${ENGINE_NAME} PUBLIC -Wl,-ld_classic)
         endif()
 

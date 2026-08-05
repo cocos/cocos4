@@ -398,10 +398,21 @@ export class UIRenderer extends Renderer {
         this.node.off(NodeEventType.ANCHOR_CHANGED, this._nodeStateChange, this);
         this.node.off(NodeEventType.SIZE_CHANGED, this._nodeStateChange, this);
         this.node.off(NodeEventType.PARENT_CHANGED, this._colorDirty, this);
-        this.destroyRenderData();
+        if (!this._keepRenderData) {
+            this.destroyRenderData();
+        }
         uiRendererManager.removeRenderer(this);
         this._renderFlag = false;
         this._renderEntity.enabled = false;
+    }
+
+    /**
+     * Whether to keep render data when the component leaves the active hierarchy.
+     * Retained-mode renderers may override this policy and keep their render data until
+     * the content is explicitly cleared or the component is destroyed.
+     */
+    protected get _keepRenderData (): boolean {
+        return false;
     }
 
     public onDestroy (): void {
