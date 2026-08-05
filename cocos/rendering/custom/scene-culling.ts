@@ -477,8 +477,17 @@ export class SceneCulling {
             // Get or create render queue
             const renderQueueID = this.getOrCreateRenderQueue(renderQueueKey, sceneData.flags, sceneData.camera);
 
-            if (sceneData.light.probe && sceneData.light.probe.useFloatIntermediateRT()) {
-                this.renderQueues[renderQueueID].probeQueue.useFloatOutput = true;
+            if (sceneData.flags & SceneFlags.REFLECTION_PROBE) {
+                const probeManager = cclegacy.internal.reflectionProbeManager;
+                if (probeManager) {
+                    const probes = probeManager.getProbes() as ReflectionProbe[];
+                    for (let i = 0; i < probes.length; i++) {
+                        if (probes[i].camera === sceneData.camera && probes[i].useFloatIntermediateRT()) {
+                            this.renderQueues[renderQueueID].probeQueue.useFloatOutput = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             // add render queue query

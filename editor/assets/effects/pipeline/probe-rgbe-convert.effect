@@ -4,8 +4,16 @@ CCEffect %{
 techniques:
   - passes:
       - vert: probe-rgbe-convert-vs
-        frag: probe-rgbe-convert-fs
-        pass: probe-rgbe-convert
+        frag: probe-rgbe-convert-fs-custom
+        pass: copy-pass
+        depthStencilState:
+          depthTest: false
+          depthWrite: false
+        rasterizerState:
+          cullMode: none
+  - passes:
+      - vert: probe-rgbe-convert-vs
+        frag: probe-rgbe-convert-fs-legacy
         depthStencilState:
           depthTest: false
           depthWrite: false
@@ -29,17 +37,33 @@ void main() {
 }
 }%
 
-CCProgram probe-rgbe-convert-fs %{
+CCProgram probe-rgbe-convert-fs-custom %{
 precision highp float;
 in vec2 v_uv;
 #include <common/data/unpack>
 
-uniform sampler2D probeColorTex;
+#pragma rate outputResultMap pass
+uniform sampler2D outputResultMap;
 
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-  vec4 color = texture(probeColorTex, v_uv);
+  vec4 color = texture(outputResultMap, v_uv);
+  fragColor = packRGBE(color.rgb);
+}
+}%
+
+CCProgram probe-rgbe-convert-fs-legacy %{
+precision highp float;
+in vec2 v_uv;
+#include <common/data/unpack>
+
+uniform sampler2D outputResultMap;
+
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+  vec4 color = texture(outputResultMap, v_uv);
   fragColor = packRGBE(color.rgb);
 }
 }%

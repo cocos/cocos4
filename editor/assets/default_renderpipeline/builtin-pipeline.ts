@@ -714,16 +714,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         }
     }
 
-    private _getProbeConvertMaterial (): Material {
-        if (!this._probeRGBEConvertMaterial) {
-            this._probeRGBEConvertMaterial = new Material();
-            this._probeRGBEConvertMaterial._uuid = `builtin-pipeline-probe-rgbe-convert-material`;
-            this._probeRGBEConvertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert' });
-        }
-        return this._probeRGBEConvertMaterial;
-    }
-
-    private _buildProbeConvertPass (
+    private _buildProbeConvertPass(
         ppl: rendering.BasicPipeline,
         width: number,
         height: number,
@@ -731,12 +722,13 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         outputColorName: string,
         passName: string,
     ): void {
-        const convertPass = ppl.addRenderPass(width, height, 'probe-rgbe-convert');
+        if (!this._probeRGBEConvertMaterial) { return; }
+        const convertPass = ppl.addRenderPass(width, height, 'copy-pass');
         convertPass.name = passName;
         convertPass.addRenderTarget(outputColorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
-        convertPass.addTexture(floatColorName, 'probeColorTex');
+        convertPass.addTexture(floatColorName, 'outputResultMap');
         convertPass.addQueue(rendering.QueueHint.OPAQUE)
-            .addFullscreenQuad(this._getProbeConvertMaterial(), 0);
+            .addFullscreenQuad(this._probeRGBEConvertMaterial, 0);
     }
     private _buildReflectionProbePass(
         pass: rendering.BasicRenderPassBuilder,
@@ -1046,6 +1038,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
     private readonly _clearColor = new Color(0, 0, 0, 1);
     private readonly _reflectionProbeClearColor = new Vec3(0, 0, 0);
     private _probeRGBEConvertMaterial: Material | null = null;
+    public set probeConvertMaterial(mat: Material) { this._probeRGBEConvertMaterial = mat; }
 }
 
 export interface BloomPassConfigs {
@@ -1791,6 +1784,7 @@ if (rendering) {
         private readonly _cameraConfigs = new CameraConfigs();
         // Materials
         private readonly _copyAndTonemapMaterial = new Material();
+        private readonly _probeRGBEConvertMaterial = new Material();
 
         // Internal States
         private _initialized = false; // TODO(zhouzhenglong): Make default effect asset loading earlier and remove this flag
@@ -2098,7 +2092,11 @@ if (rendering) {
             this._copyAndTonemapMaterial._uuid = `builtin-pipeline-tone-mapping-material`;
             this._copyAndTonemapMaterial.initialize({ effectName: 'pipeline/post-process/tone-mapping' });
 
+            this._probeRGBEConvertMaterial._uuid = `builtin-pipeline-probe-rgbe-convert-material`;
+            this._probeRGBEConvertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert' });
+
             if (this._copyAndTonemapMaterial.effectAsset) {
+                this._forwardPass.probeConvertMaterial = this._probeRGBEConvertMaterial;
                 this._initialized = true;
             }
 

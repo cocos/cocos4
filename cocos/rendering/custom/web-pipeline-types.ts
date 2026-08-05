@@ -274,7 +274,7 @@ export class ProbeHelperQueue {
                 bUseReflectPass = false;
             }
             if (passIdx < 0) { continue; }
-            if (!bUseReflectPass) {
+            if (!bUseReflectPass || this.useFloatOutput) {
                 this.probeMap.push(subModel);
             }
         }

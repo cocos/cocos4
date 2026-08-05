@@ -174,7 +174,7 @@ export class ReflectionProbeStage extends RenderStage {
         if (!inputAssembler) return;
 
         const intermediateColorTex = this._frameBuffer!.colorTextures[0]!;
-        const binding = pass.getBinding('probeColorTex');
+        const binding = pass.getBinding('outputResultMap');
         if (binding < 0) return;
 
         const w = this._renderArea.width;
@@ -224,7 +224,7 @@ export class ReflectionProbeStage extends RenderStage {
         if (!this._convertMaterial) {
             this._convertMaterial = new Material();
             this._convertMaterial._uuid = 'reflection-probe-rgbe-convert-material';
-            this._convertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert' });
+            this._convertMaterial.initialize({ effectName: 'pipeline/probe-rgbe-convert', technique: 1 });
         }
         return this._convertMaterial;
     }
