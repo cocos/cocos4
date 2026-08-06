@@ -14,6 +14,7 @@ techniques:
   - passes:
       - vert: probe-rgbe-convert-vs
         frag: probe-rgbe-convert-fs-legacy
+        pass: copy-pass
         depthStencilState:
           depthTest: false
           depthWrite: false
@@ -58,12 +59,12 @@ precision highp float;
 in vec2 v_uv;
 #include <common/data/unpack>
 
-uniform sampler2D outputResultMap;
+uniform sampler2D probeInputTex;
 
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-  vec4 color = texture(outputResultMap, v_uv);
+  vec4 color = texture(probeInputTex, v_uv);
   fragColor = packRGBE(color.rgb);
 }
 }%
