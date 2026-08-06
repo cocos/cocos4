@@ -160,7 +160,7 @@ export class RenderReflectionProbeQueue {
                 this._rgbeSubModelsArray.push(subModel);
             }
 
-            if (batchingScheme === BatchingSchemes.INSTANCING) {
+            if (batchingScheme === BatchingSchemes.INSTANCING && !isTransparent) {
                 const buffer = pass.getInstancedBuffer();
                 buffer.merge(subModel, passIdx);
                 this._instancedQueue.queue.add(buffer);

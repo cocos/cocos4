@@ -80,11 +80,13 @@ export class ReflectionProbeFlow extends RenderFlow {
         for (let i = 0; i < this._stages.length; i++) {
             const probeStage = this._stages[i] as ReflectionProbeStage;
             if (probe.probeType === ProbeType.PLANAR) {
+                // Unbind planar map before rendering to prevent self-reflection
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, null);
                 const outputFb = probe.realtimePlanarTexture!.window!.framebuffer;
                 const fb = useFloatRT ? probe.intermediateFramebuffers[0] : outputFb;
                 probeStage.setUsageInfo(probe, fb, useFloatRT ? outputFb : null);
                 probeStage.render(camera);
+                // Rebind the updated planar map for main camera rendering
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, probe.realtimePlanarTexture!.getGFXTexture());
             } else {
                 for (let faceIdx = 0; faceIdx < 6; faceIdx++) {

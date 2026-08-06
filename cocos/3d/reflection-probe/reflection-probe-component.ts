@@ -275,7 +275,7 @@ export class ReflectionProbe extends Component {
      * @zh 是否支持半透明物体参与反射探针渲染。
      * 开启后使用 RGBA16F 中间 RT 以支持正确的 alpha 混合。
      */
-    @visible(function (this: ReflectionProbe) { return this.probeType === ProbeType.CUBE; })
+    @visible(function (this: ReflectionProbe) { return this.probeType === ProbeType.CUBE || this.probeType === ProbeType.PLANAR; })
     @type(CCBoolean)
     @tooltip('i18n:reflection_probe.supportTransparency')
     get supportTransparency (): boolean {
