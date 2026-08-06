@@ -229,6 +229,9 @@ function addRenderObject (
 ): void {
     const probeQueue = queue.probeQueue;
     if (isDrawProbe) {
+        if (!model.bakeToReflectionProbe) {
+            return;
+        }
         probeQueue.addToProbeQueue(model, phaseLayoutId);
     }
     const subModels = model.subModels;
