@@ -134,7 +134,12 @@ export class ReflectionProbe {
     private _intermediateRenderPass: RenderPass | null = null;
     private _intermediateDepthStencil: Texture | null = null;
 
-    public intermediateTextures: Texture[] = [];
+    private _intermediateTextures: Texture[] = [];
+
+    /**
+     * @engineInternal
+     * @mangle
+     */
     public intermediateFramebuffers: Framebuffer[] = [];
 
     /**
@@ -289,9 +294,17 @@ export class ReflectionProbe {
         return this._previewPlane!;
     }
 
+    /**
+     * @engineInternal
+     * @mangle
+     */
     set supportTransparency (value: boolean) {
         this._supportTransparency = value;
     }
+    /**
+     * @engineInternal
+     * @mangle
+     */
     get supportTransparency (): boolean {
         return this._supportTransparency;
     }
@@ -299,6 +312,8 @@ export class ReflectionProbe {
     /**
      * @en Whether to use RGBA16F intermediate render target for transparency support.
      * @zh 是否使用 RGBA16F 中间渲染目标以支持半透明渲染。
+     * @engineInternal
+     * @mangle
      */
     public useFloatIntermediateRT (): boolean {
         if (!this._supportTransparency || this._probeType === ProbeType.PLANAR) { return false; }
@@ -330,7 +345,7 @@ export class ReflectionProbe {
                 this.bakedCubeTextures.push(renderTexture);
             }
         }
-        if (this.useFloatIntermediateRT() && this.intermediateTextures.length === 0) {
+        if (this.useFloatIntermediateRT() && this._intermediateTextures.length === 0) {
             this.initIntermediateTextures(this._resolution, this._resolution, 6);
         }
     }
@@ -519,7 +534,7 @@ export class ReflectionProbe {
      * @en Create RGBA16F intermediate textures and framebuffers using GFX API directly.
      * @zh 直接使用 GFX API 创建 RGBA16F 中间纹理和 Framebuffer。
      */
-    public initIntermediateTextures (width: number, height: number, count: number): void {
+    private initIntermediateTextures (width: number, height: number, count: number): void {
         this._destroyIntermediateTextures();
 
         const root = cclegacy.director.root;
@@ -556,7 +571,7 @@ export class ReflectionProbe {
                 width,
                 height,
             )) as Texture;
-            this.intermediateTextures.push(colorTex);
+            this._intermediateTextures.push(colorTex);
 
             const fb: Framebuffer = device.createFramebuffer(new FramebufferInfo(
                 this._intermediateRenderPass,
@@ -573,10 +588,10 @@ export class ReflectionProbe {
         }
         this.intermediateFramebuffers.length = 0;
 
-        for (let i = 0; i < this.intermediateTextures.length; i++) {
-            this.intermediateTextures[i].destroy();
+        for (let i = 0; i < this._intermediateTextures.length; i++) {
+            this._intermediateTextures[i].destroy();
         }
-        this.intermediateTextures.length = 0;
+        this._intermediateTextures.length = 0;
 
         if (this._intermediateDepthStencil) {
             this._intermediateDepthStencil.destroy();
