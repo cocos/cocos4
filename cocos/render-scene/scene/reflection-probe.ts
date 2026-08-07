@@ -32,7 +32,7 @@ import {
     Format, LoadOp, StoreOp,
     RenderPassInfo, RenderPass,
     Texture, TextureInfo, TextureType, TextureUsageBit,
-    FramebufferInfo,
+    FramebufferInfo, FormatFeatureBit,
 } from '../../gfx';
 import { TextureCube } from '../../asset/assets/texture-cube';
 import { RenderTexture } from '../../asset/assets/render-texture';
@@ -298,13 +298,16 @@ export class ReflectionProbe {
 
     /**
      * @en Whether to use RGBA16F intermediate render target for transparency support.
-     * Callers should also check device capability (supportsRGBA16HalfFloatTexture) before using the float path.
      * @zh 是否使用 RGBA16F 中间渲染目标以支持半透明渲染。
-     * 当前等价于 supportTransparency，未来可能加入设备能力等额外判断条件。
-     * 调用方在实际使用浮点路径前，还需自行检查设备是否支持 RGBA16F。
      */
     public useFloatIntermediateRT (): boolean {
-        return this._supportTransparency && this._probeType !== ProbeType.PLANAR;
+        if (!this._supportTransparency || this._probeType === ProbeType.PLANAR) { return false; }
+        // Check device RGBA16F capability
+        const device = cclegacy.director.root?.device;
+        if (!device) { return false; }
+        const features = device.getFormatFeatures(Format.RGBA16F);
+        return (features & (FormatFeatureBit.RENDER_TARGET | FormatFeatureBit.SAMPLED_TEXTURE))
+            === (FormatFeatureBit.RENDER_TARGET | FormatFeatureBit.SAMPLED_TEXTURE);
     }
 
     constructor (id: number) {
@@ -327,7 +330,7 @@ export class ReflectionProbe {
                 this.bakedCubeTextures.push(renderTexture);
             }
         }
-        if (this._supportTransparency && this.intermediateTextures.length === 0) {
+        if (this.useFloatIntermediateRT() && this.intermediateTextures.length === 0) {
             this.initIntermediateTextures(this._resolution, this._resolution, 6);
         }
     }
@@ -349,7 +352,7 @@ export class ReflectionProbe {
             const canvasSize = cclegacy.view.getDesignResolutionSize() as Size;
             this.realtimePlanarTexture = this._createTargetTexture(canvasSize.width, canvasSize.height);
             cclegacy.internal.reflectionProbeManager.updatePlanarMap(this, this.realtimePlanarTexture.getGFXTexture());
-            if (this._supportTransparency) {
+            if (this.useFloatIntermediateRT()) {
                 this.initIntermediateTextures(canvasSize.width, canvasSize.height, 1);
             }
         }
