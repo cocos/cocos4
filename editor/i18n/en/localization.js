@@ -298,7 +298,7 @@ module.exports = link(mixin({
         illuminance: 'Illuminance of the light',
         luminous_power: 'Luminous power of the light',
         luminance: 'Luminance of the light',
-        visibility: 'Visibility mask, the set of node levels visible in the current light source',
+        visibility: 'Visibility mask, declaring a set of node hierarchies visible in the current light source',
         term: 'The photometric term currently being used',
         size: 'Size of the light',
         range: 'Range of the light',
