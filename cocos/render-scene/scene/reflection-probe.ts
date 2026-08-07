@@ -304,7 +304,7 @@ export class ReflectionProbe {
      * 调用方在实际使用浮点路径前，还需自行检查设备是否支持 RGBA16F。
      */
     public useFloatIntermediateRT (): boolean {
-        return this._supportTransparency;
+        return this._supportTransparency && this._probeType !== ProbeType.PLANAR;
     }
 
     constructor (id: number) {
