@@ -27,7 +27,7 @@ import { IRenderFlowInfo, RenderFlow } from '../render-flow';
 import { ReflectionProbeStage } from './reflection-probe-stage';
 import { RenderFlowTag } from '../pipeline-serialization';
 import { RenderPipeline } from '../render-pipeline';
-import { Camera } from '../../render-scene/scene/camera';
+import { Camera, CameraUsage } from '../../render-scene/scene/camera';
 import { ProbeType, ReflectionProbe } from '../../render-scene/scene/reflection-probe';
 import { cclegacy } from '../../core';
 
@@ -66,7 +66,9 @@ export class ReflectionProbeFlow extends RenderFlow {
         for (let i = 0; i < probes.length; i++) {
             if (probes[i].needRender) {
                 if (probes[i].probeType === ProbeType.PLANAR) {
-                    probes[i].renderPlanarReflection(camera);
+                    if (EDITOR && camera.cameraUsage === CameraUsage.PREVIEW) {
+                        probes[i].renderPlanarReflection(camera);
+                    }
                     this._renderStage(camera, probes[i]);
                 } else if (EDITOR) {
                     this._renderStage(camera, probes[i]);

@@ -654,10 +654,8 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                     continue;
                 }
                 let reflectionCamera = probe.camera;
-                if (sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
+                if (EDITOR && sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
                     reflectionCamera = probe.renderPreviewPlanarReflection(sourceCamera);
-                } else {
-                    probe.renderPlanarReflection(sourceCamera);
                 }
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;

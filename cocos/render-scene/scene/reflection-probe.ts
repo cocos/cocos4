@@ -186,6 +186,9 @@ export class ReflectionProbe {
     set visibility (val) {
         this._visibility = val;
         this._camera!.visibility = this._visibility;
+        if (this._previewCamera) {
+            this._previewCamera.visibility = this._visibility;
+        }
     }
 
     /**
@@ -322,6 +325,10 @@ export class ReflectionProbe {
         this._needRender = true;
     }
 
+    /**
+     * @engineInternal
+     * @mangle
+     */
     public renderPreviewPlanarReflection (sourceCamera: Camera): Camera {
         if (!this._previewCamera) {
             const root = cclegacy.director.root;
