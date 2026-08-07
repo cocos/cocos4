@@ -31,8 +31,11 @@
 #pragma once
 #include "cocos/bindings/manual/jsb_conversions.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
+#include "cocos/renderer/pipeline/custom/RenderInterfaceFwd.h"
 
 bool nativevalue_to_se(const cc::render::LightInfo &from, se::Value &to, se::Object *ctx); // NOLINT
+
+bool nativevalue_to_se(const cc::render::PipelineCapabilities &from, se::Value &to, se::Object *ctx); // NOLINT
 
 bool nativevalue_to_se(const cc::render::ResolvePair &from, se::Value &to, se::Object *ctx); // NOLINT
 

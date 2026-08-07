@@ -32,6 +32,7 @@
 #include "cocos/bindings/auto/jsb_scene_auto.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonJsb.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonTypes.h"
+#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/details/JsbConversion.h"
 
 bool nativevalue_to_se(const cc::render::LightInfo &from, se::Value &to, se::Object *ctx) { // NOLINT
@@ -49,6 +50,17 @@ bool nativevalue_to_se(const cc::render::LightInfo &from, se::Value &to, se::Obj
 
     nativevalue_to_se(from.culledByLight, tmp, ctx);
     obj->setProperty("culledByLight", tmp);
+
+    to.setObject(obj);
+    return true;
+}
+
+bool nativevalue_to_se(const cc::render::PipelineCapabilities &from, se::Value &to, se::Object *ctx) { // NOLINT
+    se::HandleObject obj(se::Object::createPlainObject());
+    se::Value        tmp;
+
+    nativevalue_to_se(from.subpass, tmp, ctx);
+    obj->setProperty("subpass", tmp);
 
     to.setObject(obj);
     return true;
