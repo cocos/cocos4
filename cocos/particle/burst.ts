@@ -23,7 +23,7 @@
 */
 
 import { ccclass, type, serializable, editable, range } from 'cc.decorator';
-import { repeat } from '../core/math';
+import { approxGE, approxLT, repeat } from '../core/math';
 import CurveRange from './animator/curve-range';
 import type { ParticleSystem } from './particle-system';
 
@@ -108,7 +108,7 @@ export default class Burst {
             let preFrameTime = repeat(psys.time - psys.startDelay.evaluate(0, 1), psys.duration) - dt;
             preFrameTime = (preFrameTime > 0.0) ? preFrameTime : 0.0;
             const curFrameTime = repeat(psys.time - psys.startDelay.evaluate(0, 1), psys.duration);
-            if (this._curTime >= preFrameTime && this._curTime < curFrameTime) {
+            if (approxGE(this._curTime, preFrameTime) && approxLT(this._curTime, curFrameTime)) {
                 psys.emit(this.count.evaluate(this._curTime / psys.duration, 1), dt - (curFrameTime - this._curTime));
                 this._curTime += this.repeatInterval;
                 --this._remainingCount;
