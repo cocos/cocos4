@@ -31,7 +31,7 @@ import { murmurhash2_32_gc, errorID, assertID, cclegacy, warnID } from '../../co
 import {
     BufferUsageBit, DynamicStateFlagBit, DynamicStateFlags, Feature, GetTypeSize, MemoryUsageBit, PrimitiveMode, Type, Color,
     BlendState, BlendTarget, Buffer, BufferInfo, BufferViewInfo, DepthStencilState, DescriptorSet,
-    DescriptorSetInfo, DescriptorSetLayout, Device, RasterizerState, Sampler, Texture, Shader, PipelineLayout, deviceManager, UniformBlock,
+    DescriptorSetInfo, DescriptorSetLayout, Device, RasterizerState, Sampler, SampleCount, Texture, Shader, PipelineLayout, deviceManager, UniformBlock,
 } from '../../gfx';
 import { EffectAsset } from '../../asset/assets/effect-asset';
 import { IProgramInfo, programLib } from './program-lib';
@@ -139,6 +139,28 @@ export class Pass {
             if (bsInfo.isA2C !== undefined) { bs.isA2C = bsInfo.isA2C; }
             if (bsInfo.isIndepend !== undefined) { bs.isIndepend = bsInfo.isIndepend; }
             if (bsInfo.blendColor !== undefined) { bs.blendColor = bsInfo.blendColor as Color; }
+
+            // A2C (Alpha to Coverage) requires MSAA to be effective.
+            // Without multiple subsamples, A2C behaves like alpha-test at ~0.5 and should be disabled.
+            // Disable A2C when neither the pass nor the global framebuffer has MSAA enabled:
+            //   - passWantsMultisample: pass explicitly requests isMultisample
+            //   - globalMsaaEnabled: swapchain has MSAA (native: colorTexture.samples > X1;
+            //                        WebGL: antialias from gl.getContextAttributes(), since WebGL
+            //                        MSAA is controlled at context level, not texture level)
+            if (bs.isA2C) {
+                const gfxDevice = deviceManager.gfxDevice as any;
+                const gl: WebGL2RenderingContext | WebGLRenderingContext | null = gfxDevice.gl || null;
+                const ctxAttrs = gl && gl.getContextAttributes();
+                const antialias: boolean = !!(ctxAttrs && ctxAttrs.antialias);
+                const passWantsMultisample = (info.rasterizerState && info.rasterizerState.isMultisample === true);
+                const swapchain = deviceManager.swapchain;
+                const colorTex = swapchain && swapchain.colorTexture;
+                const msaaDisabled = (!colorTex || (colorTex && colorTex.samples <= SampleCount.X1))
+                    || !antialias || !passWantsMultisample;
+                if (msaaDisabled) {
+                    bs.isA2C = false;
+                }
+            }
         }
         pass._rs.assign(info.rasterizerState as RasterizerState);
         pass._dss.assign(info.depthStencilState as DepthStencilState);
