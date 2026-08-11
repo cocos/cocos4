@@ -850,7 +850,7 @@ export class Skeleton extends UIRenderer {
                 warnID(16410);
             }
             const skeletonInfo = this._skeletonCache!.getSkeletonInfo(this._skeletonData!);
-            const bothNull: boolean = this._skeletonInfo === skeletonInfo && !skeletonInfo;
+            const bothNull: boolean = !this._skeletonInfo && !skeletonInfo;
             if (this._skeletonInfo !== skeletonInfo || bothNull) {
                 this._destroySkeletonInfo(this._skeletonCache);
                 if (!skeletonInfo && this._cacheMode === SpineAnimationCacheMode.PRIVATE_CACHE) {
