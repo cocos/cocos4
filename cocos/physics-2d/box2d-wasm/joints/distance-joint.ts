@@ -39,10 +39,10 @@ export class B2DistanceJoint extends B2Joint implements IDistanceJoint {
     _createJointDef (): any {
         const comp = this._jointComp as DistanceJoint2D;
         const def = new B2.RopeJointDef();
-        const localAnchorA = this._getLocalAnchorA();
-        const localAnchorB = this._getLocalAnchorB();
-        def.localAnchorA = { x: localAnchorA.x, y: localAnchorA.y };
-        def.localAnchorB = { x: localAnchorB.x, y: localAnchorB.y };
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA = { x: anchorA.x, y: anchorA.y };
+        def.localAnchorB = { x: anchorB.x, y: anchorB.y };
         def.maxLength = comp.maxLength / PHYSICS_2D_PTM_RATIO;
         return def;
     }

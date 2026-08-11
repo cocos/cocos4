@@ -40,10 +40,10 @@ export class b2FixedJoint extends b2Joint implements IFixedJoint {
     _createJointDef (): any {
         const comp = this._jointComp as FixedJoint2D;
         const def = new b2jsb.WeldJointDef();
-        const localAnchorA = this._getLocalAnchorA();
-        const localAnchorB = this._getLocalAnchorB();
-        def.localAnchorA = { x: localAnchorA.x, y: localAnchorA.y };
-        def.localAnchorB = { x: localAnchorB.x, y: localAnchorB.y };
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA = { x: anchorA.x, y: anchorA.y };
+        def.localAnchorB = { x: anchorB.x, y: anchorB.y };
         def.referenceAngle = 0;
         def.frequencyHz = comp.frequency;
         def.dampingRatio = comp.dampingRatio;

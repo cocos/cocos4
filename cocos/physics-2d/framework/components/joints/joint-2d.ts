@@ -34,7 +34,13 @@ const { ccclass, type } = _decorator;
 
 @ccclass('cc.Joint2D')
 export class Joint2D extends Component {
-    private static readonly _registeredJoints: Joint2D[] = [];
+    /**
+     * @en
+     * All registered 2D joints.
+     * @zh
+     * 所有已注册的 2D 关节。
+     */
+    static readonly joints: Joint2D[] = [];
 
     /**
      * @en
@@ -84,9 +90,10 @@ export class Joint2D extends Component {
      * 获取自身刚体锚点。返回值已经按节点世界缩放换算，并转换为 Box2D 使用的物理单位。
      * @param out @en Optional output vector. A new Vec2 is created when it is not provided. @zh 可选，输出向量。未传入时会创建新的 Vec2。
      * @returns @en The scaled local anchor in Box2D units. @zh 已缩放并转换为物理单位的本地锚点。
-     * @internal
+     * @engineInternal
+     * @mangle
      */
-    _getScaledLocalAnchorA (out: Vec2 = new Vec2()): Vec2 {
+    _getAnchorA (out: Vec2 = new Vec2()): Vec2 {
         const scale = this.node.worldScale;
         out.x = this.anchor.x * scale.x / PHYSICS_2D_PTM_RATIO;
         out.y = this.anchor.y * scale.y / PHYSICS_2D_PTM_RATIO;
@@ -100,12 +107,13 @@ export class Joint2D extends Component {
      * 获取连接刚体锚点。连接刚体为空时保持世界原点静态刚体语义，不应用节点缩放；返回值会转换为 Box2D 物理单位。
      * @param out @en Optional output vector. A new Vec2 is created when it is not provided. @zh 可选，输出向量。未传入时会创建新的 Vec2。
      * @returns @en The scaled connected local anchor in Box2D units. @zh 已缩放并转换为物理单位的连接锚点。
-     * @internal
+     * @engineInternal
+     * @mangle
      */
-    _getScaledLocalAnchorB (out: Vec2 = new Vec2()): Vec2 {
-        const connectedBody = this.connectedBody;
-        const connectedNode = connectedBody && connectedBody.isValid ? connectedBody.node : null;
-        const scale = connectedNode ? connectedNode.worldScale : null;
+    _getAnchorB (out: Vec2 = new Vec2()): Vec2 {
+        const body = this.connectedBody;
+        const node = body && body.isValid ? body.node : null;
+        const scale = node ? node.worldScale : null;
         out.x = this.connectedAnchor.x * (scale ? scale.x : 1) / PHYSICS_2D_PTM_RATIO;
         out.y = this.connectedAnchor.y * (scale ? scale.y : 1) / PHYSICS_2D_PTM_RATIO;
         return out;
@@ -142,10 +150,11 @@ export class Joint2D extends Component {
      * @zh
      * 重建所有会受指定刚体缩放影响的关节。
      * @param body @en The scaled rigid body. @zh 发生缩放变化的刚体。
-     * @internal
+     * @engineInternal
+     * @mangle
      */
-    static _applyScaleToConnectedJoints (body: RigidBody2D): void {
-        const joints = Joint2D._registeredJoints;
+    static _applyScale (body: RigidBody2D): void {
+        const joints = Joint2D.joints;
         for (let i = 0; i < joints.length; i++) {
             const joint = joints[i];
             if (!joint.isValid || (joint.connectedBody && !joint.connectedBody.isValid)) {
@@ -164,7 +173,7 @@ export class Joint2D extends Component {
             this._joint.initialize(this);
 
             this._body = this.getComponent(RigidBody2D);
-            Joint2D._registeredJoints.push(this);
+            Joint2D.joints.push(this);
         }
     }
 
@@ -187,9 +196,9 @@ export class Joint2D extends Component {
     }
 
     protected override onDestroy (): void {
-        const index = Joint2D._registeredJoints.indexOf(this);
-        if (index >= 0) {
-            Joint2D._registeredJoints.splice(index, 1);
+        const i = Joint2D.joints.indexOf(this);
+        if (i >= 0) {
+            Joint2D.joints.splice(i, 1);
         }
         if (this._joint && this._joint.onDestroy) {
             this._joint.onDestroy();

@@ -61,10 +61,10 @@ export class b2WheelJoint extends b2Joint implements IWheelJoint {
     _createJointDef (): any {
         const comp = this._jointComp as WheelJoint2D;
         const def = new b2.WheelJointDef();
-        const localAnchorA = this._getLocalAnchorA();
-        const localAnchorB = this._getLocalAnchorB();
-        def.localAnchorA.Set(localAnchorA.x, localAnchorA.y);
-        def.localAnchorB.Set(localAnchorB.x, localAnchorB.y);
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA.Set(anchorA.x, anchorA.y);
+        def.localAnchorB.Set(anchorB.x, anchorB.y);
         const angle = toRadian(comp.angle);
         def.localAxisA.Set(Math.cos(angle), Math.sin(angle));
         // def.localAxisA.Set(0, 1);

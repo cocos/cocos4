@@ -90,7 +90,7 @@ export class b2RigidBody2D implements IRigidBody2D {
             for (let i = 0; i < colliders.length; i++) {
                 colliders[i].apply();
             }
-            Joint2D._applyScaleToConnectedJoints(this.rigidBody);
+            Joint2D._applyScale(this.rigidBody);
         }
 
         const bodyType = this._rigidBody.type;

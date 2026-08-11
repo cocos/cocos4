@@ -28,8 +28,8 @@ import { Joint2D, PhysicsSystem2D, RigidBody2D } from '../../framework';
 import { b2PhysicsWorld } from '../physics-world';
 import { Vec2 } from '../../../core';
 
-const tempLocalAnchorA = new Vec2();
-const tempLocalAnchorB = new Vec2();
+const tempAnchorA = new Vec2();
+const tempAnchorB = new Vec2();
 
 /** @mangle */
 export class b2Joint implements IJoint2D {
@@ -122,12 +122,12 @@ export class b2Joint implements IJoint2D {
         return null;
     }
 
-    protected _getLocalAnchorA (): Vec2 {
-        return this._jointComp!._getScaledLocalAnchorA(tempLocalAnchorA);
+    protected _getAnchorA (): Vec2 {
+        return this._jointComp!._getAnchorA(tempAnchorA);
     }
 
-    protected _getLocalAnchorB (): Vec2 {
-        return this._jointComp!._getScaledLocalAnchorB(tempLocalAnchorB);
+    protected _getAnchorB (): Vec2 {
+        return this._jointComp!._getAnchorB(tempAnchorB);
     }
 
     isValid (): Joint2D | null {

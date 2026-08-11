@@ -46,10 +46,10 @@ export class b2SpringJoint extends b2Joint implements ISpringJoint {
     _createJointDef (): any {
         const comp = this._jointComp as SpringJoint2D;
         const def = new b2jsb.DistanceJointDef();
-        const localAnchorA = this._getLocalAnchorA();
-        const localAnchorB = this._getLocalAnchorB();
-        def.localAnchorA = { x: localAnchorA.x, y: localAnchorA.y };
-        def.localAnchorB = { x: localAnchorB.x, y: localAnchorB.y };
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA = { x: anchorA.x, y: anchorA.y };
+        def.localAnchorB = { x: anchorB.x, y: anchorB.y };
         def.length = comp.distance / PHYSICS_2D_PTM_RATIO;
         def.dampingRatio = comp.dampingRatio;
         def.frequencyHz = comp.frequency;
