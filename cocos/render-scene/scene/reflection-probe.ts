@@ -67,8 +67,8 @@ export class ReflectionProbe {
     protected readonly _size = v3(1, 1, 1);
 
     /**
-     * @en Render cubemap's camera
-     * @zh 渲染cubemap的相机
+     * @en Camera used for probe rendering (cubemap capture or planar reflection).
+     * @zh 用于探针渲染的相机（cubemap 采集或平面反射）
      */
     private _camera: Camera | null = null;
 
