@@ -66,10 +66,11 @@ export class ReflectionProbeFlow extends RenderFlow {
         for (let i = 0; i < probes.length; i++) {
             if (probes[i].needRender) {
                 if (probes[i].probeType === ProbeType.PLANAR) {
+                    let reflectionCamera: Camera | undefined;
                     if (EDITOR && camera.cameraUsage === CameraUsage.PREVIEW) {
-                        probes[i].renderPlanarReflection(camera);
+                        reflectionCamera = probes[i].renderPreviewPlanarReflection(camera);
                     }
-                    this._renderStage(camera, probes[i]);
+                    this._renderStage(camera, probes[i], reflectionCamera);
                 } else if (EDITOR) {
                     this._renderStage(camera, probes[i]);
                 }
@@ -80,12 +81,12 @@ export class ReflectionProbeFlow extends RenderFlow {
     public destroy (): void {
         super.destroy();
     }
-    private _renderStage (camera: Camera, probe: ReflectionProbe): void {
+    private _renderStage (camera: Camera, probe: ReflectionProbe, reflectionCamera?: Camera): void {
         for (let i = 0; i < this._stages.length; i++) {
             const probeStage = this._stages[i] as ReflectionProbeStage;
             if (probe.probeType === ProbeType.PLANAR) {
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, null);
-                probeStage.setUsageInfo(probe, probe.realtimePlanarTexture!.window!.framebuffer);
+                probeStage.setUsageInfo(probe, probe.realtimePlanarTexture!.window!.framebuffer, reflectionCamera);
                 probeStage.render(camera);
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, probe.realtimePlanarTexture!.getGFXTexture());
             } else {
