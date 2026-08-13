@@ -695,6 +695,8 @@ void Batcher2d::reset() {
     _currSampler = nullptr;
 
     // stencilManager
+    _stencilManager->setMaskStackSize(0);
+    _stencilManager->setStencilStage(static_cast<uint32_t>(StencilStage::DISABLED));
 }
 
 void Batcher2d::insertMaskBatch(RenderEntity* entity) {
