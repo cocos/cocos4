@@ -54,6 +54,21 @@ export interface IInstancedItem {
     reflectionProbeBlendCubemap: Texture | null;
 }
 
+interface IInstancedCreateInfo {
+    key: string;
+    sourceIA: InputAssembler;
+    instancedAttributes: Attribute[];
+    instanceData: Uint8Array;
+    stride: number;
+    shader: Shader;
+    descriptorSet: DescriptorSet;
+    lightingMap: Texture;
+    reflectionProbeCubemap: Texture;
+    reflectionProbePlanarMap: Texture;
+    useReflectionProbeType: number;
+    reflectionProbeBlendCubemap: Texture | null;
+}
+
 const INITIAL_CAPACITY = 32;
 const MAX_CAPACITY = 1024;
 
@@ -65,6 +80,7 @@ export class InstancedBuffer {
     public sortRender: IRenderPass;
     private declare _passPool: RecyclePool<IRenderPass>;
     private declare _device: Device;
+    private readonly _instanceMap = new Map<string, IInstancedItem[]>();
     constructor (pass: Pass) {
         this._device = pass.device;
         this.pass = pass;
@@ -81,6 +97,7 @@ export class InstancedBuffer {
         });
         this._passPool.reset();
         this.instances.length = 0;
+        this._instanceMap.clear();
     }
 
     public merge (subModel: SubModel, passIdx: number, shaderImplant: Shader | null = null): void {
@@ -106,72 +123,102 @@ export class InstancedBuffer {
         this.sortRender.hash = hash;
         this.sortRender.shaderId = shader.typedID;
         this.sortRender.passIdx = passIdx;
-        for (let i = 0; i < this.instances.length; ++i) {
-            const instance = this.instances[i];
-            if (instance.ia.indexBuffer?.objectID !== sourceIA.indexBuffer?.objectID || instance.count >= MAX_CAPACITY) { continue; }
 
-            // check same binding
-            if (instance.lightingMap.objectID !== lightingMap.objectID) {
-                continue;
+        const probeBlendID = ENABLE_PROBE_BLEND ? reflectionProbeBlendCubemap!.objectID : 0;
+        const key = [
+            sourceIA.indexBuffer?.objectID ?? 0,
+            lightingMap.objectID,
+            useReflectionProbeType,
+            reflectionProbeCubemap.objectID,
+            reflectionProbePlanarMap.objectID,
+            probeBlendID,
+            stride,
+        ].join('/');
+        const mappedInstances = this._instanceMap.get(key);
+        if (mappedInstances) {
+            for (let i = 0; i < mappedInstances.length; ++i) {
+                const instance = mappedInstances[i];
+                if (instance.count >= MAX_CAPACITY) { continue; }
+                this._appendInstance(instance, attrs.buffer, shader, descriptorSet);
+                return;
             }
-
-            if (instance.useReflectionProbeType !== useReflectionProbeType) {
-                continue;
-            }
-            if (instance.reflectionProbeCubemap.objectID !== reflectionProbeCubemap.objectID) {
-                continue;
-            }
-            if (instance.reflectionProbePlanarMap.objectID !== reflectionProbePlanarMap.objectID) {
-                continue;
-            }
-            if (ENABLE_PROBE_BLEND && instance.reflectionProbeBlendCubemap!.objectID !== reflectionProbeBlendCubemap!.objectID) {
-                continue;
-            }
-
-            if (instance.stride !== stride) {
-                // we allow this considering both baked and non-baked
-                // skinning models may be present in the same buffer
-                continue;
-            }
-            if (instance.count >= instance.capacity) { // resize buffers
-                instance.capacity <<= 1;
-                const newSize = instance.stride * instance.capacity;
-                const oldData = instance.data;
-                instance.data = new Uint8Array(newSize);
-                instance.data.set(oldData);
-                instance.vb.resize(newSize);
-            }
-            instance.shader = shader;
-            instance.descriptorSet = descriptorSet;
-            instance.data.set(attrs.buffer, instance.stride * instance.count++);
-            this.hasPendingModels = true;
-            return;
         }
 
-        // Create a new instance
+        this._createInstance({
+            key,
+            sourceIA,
+            instancedAttributes: attrs.attributes,
+            instanceData: attrs.buffer,
+            stride,
+            shader,
+            descriptorSet,
+            lightingMap,
+            reflectionProbeCubemap,
+            reflectionProbePlanarMap,
+            useReflectionProbeType,
+            reflectionProbeBlendCubemap,
+        });
+    }
+
+    private _appendInstance (instance: IInstancedItem, data: Uint8Array, shader: Shader, descriptorSet: DescriptorSet): void {
+        if (instance.count >= instance.capacity) { // resize buffers
+            instance.capacity = Math.min(instance.capacity << 1, MAX_CAPACITY);
+            const newSize = instance.stride * instance.capacity;
+            const oldData = instance.data;
+            instance.data = new Uint8Array(newSize);
+            instance.data.set(oldData);
+            instance.vb.resize(newSize);
+        }
+        instance.shader = shader;
+        instance.descriptorSet = descriptorSet;
+        instance.data.set(data, instance.stride * instance.count++);
+        this.hasPendingModels = true;
+    }
+
+    private _createInstance (info: IInstancedCreateInfo): void {
         const vb = this._device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
             MemoryUsageBit.HOST | MemoryUsageBit.DEVICE,
-            stride * INITIAL_CAPACITY,
-            stride,
+            info.stride * INITIAL_CAPACITY,
+            info.stride,
         ));
-        const data = new Uint8Array(stride * INITIAL_CAPACITY);
-        const vertexBuffers = sourceIA.vertexBuffers.slice();
-        const attributes = sourceIA.attributes.slice();
-        const indexBuffer = sourceIA.indexBuffer;
+        const data = new Uint8Array(info.stride * INITIAL_CAPACITY);
+        const vertexBuffers = info.sourceIA.vertexBuffers.slice();
+        const attributes = info.sourceIA.attributes.slice();
+        const indexBuffer = info.sourceIA.indexBuffer;
 
-        for (let i = 0; i < attrs.attributes.length; i++) {
-            const attr = attrs.attributes[i];
+        for (let i = 0; i < info.instancedAttributes.length; i++) {
+            const attr = info.instancedAttributes[i];
             const newAttr = new Attribute(attr.name, attr.format, attr.isNormalized, vertexBuffers.length, true);
             attributes.push(newAttr);
         }
-        data.set(attrs.buffer);
+        data.set(info.instanceData);
 
         vertexBuffers.push(vb);
         const iaInfo = new InputAssemblerInfo(attributes, vertexBuffers, indexBuffer);
         const ia = this._device.createInputAssembler(iaInfo);
-        // eslint-disable-next-line max-len
-        this.instances.push({ count: 1, capacity: INITIAL_CAPACITY, vb, data, ia, stride, shader, descriptorSet, lightingMap, reflectionProbeCubemap, reflectionProbePlanarMap, useReflectionProbeType, reflectionProbeBlendCubemap });
+        const instance = {
+            count: 1,
+            capacity: INITIAL_CAPACITY,
+            vb,
+            data,
+            ia,
+            stride: info.stride,
+            shader: info.shader,
+            descriptorSet: info.descriptorSet,
+            lightingMap: info.lightingMap,
+            reflectionProbeCubemap: info.reflectionProbeCubemap,
+            reflectionProbePlanarMap: info.reflectionProbePlanarMap,
+            useReflectionProbeType: info.useReflectionProbeType,
+            reflectionProbeBlendCubemap: info.reflectionProbeBlendCubemap,
+        };
+        this.instances.push(instance);
+        let mappedInstances = this._instanceMap.get(info.key);
+        if (!mappedInstances) {
+            mappedInstances = [];
+            this._instanceMap.set(info.key, mappedInstances);
+        }
+        mappedInstances.push(instance);
         this.hasPendingModels = true;
     }
 
@@ -180,7 +227,7 @@ export class InstancedBuffer {
             const instance = this.instances[i];
             if (!instance.count) { continue; }
             instance.ia.instanceCount = instance.count;
-            cmdBuff.updateBuffer(instance.vb, instance.data);
+            cmdBuff.updateBuffer(instance.vb, instance.data.buffer as ArrayBuffer, instance.count * instance.stride);
         }
     }
 
