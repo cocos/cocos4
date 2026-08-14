@@ -54,21 +54,6 @@ export interface IInstancedItem {
     reflectionProbeBlendCubemap: Texture | null;
 }
 
-interface IInstancedCreateInfo {
-    key: string;
-    sourceIA: InputAssembler;
-    instancedAttributes: Attribute[];
-    instanceData: Uint8Array;
-    stride: number;
-    shader: Shader;
-    descriptorSet: DescriptorSet;
-    lightingMap: Texture;
-    reflectionProbeCubemap: Texture;
-    reflectionProbePlanarMap: Texture;
-    useReflectionProbeType: number;
-    reflectionProbeBlendCubemap: Texture | null;
-}
-
 const INITIAL_CAPACITY = 32;
 const MAX_CAPACITY = 1024;
 
@@ -124,16 +109,9 @@ export class InstancedBuffer {
         this.sortRender.shaderId = shader.typedID;
         this.sortRender.passIdx = passIdx;
 
-        const probeBlendID = ENABLE_PROBE_BLEND ? reflectionProbeBlendCubemap!.objectID : 0;
-        const key = [
-            sourceIA.indexBuffer?.objectID ?? 0,
-            lightingMap.objectID,
-            useReflectionProbeType,
-            reflectionProbeCubemap.objectID,
-            reflectionProbePlanarMap.objectID,
-            probeBlendID,
-            stride,
-        ].join('/');
+        const key = `${sourceIA.indexBuffer?.objectID ?? 0}/${lightingMap.objectID}/${useReflectionProbeType}/`
+            + `${reflectionProbeCubemap.objectID}/${reflectionProbePlanarMap.objectID}/`
+            + `${ENABLE_PROBE_BLEND ? reflectionProbeBlendCubemap!.objectID : 0}/${stride}`;
         const mappedInstances = this._instanceMap.get(key);
         if (mappedInstances) {
             for (let i = 0; i < mappedInstances.length; ++i) {
@@ -144,11 +122,11 @@ export class InstancedBuffer {
             }
         }
 
-        this._createInstance({
+        this._createInstance(
             key,
             sourceIA,
-            instancedAttributes: attrs.attributes,
-            instanceData: attrs.buffer,
+            attrs.attributes,
+            attrs.buffer,
             stride,
             shader,
             descriptorSet,
@@ -157,7 +135,7 @@ export class InstancedBuffer {
             reflectionProbePlanarMap,
             useReflectionProbeType,
             reflectionProbeBlendCubemap,
-        });
+        );
     }
 
     private _appendInstance (instance: IInstancedItem, data: Uint8Array, shader: Shader, descriptorSet: DescriptorSet): void {
@@ -175,24 +153,37 @@ export class InstancedBuffer {
         this.hasPendingModels = true;
     }
 
-    private _createInstance (info: IInstancedCreateInfo): void {
+    private _createInstance (
+        key: string,
+        sourceIA: InputAssembler,
+        instancedAttributes: Attribute[],
+        instanceData: Uint8Array,
+        stride: number,
+        shader: Shader,
+        descriptorSet: DescriptorSet,
+        lightingMap: Texture,
+        reflectionProbeCubemap: Texture,
+        reflectionProbePlanarMap: Texture,
+        useReflectionProbeType: number,
+        reflectionProbeBlendCubemap: Texture | null,
+    ): void {
         const vb = this._device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
             MemoryUsageBit.HOST | MemoryUsageBit.DEVICE,
-            info.stride * INITIAL_CAPACITY,
-            info.stride,
+            stride * INITIAL_CAPACITY,
+            stride,
         ));
-        const data = new Uint8Array(info.stride * INITIAL_CAPACITY);
-        const vertexBuffers = info.sourceIA.vertexBuffers.slice();
-        const attributes = info.sourceIA.attributes.slice();
-        const indexBuffer = info.sourceIA.indexBuffer;
+        const data = new Uint8Array(stride * INITIAL_CAPACITY);
+        const vertexBuffers = sourceIA.vertexBuffers.slice();
+        const attributes = sourceIA.attributes.slice();
+        const indexBuffer = sourceIA.indexBuffer;
 
-        for (let i = 0; i < info.instancedAttributes.length; i++) {
-            const attr = info.instancedAttributes[i];
+        for (let i = 0; i < instancedAttributes.length; i++) {
+            const attr = instancedAttributes[i];
             const newAttr = new Attribute(attr.name, attr.format, attr.isNormalized, vertexBuffers.length, true);
             attributes.push(newAttr);
         }
-        data.set(info.instanceData);
+        data.set(instanceData);
 
         vertexBuffers.push(vb);
         const iaInfo = new InputAssemblerInfo(attributes, vertexBuffers, indexBuffer);
@@ -203,20 +194,20 @@ export class InstancedBuffer {
             vb,
             data,
             ia,
-            stride: info.stride,
-            shader: info.shader,
-            descriptorSet: info.descriptorSet,
-            lightingMap: info.lightingMap,
-            reflectionProbeCubemap: info.reflectionProbeCubemap,
-            reflectionProbePlanarMap: info.reflectionProbePlanarMap,
-            useReflectionProbeType: info.useReflectionProbeType,
-            reflectionProbeBlendCubemap: info.reflectionProbeBlendCubemap,
+            stride,
+            shader,
+            descriptorSet,
+            lightingMap,
+            reflectionProbeCubemap,
+            reflectionProbePlanarMap,
+            useReflectionProbeType,
+            reflectionProbeBlendCubemap,
         };
         this.instances.push(instance);
-        let mappedInstances = this._instanceMap.get(info.key);
+        let mappedInstances = this._instanceMap.get(key);
         if (!mappedInstances) {
             mappedInstances = [];
-            this._instanceMap.set(info.key, mappedInstances);
+            this._instanceMap.set(key, mappedInstances);
         }
         mappedInstances.push(instance);
         this.hasPendingModels = true;
