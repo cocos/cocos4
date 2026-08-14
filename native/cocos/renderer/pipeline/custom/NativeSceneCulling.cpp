@@ -427,13 +427,21 @@ void SceneCulling::batchFrustumCulling(const NativePipeline& ppl) {
 
 namespace {
 
+bool isLightVisible(const scene::Model& model, uint32_t visibility) {
+    return isNodeVisible(model.getNode(), visibility) || isModelVisible(model, visibility);
+}
+
 void executeSphereLightCulling(
     const scene::SphereLight& light,
     const ccstd::vector<const scene::Model*>& frustumCullingResult,
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isLightVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
@@ -447,8 +455,12 @@ void executeSpotLightCulling(
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
     const auto& lightFrustum = light.getFrustum();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isLightVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || (modelBounds->aabbAabb(lightAABB) && modelBounds->aabbFrustum(lightFrustum))) {
             lightBoundsCullingResult.emplace_back(model);
@@ -461,8 +473,12 @@ void executePointLightCulling(
     const ccstd::vector<const scene::Model*>& frustumCullingResult,
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isLightVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
@@ -475,12 +491,14 @@ void executeRangedDirectionalLightCulling(
     const ccstd::vector<const scene::Model*>& frustumCullingResult,
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const geometry::AABB rangedDirLightBoundingBox(0.0F, 0.0F, 0.0F, 0.5F, 0.5F, 0.5F);
-    // when execute render graph, we should never update world matrix
-    // light->getNode()->updateWorldTransform();
     geometry::AABB lightAABB{};
     rangedDirLightBoundingBox.transform(light.getNode()->getWorldMatrix(), &lightAABB);
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isLightVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
