@@ -28,7 +28,7 @@ import { UNIFORM_LIGHTMAP_TEXTURE_BINDING, UNIFORM_REFLECTION_PROBE_BLEND_CUBEMA
     UNIFORM_REFLECTION_PROBE_TEXTURE_BINDING, ENABLE_PROBE_BLEND,
     IRenderPass,
     getPassPool } from './define';
-import { BufferUsageBit, MemoryUsageBit, Device, Texture, InputAssembler, InputAssemblerInfo,
+import { BufferUsageBit, MemoryUsageBit, Device, InputAssembler, InputAssemblerInfo,
     Attribute, Buffer, BufferInfo, CommandBuffer, Shader, DescriptorSet  } from '../gfx';
 import { RecyclePool } from '../core/memop';
 
@@ -47,11 +47,6 @@ export interface IInstancedItem {
     stride: number;
     shader: Shader | null;
     descriptorSet: DescriptorSet;
-    lightingMap: Texture;
-    reflectionProbeCubemap: Texture;
-    reflectionProbePlanarMap: Texture;
-    useReflectionProbeType: number;
-    reflectionProbeBlendCubemap: Texture | null;
 }
 
 const INITIAL_CAPACITY = 32;
@@ -130,11 +125,6 @@ export class InstancedBuffer {
             stride,
             shader,
             descriptorSet,
-            lightingMap,
-            reflectionProbeCubemap,
-            reflectionProbePlanarMap,
-            useReflectionProbeType,
-            reflectionProbeBlendCubemap,
         );
     }
 
@@ -161,11 +151,6 @@ export class InstancedBuffer {
         stride: number,
         shader: Shader,
         descriptorSet: DescriptorSet,
-        lightingMap: Texture,
-        reflectionProbeCubemap: Texture,
-        reflectionProbePlanarMap: Texture,
-        useReflectionProbeType: number,
-        reflectionProbeBlendCubemap: Texture | null,
     ): void {
         const vb = this._device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
@@ -197,11 +182,6 @@ export class InstancedBuffer {
             stride,
             shader,
             descriptorSet,
-            lightingMap,
-            reflectionProbeCubemap,
-            reflectionProbePlanarMap,
-            useReflectionProbeType,
-            reflectionProbeBlendCubemap,
         };
         this.instances.push(instance);
         let mappedInstances = this._instanceMap.get(key);
