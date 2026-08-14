@@ -850,15 +850,12 @@ export class Skeleton extends UIRenderer {
                 warnID(16410);
             }
             const skeletonInfo = this._skeletonCache!.getSkeletonInfo(this._skeletonData!);
-            const bothNull: boolean = !this._skeletonInfo && !skeletonInfo;
-            if (this._skeletonInfo !== skeletonInfo || bothNull) {
+            if (this._skeletonInfo !== skeletonInfo || (!this._skeletonInfo && !skeletonInfo)) {
                 this._destroySkeletonInfo(this._skeletonCache);
                 if (!skeletonInfo && this._cacheMode === SpineAnimationCacheMode.PRIVATE_CACHE) {
                     this._animCache = this._skeletonCache!.initAnimationCache(this.skeletonData!.uuid, this._skeletonData!, this._animationName);
                 }
                 this._skeletonInfo = this._skeletonCache!.createSkeletonInfo(this._skeletonData!);
-            }
-            if (this._skeletonInfo) {
                 this._skeleton = this._skeletonInfo.skeleton!;
             }
         } else {
