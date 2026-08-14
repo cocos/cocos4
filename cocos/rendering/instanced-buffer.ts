@@ -30,6 +30,7 @@ import { UNIFORM_LIGHTMAP_TEXTURE_BINDING, UNIFORM_REFLECTION_PROBE_BLEND_CUBEMA
     getPassPool } from './define';
 import { BufferUsageBit, MemoryUsageBit, Device, InputAssembler, InputAssemblerInfo,
     Attribute, Buffer, BufferInfo, CommandBuffer, Shader, DescriptorSet  } from '../gfx';
+import type { Texture } from '../gfx';
 import { RecyclePool } from '../core/memop';
 
 export function instancingCompareFn (l: InstancedBuffer, r: InstancedBuffer): number {
@@ -47,6 +48,11 @@ export interface IInstancedItem {
     stride: number;
     shader: Shader | null;
     descriptorSet: DescriptorSet;
+    lightingMap: Texture;
+    reflectionProbeCubemap: Texture;
+    reflectionProbePlanarMap: Texture;
+    useReflectionProbeType: number;
+    reflectionProbeBlendCubemap: Texture | null;
 }
 
 const INITIAL_CAPACITY = 32;
@@ -182,7 +188,7 @@ export class InstancedBuffer {
             stride,
             shader,
             descriptorSet,
-        };
+        } as IInstancedItem;
         this.instances.push(instance);
         let mappedInstances = this._instanceMap.get(key);
         if (!mappedInstances) {
