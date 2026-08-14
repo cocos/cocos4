@@ -184,6 +184,14 @@ export class SimpleTexture extends TextureBase {
      * @engineInternal
      * @mangle
      */
+    protected _getImageAssetForCleanup (image: ImageAsset): ImageAsset | null {
+        return image;
+    }
+
+    /**
+     * @engineInternal
+     * @mangle
+     */
     protected _assignImage (image: ImageAsset, level: number, arrayIndex?: number): void {
         const data = image.data;
         if (!data) {
@@ -193,11 +201,15 @@ export class SimpleTexture extends TextureBase {
         this._checkTextureLoaded();
 
         if (macro.CLEANUP_IMAGE_CACHE) {
+            const cleanupImage = this._getImageAssetForCleanup(image);
+            if (!cleanupImage) {
+                return;
+            }
             const deps = dependUtil.getDeps(this._uuid);
-            const index = deps.indexOf(image._uuid);
+            const index = deps.indexOf(cleanupImage._uuid);
             if (index !== -1) {
                 js.array.fastRemoveAt(deps, index);
-                image.decRef();
+                cleanupImage.decRef();
             }
         }
     }

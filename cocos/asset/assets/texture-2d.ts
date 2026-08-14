@@ -29,7 +29,8 @@ import { TextureType, TextureInfo, TextureViewInfo } from '../../gfx';
 import { PixelFormat } from './asset-enum';
 import { ImageAsset } from './image-asset';
 import { PresumedGFXTextureInfo, PresumedGFXTextureViewInfo, SimpleTexture } from './simple-texture';
-import { js, cclegacy } from '../../core';
+import { js, cclegacy, macro } from '../../core';
+import dependUtil from '../asset-manager/depend-util';
 
 /**
  * @en The create information for [[Texture2D]].
@@ -170,6 +171,62 @@ export class Texture2D extends SimpleTexture {
 
     private _generatedMipmaps: ImageAsset[] = [];
 
+    private _pendingTextureSources: ImageAsset[] = [];
+
+    /**
+     * @engineInternal
+     * @mangle
+     */
+    set _textureSource (value: ImageAsset) {
+        if (macro.CLEANUP_IMAGE_CACHE && value) {
+            this._pendingTextureSources.push(value);
+        }
+    }
+
+    private _cleanupTextureSourceRefs (): void {
+        if (!macro.CLEANUP_IMAGE_CACHE || this._pendingTextureSources.length === 0) {
+            this._pendingTextureSources.length = 0;
+            return;
+        }
+
+        const availableSources = new Map<ImageAsset, number>();
+        const realDependencyCounts = new Map<string, number>();
+        for (const source of this._mipmaps) {
+            if (!source) {
+                continue;
+            }
+            availableSources.set(source, (availableSources.get(source) ?? 0) + 1);
+            if (source._uuid) {
+                realDependencyCounts.set(source._uuid, (realDependencyCounts.get(source._uuid) ?? 0) + 1);
+            }
+        }
+
+        const deps = dependUtil.getDeps(this._uuid);
+        const dependencyCounts = new Map<string, number>();
+        for (const uuid of deps) {
+            dependencyCounts.set(uuid, (dependencyCounts.get(uuid) ?? 0) + 1);
+        }
+
+        for (const source of this._pendingTextureSources) {
+            const availableCount = availableSources.get(source) ?? 0;
+            const uuid = source._uuid;
+            const dependencyCount = dependencyCounts.get(uuid) ?? 0;
+            const realDependencyCount = realDependencyCounts.get(uuid) ?? 0;
+            if (availableCount === 0 || !uuid || dependencyCount <= realDependencyCount) {
+                continue;
+            }
+
+            const index = deps.indexOf(uuid);
+            if (index !== -1) {
+                js.array.fastRemoveAt(deps, index);
+                source.decRef(false);
+                availableSources.set(source, availableCount - 1);
+                dependencyCounts.set(uuid, dependencyCount - 1);
+            }
+        }
+        this._pendingTextureSources.length = 0;
+    }
+
     /**
      * @engineInternal
      * @mangle
@@ -179,6 +236,7 @@ export class Texture2D extends SimpleTexture {
     }
 
     public onLoaded (): void {
+        this._cleanupTextureSourceRefs();
         this.initialize();
     }
 
@@ -262,7 +320,22 @@ export class Texture2D extends SimpleTexture {
     public destroy (): boolean {
         this._mipmaps = [];
         this._generatedMipmaps = [];
+        this._pendingTextureSources.length = 0;
         return super.destroy();
+    }
+
+    /**
+     * @engineInternal
+     * @mangle
+     */
+    protected override _getImageAssetForCleanup (image: ImageAsset): ImageAsset | null {
+        if (this._mipmaps.includes(image)) {
+            return image;
+        }
+        if (!image._uuid) {
+            return null;
+        }
+        return this._mipmaps.find((source) => source && source._uuid === image._uuid) ?? null;
     }
 
     /**
