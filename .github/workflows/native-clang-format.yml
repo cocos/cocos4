@@ -18,6 +18,7 @@ jobs:
       with:
         token: ${{ github.token }}
         ref: ${{ github.head_sha }}
+        fetch-depth: 0
     
     - id: get_change_files
       uses: fish9167/file-changes-action@v1.2.3
