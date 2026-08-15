@@ -1,5 +1,11 @@
 # ignore third_party code from clang-format checks
 ./cocos/bindings/auto/*
+./cocos/base/std/**
+./cocos/editor-support/spine-wasm/**
+./cocos/editor-support/spine/**
 ./cocos/gi/light-probe/predicates.cpp
 ./cocos/gi/light-probe/tetgen.cpp
 ./cocos/gi/light-probe/tetgen.h
+./cocos/platform/openharmony/napi/**
+./tools/**
+./vendor/**
