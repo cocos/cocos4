@@ -33,7 +33,7 @@ jobs:
     - uses: DoozyX/clang-format-lint-action@v0.18
       with:
         source: ./native
-        exclude: ./native/cocos/bindings/auto
+        exclude: './native/cocos/bindings/auto ./native/cocos/editor-support/spine/4.2'
         extensions: 'c,h,hpp,cpp,cxx'
         style: file
         inplace: true
