@@ -237,19 +237,18 @@ private:
     inline RenderingDebugViewType getType () const {
         if (_singleMode != DebugViewSingleType::NONE) {
             return RenderingDebugViewType::SINGLE;
-        } else if (!_lightingWithAlbedo || _csmLayerColoration) {
+        }
+        if (!_lightingWithAlbedo || _csmLayerColoration) {
             return RenderingDebugViewType::COMPOSITE_AND_MISC;
-        } else {
-            for (int i = 0; i < static_cast<int>(DebugViewCompositeType::MAX_BIT_COUNT); ++i) {
-                if (!isCompositeModeEnabled(i)) {
-                    return RenderingDebugViewType::COMPOSITE_AND_MISC;
-                }
+        }
+        for (int i = 0; i < static_cast<int>(DebugViewCompositeType::MAX_BIT_COUNT); ++i) {
+            if (!isCompositeModeEnabled(i)) {
+                return RenderingDebugViewType::COMPOSITE_AND_MISC;
             }
         }
         return RenderingDebugViewType::NONE;
     }
 
-private:
     DebugViewSingleType _singleMode{DebugViewSingleType::NONE};
     uint32_t _compositeModeValue{0};
     bool _lightingWithAlbedo{true};
