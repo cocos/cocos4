@@ -34,14 +34,12 @@ public:
     static void napiOnComplete(const Napi::CallbackInfo &info);
     static void napiOnTextChange(const Napi::CallbackInfo &info);
     static void napiOnConfirm(const Napi::CallbackInfo &info);
-    static napi_value show(const std::string& inputMessage);
+    static napi_value show(const std::string &inputMessage);
     static napi_value hide();
+
 private:
     static napi_ref showEditBoxFunction;
     static napi_ref hideEditBoxFunction;
-
 };
 
 } // namespace cc
-
-

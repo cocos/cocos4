@@ -57,7 +57,7 @@ protected:
     PhysXSharedBody *_mSharedBody{nullptr};
     PhysXSharedBody *_mConnectedBody{nullptr};
     bool _mEnableCollision{false};
-    bool _mEnableDebugVisualization{ false };
+    bool _mEnableDebugVisualization{false};
     virtual void onComponentSet() = 0;
     uint32_t _mObjectID{0};
 

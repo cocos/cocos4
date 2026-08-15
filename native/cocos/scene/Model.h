@@ -262,13 +262,13 @@ protected:
     Type _type{Type::DEFAULT};
     Layers::Enum _visFlags{Layers::Enum::NONE};
 
-    UseReflectionProbeType _reflectionProbeType{ UseReflectionProbeType::NONE };
+    UseReflectionProbeType _reflectionProbeType{UseReflectionProbeType::NONE};
     int32_t _tetrahedronIndex{-1};
     uint32_t _descriptorSetCount{1};
     uint32_t _priority{0};
     uint32_t _updateStamp{0};
     int32_t _reflectionProbeId{-1};
-    int32_t _reflectionProbeBlendId{ -1 };
+    int32_t _reflectionProbeBlendId{-1};
     float _reflectionProbeBlendWeight{0.F};
 
     OctreeNode *_octreeNode{nullptr};

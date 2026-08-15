@@ -22,10 +22,10 @@
 #include <strings.h>
 
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <sys/cdefs.h>
+    #include <sys/cdefs.h>
 #endif
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -41,7 +41,7 @@ static inline int popcountll(unsigned long long x) {
     return __builtin_popcountll(x);
 }
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

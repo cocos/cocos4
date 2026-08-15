@@ -27,8 +27,8 @@
 
 #import <OpenAL/al.h>
 
-#include <mutex>
 #include <functional>
+#include <mutex>
 #include "base/std/container/string.h"
 
 #include "audio/apple/AudioMacros.h"

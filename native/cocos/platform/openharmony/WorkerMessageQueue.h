@@ -27,9 +27,8 @@
 
 #include <queue>
 
-#include <thread>
 #include <mutex>
-
+#include <thread>
 
 namespace cc {
 
@@ -60,15 +59,15 @@ struct WorkerMessageData {
 
 class WorkerMessageQueue final {
 public:
-    void   enqueue(const WorkerMessageData& data);
-    bool   dequeue(WorkerMessageData *data);
-    bool   empty() const;
+    void enqueue(const WorkerMessageData& data);
+    bool dequeue(WorkerMessageData* data);
+    bool empty() const;
     size_t size() const {
         return _queue.size();
     }
 
 private:
-    std::mutex                    _mutex;
+    std::mutex _mutex;
     std::queue<WorkerMessageData> _queue;
 };
 

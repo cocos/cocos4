@@ -17,9 +17,9 @@
 
 #pragma once
 
-#include <cstdint>
-#include <sys/types.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <cstdint>
 
 #include "audio/android/AudioBufferProvider.h"
 #include "audio/android/AudioResamplerPublic.h"
@@ -160,7 +160,7 @@ private:
     struct track_t;
 
     typedef void (*hook_t)(track_t *t, int32_t *output, size_t numOutFrames, int32_t *temp, int32_t *aux); //NOLINT(modernize-use-using)
-    static const int BLOCKSIZE = 16; // 4 cache lines
+    static const int BLOCKSIZE = 16;                                                                       // 4 cache lines
 
     struct track_t {
         uint32_t needs;
@@ -288,19 +288,19 @@ private:
     };
 
     // bitmask of allocated track names, where bit 0 corresponds to TRACK0 etc.
-    uint32_t mTrackNames;// NOLINT(readability-identifier-naming)
+    uint32_t mTrackNames; // NOLINT(readability-identifier-naming)
 
     // bitmask of configured track names; ~0 if maxNumTracks == MAX_NUM_TRACKS,
     // but will have fewer bits set if maxNumTracks < MAX_NUM_TRACKS
-    const uint32_t mConfiguredNames;// NOLINT(readability-identifier-naming)
+    const uint32_t mConfiguredNames; // NOLINT(readability-identifier-naming)
 
-    const uint32_t mSampleRate;// NOLINT(readability-identifier-naming)
+    const uint32_t mSampleRate; // NOLINT(readability-identifier-naming)
 
     //cjh    NBLog::Writer   mDummyLog;
 public:
     //cjh    void            setLog(NBLog::Writer* log);
 private:
-    state_t mState __attribute__((aligned(32)));// NOLINT(readability-identifier-naming)
+    state_t mState __attribute__((aligned(32))); // NOLINT(readability-identifier-naming)
 
     // Call after changing either the enabled status of a track, or parameters of an enabled track.
     // OK to call more often than that, but unnecessary.
@@ -309,19 +309,19 @@ private:
     bool setChannelMasks(int name,
                          audio_channel_mask_t trackChannelMask, audio_channel_mask_t mixerChannelMask);
 
-    static void track__genericResample(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void track__nop(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void track__16BitsStereo(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void track__16BitsMono(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void track__genericResample(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux); // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void track__nop(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);             // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void track__16BitsStereo(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);    // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void track__16BitsMono(track_t *t, int32_t *out, size_t numFrames, int32_t *temp, int32_t *aux);      // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
     static void volumeRampStereo(track_t *t, int32_t *out, size_t frameCount, int32_t *temp, int32_t *aux);
     static void volumeStereo(track_t *t, int32_t *out, size_t frameCount, int32_t *temp,
                              int32_t *aux);
 
-    static void process__validate(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void process__nop(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void process__genericNoResampling(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void process__genericResampling(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
-    static void process__OneTrack16BitsStereoNoResampling(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process__validate(state_t *state, int64_t pts);                         // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process__nop(state_t *state, int64_t pts);                              // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process__genericNoResampling(state_t *state, int64_t pts);              // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process__genericResampling(state_t *state, int64_t pts);                // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process__OneTrack16BitsStereoNoResampling(state_t *state, int64_t pts); // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
 
     static int64_t calculateOutputPTS(const track_t &t, int64_t basePTS,
                                       int outputFrameIndex);
@@ -347,11 +347,11 @@ private:
 
     // multi-format process hooks
     template <int MIXTYPE, typename TO, typename TI, typename TA>
-    static void process_NoResampleOneTrack(state_t *state, int64_t pts);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void process_NoResampleOneTrack(state_t *state, int64_t pts); // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
 
     // multi-format track hooks
     template <int MIXTYPE, typename TO, typename TI, typename TA>
-    static void track__Resample(track_t *t, TO *out, size_t frameCount, TO *temp __unused, TA *aux);// NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+    static void track__Resample(track_t *t, TO *out, size_t frameCount, TO *temp __unused, TA *aux); // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
     template <int MIXTYPE, typename TO, typename TI, typename TA>
     static void track__NoResample(track_t *t, TO *out, size_t frameCount, TO *temp __unused, TA *aux); // NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
 

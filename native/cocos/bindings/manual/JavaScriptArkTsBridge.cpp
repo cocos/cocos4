@@ -107,13 +107,12 @@ bool JavaScriptArkTsBridge::CallInfo::execute(se::Value& rval) {
         module_name = pos != std::string::npos ? pathStr.substr(0, pos).c_str() : "entry";
     }
 
-
     char* module_info = __getModuleInfo(module_name);
     std::promise<cc::CallbackParamType> promise;
     std::function<void(cc::CallbackParamType)> cb = [&promise](cc::CallbackParamType message) {
         promise.set_value(message);
     };
-    cc::CallParam *callParam = new cc::CallParam{_isSyn, cb, _paramStr, module_info, _clsPath, method};
+    cc::CallParam* callParam = new cc::CallParam{_isSyn, cb, _paramStr, module_info, _clsPath, method};
     if (_isSyn) {
         cc::JSFunction::getFunction("executeMethodSync").invoke(callParam);
     } else {
@@ -154,8 +153,8 @@ static bool JavaScriptArkTsBridge_callStaticMethod(se::State& s) {
 
         methodName = seval_to_type<std::string>(args[1], ok);
         SE_PRECONDITION2(ok, false, "Converting methodName failed!");
-        
-        if(argc > 2) {
+
+        if (argc > 2) {
             paramStr = seval_to_type<std::string>(args[2], ok);
             SE_PRECONDITION2(ok, false, "Converting paramStr failed!");
         }

@@ -33,7 +33,7 @@ namespace internal {
 
 using target_value = napi_value;
 struct PrivateData {
-    void *  data;
+    void *data;
     Object *seObj;
 };
 

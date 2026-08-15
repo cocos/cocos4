@@ -531,14 +531,14 @@ void Mesh::initialize() {
                     uint32_t vertexCount = _struct.vertexBundles[prim.vertexBundelIndices[0]].view.count;
 #if CC_OPTIMIZE_MESH_DATA
                     if (vertexCount <= 65536) { // Uint16 can address 65536 vertices (indices 0–65535)
-                        dstStride >>= 1; // Reduce to short.
+                        dstStride >>= 1;        // Reduce to short.
                         dstSize >>= 1;
                     } else if (!gfxDevice->hasFeature(gfx::Feature::ELEMENT_INDEX_UINT)) {
                         continue; // Ignore this primitive
                     }
 #else
                     if (!gfxDevice->hasFeature(gfx::Feature::ELEMENT_INDEX_UINT)) {
-                        if (vertexCount > 65536) {  // Uint16 can address 65536 vertices (indices 0–65535)
+                        if (vertexCount > 65536) { // Uint16 can address 65536 vertices (indices 0–65535)
                             CC_LOG_WARNING("Device does not support UINT element index type and vertexCount (%u) is larger than ushort", vertexCount);
                             continue;
                         }

@@ -29,10 +29,10 @@
 
 #include "WebView-inl.h"
 
-#include "platform/FileUtils.h"
-#include "platform/openharmony/napi/NapiHelper.h"
 #include "WebViewImpl-openharmony.h"
 #include "cocos/base/Log.h"
+#include "platform/FileUtils.h"
+#include "platform/openharmony/napi/NapiHelper.h"
 
 static const ccstd::string S_DEFAULT_BASE_URL = "file:///openharmony_asset/";
 static const ccstd::string S_SD_ROOT_BASE_URL = "file://";
@@ -172,7 +172,7 @@ void WebViewImpl::goBack() {
 }
 
 void WebViewImpl::goForward() {
-     NapiHelper::postMessageToUIThread("goForward", Napi::Number::New(NapiHelper::getWorkerEnv(), static_cast<double>(_viewTag)));
+    NapiHelper::postMessageToUIThread("goForward", Napi::Number::New(NapiHelper::getWorkerEnv(), static_cast<double>(_viewTag)));
 }
 
 void WebViewImpl::setJavascriptInterfaceScheme(const ccstd::string &scheme) {
@@ -284,30 +284,29 @@ static void getViewTagAndUrlFromCallbackInfo(const Napi::CallbackInfo &info, int
 void OpenHarmonyWebView::napiShouldStartLoading(const Napi::CallbackInfo &info) {
     int32_t viewTag = 0;
     ccstd::string url;
-    getViewTagAndUrlFromCallbackInfo(info,  &viewTag, &url);
+    getViewTagAndUrlFromCallbackInfo(info, &viewTag, &url);
     WebViewImpl::shouldStartLoading(viewTag, url);
 }
 
 void OpenHarmonyWebView::napiFinishLoading(const Napi::CallbackInfo &info) {
     int32_t viewTag = 0;
     ccstd::string url;
-    getViewTagAndUrlFromCallbackInfo(info,  &viewTag, &url);
+    getViewTagAndUrlFromCallbackInfo(info, &viewTag, &url);
     WebViewImpl::didFinishLoading(viewTag, url);
 }
 
 void OpenHarmonyWebView::napiFailLoading(const Napi::CallbackInfo &info) {
     int32_t viewTag = 0;
     ccstd::string url;
-    getViewTagAndUrlFromCallbackInfo(info,  &viewTag, &url);
+    getViewTagAndUrlFromCallbackInfo(info, &viewTag, &url);
     WebViewImpl::didFailLoading(viewTag, url);
 }
 
 void OpenHarmonyWebView::napiJsCallback(const Napi::CallbackInfo &info) {
     int32_t viewTag = 0;
     ccstd::string url;
-    getViewTagAndUrlFromCallbackInfo(info,  &viewTag, &url);
+    getViewTagAndUrlFromCallbackInfo(info, &viewTag, &url);
     WebViewImpl::onJsCallback(viewTag, url);
 }
-
 
 } //namespace cc

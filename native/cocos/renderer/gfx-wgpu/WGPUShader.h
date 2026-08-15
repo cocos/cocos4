@@ -47,11 +47,10 @@ public:
     // ems export
     EXPORT_EMS(
         void initialize(const ShaderInfo &info, emscripten::val &spirvs);
-        void reflectBinding(const emscripten::val& bindings);
-        )
+        void reflectBinding(const emscripten::val &bindings);)
 
     void initialize(const ShaderInfo &info, const std::vector<std::vector<uint32_t>> &spirvs);
-    void initWithWGSL(const ShaderInfo& info);
+    void initWithWGSL(const ShaderInfo &info);
 
 protected:
     void doInit(const ShaderInfo &info) override;

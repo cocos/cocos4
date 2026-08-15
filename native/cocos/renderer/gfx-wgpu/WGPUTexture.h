@@ -63,7 +63,7 @@ public:
     inline auto getTextureSamples() const { return _info.samples; };
     inline auto getTextureFlags() const { return _info.flags; };
 
-    void* getPlaneView(uint32_t plane);
+    void *getPlaneView(uint32_t plane);
 
 protected:
     void doInit(const TextureInfo &info) override;

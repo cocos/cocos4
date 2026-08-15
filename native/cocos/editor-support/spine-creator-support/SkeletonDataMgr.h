@@ -32,8 +32,8 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 #include "AttachmentVertices.h"
 #include "base/RefCounted.h"
 #include "spine/SkeletonData.h"
@@ -43,7 +43,6 @@ using namespace spine;
 namespace cc {
 
 class AttachmentVertices;
-
 
 class SkeletonDataInfo {
 public:
@@ -94,7 +93,7 @@ public:
         _destroyCallback = std::move(callback);
     }
 
-    std::vector<SkeletonDataInfo*> getSkeletonDataInfos() const;
+    std::vector<SkeletonDataInfo *> getSkeletonDataInfos() const;
 
 private:
     static SkeletonDataMgr *instance;

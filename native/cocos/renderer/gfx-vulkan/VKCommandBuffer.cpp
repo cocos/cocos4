@@ -507,7 +507,7 @@ void CCVKCommandBuffer::draw(const DrawInfo &info) {
         if (hasIndexBuffer) {
             if (info.indexCount > 0) {
                 vkCmdDrawIndexed(_gpuCommandBuffer->vkCommandBuffer, info.indexCount, instanceCount,
-                             info.firstIndex, info.vertexOffset, info.firstInstance);
+                                 info.firstIndex, info.vertexOffset, info.firstInstance);
             }
         } else {
             vkCmdDraw(_gpuCommandBuffer->vkCommandBuffer, info.vertexCount, instanceCount,

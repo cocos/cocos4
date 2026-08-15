@@ -24,8 +24,8 @@
 
 #pragma once
 #include "2d/renderer/UIMeshBuffer.h"
-#include "base/Ptr.h"
 #include "base/Macros.h"
+#include "base/Ptr.h"
 #include "base/TypeDef.h"
 #include "bindings/utils/BindingUtils.h"
 #include "core/ArrayBuffer.h"
@@ -115,7 +115,7 @@ public:
     inline void setIsMeshBuffer(bool isMeshBuffer) {
         _drawInfoAttrs._isMeshBuffer = isMeshBuffer ? 1 : 0;
     }
-    
+
     inline bool isVertexPositionInWorld() const {
         return _drawInfoAttrs._isVertexPositionInWorld != 0;
     }
@@ -262,9 +262,9 @@ private:
     struct DrawInfoAttrs {
         RenderDrawInfoType _drawInfoType{RenderDrawInfoType::COMP};
         bool _vertDirty{false};
-        uint8_t _isMeshBuffer: 1;
-        uint8_t _isVertexPositionInWorld: 1;
-        uint8_t _padding: 6;
+        uint8_t _isMeshBuffer : 1;
+        uint8_t _isVertexPositionInWorld : 1;
+        uint8_t _padding : 6;
         uint8_t _stride{0};
         uint16_t _bufferId{0};
         uint16_t _accId{0};

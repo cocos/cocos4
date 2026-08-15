@@ -26,9 +26,9 @@
 #pragma once
 
 #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include "ark_runtime/jsvm.h"
+    #include "ark_runtime/jsvm.h"
 #else
-#include "jsvm.h"
+    #include "jsvm.h"
 #endif
 #include "platform/openharmony/napi/native_common.h"
 
@@ -52,22 +52,22 @@
         }                                                                 \
     } while (0)
 
-#define NODE_API_CALL_RESULT(status, env, the_call, ret_val)                 \
-    do {                                                                     \
-        status = the_call;                                                   \
-        if (status != JSVM_OK) {                                             \
-            se::internal::logJsException((env), __FILE_NAME__, __LINE__);    \
-            return ret_val;                                                  \
-        }                                                                    \
+#define NODE_API_CALL_RESULT(status, env, the_call, ret_val)              \
+    do {                                                                  \
+        status = the_call;                                                \
+        if (status != JSVM_OK) {                                          \
+            se::internal::logJsException((env), __FILE_NAME__, __LINE__); \
+            return ret_val;                                               \
+        }                                                                 \
     } while (0)
 
 // Returns nullptr if the_call doesn't return JSVM_OK.
-#define NODE_API_CALL(status, env, the_call)                                 \
-    do {                                                                     \
-        status = the_call;                                                   \
-        if (status != JSVM_OK) {                                             \
-            se::internal::logJsException((env), __FILE_NAME__, __LINE__);    \
-        }                                                                    \
+#define NODE_API_CALL(status, env, the_call)                              \
+    do {                                                                  \
+        status = the_call;                                                \
+        if (status != JSVM_OK) {                                          \
+            se::internal::logJsException((env), __FILE_NAME__, __LINE__); \
+        }                                                                 \
     } while (0)
 
 // Returns empty if the_call doesn't return JSVM_OK.
@@ -82,7 +82,7 @@
 
 #define JSVM_CALL_BASE(theCall, retVal) \
     do {                                \
-        if((theCall) != JSVM_OK){       \
+        if ((theCall) != JSVM_OK) {     \
             return retVal;              \
         }                               \
     } while (0)

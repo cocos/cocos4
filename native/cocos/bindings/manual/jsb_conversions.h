@@ -40,8 +40,8 @@
 #include "bindings/jswrapper/HandleObject.h"
 #include "bindings/jswrapper/SeApi.h"
 #include "bindings/manual/jsb_classtype.h"
-#include "jsb_conversions_spec.h"
 #include "core/data/JSBNativeDataHolder.h"
+#include "jsb_conversions_spec.h"
 
 #if CC_USE_SPINE
     #include "cocos/editor-support/spine-creator-support/spine-cocos2dx.h"
@@ -725,7 +725,7 @@ sevalue_to_native(const se::Value &from, T **to, se::Object * /*ctx*/) { // NOLI
 }
 
 // duplicate extern to resolve the circular reference jsb_cocos_auto.h
-// see jsb_cocos_auto.h 
+// see jsb_cocos_auto.h
 extern se::Class *__jsb_cc_JSBNativeDataHolder_class; // NOLINT
 
 template <typename T>

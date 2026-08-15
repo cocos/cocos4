@@ -25,20 +25,19 @@
 
 #include "jsb_platform.h"
 
+#include <native_drawing/drawing_font_collection.h>
+#include <native_drawing/drawing_register_font.h>
+#include <regex>
 #include "cocos/bindings/jswrapper/SeApi.h"
 #include "cocos/bindings/manual/jsb_conversions.h"
 #include "cocos/bindings/manual/jsb_global_init.h"
 #include "cocos/platform/FileUtils.h"
-#include <native_drawing/drawing_font_collection.h>
-#include <native_drawing/drawing_register_font.h>
-#include <regex>
 
 using namespace cc;
-static std::unordered_map<std::string, OH_Drawing_FontCollection*> _fontCollectionMap = {
-    { defaultFontKey, OH_Drawing_CreateSharedFontCollection() }
-};
+static std::unordered_map<std::string, OH_Drawing_FontCollection *> _fontCollectionMap = {
+    {defaultFontKey, OH_Drawing_CreateSharedFontCollection()}};
 
-const std::unordered_map<std::string, OH_Drawing_FontCollection*>& getFontFamilyCollectionMap() {
+const std::unordered_map<std::string, OH_Drawing_FontCollection *> &getFontFamilyCollectionMap() {
     return _fontCollectionMap;
 }
 
@@ -49,31 +48,29 @@ const std::unordered_map<std::string, std::string> &getFontFamilyNameMap() {
 }
 
 static bool JSB_loadFont(se::State &s) {
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
     CC_UNUSED bool ok = true;
     if (argc >= 1) {
         s.rval().setNull();
- 
+
         std::string fontFamily;
         ok &= seval_to_std_string(args[0], &fontFamily);
         SE_PRECONDITION2(ok, false, "JSB_loadFont : Error processing argument: fontFamily");
- 
+
         std::string source;
         ok &= seval_to_std_string(args[1], &source);
         SE_PRECONDITION2(ok, false, "JSB_loadFont : Error processing argument: source");
- 
+
         std::string fontFilePath;
         std::regex re("url\\(\\s*'\\s*(.*?)\\s*'\\s*\\)");
         std::match_results<std::string::const_iterator> results;
-        if (std::regex_search(source.cbegin(), source.cend(), results, re))
-        {
+        if (std::regex_search(source.cbegin(), source.cend(), results, re)) {
             fontFilePath = results[1].str();
         }
- 
+
         fontFilePath = FileUtils::getInstance()->fullPathForFilename(fontFilePath);
-        if (fontFilePath.empty())
-        {
+        if (fontFilePath.empty()) {
             SE_LOGE("Font (%s) doesn't exist!", fontFilePath.c_str());
             return true;
         }
@@ -87,10 +84,10 @@ static bool JSB_loadFont(se::State &s) {
         OH_Drawing_RegisterFontBuffer(_fontCollection, fontFamily.c_str(), bufferData.getBytes(), bufferData.getSize());
         _fontCollectionMap.emplace(fontFamily, _fontCollection);
         s.rval().setString(fontFamily);
-        
+
         return true;
     }
- 
+
     SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 1);
     return false;
 }

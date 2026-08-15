@@ -19,8 +19,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "audio/android/AudioResampler.h"
 #include "audio/android/AudioBufferProvider.h"
+#include "audio/android/AudioResampler.h"
 
 namespace cc {
 // ----------------------------------------------------------------------------

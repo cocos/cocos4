@@ -32,23 +32,23 @@
 #include "spine/spine.h"
 
 namespace spine {
-    class Vector2
-    {
-    public:
-        float x, y;
-    public:
-        Vector2();
-        Vector2(float x, float y);
-        ~Vector2();
+class Vector2 {
+public:
+    float x, y;
 
-        void setX(float x);
-        float getX() const;
+public:
+    Vector2();
+    Vector2(float x, float y);
+    ~Vector2();
 
-        void setY(float y);
-        float getY() const;
+    void setX(float x);
+    float getX() const;
 
-        Vector2 &set(float x, float y);
-        float length() const;
-        Vector2 &normalize();
-    };
-}
+    void setY(float y);
+    float getY() const;
+
+    Vector2 &set(float x, float y);
+    float length() const;
+    Vector2 &normalize();
+};
+} // namespace spine

@@ -24,16 +24,15 @@
 
 #include "jsb_websocket.h"
 #include "MappingUtils.h"
-#include "base/std/container/unordered_set.h"
 #include "base/DeferredReleasePool.h"
 #include "base/UTF8.h"
+#include "base/std/container/unordered_set.h"
 #include "bindings/jswrapper/SeApi.h"
 #include "bindings/manual/jsb_conversions.h"
 #include "bindings/manual/jsb_global.h"
 #include "engine/Engine.h"
 
 #include "application/ApplicationManager.h"
-
 
 /*
  [Constructor(in DOMString url, in optional DOMString protocols)]
@@ -250,7 +249,7 @@ static bool webSocketFinalize(se::State &s) {
         CC_LOG_INFO("WebSocket (%p) isn't closed, try to close it!", cobj);
         cobj->closeAsync();
     }
-    if(se::ScriptEngine::getInstance()->isInCleanup()) {
+    if (se::ScriptEngine::getInstance()->isInCleanup()) {
         return true;
     }
     static_cast<JsbWebSocketDelegate *>(cobj->getDelegate())->release();

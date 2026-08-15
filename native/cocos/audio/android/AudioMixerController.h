@@ -33,8 +33,8 @@
 #include "base/std/container/vector.h"
 
 #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-// for openharmony platform, buffer size is 4458 in normal latency mode, 240 in fast latency mode
-#define MAX_AUDIO_BUFFER_SIZE 4458
+    // for openharmony platform, buffer size is 4458 in normal latency mode, 240 in fast latency mode
+    #define MAX_AUDIO_BUFFER_SIZE 4458
 #endif
 
 namespace cc {

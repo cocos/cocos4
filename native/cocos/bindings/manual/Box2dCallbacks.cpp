@@ -2,44 +2,44 @@
 #include "bindings/auto/jsb_box2d_auto.h"
 #include "bindings/manual/jsb_global.h"
 
-#define GET_THIS() \
-do {\
-    if (_thisObject != nullptr) { \
-        _thisObject->decRef(); \
-    } \
-    _thisObject = thisObject; \
-    _thisObject->incRef(); \
-} while(0)
+#define GET_THIS()                    \
+    do {                              \
+        if (_thisObject != nullptr) { \
+            _thisObject->decRef();    \
+        }                             \
+        _thisObject = thisObject;     \
+        _thisObject->incRef();        \
+    } while (0)
 
-#define GET_JS_PROPERTY(name) \
-do {\
-    if (_cb##name != nullptr) { \
-        _cb##name->decRef(); \
-        _cb##name = nullptr; \
-    } \
-    se::Value callbackVal; \
-    bool ok = thisObject->getProperty(#name, &callbackVal); \
-    CC_ASSERT(ok && callbackVal.isObject() && callbackVal.toObject()->isFunction()); \
-    se::Object* callbackObj = callbackVal.toObject(); \
-    callbackObj->incRef(); \
-    _cb##name = callbackObj; \
-} while(0)
+#define GET_JS_PROPERTY(name)                                                           \
+    do {                                                                                \
+        if (_cb##name != nullptr) {                                                     \
+            _cb##name->decRef();                                                        \
+            _cb##name = nullptr;                                                        \
+        }                                                                               \
+        se::Value callbackVal;                                                          \
+        bool ok = thisObject->getProperty(#name, &callbackVal);                         \
+        CC_ASSERT(ok&& callbackVal.isObject() && callbackVal.toObject()->isFunction()); \
+        se::Object* callbackObj = callbackVal.toObject();                               \
+        callbackObj->incRef();                                                          \
+        _cb##name = callbackObj;                                                        \
+    } while (0)
 
 #define SAFE_RELEASE_CALLBACK(name) \
-do {\
-    if (_cb##name != nullptr) { \
-        _cb##name->decRef(); \
-        _cb##name = nullptr; \
-    } \
-} while(0)
+    do {                            \
+        if (_cb##name != nullptr) { \
+            _cb##name->decRef();    \
+            _cb##name = nullptr;    \
+        }                           \
+    } while (0)
 
-#define SAFE_RELEASE_THIS() \
-do { \
-    if (_thisObject != nullptr) { \
-        _thisObject->decRef(); \
-        _thisObject = nullptr; \
-    } \
-} while(0)
+#define SAFE_RELEASE_THIS()           \
+    do {                              \
+        if (_thisObject != nullptr) { \
+            _thisObject->decRef();    \
+            _thisObject = nullptr;    \
+        }                             \
+    } while (0)
 
 JSBQueryCallback::JSBQueryCallback() {
     _args.resize(1);
@@ -50,11 +50,11 @@ JSBQueryCallback::~JSBQueryCallback() {
     SAFE_RELEASE_CALLBACK(ReportFixture);
 }
 
-void JSBQueryCallback::initWithThis(se::Object *thisObject) {
+void JSBQueryCallback::initWithThis(se::Object* thisObject) {
     GET_THIS();
     GET_JS_PROPERTY(ReportFixture);
 }
-       
+
 bool JSBQueryCallback::ReportFixture(b2Fixture* fixture) {
     se::AutoHandleScope hs;
     if (_cbReportFixture == nullptr) {
@@ -69,17 +69,15 @@ bool JSBQueryCallback::ReportFixture(b2Fixture* fixture) {
     if (rval.isBoolean()) {
         return rval.toBoolean();
     }
-    
+
     return false;
 }
-
-
 
 JSBRayCastCallback::JSBRayCastCallback() {
     _args.resize(4);
 }
 
-void JSBRayCastCallback::initWithThis(se::Object *thisObject) {
+void JSBRayCastCallback::initWithThis(se::Object* thisObject) {
     GET_THIS();
     GET_JS_PROPERTY(ReportFixture);
 }
@@ -88,14 +86,14 @@ JSBRayCastCallback::~JSBRayCastCallback() {
     SAFE_RELEASE_THIS();
     SAFE_RELEASE_CALLBACK(ReportFixture);
 }
-    
+
 float JSBRayCastCallback::ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) {
     se::AutoHandleScope hs;
-    
+
     if (_cbReportFixture == nullptr) {
         return 0.F;
     }
-    
+
     bool ok = nativevalue_to_se(fixture, _args[0]);
     SE_PRECONDITION2(ok, 0.F, "Error processing arguments");
     ok = nativevalue_to_se(point, _args[1]);
@@ -110,7 +108,7 @@ float JSBRayCastCallback::ReportFixture(b2Fixture* fixture, const b2Vec2& point,
     if (rval.isNumber()) {
         return rval.toFloat();
     }
-    
+
     return 0.F;
 }
 
@@ -131,7 +129,7 @@ JSBB2Draw::~JSBB2Draw() {
     SAFE_RELEASE_CALLBACK(DrawPoint);
 }
 
-void JSBB2Draw::initWithThis(se::Object *thisObject) {
+void JSBB2Draw::initWithThis(se::Object* thisObject) {
     GET_THIS();
     GET_JS_PROPERTY(DrawPolygon);
     GET_JS_PROPERTY(DrawSolidPolygon);
@@ -142,7 +140,7 @@ void JSBB2Draw::initWithThis(se::Object *thisObject) {
     GET_JS_PROPERTY(DrawPoint);
 }
 
-void JSBB2Draw::DrawPolygonWithCallback(se::Object *cbObj, const b2Vec2* vertices, int32 vertexCount, const b2Color& color) {
+void JSBB2Draw::DrawPolygonWithCallback(se::Object* cbObj, const b2Vec2* vertices, int32 vertexCount, const b2Color& color) {
     if (cbObj == nullptr || vertexCount <= 0 || vertices == nullptr) {
         return;
     }
@@ -151,7 +149,7 @@ void JSBB2Draw::DrawPolygonWithCallback(se::Object *cbObj, const b2Vec2* vertice
     ccstd::vector<b2Vec2> verticeArray;
     verticeArray.resize(vertexCount);
     memcpy(verticeArray.data(), vertices, sizeof(b2Vec2) * vertexCount);
-    
+
     bool ok = nativevalue_to_se(verticeArray, _args3[0]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
     ok = nativevalue_to_se(vertexCount, _args3[1]);
@@ -172,7 +170,6 @@ void JSBB2Draw::DrawSolidPolygon(const b2Vec2* vertices, int32 vertexCount, cons
     DrawPolygonWithCallback(_cbDrawSolidPolygon, vertices, vertexCount, color);
 }
 
-
 /// Draw a circle.
 void JSBB2Draw::DrawCircle(const b2Vec2& center, float radius, const b2Color& color) {
     if (_cbDrawCircle == nullptr) {
@@ -180,7 +177,7 @@ void JSBB2Draw::DrawCircle(const b2Vec2& center, float radius, const b2Color& co
     }
 
     se::AutoHandleScope hs;
-    
+
     bool ok = nativevalue_to_se(center, _args3[0]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
     ok = nativevalue_to_se(radius, _args3[1]);
@@ -232,7 +229,7 @@ void JSBB2Draw::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& c
 /// Draw a transform. Choose your own length scale.
 /// @param xf a transform.
 void JSBB2Draw::DrawTransform(const b2Transform& xf) {
-    if (_cbDrawTransform== nullptr) {
+    if (_cbDrawTransform == nullptr) {
         return;
     }
 
@@ -251,7 +248,7 @@ void JSBB2Draw::DrawPoint(const b2Vec2& p, float size, const b2Color& color) {
     }
 
     se::AutoHandleScope hs;
-    
+
     bool ok = nativevalue_to_se(p, _args3[0]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
     ok = nativevalue_to_se(size, _args3[1]);
@@ -261,8 +258,6 @@ void JSBB2Draw::DrawPoint(const b2Vec2& p, float size, const b2Color& color) {
 
     _cbDrawPoint->call(_args3, _thisObject);
 }
-    
-
 
 // b2ContactListener
 
@@ -278,7 +273,7 @@ JSB_b2ContactListener::~JSB_b2ContactListener() {
     SAFE_RELEASE_CALLBACK(PostSolve);
 }
 
-void JSB_b2ContactListener::initWithThis(se::Object *thisObject) {
+void JSB_b2ContactListener::initWithThis(se::Object* thisObject) {
     GET_THIS();
     GET_JS_PROPERTY(BeginContact);
     GET_JS_PROPERTY(EndContact);
@@ -316,12 +311,12 @@ void JSB_b2ContactListener::PreSolve(b2Contact* contact, const b2Manifold* oldMa
 
     bool ok = nativevalue_to_se(contact, _args2[0]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
-    
+
     static b2Manifold gManifold;
     gManifold = *oldManifold;
     ok = nativevalue_to_se(gManifold, _args2[1]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
-    
+
     ok = _cbPreSolve->call(_args2, _thisObject);
 }
 
@@ -333,11 +328,11 @@ void JSB_b2ContactListener::PostSolve(b2Contact* contact, const b2ContactImpulse
 
     bool ok = nativevalue_to_se(contact, _args2[0]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
-    
+
     static b2ContactImpulse gImpulse;
     gImpulse = *impulse;
     ok = nativevalue_to_se(gImpulse, _args2[1]);
     SE_PRECONDITION2_VOID(ok, "Error processing arguments");
-    
+
     ok = _cbPostSolve->call(_args2, _thisObject);
 }

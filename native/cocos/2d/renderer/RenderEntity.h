@@ -49,7 +49,7 @@ enum class MaskMode : uint8_t {
     MASK_NODE_INVERTED
 };
 
-enum class FillColorType: uint8_t {
+enum class FillColorType : uint8_t {
     COLOR = 0,
     VERTEX,
 };
@@ -62,9 +62,9 @@ struct EntityAttrLayout {
     uint8_t colorA{255};
     uint8_t maskMode{0};
     FillColorType fillColorType{FillColorType::COLOR};
-    uint8_t enabledIndex: 1;
-    uint8_t useLocal: 1;
-    uint8_t paddings: 6;
+    uint8_t enabledIndex : 1;
+    uint8_t useLocal : 1;
+    uint8_t paddings : 6;
     uint8_t paddings2{0};
 };
 
@@ -99,7 +99,7 @@ public:
     inline void setUseLocal(bool useLocal) {
         _entityAttrLayout.useLocal = useLocal;
     }
-    
+
     inline FillColorType getFillColorType() const { return _entityAttrLayout.fillColorType; }
 
     inline Node* getNode() const { return _node; }
@@ -142,7 +142,7 @@ public:
     inline RenderDrawInfo* getRenderDrawInfoAt(uint32_t index) {
         return _renderEntityType == RenderEntityType::STATIC ? &(_staticDrawInfos[index]) : _dynamicDrawInfos[index];
     }
-    
+
     inline uint32_t getPriority() const { return _entityAttrLayout.priority; }
 
 private:
@@ -152,7 +152,7 @@ private:
 
     // weak reference
     Node* _renderTransform{nullptr};
-    
+
     bindings::NativeMemorySharedToScriptActor _entitySharedBufferActor;
 
     union {
@@ -160,13 +160,13 @@ private:
         ccstd::vector<RenderDrawInfo*> _dynamicDrawInfos;
     };
     EntityAttrLayout _entityAttrLayout;
-    
+
     StencilStage _stencilStage{StencilStage::DISABLED};
     RenderEntityType _renderEntityType{RenderEntityType::STATIC};
     uint8_t _staticDrawInfoSize{0};
     bool _vbColorDirty{true};
     uint8_t _paddings[1];
-    
+
     float _opacity{1.0F};
 };
 

@@ -263,7 +263,6 @@ bool XMLHttpRequest::open(const ccstd::string &method, const ccstd::string &url)
         requestType = HttpRequest::Type::DELETE;
     } else if (_method == "patch" || _method == "PATCH") {
         requestType = HttpRequest::Type::PATCH;
-
     }
 
     CC_ASSERT(requestType != HttpRequest::Type::UNKNOWN);
@@ -578,7 +577,7 @@ se::Class *__jsb_XMLHttpRequest_class = nullptr; //NOLINT(readability-identifier
 
 static bool XMLHttpRequest_finalize(se::State &s) { //NOLINT(readability-identifier-naming, google-runtime-references)
     auto *request = static_cast<XMLHttpRequest *>(s.nativeThisObject());
-    if(se::ScriptEngine::getInstance()->isInCleanup()) {
+    if (se::ScriptEngine::getInstance()->isInCleanup()) {
         request->onloadstart = nullptr;
         request->onload = nullptr;
         request->onloadend = nullptr;
