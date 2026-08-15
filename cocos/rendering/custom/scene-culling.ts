@@ -556,7 +556,11 @@ export class SceneCulling {
 
     private executeSphereLightCulling (light: SphereLight, frustumCullingResult: Array<Model>, lightBoundsCullingResult: Array<Model>): void {
         const lightAABB = light.aabb;
+        const visibility = light.visibility;
         for (const model of frustumCullingResult) {
+            if (!isVisible(model, visibility)) {
+                continue;
+            }
             const modelBounds = model.worldBounds;
             if (!modelBounds || intersect.aabbWithAABB(modelBounds, lightAABB)) {
                 lightBoundsCullingResult.push(model);
@@ -567,7 +571,11 @@ export class SceneCulling {
     private executeSpotLightCulling (light: SpotLight, frustumCullingResult: Array<Model>, lightBoundsCullingResult: Array<Model>): void {
         const lightAABB = light.aabb;
         const lightFrustum: Frustum = light.frustum;
+        const visibility = light.visibility;
         for (const model of frustumCullingResult) {
+            if (!isVisible(model, visibility)) {
+                continue;
+            }
             const modelBounds = model.worldBounds;
             if (!modelBounds || (intersect.aabbWithAABB(lightAABB, modelBounds) && intersect.aabbFrustum(modelBounds, lightFrustum))) {
                 lightBoundsCullingResult.push(model);
@@ -577,7 +585,11 @@ export class SceneCulling {
 
     private executePointLightCulling (light: PointLight, frustumCullingResult: Array<Model>, lightBoundsCullingResult: Array<Model>): void {
         const lightAABB = light.aabb;
+        const visibility = light.visibility;
         for (const model of frustumCullingResult) {
+            if (!isVisible(model, visibility)) {
+                continue;
+            }
             const modelBounds = model.worldBounds;
             if (!modelBounds || intersect.aabbWithAABB(lightAABB, modelBounds)) {
                 lightBoundsCullingResult.push(model);
@@ -590,8 +602,12 @@ export class SceneCulling {
         frustumCullingResult: Array<Model>,
         lightBoundsCullingResult: Array<Model>,
     ): void {
+        const visibility = light.visibility;
         rangedDirLightBoundingBox.transform(light.node!.worldMatrix, null, null, null, lightAABB);
         for (const model of frustumCullingResult) {
+            if (!isVisible(model, visibility)) {
+                continue;
+            }
             const modelBounds = model.worldBounds;
             if (!modelBounds || intersect.aabbWithAABB(lightAABB, modelBounds)) {
                 lightBoundsCullingResult.push(model);
