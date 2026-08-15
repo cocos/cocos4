@@ -28,8 +28,8 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-    #include "util.h"
     #include <cstring>
+    #include "util.h"
 
     #if defined(_MSC_VER)
         #include <intrin.h>

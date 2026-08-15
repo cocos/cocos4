@@ -91,7 +91,7 @@ public:
     using Device::getSampler;
     using Device::initialize;
 
-    void frameSync() override {};
+    void frameSync() override{};
 
     Shader *createShader(const ShaderInfo &, const std::vector<std::vector<uint32_t>> &);
 

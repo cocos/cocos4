@@ -1,7 +1,7 @@
 
+#include <iostream>
 #include "cocos/math/Math.h"
 #include "math/Vec3.h"
-#include <iostream>
 
 int main(int argc, char **argv) {
     cc::Mat4 identity{};

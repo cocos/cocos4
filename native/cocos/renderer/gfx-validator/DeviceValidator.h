@@ -96,6 +96,7 @@ public:
 
     void enableAutoBarrier(bool enable) override;
     SampleCount getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const override;
+
 protected:
     static DeviceValidator *instance;
 

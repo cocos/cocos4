@@ -23,12 +23,12 @@
  THE SOFTWARE.
 ****************************************************************************/
 
-#include "EditBox.h"
 #include "EditBox-openharmony.h"
+#include "EditBox.h"
 
 #include "application/ApplicationManager.h"
-#include "platform/openharmony/napi/NapiHelper.h"
 #include "bindings/jswrapper/SeApi.h"
+#include "platform/openharmony/napi/NapiHelper.h"
 namespace cc {
 
 /*************************************************************************
@@ -56,7 +56,7 @@ void getTextInputCallback() {
 void callJSFunc(const ccstd::string &type, const ccstd::string &text) {
     se::AutoHandleScope scope;
     getTextInputCallback();
-    
+
     se::ValueArray args;
     args.push_back(se::Value(type));
     args.push_back(se::Value(text));
@@ -74,13 +74,13 @@ void EditBox::show(const EditBox::ShowInfo &showInfo) {
     args["defaultValue"] = Napi::String::New(env, showInfo.defaultValue);
     args["confirmType"] = Napi::String::New(env, showInfo.confirmType);
     args["inputType"] = Napi::String::New(env, showInfo.inputType);
-    
+
     args["maxLength"] = Napi::Number::New(env, showInfo.maxLength);
     args["x"] = Napi::Number::New(env, showInfo.x);
     args["y"] = Napi::Number::New(env, showInfo.y);
     args["width"] = Napi::Number::New(env, showInfo.width);
     args["height"] = Napi::Number::New(env, showInfo.height);
-    
+
     args["confirmHold"] = Napi::Boolean::New(env, showInfo.confirmHold);
     args["isMultiline"] = Napi::Boolean::New(env, showInfo.isMultiline);
 
@@ -95,7 +95,7 @@ void EditBox::show(const EditBox::ShowInfo &showInfo) {
 
     args["underlineColor"] = Napi::Number::New(env, showInfo.underlineColor);
     args["textAlignment"] = Napi::Number::New(env, showInfo.textAlignment);
-    
+
     NapiHelper::postMessageToUIThread("showEditBox", args);
 }
 
@@ -128,7 +128,6 @@ void OpenHarmonyEditBox::napiOnTextChange(const Napi::CallbackInfo &info) {
     callJSFunc("input", buffer);
 }
 
-
 void OpenHarmonyEditBox::napiOnConfirm(const Napi::CallbackInfo &info) {
     auto env = info.Env();
     if (info.Length() != 1) {
@@ -145,5 +144,3 @@ void OpenHarmonyEditBox::napiOnConfirm(const Napi::CallbackInfo &info) {
 }
 
 } // namespace cc
-
-

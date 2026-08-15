@@ -43,7 +43,7 @@
 #include "bindings/auto/jsb_assets_auto.h"
 #include "bindings/auto/jsb_cocos_auto.h"
 #if CC_USE_PHYSICS_PHYSX
-#include "bindings/auto/jsb_physics_auto.h"
+    #include "bindings/auto/jsb_physics_auto.h"
 #endif
 #include "cocos/core/geometry/Geometry.h"
 #include "scene/Fog.h"
@@ -51,11 +51,11 @@
 #include "scene/Skybox.h"
 
 #if CC_USE_SPINE
-#include "cocos/editor-support/spine-creator-support/Vector2.h"
+    #include "cocos/editor-support/spine-creator-support/Vector2.h"
 #endif
 
 #if CC_USE_BOX2D_JSB
-#include "bindings/auto/jsb_box2d_auto.h"
+    #include "bindings/auto/jsb_box2d_auto.h"
 #endif
 
 ///////////////////////// utils /////////////////////////

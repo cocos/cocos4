@@ -24,16 +24,16 @@
 
 #include "physics/physx/PhysXWorld.h"
 #include "base/memory/Memory.h"
+#include "core/Root.h"
 #include "physics/physx/PhysXFilterShader.h"
 #include "physics/physx/PhysXInc.h"
 #include "physics/physx/PhysXUtils.h"
 #include "physics/physx/joints/PhysXJoint.h"
 #include "physics/spec/IWorld.h"
-#include "core/Root.h"
-#include "scene/Camera.h"
-#include "scene/RenderWindow.h"
 #include "renderer/pipeline/Define.h"
 #include "renderer/pipeline/RenderPipeline.h"
+#include "scene/Camera.h"
+#include "scene/RenderWindow.h"
 
 namespace cc {
 namespace physics {
@@ -133,9 +133,9 @@ void PhysXWorld::step(float fixedTimeStep) {
 }
 
 #if CC_USE_GEOMETRY_RENDERER
-pipeline::GeometryRenderer* PhysXWorld::getDebugRenderer () {
+pipeline::GeometryRenderer *PhysXWorld::getDebugRenderer() {
     auto cameras = Root::getInstance()->getMainWindow()->getCameras();
-    scene::Camera* camera = nullptr;
+    scene::Camera *camera = nullptr;
     for (int c = 0; c < cameras.size(); c++) {
         if (!cameras[c])
             continue;
@@ -154,29 +154,29 @@ pipeline::GeometryRenderer* PhysXWorld::getDebugRenderer () {
     return nullptr;
 }
 
-void PhysXWorld::debugDraw () {
-    pipeline::GeometryRenderer* debugRenderer = getDebugRenderer();
+void PhysXWorld::debugDraw() {
+    pipeline::GeometryRenderer *debugRenderer = getDebugRenderer();
     if (!debugRenderer) return;
     _debugLineCount = 0;
     static Vec3 v0, v1;
     static gfx::Color c;
-    auto& rb = _mScene->getRenderBuffer();
+    auto &rb = _mScene->getRenderBuffer();
     // lines
     for (int i = 0; i < rb.getNbLines(); i++) {
-        if (_debugLineCount < _MAX_DEBUG_LINE_COUNT){
+        if (_debugLineCount < _MAX_DEBUG_LINE_COUNT) {
             _debugLineCount++;
-            const physx::PxDebugLine& line = rb.getLines()[i];
+            const physx::PxDebugLine &line = rb.getLines()[i];
             pxSetColor(c, line.color0);
             pxSetVec3Ext(v0, line.pos0);
             pxSetVec3Ext(v1, line.pos1);
             debugRenderer->addLine(v0, v1, c);
-         }
+        }
     }
     // triangles
     for (int i = 0; i < rb.getNbTriangles(); i++) {
         if (_debugLineCount < _MAX_DEBUG_LINE_COUNT - 3) {
             _debugLineCount = _debugLineCount + 3;
-            const physx::PxDebugTriangle& triangle = rb.getTriangles()[i];
+            const physx::PxDebugTriangle &triangle = rb.getTriangles()[i];
             pxSetColor(c, triangle.color0);
             pxSetVec3Ext(v0, triangle.pos0);
             pxSetVec3Ext(v1, triangle.pos1);
@@ -379,7 +379,7 @@ void PhysXWorld::removeActor(const PhysXSharedBody &sb) {
     }
 }
 
-void PhysXWorld::addCCT (const PhysXCharacterController &cct) {
+void PhysXWorld::addCCT(const PhysXCharacterController &cct) {
     auto beg = _mCCTs.begin();
     auto end = _mCCTs.end();
     auto iter = find(beg, end, &cct);
@@ -388,7 +388,7 @@ void PhysXWorld::addCCT (const PhysXCharacterController &cct) {
     }
 }
 
-void PhysXWorld::removeCCT(const PhysXCharacterController&cct) {
+void PhysXWorld::removeCCT(const PhysXCharacterController &cct) {
     auto beg = _mCCTs.begin();
     auto end = _mCCTs.end();
     auto iter = find(beg, end, &cct);
@@ -467,39 +467,39 @@ RaycastResult &PhysXWorld::raycastClosestResult() {
 }
 
 bool PhysXWorld::sweepBox(RaycastOptions &opt, float halfExtentX, float halfExtentY, float halfExtentZ,
-        float orientationW, float orientationX, float orientationY, float orientationZ) {
-    return sweep(opt, physx::PxBoxGeometry{ halfExtentX, halfExtentY, halfExtentZ}, 
-        physx::PxQuat(orientationX, orientationY, orientationZ, orientationW));
+                          float orientationW, float orientationX, float orientationY, float orientationZ) {
+    return sweep(opt, physx::PxBoxGeometry{halfExtentX, halfExtentY, halfExtentZ},
+                 physx::PxQuat(orientationX, orientationY, orientationZ, orientationW));
 }
 
 bool PhysXWorld::sweepBoxClosest(RaycastOptions &opt, float halfExtentX, float halfExtentY, float halfExtentZ,
-        float orientationW, float orientationX, float orientationY, float orientationZ) {
-    return sweepClosest(opt, physx::PxBoxGeometry{ halfExtentX, halfExtentY, halfExtentZ}, 
-        physx::PxQuat(orientationX, orientationY, orientationZ, orientationW));
+                                 float orientationW, float orientationX, float orientationY, float orientationZ) {
+    return sweepClosest(opt, physx::PxBoxGeometry{halfExtentX, halfExtentY, halfExtentZ},
+                        physx::PxQuat(orientationX, orientationY, orientationZ, orientationW));
 }
 
 bool PhysXWorld::sweepSphere(RaycastOptions &opt, float radius) {
-    return sweep(opt, physx::PxSphereGeometry{ radius }, physx::PxQuat(0, 0, 0, 1));
+    return sweep(opt, physx::PxSphereGeometry{radius}, physx::PxQuat(0, 0, 0, 1));
 }
 
 bool PhysXWorld::sweepSphereClosest(RaycastOptions &opt, float radius) {
-    return sweepClosest(opt, physx::PxSphereGeometry{ radius }, physx::PxQuat(0, 0, 0, 1));
+    return sweepClosest(opt, physx::PxSphereGeometry{radius}, physx::PxQuat(0, 0, 0, 1));
 }
 
 bool PhysXWorld::sweepCapsule(RaycastOptions &opt, float radius, float height,
-        float orientationW, float orientationX, float orientationY, float orientationZ) {
+                              float orientationW, float orientationX, float orientationY, float orientationZ) {
     //add an extra 90 degree rotation to PxCapsuleGeometry whose axis is originally along the X axis
     physx::PxQuat finalOrientation = physx::PxQuat(physx::PxPiDivTwo, physx::PxVec3{0.F, 0.F, 1.F});
     finalOrientation = physx::PxQuat(orientationX, orientationY, orientationZ, orientationW) * finalOrientation;
-    return sweep(opt, physx::PxCapsuleGeometry{ radius, height/2.f }, finalOrientation);
+    return sweep(opt, physx::PxCapsuleGeometry{radius, height / 2.f}, finalOrientation);
 }
 
 bool PhysXWorld::sweepCapsuleClosest(RaycastOptions &opt, float radius, float height,
-        float orientationW, float orientationX, float orientationY, float orientationZ) {
+                                     float orientationW, float orientationX, float orientationY, float orientationZ) {
     //add an extra 90 degree rotation to PxCapsuleGeometry whose axis is originally along the X axis
     physx::PxQuat finalOrientation = physx::PxQuat(physx::PxPiDivTwo, physx::PxVec3{0.F, 0.F, 1.F});
     finalOrientation = physx::PxQuat(orientationX, orientationY, orientationZ, orientationW) * finalOrientation;
-    return sweepClosest(opt, physx::PxCapsuleGeometry{ radius, height/2.f }, finalOrientation);
+    return sweepClosest(opt, physx::PxCapsuleGeometry{radius, height / 2.f}, finalOrientation);
 }
 
 bool PhysXWorld::sweep(RaycastOptions &opt, const physx::PxGeometry &geometry, const physx::PxQuat &orientation) {

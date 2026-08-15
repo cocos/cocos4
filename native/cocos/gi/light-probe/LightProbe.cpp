@@ -312,7 +312,7 @@ void LightProbeInfo::onProbeBakingChanged(Node *node) { // NOLINT(misc-no-recurs
     node->emit<Node::LightProbeBakingChanged>();
 
     const auto &children = node->getChildren();
-    for (const auto &child: children) {
+    for (const auto &child : children) {
         onProbeBakingChanged(child);
     }
 }

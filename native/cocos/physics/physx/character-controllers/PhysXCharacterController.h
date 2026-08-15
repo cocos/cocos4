@@ -42,14 +42,14 @@ public:
 class QueryFilterCallback : public physx::PxQueryFilterCallback {
 public:
     virtual physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& filterData, const physx::PxShape* shape,
-    const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags) override;
-    
+                                                  const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags) override;
+
     virtual physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit) override;
 };
 
 class PhysXCharacterController : virtual public IBaseCharacterController {
     PX_NOCOPY(PhysXCharacterController)
-        PhysXCharacterController();
+    PhysXCharacterController();
 
 public:
     ~PhysXCharacterController() override = default;
@@ -79,7 +79,7 @@ public:
     virtual void setDetectCollisions(bool v) override;
     virtual void setOverlapRecovery(bool v) override;
     virtual void setCenter(float x, float y, float z) override;
-    
+
     uint32_t getGroup() override;
     void setGroup(uint32_t g) override;
     uint32_t getMask() override;
@@ -91,21 +91,21 @@ public:
     inline physx::PxController& getCCT() { return *_impl; };
 
 protected:
-    physx::PxController* _impl{ nullptr };
-    uint8_t _mFlag{ 0 };
-    bool _mEnabled{ false };
-    uint32_t _mObjectID{ 0 };
-    Node* _mNode{ nullptr };
+    physx::PxController* _impl{nullptr};
+    uint8_t _mFlag{0};
+    bool _mEnabled{false};
+    uint32_t _mObjectID{0};
+    Node* _mNode{nullptr};
     physx::PxFilterData _mFilterData;
     ControllerHitReport report;
     QueryFilterCallback _mFilterCallback;
     physx::PxControllerFilters controllerFilter;
     physx::PxControllerCollisionFlags _pxCollisionFlags;
-    bool _mOverlapRecovery{ true };
-    float _mContactOffset{ 0.01f };
-    float _mStepOffset{ 1.f };
-    float _mSlopeLimit{ 45.f };
-    cc::Vec3 _mCenter{ 0.f, 0.f, 0.f };
+    bool _mOverlapRecovery{true};
+    float _mContactOffset{0.01f};
+    float _mStepOffset{1.f};
+    float _mSlopeLimit{45.f};
+    cc::Vec3 _mCenter{0.f, 0.f, 0.f};
 
     void release();
     void updateFilterData();

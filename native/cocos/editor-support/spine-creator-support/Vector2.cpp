@@ -2,8 +2,7 @@
 #include <math.h>
 namespace spine {
 
-Vector2::Vector2(): x(0), y(0) {
-
+Vector2::Vector2() : x(0), y(0) {
 }
 
 Vector2::Vector2(float x, float y) {
@@ -16,7 +15,7 @@ Vector2::~Vector2() {}
 void Vector2::setX(float x) {
     this->x = x;
 }
-     
+
 float Vector2::getX() const {
     return x;
 }
@@ -45,4 +44,4 @@ Vector2& Vector2::normalize() {
     this->setY(y * invLen);
     return *this;
 }
-}
+} // namespace spine

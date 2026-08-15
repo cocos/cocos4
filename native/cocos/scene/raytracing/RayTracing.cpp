@@ -23,9 +23,9 @@
 ****************************************************************************/
 
 #include "RayTracing.h"
-#include "cocos/scene/RenderScene.h"
 #include "cocos/core/Root.h"
 #include "cocos/scene/Pass.h"
+#include "cocos/scene/RenderScene.h"
 namespace cc {
 namespace scene {
 namespace raytracing {
@@ -82,7 +82,7 @@ void RayTracing::beforeRender() {
                     _description->opaqueOrMaskInstanceIDs.emplace_back(_instanceNum);
                 }
                 addMaterial(pass);
-            } 
+            }
             _instanceNum++;
         }
     }
@@ -99,7 +99,7 @@ MeshPrim RayTracing::buildRayTracingMeshPrimitive(const IntrusivePtr<SubModel>& 
     auto& meshes = _description->meshes;
     Mesh mesh{};
     mesh.subModel = subModel;
-    
+
     meshes.emplace_back(std::move(mesh));
     MeshPrim prim{};
     {
@@ -197,8 +197,7 @@ void RayTracing::addMaterial(const IntrusivePtr<Pass>& pass) {
     auto pbrBinding = pass->getBinding("pbrMap");
     if (pbrBinding != -1) {
         const TextureInfo metallic{
-            static_cast<int>(_description->textures.size())
-        };
+            static_cast<int>(_description->textures.size())};
         pbrMetallic.metallicRoughnessTexture = metallic;
         pbrMetallic.metallicFactor = getPassUniformAsFloat(pass, "metallic");
         pbrMetallic.roughnessFactor = getPassUniformAsFloat(pass, "roughness");
@@ -207,8 +206,7 @@ void RayTracing::addMaterial(const IntrusivePtr<Pass>& pass) {
     auto albedoBinding = pass->getBinding("mainTexture");
     if (albedoBinding != -1) {
         const TextureInfo baseColInfo{
-            static_cast<int>(_description->textures.size())
-        };
+            static_cast<int>(_description->textures.size())};
         pbrMetallic.baseColorTexture = baseColInfo;
         pbrMetallic.baseColorFactor = getPassUniformAsFloat(pass, "albedoScale");
         addTexture(pass, "mainTexture", albedoBinding);
@@ -218,8 +216,7 @@ void RayTracing::addMaterial(const IntrusivePtr<Pass>& pass) {
     if (normalBinding != -1) {
         const MaterialNormalTextureInfo normalTexInfo{
             static_cast<int>(_description->textures.size()),
-            getPassUniformAsFloat(pass, "normalStrength")
-        };
+            getPassUniformAsFloat(pass, "normalStrength")};
         mat.normalTexture = normalTexInfo;
         addTexture(pass, "normalMap", normalBinding);
     }
@@ -227,16 +224,14 @@ void RayTracing::addMaterial(const IntrusivePtr<Pass>& pass) {
     if (occlusionBinding != -1) {
         const MaterialOcclusionTextureInfo occlusionTex{
             static_cast<int>(_description->textures.size()),
-            getPassUniformAsFloat(pass, "occlusion")
-        };
+            getPassUniformAsFloat(pass, "occlusion")};
         mat.occlusionTexture = occlusionTex;
         addTexture(pass, "occlusionMap", occlusionBinding);
     }
     auto emissiveBinding = pass->getBinding("emissiveMap");
     if (emissiveBinding != -1) {
         const TextureInfo emissiveTexture{
-            static_cast<int>(_description->textures.size())
-        };
+            static_cast<int>(_description->textures.size())};
         mat.emissiveTexture = emissiveTexture;
         mat.emissiveFactor = ccstd::get<Vec3>(getPassUniform(pass, "emissiveScale"));
         addTexture(pass, "emissiveMap", emissiveBinding);
@@ -251,7 +246,7 @@ void RayTracing::addMaterial(const IntrusivePtr<Pass>& pass) {
     _description->materials.emplace_back(std::move(mat));
 }
 
-RayTracing::RayTracing(RenderScene* scene): _renderScene(scene), _description(ccnew Description()) {}
+RayTracing::RayTracing(RenderScene* scene) : _renderScene(scene), _description(ccnew Description()) {}
 void RayTracing::setRenderScene(RenderScene* scene) {
     _renderScene = scene;
     _description = ccnew Description();

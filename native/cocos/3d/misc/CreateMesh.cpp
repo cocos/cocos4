@@ -310,7 +310,7 @@ Mesh::ICreateInfo MeshUtils::createDynamicMeshInfo(const IDynamicGeometry &geome
     if (aOptions.has_value()) {
         options = aOptions.value();
     }
-    
+
     gfx::AttributeList attributes;
     uint32_t stream = 0U;
 

@@ -119,7 +119,7 @@ enum class XRConfigKey {
     ASYNC_LOAD_ASSETS_IMAGE = 55,
     ASYNC_LOAD_ASSETS_IMAGE_RESULTS = 56,
     LEFT_CONTROLLER_ACTIVE = 57,
-    RIGHT_CONTROLLER_ACTIVE= 58,
+    RIGHT_CONTROLLER_ACTIVE = 58,
     TS_EVENT_CALLBACK = 59,
     MAX_COUNT
 };
@@ -330,13 +330,13 @@ struct XRTouch : public XRControllerInfo {
     Type type = Type::UNKNOWN;
 
     XRTouch(Type type, bool isActive)
-            : type(type),
-              isActive(isActive) {}
+    : type(type),
+      isActive(isActive) {}
 
     XRTouch(Type type, float value)
-            : type(type),
-              isActive(true),
-              value(value) {}
+    : type(type),
+      isActive(true),
+      value(value) {}
 
     XREventType getXREventType() const override {
         return XREventType::TOUCH;

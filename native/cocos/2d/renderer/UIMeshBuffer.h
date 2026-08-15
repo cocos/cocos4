@@ -23,12 +23,12 @@
 ****************************************************************************/
 
 #pragma once
-#include "base/Ptr.h"
 #include "base/Macros.h"
+#include "base/Ptr.h"
 #include "base/TypeDef.h"
-#include "renderer/gfx-base/GFXInputAssembler.h"
-#include "renderer/gfx-base/GFXDef-common.h"
 #include "renderer/gfx-base/GFXBuffer.h"
+#include "renderer/gfx-base/GFXDef-common.h"
+#include "renderer/gfx-base/GFXInputAssembler.h"
 
 namespace cc {
 

@@ -31,10 +31,10 @@
 #include "glslang/StandAlone/ResourceLimits.h"
 #include "spirv/spirv.h"
 
-#define CC_GLSLANG_VERSION_GREATOR_OR_EQUAL_TO(major, minor, patch) \
-    (((major) < GLSLANG_VERSION_MAJOR) || ((major) == GLSLANG_VERSION_MAJOR && \
-    (((minor) < GLSLANG_VERSION_MINOR) || ((minor) == GLSLANG_VERSION_MINOR && \
-     ((patch) <= GLSLANG_VERSION_PATCH)))))
+#define CC_GLSLANG_VERSION_GREATOR_OR_EQUAL_TO(major, minor, patch)                                                   \
+    (((major) < GLSLANG_VERSION_MAJOR) || ((major) == GLSLANG_VERSION_MAJOR &&                                        \
+                                           (((minor) < GLSLANG_VERSION_MINOR) || ((minor) == GLSLANG_VERSION_MINOR && \
+                                                                                  ((patch) <= GLSLANG_VERSION_PATCH)))))
 
 namespace cc {
 namespace gfx {

@@ -59,6 +59,7 @@ public:
     void onResume() override;
     void onClose() override;
     void pollEvent() override;
+
 private:
     bool _readyToExit{false};
     std::shared_ptr<SystemWindowManager> _windowManager{nullptr};

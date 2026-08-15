@@ -24,10 +24,10 @@
 
 #include "scene/Shadow.h"
 #include <cmath>
+#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "core/Root.h"
 #include "core/scene-graph/Node.h"
 #include "scene/Pass.h"
-#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 
 namespace cc {
 namespace scene {

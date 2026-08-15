@@ -23,14 +23,13 @@
 ****************************************************************************/
 
 #include "physics/physx/character-controllers/PhysXCapsuleCharacterController.h"
+#include "math/Utils.h"
 #include "physics/physx/PhysXUtils.h"
 #include "physics/physx/PhysXWorld.h"
-#include "math/Utils.h"
 
 namespace cc {
 namespace physics {
-PhysXCapsuleCharacterController::PhysXCapsuleCharacterController() : 
-_mRadius(0.5F), _mHeight(1.0F) {
+PhysXCapsuleCharacterController::PhysXCapsuleCharacterController() : _mRadius(0.5F), _mHeight(1.0F) {
 }
 
 void PhysXCapsuleCharacterController::setRadius(float v) {
@@ -50,7 +49,7 @@ void PhysXCapsuleCharacterController::onComponentSet() {
 void PhysXCapsuleCharacterController::create() {
     release();
 
-    physx::PxControllerManager& controllerManager = PhysXWorld::getInstance().getControllerManager();
+    physx::PxControllerManager &controllerManager = PhysXWorld::getInstance().getControllerManager();
     auto pxMtl = reinterpret_cast<physx::PxMaterial *>(PhysXWorld::getInstance().getPXMaterialPtrWithMaterialID(0));
 
     physx::PxCapsuleControllerDesc capsuleDesc;
@@ -71,26 +70,26 @@ void PhysXCapsuleCharacterController::create() {
     capsuleDesc.material = pxMtl;
     capsuleDesc.userData = this;
     capsuleDesc.reportCallback = &report;
-    _impl = static_cast<physx::PxCapsuleController*>(controllerManager.createController(capsuleDesc));
+    _impl = static_cast<physx::PxCapsuleController *>(controllerManager.createController(capsuleDesc));
 
     updateScale();
     insertToCCTMap();
     updateFilterData();
 }
 
-void PhysXCapsuleCharacterController::updateScale(){
+void PhysXCapsuleCharacterController::updateScale() {
     updateGeometry();
 }
 
 void PhysXCapsuleCharacterController::updateGeometry() {
-    if(!_impl) return;
+    if (!_impl) return;
 
     auto *node = _mNode;
     node->updateWorldTransform();
     float r = _mRadius * pxAbsMax(node->getWorldScale().x, node->getWorldScale().z);
     float h = _mHeight * physx::PxAbs(node->getWorldScale().y);
-    static_cast<physx::PxCapsuleController*>(_impl)->setRadius(physx::PxMax(r, PX_NORMALIZATION_EPSILON));
-    static_cast<physx::PxCapsuleController*>(_impl)->setHeight(physx::PxMax(h, PX_NORMALIZATION_EPSILON));
+    static_cast<physx::PxCapsuleController *>(_impl)->setRadius(physx::PxMax(r, PX_NORMALIZATION_EPSILON));
+    static_cast<physx::PxCapsuleController *>(_impl)->setHeight(physx::PxMax(h, PX_NORMALIZATION_EPSILON));
 }
 
 } // namespace physics

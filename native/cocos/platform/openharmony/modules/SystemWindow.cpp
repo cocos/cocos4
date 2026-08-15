@@ -31,7 +31,7 @@
 
 namespace cc {
 
-SystemWindow::SystemWindow(uint32_t windowId, void *externalHandle)
+SystemWindow::SystemWindow(uint32_t windowId, void* externalHandle)
 : _windowId(windowId) {
     if (externalHandle) {
         _windowHandle = reinterpret_cast<void*>(externalHandle);
@@ -55,7 +55,6 @@ bool SystemWindow::createWindow(const char* title,
     _height = h;
     return true;
 }
-
 
 void SystemWindow::setCursorEnabled(bool value) {
 }
@@ -85,6 +84,5 @@ SystemWindow::Size SystemWindow::getViewSize() const {
     return Size{static_cast<float>(_width),
                 static_cast<float>(_height)};
 }
-
 
 } // namespace cc

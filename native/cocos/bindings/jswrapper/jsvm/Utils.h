@@ -33,7 +33,7 @@ namespace internal {
 
 using target_value = JSVM_Value;
 struct PrivateData {
-    void *  data;
+    void *data;
     Object *seObj;
 };
 

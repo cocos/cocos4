@@ -24,9 +24,9 @@
 ****************************************************************************/
 
 #include "Utils.h"
+#include "Class.h"
 #include "CommonHeader.h"
 #include "ScriptEngine.h"
-#include "Class.h"
 
 #define MAX_STRING_LENS 1024
 
@@ -35,20 +35,20 @@ namespace internal {
 void jsToSeValue(const target_value& value, Value* v) {
     assert(v != nullptr);
     auto env = ScriptEngine::getEnv();
-    JSVM_Status    status;
+    JSVM_Status status;
     JSVM_ValueType valType;
-    int64_t iRet      = 0;
-    double  dRet      = 0.0;
-    bool    bRet      = false;
-    bool    lossless  = false;
-    size_t  len       = 0;
-    void*   privateObjPtr = nullptr;
-    void*   nativePtr = nullptr;
-    Object* obj       = nullptr;
+    int64_t iRet = 0;
+    double dRet = 0.0;
+    bool bRet = false;
+    bool lossless = false;
+    size_t len = 0;
+    void* privateObjPtr = nullptr;
+    void* nativePtr = nullptr;
+    Object* obj = nullptr;
 
     if (!value) {
         valType = JSVM_ValueType::JSVM_UNDEFINED;
-    }else {
+    } else {
         NODE_API_CALL(status, env, OH_JSVM_Typeof(env, value, &valType));
     }
 
@@ -106,7 +106,7 @@ void jsToSeValue(const target_value& value, Value* v) {
                 obj = reinterpret_cast<Object*>(privateObjPtr);
                 obj->incRef();
             }
-            
+
             if (obj == nullptr) {
                 obj = Object::_createJSObject(env, value, nullptr);
             }
@@ -141,7 +141,7 @@ bool seToJsValue(const Value& v, target_value* outJsVal) {
             NODE_API_CALL(status, env, OH_JSVM_CreateDouble(env, v.toDouble(), outJsVal));
             ret = (status == JSVM_OK);
             break;
-        case Value::Type::String: 
+        case Value::Type::String:
             NODE_API_CALL(status, env, OH_JSVM_CreateStringUtf8(env, v.toString().c_str(), v.toString().length(), outJsVal));
             ret = (status == JSVM_OK);
             break;
@@ -151,7 +151,7 @@ bool seToJsValue(const Value& v, target_value* outJsVal) {
             break;
         case Value::Type::Object:
             *outJsVal = v.toObject()->_getJSObject();
-            ret       = (outJsVal != nullptr);
+            ret = (outJsVal != nullptr);
             break;
         case Value::Type::Null:
             NODE_API_CALL(status, env, OH_JSVM_GetNull(env, outJsVal));
@@ -199,7 +199,7 @@ bool setReturnValue(const Value& data, target_value& argv) {
     return seToJsValue(data, &argv);
 }
 
-std::string jsToString(const target_value &value) {
+std::string jsToString(const target_value& value) {
     se::Value seValue;
     internal::jsToSeValue(value, &seValue);
     if (seValue.isString()) {
@@ -209,7 +209,7 @@ std::string jsToString(const target_value &value) {
     }
 }
 
-void logJsException(JSVM_Env env, const char *file, int line) {
+void logJsException(JSVM_Env env, const char* file, int line) {
     bool isPending = false;
     JSVM_CALL_RETURN_VOID(OH_JSVM_IsExceptionPending(env, &isPending));
     if (!isPending) {
@@ -232,11 +232,12 @@ void logJsException(JSVM_Env env, const char *file, int line) {
     std::string stackStr = jsToString(stack);
     std::string messageStr = jsToString(message);
 
-    CC_LOG_ERROR("JS exception occurred at %s:%d\n\
+    CC_LOG_ERROR(
+        "JS exception occurred at %s:%d\n\
             [name]: %s\n\
             [message]: %s\n\
             [stack]: %s",
-            file, line, nameStr.c_str(), messageStr.c_str(), stackStr.c_str());
+        file, line, nameStr.c_str(), messageStr.c_str(), stackStr.c_str());
     auto exceptionCallback = ScriptEngine::getInstance()->getExceptionCallback();
     exceptionCallback("", messageStr.c_str(), stackStr.c_str());
 }

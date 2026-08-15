@@ -27,41 +27,41 @@
 #include "base/RefCounted.h"
 
 namespace cc {
-	namespace scene {
-        enum class ToneMappingType {
-            DEFAULT = 0,
-            LINEAR = 1,
-        };
+namespace scene {
+enum class ToneMappingType {
+    DEFAULT = 0,
+    LINEAR = 1,
+};
 
-        class PostSettings;
-        class PostSettingsInfo : public RefCounted {
-        public:
-            PostSettingsInfo() = default;
-            ~PostSettingsInfo() override = default;
+class PostSettings;
+class PostSettingsInfo : public RefCounted {
+public:
+    PostSettingsInfo() = default;
+    ~PostSettingsInfo() override = default;
 
-            inline ToneMappingType getToneMappingType() const { return _toneMappingType; }
-            void setToneMappingType(ToneMappingType toneMappingType);
+    inline ToneMappingType getToneMappingType() const { return _toneMappingType; }
+    void setToneMappingType(ToneMappingType toneMappingType);
 
-            void activate(PostSettings *resource);
-            PostSettings *_resource{nullptr};
-            ToneMappingType _toneMappingType{ ToneMappingType::DEFAULT };
-		};
+    void activate(PostSettings *resource);
+    PostSettings *_resource{nullptr};
+    ToneMappingType _toneMappingType{ToneMappingType::DEFAULT};
+};
 
-		class PostSettings final {
-		public:
-			PostSettings() = default;
-			~PostSettings() = default;
-            void activate();
+class PostSettings final {
+public:
+    PostSettings() = default;
+    ~PostSettings() = default;
+    void activate();
 
-			void initialize(const PostSettingsInfo &postSettingsInfo);
-            inline ToneMappingType getToneMappingType() const { return _toneMappingType; }
-            void setToneMappingType(ToneMappingType toneMappingType);
-        private:
-            void updatePipeline() const;
-            bool _activated{ false };
-            ToneMappingType _toneMappingType{ ToneMappingType::DEFAULT };
-		};
+    void initialize(const PostSettingsInfo &postSettingsInfo);
+    inline ToneMappingType getToneMappingType() const { return _toneMappingType; }
+    void setToneMappingType(ToneMappingType toneMappingType);
 
+private:
+    void updatePipeline() const;
+    bool _activated{false};
+    ToneMappingType _toneMappingType{ToneMappingType::DEFAULT};
+};
 
-	}// namespace scene
+} // namespace scene
 } // namespace cc

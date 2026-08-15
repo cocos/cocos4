@@ -26,13 +26,13 @@
 #include "platform/openharmony/WorkerMessageQueue.h"
 
 namespace cc {
-    
+
 void WorkerMessageQueue::enqueue(const WorkerMessageData& data) {
     std::lock_guard<std::mutex> lck(_mutex);
     _queue.push(data);
 }
 
-bool WorkerMessageQueue::dequeue(WorkerMessageData *data) {
+bool WorkerMessageQueue::dequeue(WorkerMessageData* data) {
     std::lock_guard<std::mutex> lck(_mutex);
     if (empty()) {
         return false;

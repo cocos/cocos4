@@ -10,8 +10,8 @@
 
 #if (SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_V8) && SE_ENABLE_INSPECTOR
 
-    #include <string.h>
     #include <assert.h>
+    #include <string.h>
 
     #if defined(_MSC_VER)
         #include <stdlib.h>

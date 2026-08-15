@@ -27,14 +27,14 @@
 #include <sstream>
 #include "../MappingUtils.h"
 #include "Class.h"
+#include "CommonHeader.h"
 #include "State.h"
 #include "Utils.h"
-#include "CommonHeader.h"
 
 #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include "ark_runtime/jsvm.h"
+    #include "ark_runtime/jsvm.h"
 #else
-#include "jsvm.h"
+    #include "jsvm.h"
 #endif
 
 #define _EXPOSE_GC "__jsb_gc__"
@@ -61,11 +61,11 @@ se::Value __oldConsoleWarn;
 se::Value __oldConsoleError;
 se::Value __oldConsoleAssert;
 
-bool JSB_console_format_log(State& s, cc::LogLevel level, int msgIndex = 0) {
+bool JSB_console_format_log(State &s, cc::LogLevel level, int msgIndex = 0) {
     if (msgIndex < 0)
         return false;
 
-    const auto& args = s.args();
+    const auto &args = s.args();
     int argc = (int)args.size();
     if ((argc - msgIndex) == 1) {
         std::string msg = args[msgIndex].toStringForce();
@@ -73,37 +73,37 @@ bool JSB_console_format_log(State& s, cc::LogLevel level, int msgIndex = 0) {
     } else if (argc > 1) {
         std::string msg = args[msgIndex].toStringForce();
         size_t pos;
-        for (int i = (msgIndex+1); i < argc; ++i) {
+        for (int i = (msgIndex + 1); i < argc; ++i) {
             pos = msg.find("%");
-            if (pos != std::string::npos && pos != (msg.length()-1) && 
-                (msg[pos+1] == 'd' || msg[pos+1] == 's' || msg[pos+1] == 'f')) {
-                    msg.replace(pos, 2, args[i].toStringForce());
-                } else {
-                    msg += " " + args[i].toStringForce();
-                }
+            if (pos != std::string::npos && pos != (msg.length() - 1) &&
+                (msg[pos + 1] == 'd' || msg[pos + 1] == 's' || msg[pos + 1] == 'f')) {
+                msg.replace(pos, 2, args[i].toStringForce());
+            } else {
+                msg += " " + args[i].toStringForce();
+            }
         }
         cc::Log::logMessage(cc::LogType::KERNEL, level, "JS: %s", msg.c_str());
     }
     return true;
 }
 
-bool JSB_console_log(State& s) {
+bool JSB_console_log(State &s) {
     JSB_console_format_log(s, cc::LogLevel::LEVEL_DEBUG);
     __oldConsoleLog.toObject()->call(s.args(), s.thisObject());
     return true;
 }
-        
+
 SE_BIND_FUNC(JSB_console_log)
 
-bool JSB_console_debug(State& s) {
+bool JSB_console_debug(State &s) {
     JSB_console_format_log(s, cc::LogLevel::LEVEL_DEBUG);
     __oldConsoleDebug.toObject()->call(s.args(), s.thisObject());
     return true;
 }
-        
+
 SE_BIND_FUNC(JSB_console_debug)
 
-bool JSB_console_info(State& s) {
+bool JSB_console_info(State &s) {
     JSB_console_format_log(s, cc::LogLevel::INFO);
     __oldConsoleInfo.toObject()->call(s.args(), s.thisObject());
     return true;
@@ -111,15 +111,15 @@ bool JSB_console_info(State& s) {
 
 SE_BIND_FUNC(JSB_console_info)
 
-bool JSB_console_warn(State& s) {
+bool JSB_console_warn(State &s) {
     JSB_console_format_log(s, cc::LogLevel::WARN);
     __oldConsoleWarn.toObject()->call(s.args(), s.thisObject());
     return true;
 }
-        
+
 SE_BIND_FUNC(JSB_console_warn)
 
-bool JSB_console_error(State& s) {
+bool JSB_console_error(State &s) {
     JSB_console_format_log(s, cc::LogLevel::ERR);
     __oldConsoleError.toObject()->call(s.args(), s.thisObject());
     return true;
@@ -127,8 +127,8 @@ bool JSB_console_error(State& s) {
 
 SE_BIND_FUNC(JSB_console_error)
 
-bool JSB_console_assert(State& s) {
-    const auto& args = s.args();
+bool JSB_console_assert(State &s) {
+    const auto &args = s.args();
     if (!args.empty()) {
         if (args[0].isBoolean() && !args[0].toBoolean()) {
             JSB_console_format_log(s, cc::LogLevel::WARN, 1);
@@ -184,11 +184,11 @@ bool ScriptEngine::runScript(const std::string &path, Value *ret /* = nullptr */
 }
 
 bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret, const char *fileName) {
-    length = length < 0 ? strlen(scriptStr) :length;
+    length = length < 0 ? strlen(scriptStr) : length;
     JSVM_Status status;
-    JSVM_Value  jsvmStr;
+    JSVM_Value jsvmStr;
     NODE_API_CALL(status, _env, OH_JSVM_CreateStringUtf8(_env, scriptStr, length, &jsvmStr));
-    if(status != JSVM_OK) {
+    if (status != JSVM_OK) {
         CC_LOG_ERROR("ScriptEngine::evalString, create string failed, fileName = %s", fileName);
         return false;
     }
@@ -202,32 +202,31 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
         .sourceMapUrl = nullptr,
         .resourceName = fileName ? fileName : "",
         .resourceLineOffset = 0,
-        .resourceColumnOffset = 0
-    };
+        .resourceColumnOffset = 0};
 
-    NODE_API_CALL(status, _env, 
-                  OH_JSVM_CompileScriptWithOrigin(_env, jsvmStr, cachedData, cacheLength, false, &cacheRejected,&scriptOrigin, &compiledScript));
-    
-    if(status != JSVM_OK) {
-       CC_LOG_ERROR("ScriptEngine::evalSting, compile failed, fileName = %s", fileName);
-       return false;
+    NODE_API_CALL(status, _env,
+                  OH_JSVM_CompileScriptWithOrigin(_env, jsvmStr, cachedData, cacheLength, false, &cacheRejected, &scriptOrigin, &compiledScript));
+
+    if (status != JSVM_OK) {
+        CC_LOG_ERROR("ScriptEngine::evalSting, compile failed, fileName = %s", fileName);
+        return false;
     }
 
     JSVM_Value result;
     NODE_API_CALL(status, _env, OH_JSVM_RunScript(_env, compiledScript, &result));
-    if(status != JSVM_OK) {
-       CC_LOG_ERROR("ScriptEngine::evelSting, run failed, fileName = %s", fileName);
-       return false;
+    if (status != JSVM_OK) {
+        CC_LOG_ERROR("ScriptEngine::evelSting, run failed, fileName = %s", fileName);
+        return false;
     }
 
     // NOTE: Currently, we don't support JSVM code cache saving/loading.
     // So creating code cache here is useless and wastes memory.
-//    if(!cachedData || cacheRejected) {
-//        NODE_API_CALL(status, _env,
-//                      OH_JSVM_CreateCodeCache(_env, compiledScript, (const uint8_t **)&cachedData, &cacheLength));
-//    }
-    
-    if(ret) {
+    //    if(!cachedData || cacheRejected) {
+    //        NODE_API_CALL(status, _env,
+    //                      OH_JSVM_CreateCodeCache(_env, compiledScript, (const uint8_t **)&cachedData, &cacheLength));
+    //    }
+
+    if (ret) {
         internal::jsToSeValue(result, ret);
     }
 
@@ -236,7 +235,7 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
 
 bool ScriptEngine::init() {
     JSVM_Status status;
-    JSVM_Value  result;
+    JSVM_Value result;
 
     for (const auto &hook : _beforeInitHookArray) {
         hook();
@@ -248,7 +247,7 @@ bool ScriptEngine::init() {
     NODE_API_CALL(status, _env, OH_JSVM_OpenEnvScope(_env, &_envScope));
 
     se::AutoHandleScope hs;
-    
+
     uint32_t jsvmVersion = 0;
     NODE_API_CALL(status, _env, OH_JSVM_GetVersion(_env, &jsvmVersion));
     SE_LOGD("Initializing JSVM, version: %u\n", jsvmVersion);
@@ -284,9 +283,9 @@ bool ScriptEngine::init() {
 
     _globalObj->defineFunction("log", _SE(JSB_console_log));
     _globalObj->defineFunction("forceGC", _SE(__forceGC));
-        
+
     _globalObj->getProperty(_EXPOSE_GC, &_gcFuncValue);
-    if(_gcFuncValue.isObject() && _gcFuncValue.toObject()->isFunction()) {
+    if (_gcFuncValue.isObject() && _gcFuncValue.toObject()->isFunction()) {
         _gcFunc = _gcFuncValue.toObject();
     } else {
         _gcFunc = nullptr;
@@ -303,7 +302,7 @@ bool ScriptEngine::init() {
 }
 
 Object *ScriptEngine::getGlobalObject() const { return _globalObj; }
-    
+
 void ScriptEngine::closeEngine() {
     JSVM_Env env = _env;
     _env = nullptr;
@@ -327,16 +326,16 @@ bool ScriptEngine::start() {
     if (!init()) {
         return false;
     }
-        // debugger
+    // debugger
     if (isDebuggerEnabled()) {
-        if(_debuggerServerAddr == "0.0.0.0") {
-            OH_JSVM_OpenInspector(_env, "localhost", _debuggerServerPort);    
+        if (_debuggerServerAddr == "0.0.0.0") {
+            OH_JSVM_OpenInspector(_env, "localhost", _debuggerServerPort);
         } else {
             OH_JSVM_OpenInspector(_env, _debuggerServerAddr.c_str(), _debuggerServerPort);
         }
         SE_LOGD("Debugger listening..., visit [ http://localhost:%d/json ] to configuration debugging information and copy the devtoolsFrontendUrl value to the browser!", _debuggerServerPort);
-        
-        if(_isWaitForConnect) {
+
+        if (_isWaitForConnect) {
             OH_JSVM_WaitForDebugger(_env, true);
         }
     }
@@ -373,11 +372,11 @@ void ScriptEngine::cleanup() {
     SE_LOGD("ScriptEngine::cleanup begin ...\n");
     _isInCleanup = true;
     se::AutoHandleScope hs;
-    do{
+    do {
         for (const auto &hook : _beforeCleanupHookArray) {
             hook();
         }
-    }while (0);
+    } while (0);
     _beforeCleanupHookArray.clear();
 
     SAFE_DEC_REF(_globalObj);
@@ -393,7 +392,7 @@ void ScriptEngine::cleanup() {
     __oldConsoleAssert.setUndefined();
 
     _globalObj = nullptr;
-    _isValid   = false;
+    _isValid = false;
     _gcFunc = nullptr;
 
     _registerCallbackArray.clear();
@@ -409,7 +408,7 @@ void ScriptEngine::cleanup() {
     _isInCleanup = false;
     NativePtrToObjectMap::destroy();
     _gcFuncValue.setUndefined();
-    
+
     SE_LOGD("ScriptEngine::cleanup end ...\n");
 }
 
@@ -477,16 +476,16 @@ void ScriptEngine::clearException() {
 }
 
 void ScriptEngine::garbageCollect() {
-    CC_LOG_DEBUG("GC begin ..., (js->native map) size: %d",(int)NativePtrToObjectMap::size());
+    CC_LOG_DEBUG("GC begin ..., (js->native map) size: %d", (int)NativePtrToObjectMap::size());
 
-    if(_gcFunc == nullptr) {
+    if (_gcFunc == nullptr) {
         JSVM_Status status;
         NODE_API_CALL(status, _env, OH_JSVM_MemoryPressureNotification(_env, JSVM_MEMORY_PRESSURE_LEVEL_CRITICAL));
     } else {
         _gcFunc->call({}, nullptr);
     }
-    
-    CC_LOG_DEBUG("GC end ..., (js->native map) size: %d",(int)NativePtrToObjectMap::size());
+
+    CC_LOG_DEBUG("GC end ..., (js->native map) size: %d", (int)NativePtrToObjectMap::size());
 }
 
 bool ScriptEngine::isGarbageCollecting() const {

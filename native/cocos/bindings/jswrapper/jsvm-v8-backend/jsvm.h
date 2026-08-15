@@ -43,42 +43,42 @@
  */
 
 // This file needs to be compatible with C compilers.
-#include <stdbool.h>  // NOLINT(modernize-deprecated-headers)
-#include <stddef.h>   // NOLINT(modernize-deprecated-headers)
+#include <stdbool.h> // NOLINT(modernize-deprecated-headers)
+#include <stddef.h>  // NOLINT(modernize-deprecated-headers)
 
 // Use INT_MAX, this should only be consumed by the pre-processor anyway.
 #define JSVM_VERSION_EXPERIMENTAL 2147483647
 #ifndef JSVM_VERSION
-#ifdef JSVM_EXPERIMENTAL
-#define JSVM_VERSION JSVM_VERSION_EXPERIMENTAL
-#else
-// The baseline version for JSVM-API.
-// The JSVM_VERSION controls which version will be used by default when
-// compilling a native addon. If the addon developer specifically wants to use
-// functions available in a new version of JSVM-API that is not yet ported in all
-// LTS versions, they can set JSVM_VERSION knowing that they have specifically
-// depended on that version.
-#define JSVM_VERSION 8
-#endif
+    #ifdef JSVM_EXPERIMENTAL
+        #define JSVM_VERSION JSVM_VERSION_EXPERIMENTAL
+    #else
+        // The baseline version for JSVM-API.
+        // The JSVM_VERSION controls which version will be used by default when
+        // compilling a native addon. If the addon developer specifically wants to use
+        // functions available in a new version of JSVM-API that is not yet ported in all
+        // LTS versions, they can set JSVM_VERSION knowing that they have specifically
+        // depended on that version.
+        #define JSVM_VERSION 8
+    #endif
 #endif
 
 #include "jsvm_types.h"
 
 #ifndef JSVM_EXTERN
-#ifdef _WIN32
-/**
+    #ifdef _WIN32
+        /**
  * @brief externally visible.
  *
  * @since 11
  */
-#define JSVM_EXTERN __declspec(dllexport)
-#elif defined(__wasm__)
-#define JSVM_EXTERN                                           \
-    __attribute__((visibility("default")))                    \
-    __attribute__((__import_module__("jsvm")))
-#else
-#define JSVM_EXTERN __attribute__((visibility("default")))
-#endif
+        #define JSVM_EXTERN __declspec(dllexport)
+    #elif defined(__wasm__)
+        #define JSVM_EXTERN                        \
+            __attribute__((visibility("default"))) \
+            __attribute__((__import_module__("jsvm")))
+    #else
+        #define JSVM_EXTERN __attribute__((visibility("default")))
+    #endif
 #endif
 
 /**
@@ -89,11 +89,11 @@
 #define JSVM_AUTO_LENGTH SIZE_MAX
 
 #ifdef __cplusplus
-#define EXTERN_C_START extern "C" {
-#define EXTERN_C_END }
+    #define EXTERN_C_START extern "C" {
+    #define EXTERN_C_END   }
 #else
-#define EXTERN_C_START
-#define EXTERN_C_END
+    #define EXTERN_C_START
+    #define EXTERN_C_END
 #endif
 
 EXTERN_C_START
@@ -657,7 +657,6 @@ JSVM_EXTERN JSVM_Status OH_JSVM_GetReferenceValue(JSVM_Env env,
 JSVM_EXTERN JSVM_Status OH_JSVM_CreateArray(JSVM_Env env,
                                             JSVM_Value* result);
 
-
 /**
  * @brief This API returns a JSVM-API value corresponding to a JavaScript Array type. The Array's length property
  * is set to the passed-in length parameter. However, the underlying buffer is not guaranteed to be pre-allocated
@@ -707,7 +706,7 @@ JSVM_EXTERN JSVM_Status OH_JSVM_CreateArraybuffer(JSVM_Env env,
  */
 JSVM_Status JSVM_CDECL OH_JSVM_AllocateArrayBufferBackingStoreData(size_t byteLength,
                                                                    JSVM_InitializedFlag initialized,
-                                                                   void **data);
+                                                                   void** data);
 
 /**
  * @brief This API release the memory of an array buffer backing store.
@@ -718,7 +717,7 @@ JSVM_Status JSVM_CDECL OH_JSVM_AllocateArrayBufferBackingStoreData(size_t byteLe
  *         Returns {@link JSVM_INVALID_ARG } if data is null pointer.\n
  * @since 12
  */
-JSVM_Status JSVM_CDECL OH_JSVM_FreeArrayBufferBackingStoreData(void *data);
+JSVM_Status JSVM_CDECL OH_JSVM_FreeArrayBufferBackingStoreData(void* data);
 
 /**
  * @brief This API create an array buffer using the backing store data.
@@ -738,11 +737,11 @@ JSVM_Status JSVM_CDECL OH_JSVM_FreeArrayBufferBackingStoreData(void *data);
  * @since 12
  */
 JSVM_Status JSVM_CDECL OH_JSVM_CreateArrayBufferFromBackingStoreData(JSVM_Env env,
-                                                                     void *data,
+                                                                     void* data,
                                                                      size_t backingStoreSize,
                                                                      size_t offset,
                                                                      size_t arrayBufferSize,
-                                                                     JSVM_Value *result);
+                                                                     JSVM_Value* result);
 
 /**
  * @brief This API does not observe leap seconds; they are ignored, as ECMAScript aligns with POSIX time specification.
@@ -1850,7 +1849,7 @@ JSVM_EXTERN JSVM_Status OH_JSVM_CallFunction(JSVM_Env env,
                                              const JSVM_Value* argv,
                                              JSVM_Value* result);
 
- /**
+/**
  * @brief This API allows an add-on author to create a function object in native
  * code. This is the primary mechanism to allow calling into the add-on's native
  * code from JavaScript.The newly created function is not automatically visible
@@ -1876,7 +1875,7 @@ JSVM_EXTERN JSVM_Status OH_JSVM_CreateFunction(JSVM_Env env,
                                                JSVM_Callback cb,
                                                JSVM_Value* result);
 
- /**
+/**
  * @brief This method is used within a callback function to retrieve details about
  * the call like the arguments and the this pointer from a given callback info.
  *
@@ -2770,12 +2769,12 @@ JSVM_EXTERN JSVM_Status OH_JSVM_OpenInspectorWithName(JSVM_Env env,
  * @since 12
  */
 JSVM_EXTERN JSVM_Status OH_JSVM_CompileWasmModule(JSVM_Env env,
-                                                  const uint8_t *wasmBytecode,
+                                                  const uint8_t* wasmBytecode,
                                                   size_t wasmBytecodeLength,
-                                                  const uint8_t *cacheData,
+                                                  const uint8_t* cacheData,
                                                   size_t cacheDataLength,
-                                                  bool *cacheRejected,
-                                                  JSVM_Value *wasmModule);
+                                                  bool* cacheRejected,
+                                                  JSVM_Value* wasmModule);
 
 /**
  * @brief Compile the function with the specified index in the WebAssembly module
@@ -2853,4 +2852,3 @@ EXTERN_C_END
 
 /** @} */
 #endif /* ARK_RUNTIME_JSVM_JSVM_H */
-

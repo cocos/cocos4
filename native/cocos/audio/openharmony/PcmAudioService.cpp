@@ -26,9 +26,9 @@ THE SOFTWARE.
 #define LOG_TAG "PcmAudioService"
 
 #include "audio/openharmony/PcmAudioService.h"
+#include <deviceinfo.h>
 #include "audio/android/AudioMixerController.h"
 #include "audio/android/cutils/log.h"
-#include <deviceinfo.h>
 
 namespace cc {
 
@@ -106,10 +106,10 @@ bool PcmAudioService::init(AudioMixerController *controller, int numChannels, in
 
     OH_AudioRenderer_Callbacks callbacks;
     static int sdkApi = OH_GetSdkApiVersion();
-    if(sdkApi >= 21) {
+    if (sdkApi >= 21) {
         callbacks.OH_AudioRenderer_OnWriteData = nullptr;
     } else {
-        callbacks.OH_AudioRenderer_OnWriteData = reinterpret_cast<int32_t (*)(OH_AudioRenderer*,void* ,void* ,int32_t)>(AudioRendererOnWriteData);
+        callbacks.OH_AudioRenderer_OnWriteData = reinterpret_cast<int32_t (*)(OH_AudioRenderer *, void *, void *, int32_t)>(AudioRendererOnWriteData);
     }
     callbacks.OH_AudioRenderer_OnInterruptEvent = AudioRendererOnInterrupt;
     callbacks.OH_AudioRenderer_OnError = nullptr;
@@ -118,9 +118,9 @@ bool PcmAudioService::init(AudioMixerController *controller, int numChannels, in
     if (ret != AUDIOSTREAM_SUCCESS) {
         return false;
     }
-    
-    if(sdkApi >= 21) {
-        ret =  OH_AudioStreamBuilder_SetRendererWriteDataCallback(_builder, AudioRendererOnWriteData, this);
+
+    if (sdkApi >= 21) {
+        ret = OH_AudioStreamBuilder_SetRendererWriteDataCallback(_builder, AudioRendererOnWriteData, this);
         if (ret != AUDIOSTREAM_SUCCESS) {
             return false;
         }

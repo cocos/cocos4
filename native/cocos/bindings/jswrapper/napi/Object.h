@@ -25,22 +25,22 @@
 
 #pragma once
 #include <cassert>
+#include "../PrivateObject.h"
 #include "../RefCounter.h"
 #include "../Value.h"
 #include "../config.h"
 #include "CommonHeader.h"
 #include "HelperMacros.h"
-#include "../PrivateObject.h"
 #include "base/std/container/unordered_map.h"
 
 namespace se {
 class Class;
 class ObjectRef {
 private:
-    napi_ref   _ref{nullptr};
-    napi_env   _env{nullptr};
+    napi_ref _ref{nullptr};
+    napi_env _env{nullptr};
     napi_value _obj{nullptr};
-    Object* _parent{nullptr};
+    Object *_parent{nullptr};
 
 public:
     ObjectRef(Object *parent);
@@ -77,7 +77,7 @@ public:
         void *contents{nullptr};
         size_t byteLength{0};
         void *userData{0};
-        };
+    };
 
     Object();
     ~Object();
@@ -192,7 +192,6 @@ public:
         return static_cast<se::CCIntrusivePtrPrivateObject<T> *>(_privateObject)->getData();
     }
 
-
     template <typename T>
     inline T *getTypedPrivateData() const {
         return reinterpret_cast<T *>(getPrivateData());
@@ -203,7 +202,6 @@ public:
          *  @param clearMapping Whether to clear the mapping of native object & se::Object.
          */
     void clearPrivateData(bool clearMapping = true);
-
 
     /**
      * @brief Sets whether to clear the mapping of native object & se::Object in finalizer
@@ -415,9 +413,9 @@ public:
          */
     static Object *getObjectWithPtr(void *ptr);
 
-    Class *    _getClass() const; // NOLINT(readability-identifier-naming)
+    Class *_getClass() const; // NOLINT(readability-identifier-naming)
     napi_value _getJSObject() const;
-    void       _setFinalizeCallback(napi_finalize finalizeCb); // NOLINT(readability-identifier-naming)
+    void _setFinalizeCallback(napi_finalize finalizeCb); // NOLINT(readability-identifier-naming)
     /**
          *  @brief Returns the string for describing current object.
          *  @return The string for describing current object.
@@ -432,16 +430,16 @@ private:
     static void cleanup();
 
 private:
-    ObjectRef     _objRef;
-    napi_finalize _finalizeCb  = nullptr;
+    ObjectRef _objRef;
+    napi_finalize _finalizeCb = nullptr;
     bool _clearMappingInFinalizer = true;
     bool _destructInFinalizer = false;
     void *_privateData = nullptr;
     PrivateObjectBase *_privateObject = nullptr;
-    napi_env      _env         = nullptr;
-    Class *       _cls         = nullptr;
-    uint32_t      _rootCount   = 0;
-    bool          _onCleaingPrivateData = false;
+    napi_env _env = nullptr;
+    Class *_cls = nullptr;
+    uint32_t _rootCount = 0;
+    bool _onCleaingPrivateData = false;
 
     friend class ObjectRef;
     friend class ScriptEngine;

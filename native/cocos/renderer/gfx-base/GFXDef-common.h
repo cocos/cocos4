@@ -179,7 +179,7 @@ enum class Feature : uint32_t {
     SUBPASS_DEPTH_STENCIL_INPUT,
     RASTERIZATION_ORDER_NOCOHERENT,
 
-    MULTI_SAMPLE_RESOLVE_DEPTH_STENCIL,   // resolve depth stencil
+    MULTI_SAMPLE_RESOLVE_DEPTH_STENCIL, // resolve depth stencil
     COUNT,
 };
 CC_ENUM_CONVERSION_OPERATOR(Feature);
@@ -350,7 +350,7 @@ enum class FormatType : uint32_t {
 };
 CC_ENUM_CONVERSION_OPERATOR(FormatType);
 
-enum class SampleType: uint32_t {
+enum class SampleType : uint32_t {
     FLOAT,
     UNFILTERABLE_FLOAT,
     SINT,
@@ -465,7 +465,7 @@ enum class TextureType : uint32_t {
 };
 CC_ENUM_CONVERSION_OPERATOR(TextureType);
 
-enum class ViewDimension: uint32_t {
+enum class ViewDimension : uint32_t {
     UNKNOWN,
     BUFFER,
     TEX1D,
@@ -521,10 +521,10 @@ using FormatFeature = FormatFeatureBit;
 CC_ENUM_BITWISE_OPERATORS(FormatFeatureBit);
 
 enum class SampleCount : uint32_t {
-    X1  = 0x01,
-    X2  = 0x02,
-    X4  = 0x04,
-    X8  = 0x08,
+    X1 = 0x01,
+    X2 = 0x02,
+    X4 = 0x04,
+    X8 = 0x08,
     X16 = 0x10,
     X32 = 0x20,
     X64 = 0x40
@@ -1441,7 +1441,7 @@ using BufferBarrierInfoList = ccstd::vector<BufferBarrierInfo>;
 struct FramebufferInfo {
     RenderPass *renderPass{nullptr};
     TextureList colorTextures;
-    Texture *depthStencilTexture{nullptr}; // @ts-nullable
+    Texture *depthStencilTexture{nullptr};        // @ts-nullable
     Texture *depthStencilResolveTexture{nullptr}; // @ts-nullable
 
     EXPOSE_COPY_FN(FramebufferInfo)

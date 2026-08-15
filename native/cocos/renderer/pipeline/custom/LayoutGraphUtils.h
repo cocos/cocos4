@@ -68,7 +68,6 @@ void printLayoutGraphData(
 gfx::TextureType getTextureType(ResourceDimension dimension, uint32_t arraySize);
 ResourceDimension getResourceDimension(gfx::TextureType type);
 
-
 } // namespace render
 
 } // namespace cc

@@ -116,8 +116,8 @@ public:
         setFormat(format);
         _isFormatFixed = true;
     }
-    inline bool isFormatFixed() const {  return _isFormatFixed; }
-    
+    inline bool isFormatFixed() const { return _isFormatFixed; }
+
     // Functions for Utils.
     IntrusivePtr<ImageAsset> extractMipmap0();
     std::vector<IntrusivePtr<ImageAsset>> extractMipmaps();

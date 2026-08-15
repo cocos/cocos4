@@ -92,7 +92,7 @@ void CCWGPUQueue::submit(CommandBuffer *const *cmdBuffs, uint32_t count) {
         _numInstances += cmdBuff->getNumInstances();
         _numTriangles += cmdBuff->getNumTris();
 
-        const_cast<CCWGPUCommandBuffer*>(cmdBuff)->reset();
+        const_cast<CCWGPUCommandBuffer *>(cmdBuff)->reset();
     }
 
     wgpuQueueSubmit(_gpuQueueObject->wgpuQueue, count, wgpuCmdBuffs.data());

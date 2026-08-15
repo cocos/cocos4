@@ -186,13 +186,13 @@ int ohKeyCodeToCocosKeyCode(OH_NativeXComponent_KeyCode ohKeyCode) {
         {KEY_SPACE, cc::KeyCode::SPACE},
         {KEY_ALT_RIGHT, cc::KeyCode::ALT_RIGHT},
         {KEY_CTRL_RIGHT, cc::KeyCode::CONTROL_RIGHT},
-    
+
         {KEY_DPAD_LEFT, cc::KeyCode::ARROW_LEFT},
         {KEY_DPAD_RIGHT, cc::KeyCode::ARROW_RIGHT},
         {KEY_DPAD_DOWN, cc::KeyCode::ARROW_DOWN},
         {KEY_DPAD_UP, cc::KeyCode::ARROW_UP},
         {KEY_DPAD_CENTER, cc::KeyCode::DPAD_CENTER},
-    
+
         {KEY_MOVE_HOME, cc::KeyCode::HOME},
         {KEY_MOVE_END, cc::KeyCode::END},
         {KEY_FORWARD_DEL, cc::KeyCode::DELETE_KEY},
@@ -211,7 +211,7 @@ int ohKeyCodeToCocosKeyCode(OH_NativeXComponent_KeyCode ohKeyCode) {
         {KEY_NUMPAD_DOT, cc::KeyCode::NUMPAD_DECIMAL},
         {KEY_NUMPAD_COMMA, cc::KeyCode::COMMA},
         {KEY_NUMPAD_EQUALS, cc::KeyCode::EQUAL},
-    
+
         {KEY_NUMPAD_0, cc::KeyCode::NUMPAD_0},
         {KEY_NUMPAD_1, cc::KeyCode::NUMPAD_1},
         {KEY_NUMPAD_2, cc::KeyCode::NUMPAD_2},
@@ -397,13 +397,12 @@ OpenHarmonyPlatform::OpenHarmonyPlatform() {
     _callback.OnSurfaceChanged = onSurfaceChangedCB;
     _callback.OnSurfaceDestroyed = onSurfaceDestroyedCB;
     _callback.DispatchTouchEvent = dispatchTouchEventCB;
-    #if CC_USE_GAMEPAD
-        _gamePad = std::make_unique<OpenHarmonyGamePad>();
-    #endif
+#if CC_USE_GAMEPAD
+    _gamePad = std::make_unique<OpenHarmonyGamePad>();
+#endif
 }
 
 OpenHarmonyPlatform::~OpenHarmonyPlatform() {
-    
 }
 
 int32_t OpenHarmonyPlatform::init() {

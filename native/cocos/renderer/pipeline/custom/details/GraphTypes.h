@@ -31,8 +31,8 @@
 #include <type_traits> // IWYU pragma: export
 #include "cocos/base/memory/Memory.h"
 #include "cocos/base/std/container/list.h"
-#include "cocos/base/std/container/string.h" // IWYU pragma: export
-#include "cocos/base/std/variant.h" // IWYU pragma: export
+#include "cocos/base/std/container/string.h"                 // IWYU pragma: export
+#include "cocos/base/std/variant.h"                          // IWYU pragma: export
 #include "cocos/renderer/pipeline/custom/details/Overload.h" // IWYU pragma: export
 
 namespace boost {
