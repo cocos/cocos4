@@ -24,10 +24,10 @@
  ****************************************************************************/
 
 #include "ProjectConfig/ProjectConfig.h"
+#include <sstream>
 #include "ProjectConfig/SimulatorConfig.h"
 #include "cocos/base/Log.h"
 #include "cocos/platform/FileUtils.h"
-#include <sstream>
 
 #ifdef _MSC_VER
     #define strcasecmp _stricmp

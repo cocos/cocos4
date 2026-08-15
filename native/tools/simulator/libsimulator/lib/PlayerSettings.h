@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_SETTINGS_H_
 #define __PLAYER_SETTINGS_H_
 
@@ -31,14 +30,10 @@
 
 PLAYER_NS_BEGIN
 
-class PlayerSettings
-{
+class PlayerSettings {
 public:
     PlayerSettings()
-        : openLastProject(false)
-        , offsetX(0)
-        , offsetY(0)
-    {}
+    : openLastProject(false), offsetX(0), offsetY(0) {}
 
     bool openLastProject;
     int offsetX;

@@ -49,8 +49,8 @@
 #include "cocos/bindings/manual/jsb_scene_manual.h"
 #include "cocos/bindings/manual/jsb_xmlhttprequest.h"
 #if CC_USE_BOX2D_JSB
-#include "cocos/bindings/manual/jsb_box2d_manual.h"
-#include "cocos/bindings/auto/jsb_box2d_auto.h"
+    #include "cocos/bindings/auto/jsb_box2d_auto.h"
+    #include "cocos/bindings/manual/jsb_box2d_manual.h"
 #endif
 
 #if USE_GFX_RENDERER

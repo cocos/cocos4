@@ -100,7 +100,6 @@ void GLES3Texture::createTextureView() {
     _gpuTextureView->basePlane = _viewInfo.basePlane;
     _gpuTextureView->planeCount = _viewInfo.planeCount;
     cmdFuncGLES3CreateTextureView(GLES3Device::getInstance(), _gpuTextureView);
-
 }
 
 void GLES3Texture::doDestroy() {

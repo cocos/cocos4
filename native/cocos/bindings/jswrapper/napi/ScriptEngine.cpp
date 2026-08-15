@@ -24,12 +24,12 @@
 ****************************************************************************/
 
 #include "ScriptEngine.h"
+#include <napi/native_api.h>
 #include <sstream>
 #include "../MappingUtils.h"
 #include "Class.h"
-#include "Utils.h"
 #include "CommonHeader.h"
-#include <napi/native_api.h>
+#include "Utils.h"
 #include "base/std/container/array.h"
 
 namespace se {
@@ -43,7 +43,7 @@ AutoHandleScope::~AutoHandleScope() {
 
 ScriptEngine *gSriptEngineInstance = nullptr;
 
-ScriptEngine::ScriptEngine() {};
+ScriptEngine::ScriptEngine(){};
 
 ScriptEngine::~ScriptEngine() = default;
 
@@ -85,8 +85,8 @@ bool ScriptEngine::runScript(const std::string &path, Value *ret /* = nullptr */
 
 bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret, const char *fileName) {
     napi_status status;
-    napi_value  script;
-    napi_value  result;
+    napi_value script;
+    napi_value result;
     length = length < 0 ? NAPI_AUTO_LENGTH : length;
     status = napi_create_string_utf8(ScriptEngine::getEnv(), scriptStr, length, &script);
     LOGI("eval :%{public}s", scriptStr);
@@ -96,7 +96,7 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
 
 bool ScriptEngine::init() {
     napi_status status;
-    napi_value  result;
+    napi_value result;
 
     for (const auto &hook : _beforeInitHookArray) {
         hook();
@@ -171,7 +171,7 @@ void ScriptEngine::cleanup() {
     garbageCollect();
 
     _globalObj = nullptr;
-    _isValid   = false;
+    _isValid = false;
 
     _registerCallbackArray.clear();
 

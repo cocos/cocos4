@@ -31,8 +31,8 @@
 #define Spine_VertexEffect_h
 
 #include <spine/MathUtil.h>
-#include <spine/SpineObject.h>
 #include <spine/RTTI.h>
+#include <spine/SpineObject.h>
 
 namespace spine {
 

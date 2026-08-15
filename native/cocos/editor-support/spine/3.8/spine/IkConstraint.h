@@ -97,7 +97,8 @@ public:
 
     virtual bool isActive();
 
-    virtual void setActive(bool inValue);;
+    virtual void setActive(bool inValue);
+    ;
 
 #ifndef __EMSCRIPTEN__
 private:

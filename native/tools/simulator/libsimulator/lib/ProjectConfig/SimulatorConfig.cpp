@@ -23,23 +23,19 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #include "SimulatorConfig.h"
 #include <sstream>
 
 SimulatorConfig *SimulatorConfig::_instance = NULL;
 
-SimulatorConfig *SimulatorConfig::getInstance()
-{
-    if (!_instance)
-    {
+SimulatorConfig *SimulatorConfig::getInstance() {
+    if (!_instance) {
         _instance = new SimulatorConfig();
     }
     return _instance;
 }
 
-SimulatorConfig::SimulatorConfig()
-{
+SimulatorConfig::SimulatorConfig() {
     _screenSizeArray.push_back(SimulatorScreenSize("Apple iPhone 5 (640x1136)", 640, 1136));
     _screenSizeArray.push_back(SimulatorScreenSize("Apple iPhone 6 (750x1334)", 750, 1334));
     _screenSizeArray.push_back(SimulatorScreenSize("Apple iPhone 6Plus (1242x2208)", 1242, 2208));
@@ -61,34 +57,28 @@ SimulatorConfig::SimulatorConfig()
     _screenSizeArray.push_back(SimulatorScreenSize("Goolge Nexus 7 (1920x1200)", 1920, 1200));
 }
 
-int SimulatorConfig::getScreenSizeCount() const
-{
+int SimulatorConfig::getScreenSizeCount() const {
     return (int)_screenSizeArray.size();
 }
 
-SimulatorScreenSize SimulatorConfig::getScreenSize(int index) const
-{
+SimulatorScreenSize SimulatorConfig::getScreenSize(int index) const {
     return _screenSizeArray.at(index);
 }
 
-int SimulatorConfig::checkScreenSize(const cc::Size &size) const
-{
+int SimulatorConfig::checkScreenSize(const cc::Size &size) const {
     int width = size.width;
     int height = size.height;
 
-    if (width > height)
-    {
+    if (width > height) {
         int w = width;
         width = height;
         height = w;
     }
 
     int count = (int)_screenSizeArray.size();
-    for (int i = 0; i < count; ++i)
-    {
+    for (int i = 0; i < count; ++i) {
         const SimulatorScreenSize &size = _screenSizeArray[i];
-        if (size.width == width && size.height == height)
-        {
+        if (size.width == width && size.height == height) {
             return i;
         }
     }
@@ -98,12 +88,10 @@ int SimulatorConfig::checkScreenSize(const cc::Size &size) const
 
 // helper
 
-void SimulatorConfig::makeNormalizePath(string *path, const char *directorySeparator/* = NULL*/)
-{
+void SimulatorConfig::makeNormalizePath(string *path, const char *directorySeparator /* = NULL*/) {
     if (!directorySeparator) directorySeparator = DIRECTORY_SEPARATOR;
     size_t pos = std::string::npos;
-    while ((pos = path->find_first_of("/\\", pos + 1)) != std::string::npos)
-    {
+    while ((pos = path->find_first_of("/\\", pos + 1)) != std::string::npos) {
         path->replace(pos, 1, directorySeparator);
     }
 }

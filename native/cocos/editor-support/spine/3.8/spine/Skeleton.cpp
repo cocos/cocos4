@@ -56,7 +56,7 @@
 #include <float.h>
 
 #ifndef __EMSCRIPTEN__
-#include <stdio.h>
+    #include <stdio.h>
 #endif
 
 using namespace spine;
@@ -75,7 +75,7 @@ Skeleton::Skeleton(SkeletonData *skeletonData) : _data(skeletonData),
         BoneData *data = boneDatas[i];
 
         Bone *bone;
-        auto* dataParent = data->getParent();
+        auto *dataParent = data->getParent();
         if (dataParent == NULL) {
             bone = spine_new Bone(*data, *this, NULL);
         } else {

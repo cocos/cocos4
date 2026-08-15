@@ -23,22 +23,20 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_MENU_SERVICE_WIN_H_
 #define __PLAYER_MENU_SERVICE_WIN_H_
 
 #include <string>
 #include <unordered_map>
 
-#include "cocos/base/RefVector.h"
-#include "stdafx.h"
 #include "PlayerMenuServiceProtocol.h"
 #include "SimulatorExport.h"
+#include "cocos/base/RefVector.h"
+#include "stdafx.h"
 
 PLAYER_NS_BEGIN
 
-class CC_LIBSIM_DLL PlayerMenuItemWin : public PlayerMenuItem
-{
+class CC_LIBSIM_DLL PlayerMenuItemWin : public PlayerMenuItem {
 public:
     static PlayerMenuItemWin *create(const std::string &menuId, const std::string &title);
     virtual ~PlayerMenuItemWin();
@@ -55,13 +53,12 @@ protected:
     UINT _commandId;
     HMENU _hmenu;
     bool _menubarEnabled;
-    cc::RefVector<PlayerMenuItemWin*> _children;
+    cc::RefVector<PlayerMenuItemWin *> _children;
 
     friend class PlayerMenuServiceWin;
 };
 
-class CC_LIBSIM_DLL PlayerMenuServiceWin : public PlayerMenuServiceProtocol
-{
+class CC_LIBSIM_DLL PlayerMenuServiceWin : public PlayerMenuServiceProtocol {
 public:
     PlayerMenuServiceWin(HWND hwnd);
     virtual ~PlayerMenuServiceWin();
@@ -84,7 +81,7 @@ private:
     HWND _hwnd;
     bool _menubarEnabled;
     PlayerMenuItemWin _root;
-    std::unordered_map<std::string, PlayerMenuItemWin*> _items;
+    std::unordered_map<std::string, PlayerMenuItemWin *> _items;
     std::unordered_map<WORD, std::string> _commandId2menuId;
 
     bool removeItemInternal(const std::string &menuId, bool isUpdateChildrenOrder);

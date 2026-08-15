@@ -2,11 +2,11 @@
 #include <string>
 
 namespace se {
-    class Value;
+class Value;
 }
 class NapiValueConverter {
 public:
-    template<typename ReturnType>
+    template <typename ReturnType>
     static bool ToCppValue(napi_env env, napi_value value, ReturnType& result);
 
     static napi_value ToNapiValue(napi_env env, int32_t value);
@@ -16,5 +16,5 @@ public:
     static napi_value ToNapiValue(napi_env env, const char* value);
     static napi_value ToNapiValue(napi_env env, std::string value);
 
-    static bool NapiValueToSeValue(napi_env env, napi_value value, se::Value *v);
+    static bool NapiValueToSeValue(napi_env env, napi_value value, se::Value* v);
 };

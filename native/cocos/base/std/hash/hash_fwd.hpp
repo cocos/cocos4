@@ -5,34 +5,39 @@
 
 //  Based on Peter Dimov's proposal
 //  http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1756.pdf
-//  issue 6.18. 
+//  issue 6.18.
 
 #if !defined(CCSTD_FUNCTIONAL_HASH_FWD_HPP)
-#define CCSTD_FUNCTIONAL_HASH_FWD_HPP
+    #define CCSTD_FUNCTIONAL_HASH_FWD_HPP
 
-#include <boost/config/workaround.hpp>
-#include <cstddef>
-#include <cstdint>
+    #include <boost/config/workaround.hpp>
+    #include <cstddef>
+    #include <cstdint>
 
-#if defined(BOOST_HAS_PRAGMA_ONCE)
-#pragma once
-#endif
+    #if defined(BOOST_HAS_PRAGMA_ONCE)
+        #pragma once
+    #endif
 
-namespace ccstd
-{
-    using hash_t = std::uint32_t;
+namespace ccstd {
+using hash_t = std::uint32_t;
 
-    template <class T> struct hash;
+template <class T>
+struct hash;
 
-    template <class T> void hash_combine(hash_t& seed, T const& v);
+template <class T>
+void hash_combine(hash_t& seed, T const& v);
 
-    template <class It> hash_t hash_range(It, It);
-    template <class It> void hash_range(hash_t&, It, It);
+template <class It>
+hash_t hash_range(It, It);
+template <class It>
+void hash_range(hash_t&, It, It);
 
-#if BOOST_WORKAROUND(BOOST_BORLANDC, BOOST_TESTED_AT(0x551))
-    template <class T> inline hash_t hash_range(T*, T*);
-    template <class T> inline void hash_range(hash_t&, T*, T*);
-#endif
-}
+    #if BOOST_WORKAROUND(BOOST_BORLANDC, BOOST_TESTED_AT(0x551))
+template <class T>
+inline hash_t hash_range(T*, T*);
+template <class T>
+inline void hash_range(hash_t&, T*, T*);
+    #endif
+} // namespace ccstd
 
 #endif

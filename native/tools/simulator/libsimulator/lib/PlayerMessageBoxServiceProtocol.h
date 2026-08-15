@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_MESSAGEBOX_SERVICE_PROTOCOL_H
 #define __PLAYER_MESSAGEBOX_SERVICE_PROTOCOL_H
 
@@ -34,8 +33,7 @@
 
 PLAYER_NS_BEGIN
 
-class PlayerMessageBoxServiceProtocol : public PlayerServiceProtocol
-{
+class PlayerMessageBoxServiceProtocol : public PlayerServiceProtocol {
 public:
     static const int BUTTONS_OK = 0;
     static const int BUTTONS_OK_CANCEL = 1;

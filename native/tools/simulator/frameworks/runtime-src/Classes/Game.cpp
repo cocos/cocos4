@@ -28,8 +28,8 @@
 #include "cocos/bindings/manual/jsb_classtype.h"
 #include "cocos/bindings/manual/jsb_global.h"
 #include "cocos/bindings/manual/jsb_module_register.h"
-#include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
 #include "cocos/platform/interfaces/modules/ISystemWindowManager.h"
+#include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
 #if (CC_PLATFORM == CC_PLATFORM_WINDOWS)
     #include "SimulatorApp.h"
     #include "windows.h"
@@ -43,7 +43,6 @@
 #include "runtime/ConfigParser.h"
 #include "runtime/Runtime.h"
 
-
 using namespace std;
 Game::Game() {
 }
@@ -54,26 +53,25 @@ Game::~Game() {
 }
 
 int Game::init() {
-    
     cc::pipeline::GlobalDSManager::setDescriptorSetLayout();
     SimulatorApp::getInstance()->init();
     std::call_once(_windowCreateFlag, [&]() {
         cc::ISystemWindowInfo info;
-        info.width= SimulatorApp::getInstance()->getWidth();
+        info.width = SimulatorApp::getInstance()->getWidth();
         info.height = SimulatorApp::getInstance()->getHeight();
-    #if (CC_PLATFORM == CC_PLATFORM_WINDOWS)
+#if (CC_PLATFORM == CC_PLATFORM_WINDOWS)
         info.x = (GetSystemMetrics(SM_CXSCREEN) - info.width) / 2;
         info.y = (GetSystemMetrics(SM_CYSCREEN) - info.height) / 2;
-    #elif (CC_PLATFORM == CC_PLATFORM_MACOS)
+#elif (CC_PLATFORM == CC_PLATFORM_MACOS)
         auto mainDisplayId = CGMainDisplayID();
         info.x = (CGDisplayPixelsWide(mainDisplayId) - info.width) / 2;
         info.y = (CGDisplayPixelsHigh(mainDisplayId) - info.height) / 2;
-    #endif
+#endif
         info.title = "My Game";
         info.flags = cc::ISystemWindow::CC_WINDOW_SHOWN |
-                    cc::ISystemWindow::CC_WINDOW_RESIZABLE |
-                    cc::ISystemWindow::CC_WINDOW_INPUT_FOCUS;
-        
+                     cc::ISystemWindow::CC_WINDOW_RESIZABLE |
+                     cc::ISystemWindow::CC_WINDOW_INPUT_FOCUS;
+
         cc::ISystemWindowManager* windowMgr = CC_GET_PLATFORM_INTERFACE(cc::ISystemWindowManager);
         windowMgr->createWindow(info);
     });

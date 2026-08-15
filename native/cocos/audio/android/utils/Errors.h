@@ -17,8 +17,8 @@
 #ifndef COCOS_ERRORS_H
 #define COCOS_ERRORS_H
 
-#include <sys/types.h>
 #include <errno.h>
+#include <sys/types.h>
 
 namespace cc {
 

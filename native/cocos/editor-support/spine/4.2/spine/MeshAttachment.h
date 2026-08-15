@@ -30,95 +30,95 @@
 #ifndef Spine_MeshAttachment_h
 #define Spine_MeshAttachment_h
 
-#include <spine/VertexAttachment.h>
-#include <spine/TextureRegion.h>
-#include <spine/Sequence.h>
-#include <spine/Vector.h>
 #include <spine/Color.h>
 #include <spine/HasRendererObject.h>
+#include <spine/Sequence.h>
+#include <spine/TextureRegion.h>
+#include <spine/Vector.h>
+#include <spine/VertexAttachment.h>
 
 namespace spine {
-	/// Attachment that displays a texture region using a mesh.
-	class SP_API MeshAttachment : public VertexAttachment {
-		friend class SkeletonBinary;
+/// Attachment that displays a texture region using a mesh.
+class SP_API MeshAttachment : public VertexAttachment {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class AtlasAttachmentLoader;
+    friend class AtlasAttachmentLoader;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit MeshAttachment(const String &name);
+public:
+    explicit MeshAttachment(const String &name);
 
-		virtual ~MeshAttachment();
+    virtual ~MeshAttachment();
 
-		using VertexAttachment::computeWorldVertices;
+    using VertexAttachment::computeWorldVertices;
 
-		virtual void computeWorldVertices(Slot &slot, size_t start, size_t count, float *worldVertices, size_t offset,
-		size_t stride = 2);
+    virtual void computeWorldVertices(Slot &slot, size_t start, size_t count, float *worldVertices, size_t offset,
+                                      size_t stride = 2);
 
-		void updateRegion();
+    void updateRegion();
 
-		int getHullLength();
+    int getHullLength();
 
-		void setHullLength(int inValue);
+    void setHullLength(int inValue);
 
-		Vector<float> &getRegionUVs();
+    Vector<float> &getRegionUVs();
 
-		/// The UV pair for each vertex, normalized within the entire texture. See also MeshAttachment::updateRegion
-		Vector<float> &getUVs();
+    /// The UV pair for each vertex, normalized within the entire texture. See also MeshAttachment::updateRegion
+    Vector<float> &getUVs();
 
-		Vector<unsigned short> &getTriangles();
+    Vector<unsigned short> &getTriangles();
 
-		Color &getColor();
+    Color &getColor();
 
-		const String &getPath();
+    const String &getPath();
 
-		void setPath(const String &inValue);
+    void setPath(const String &inValue);
 
-		TextureRegion *getRegion();
+    TextureRegion *getRegion();
 
-		void setRegion(TextureRegion *region);
+    void setRegion(TextureRegion *region);
 
-		Sequence *getSequence();
+    Sequence *getSequence();
 
-		void setSequence(Sequence *sequence);
+    void setSequence(Sequence *sequence);
 
-		MeshAttachment *getParentMesh();
+    MeshAttachment *getParentMesh();
 
-		void setParentMesh(MeshAttachment *inValue);
+    void setParentMesh(MeshAttachment *inValue);
 
-		// Nonessential.
-		Vector<unsigned short> &getEdges();
+    // Nonessential.
+    Vector<unsigned short> &getEdges();
 
-		float getWidth();
+    float getWidth();
 
-		void setWidth(float inValue);
+    void setWidth(float inValue);
 
-		float getHeight();
+    float getHeight();
 
-		void setHeight(float inValue);
+    void setHeight(float inValue);
 
-		virtual Attachment *copy();
+    virtual Attachment *copy();
 
-		MeshAttachment *newLinkedMesh();
+    MeshAttachment *newLinkedMesh();
 
-	#ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		MeshAttachment *_parentMesh;
-		Vector<float> _uvs;
-		Vector<float> _regionUVs;
-		Vector<unsigned short> _triangles;
-		Vector<unsigned short> _edges;
-		String _path;
-		Color _color;
-		int _hullLength;
-		int _width, _height;
-		TextureRegion *_region;
-		Sequence *_sequence;
-	};
-}
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    MeshAttachment *_parentMesh;
+    Vector<float> _uvs;
+    Vector<float> _regionUVs;
+    Vector<unsigned short> _triangles;
+    Vector<unsigned short> _edges;
+    String _path;
+    Color _color;
+    int _hullLength;
+    int _width, _height;
+    TextureRegion *_region;
+    Sequence *_sequence;
+};
+} // namespace spine
 
 #endif /* Spine_MeshAttachment_h */

@@ -30,54 +30,54 @@
 #ifndef Spine_AttachmentTimeline_h
 #define Spine_AttachmentTimeline_h
 
-#include <spine/Timeline.h>
-#include <spine/SpineObject.h>
-#include <spine/Vector.h>
 #include <spine/MixBlend.h>
 #include <spine/MixDirection.h>
+#include <spine/SpineObject.h>
 #include <spine/SpineString.h>
+#include <spine/Timeline.h>
+#include <spine/Vector.h>
 
 namespace spine {
 
-	class Skeleton;
+class Skeleton;
 
-	class Slot;
+class Slot;
 
-	class Event;
+class Event;
 
-	class SP_API AttachmentTimeline : public Timeline {
-		friend class SkeletonBinary;
+class SP_API AttachmentTimeline : public Timeline {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit AttachmentTimeline(size_t frameCount, int slotIndex);
+public:
+    explicit AttachmentTimeline(size_t frameCount, int slotIndex);
 
-		virtual ~AttachmentTimeline();
+    virtual ~AttachmentTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		/// Sets the time and value of the specified keyframe.
-		void setFrame(int frame, float time, const String &attachmentName);
+    /// Sets the time and value of the specified keyframe.
+    void setFrame(int frame, float time, const String &attachmentName);
 
-		Vector<String> &getAttachmentNames();
+    Vector<String> &getAttachmentNames();
 
-		int getSlotIndex() { return _slotIndex; }
+    int getSlotIndex() { return _slotIndex; }
 
-		void setSlotIndex(int inValue) { _slotIndex = inValue; }
-    #ifndef __EMSCRIPTEN__
-	protected:
-	#endif	
-		int _slotIndex;
+    void setSlotIndex(int inValue) { _slotIndex = inValue; }
+#ifndef __EMSCRIPTEN__
+protected:
+#endif
+    int _slotIndex;
 
-		Vector<String> _attachmentNames;
+    Vector<String> _attachmentNames;
 
-		void setAttachment(Skeleton &skeleton, Slot &slot, String *attachmentName);
-	};
-}
+    void setAttachment(Skeleton &skeleton, Slot &slot, String *attachmentName);
+};
+} // namespace spine
 
 #endif /* Spine_AttachmentTimeline_h */

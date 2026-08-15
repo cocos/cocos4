@@ -23,20 +23,18 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_EDITBOX_SERVICE_WIN_H_
 #define __PLAYER_EDITBOX_SERVICE_WIN_H_
 
-#include "stdafx.h"
-#include "PlayerEditBoxServiceProtocol.h"
 #include <array>
+#include "PlayerEditBoxServiceProtocol.h"
+#include "stdafx.h"
 
 typedef std::array<uint8_t, 3> Color3B;
 
 PLAYER_NS_BEGIN
 
-class PlayerEditBoxServiceWin : public PlayerEditBoxServiceProtocol
-{
+class PlayerEditBoxServiceWin : public PlayerEditBoxServiceProtocol {
 public:
     PlayerEditBoxServiceWin(HWND hwnd);
     virtual ~PlayerEditBoxServiceWin();
@@ -50,6 +48,7 @@ public:
     virtual void setFontColor(const Color3B &color);
 
     virtual void setFormator(int formator);
+
 protected:
     HWND _hwnd;
     HWND _hwndSingle;

@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_TASK_SERVICE_WIN_H_
 #define __PLAYER_TASK_SERVICE_WIN_H_
 
@@ -34,8 +33,7 @@
 
 PLAYER_NS_BEGIN
 
-class PlayerTaskWin : public PlayerTask
-{
+class PlayerTaskWin : public PlayerTask {
 public:
     static PlayerTaskWin *create(const std::string &name,
                                  const std::string &executePath,
@@ -69,8 +67,7 @@ protected:
     WCHAR *_outputBuffWide;
 };
 
-class PlayerTaskServiceWin : public PlayerTaskServiceProtocol
-{
+class PlayerTaskServiceWin : public PlayerTaskServiceProtocol {
 public:
     PlayerTaskServiceWin(HWND hwnd);
     virtual ~PlayerTaskServiceWin();
@@ -83,7 +80,7 @@ public:
 
 protected:
     HWND _hwnd;
-    cc::RefMap<std::string, PlayerTaskWin*> _tasks;
+    cc::RefMap<std::string, PlayerTaskWin *> _tasks;
 };
 
 PLAYER_NS_END

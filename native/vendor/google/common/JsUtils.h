@@ -31,7 +31,7 @@ namespace cc {
 se::Value invokeJsCallback(se::Object* obj, const char* jsFunctionName, const se::ValueArray& args);
 
 template <typename... Args>
-se::Value callJSfunc(se::Object* obj, const char* jsFunctionName, Args&&... inargs){ // NOLINT(readability-identifier-naming)
+se::Value callJSfunc(se::Object* obj, const char* jsFunctionName, Args&&... inargs) { // NOLINT(readability-identifier-naming)
     if (!se::ScriptEngine::getInstance()->isValid()) {
         return se::Value();
     }
@@ -44,4 +44,4 @@ se::Value callJSfunc(se::Object* obj, const char* jsFunctionName, Args&&... inar
 
 se::Value callJSfunc(se::Object* obj, const char* jsFunctionName);
 
-}
+} // namespace cc

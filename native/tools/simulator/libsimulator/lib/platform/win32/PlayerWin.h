@@ -43,9 +43,9 @@ public:
 
     virtual PlayerFileDialogServiceProtocol *getFileDialogService();
     virtual PlayerMessageBoxServiceProtocol *getMessageBoxService();
-    virtual PlayerMenuServiceProtocol *      getMenuService();
-    virtual PlayerEditBoxServiceProtocol *   getEditBoxService();
-    virtual PlayerTaskServiceProtocol *      getTaskService();
+    virtual PlayerMenuServiceProtocol *getMenuService();
+    virtual PlayerEditBoxServiceProtocol *getEditBoxService();
+    virtual PlayerTaskServiceProtocol *getTaskService();
 
 protected:
     PlayerWin();
@@ -53,11 +53,11 @@ protected:
     // services
     void initServices();
 
-    PlayerMenuServiceWin *      _menuService;
+    PlayerMenuServiceWin *_menuService;
     PlayerMessageBoxServiceWin *_messageBoxService;
     PlayerFileDialogServiceWin *_fileDialogService;
-    PlayerEditBoxServiceWin *   _editboxService;
-    PlayerTaskServiceWin *      _taskService;
+    PlayerEditBoxServiceWin *_editboxService;
+    PlayerTaskServiceWin *_taskService;
 
     HWND _hwnd;
 };

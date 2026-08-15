@@ -33,30 +33,30 @@
 #include <spine/CurveTimeline.h>
 
 namespace spine {
-	class SP_API RotateTimeline : public CurveTimeline1 {
-		friend class SkeletonBinary;
+class SP_API RotateTimeline : public CurveTimeline1 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class AnimationState;
+    friend class AnimationState;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit RotateTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
+public:
+    explicit RotateTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		int getBoneIndex() { return _boneIndex; }
+    int getBoneIndex() { return _boneIndex; }
 
-		void setBoneIndex(int inValue) { _boneIndex = inValue; }
-    #ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		int _boneIndex;
-	};
-}
+    void setBoneIndex(int inValue) { _boneIndex = inValue; }
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    int _boneIndex;
+};
+} // namespace spine
 
 #endif /* Spine_RotateTimeline_h */

@@ -38,45 +38,45 @@
 //   http://www.agner.org/optimize/calling_conventions.pdf
 //   or with gcc, run: "echo | gcc -E -dM -"
 #if defined(_M_X64) || defined(__x86_64__)
-#define GOOGLE_PROTOBUF_ARCH_X64 1
-#define GOOGLE_PROTOBUF_ARCH_64_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_X64    1
+    #define GOOGLE_PROTOBUF_ARCH_64_BIT 1
 #elif defined(_M_IX86) || defined(__i386__)
-#define GOOGLE_PROTOBUF_ARCH_IA32 1
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_IA32   1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
 #elif defined(__aarch64__)
-#define GOOGLE_PROTOBUF_ARCH_AARCH64 1
-#define GOOGLE_PROTOBUF_ARCH_64_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_AARCH64 1
+    #define GOOGLE_PROTOBUF_ARCH_64_BIT  1
 #elif defined(__QNX__)
-#define GOOGLE_PROTOBUF_ARCH_ARM_QNX 1
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_ARM_QNX 1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT  1
 #elif defined(__ARMEL__)
-#define GOOGLE_PROTOBUF_ARCH_ARM 1
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_ARM    1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
 #elif defined(__MIPSEL__)
-#define GOOGLE_PROTOBUF_ARCH_MIPS 1
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_MIPS   1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
 #elif defined(__pnacl__)
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
 #elif defined(__ppc64__) || defined(__PPC64__)
-#define GOOGLE_PROTOBUF_ARCH_PPC64 1
-#define GOOGLE_PROTOBUF_ARCH_64_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_PPC64  1
+    #define GOOGLE_PROTOBUF_ARCH_64_BIT 1
 #elif defined(__ppc__) || defined(__PPC__)
-#define GOOGLE_PROTOBUF_ARCH_PPC 1
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_PPC    1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
 #elif defined(__s390x__)
-#define GOOGLE_PROTOBUF_ARCH_64_BIT 1
-#define GOOGLE_PROTOBUF_ARCH_S390X 1
+    #define GOOGLE_PROTOBUF_ARCH_64_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_S390X  1
 #elif defined(__s390__)
-#define GOOGLE_PROTOBUF_ARCH_32_BIT 1
-#define GOOGLE_PROTOBUF_ARCH_S390 1
+    #define GOOGLE_PROTOBUF_ARCH_32_BIT 1
+    #define GOOGLE_PROTOBUF_ARCH_S390   1
 #else
-#error Host architecture was not detected as supported by protobuf
+    #error Host architecture was not detected as supported by protobuf
 #endif
 
 #if defined(__APPLE__)
-#define GOOGLE_PROTOBUF_OS_APPLE
+    #define GOOGLE_PROTOBUF_OS_APPLE
 #elif defined(__native_client__)
-#define GOOGLE_PROTOBUF_OS_NACL
+    #define GOOGLE_PROTOBUF_OS_NACL
 #endif
 
-#endif  // GOOGLE_PROTOBUF_PLATFORM_MACROS_H_
+#endif // GOOGLE_PROTOBUF_PLATFORM_MACROS_H_

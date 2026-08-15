@@ -32,10 +32,10 @@
 #include "renderer/gfx-base/GFXDevice.h"
 #include "renderer/pipeline/RenderPipeline.h"
 #include "scene/Camera.h"
-#include "scene/SphereLight.h"
-#include "scene/SpotLight.h"
 #include "scene/PointLight.h"
 #include "scene/RangedDirectionalLight.h"
+#include "scene/SphereLight.h"
+#include "scene/SpotLight.h"
 
 namespace cc {
 namespace pipeline {

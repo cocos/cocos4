@@ -30,43 +30,43 @@
 #ifndef Spine_PathAttachment_h
 #define Spine_PathAttachment_h
 
-#include <spine/VertexAttachment.h>
 #include <spine/Color.h>
+#include <spine/VertexAttachment.h>
 
 namespace spine {
-	class SP_API PathAttachment : public VertexAttachment {
-		friend class SkeletonBinary;
+class SP_API PathAttachment : public VertexAttachment {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit PathAttachment(const String &name);
+public:
+    explicit PathAttachment(const String &name);
 
-		/// The length in the setup pose from the start of the path to the end of each curve.
-		Vector<float> &getLengths();
+    /// The length in the setup pose from the start of the path to the end of each curve.
+    Vector<float> &getLengths();
 
-		bool isClosed();
+    bool isClosed();
 
-		void setClosed(bool inValue);
+    void setClosed(bool inValue);
 
-		bool isConstantSpeed();
+    bool isConstantSpeed();
 
-		void setConstantSpeed(bool inValue);
+    void setConstantSpeed(bool inValue);
 
-		Color &getColor();
+    Color &getColor();
 
-		virtual Attachment *copy();
+    virtual Attachment *copy();
 
-	#ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		Vector<float> _lengths;
-		bool _closed;
-		bool _constantSpeed;
-		Color _color;
-	};
-}
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    Vector<float> _lengths;
+    bool _closed;
+    bool _constantSpeed;
+    Color _color;
+};
+} // namespace spine
 
 #endif /* Spine_PathAttachment_h */

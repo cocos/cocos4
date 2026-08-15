@@ -37,77 +37,77 @@
 
 namespace spine {
 
-	class SP_API TranslateTimeline : public CurveTimeline2 {
-		friend class SkeletonBinary;
+class SP_API TranslateTimeline : public CurveTimeline2 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit TranslateTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
+public:
+    explicit TranslateTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
 
-		virtual ~TranslateTimeline();
+    virtual ~TranslateTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		int getBoneIndex() { return _boneIndex; }
+    int getBoneIndex() { return _boneIndex; }
 
-		void setBoneIndex(int inValue) { _boneIndex = inValue; }
+    void setBoneIndex(int inValue) { _boneIndex = inValue; }
 
-	private:
-		int _boneIndex;
-	};
+private:
+    int _boneIndex;
+};
 
-	class SP_API TranslateXTimeline : public CurveTimeline1 {
-		friend class SkeletonBinary;
+class SP_API TranslateXTimeline : public CurveTimeline1 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit TranslateXTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
+public:
+    explicit TranslateXTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
 
-		virtual ~TranslateXTimeline();
+    virtual ~TranslateXTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		int getBoneIndex() { return _boneIndex; }
+    int getBoneIndex() { return _boneIndex; }
 
-		void setBoneIndex(int inValue) { _boneIndex = inValue; }
+    void setBoneIndex(int inValue) { _boneIndex = inValue; }
 
-	private:
-		int _boneIndex;
-	};
+private:
+    int _boneIndex;
+};
 
-	class SP_API TranslateYTimeline : public CurveTimeline1 {
-		friend class SkeletonBinary;
+class SP_API TranslateYTimeline : public CurveTimeline1 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit TranslateYTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
+public:
+    explicit TranslateYTimeline(size_t frameCount, size_t bezierCount, int boneIndex);
 
-		virtual ~TranslateYTimeline();
+    virtual ~TranslateYTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		int getBoneIndex() { return _boneIndex; }
+    int getBoneIndex() { return _boneIndex; }
 
-		void setBoneIndex(int inValue) { _boneIndex = inValue; }
+    void setBoneIndex(int inValue) { _boneIndex = inValue; }
 
-	private:
-		int _boneIndex;
-	};
-}
+private:
+    int _boneIndex;
+};
+} // namespace spine
 
 #endif /* Spine_TranslateTimeline_h */

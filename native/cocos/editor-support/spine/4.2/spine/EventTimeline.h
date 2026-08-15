@@ -33,30 +33,30 @@
 #include <spine/Timeline.h>
 
 namespace spine {
-	class SP_API EventTimeline : public Timeline {
-		friend class SkeletonBinary;
+class SP_API EventTimeline : public Timeline {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit EventTimeline(size_t frameCount);
+public:
+    explicit EventTimeline(size_t frameCount);
 
-		~EventTimeline();
+    ~EventTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		/// Sets the time and value of the specified keyframe.
-		void setFrame(size_t frame, Event *event);
+    /// Sets the time and value of the specified keyframe.
+    void setFrame(size_t frame, Event *event);
 
-		Vector<Event *> &getEvents();
+    Vector<Event *> &getEvents();
 
-	private:
-		Vector<Event *> _events;
-	};
-}
+private:
+    Vector<Event *> _events;
+};
+} // namespace spine
 
 #endif /* Spine_EventTimeline_h */

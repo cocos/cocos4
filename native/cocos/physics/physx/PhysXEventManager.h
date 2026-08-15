@@ -59,8 +59,8 @@ public:
 
     inline SimulationEventCallback &getEventCallback() { return *_mCallback; }
     inline ccstd::vector<std::shared_ptr<TriggerEventPair>> &getTriggerPairs() { return _mTriggerPairs; }
-    inline ccstd::vector<std::shared_ptr<ContactEventPair>>& getConatctPairs() { return _mConatctPairs; }
-    inline ccstd::vector<std::shared_ptr<CCTShapeEventPair>>& getCCTShapePairs() { return _mCCTShapePairs; }
+    inline ccstd::vector<std::shared_ptr<ContactEventPair>> &getConatctPairs() { return _mConatctPairs; }
+    inline ccstd::vector<std::shared_ptr<CCTShapeEventPair>> &getCCTShapePairs() { return _mCCTShapePairs; }
     inline ccstd::vector<std::shared_ptr<CCTTriggerEventPair>> &getCCTTriggerPairs() { return _mCCTTriggerPairs; }
     void refreshPairs();
 

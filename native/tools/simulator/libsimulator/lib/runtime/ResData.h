@@ -23,8 +23,8 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef  _RESDATA__H_
-#define  _RESDATA__H_
+#ifndef _RESDATA__H_
+#define _RESDATA__H_
 
 extern const unsigned char __shinePngData[11776];
 extern const unsigned char __portraitPngData[122214];

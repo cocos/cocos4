@@ -24,25 +24,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ****************************************************************************/
 
-#ifndef  _CONNECT_WAIT_LAYER__H_
-#define  _CONNECT_WAIT_LAYER__H_
+#ifndef _CONNECT_WAIT_LAYER__H_
+#define _CONNECT_WAIT_LAYER__H_
 
 #include "cocos2d.h"
 
-class ConnectWaitLayer: public cocos2d::Layer
-{
+class ConnectWaitLayer : public cocos2d::Layer {
 public:
     ConnectWaitLayer();
-	~ConnectWaitLayer();
+    ~ConnectWaitLayer();
     void update(float fDelta);
-    
+
 private:
-	cocos2d::Image* _imagebg;
-	cocos2d::Image* _imageplay;
-	cocos2d::Image* _imageShine;
+    cocos2d::Image* _imagebg;
+    cocos2d::Image* _imageplay;
+    cocos2d::Image* _imageShine;
 
     cocos2d::Label* _labelUploadFile;
 };
 
 #endif // _CONNECT_WAIT_LAYER__H_
-

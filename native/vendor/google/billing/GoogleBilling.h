@@ -47,7 +47,6 @@ class BillingResult;
 
 class CC_DLL BillingClient : public cc::RefCounted {
 private:
-
 public:
     class Builder {
     public:

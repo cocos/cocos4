@@ -434,8 +434,8 @@ private:
 
     void computeHold(TrackEntry* entry);
 
-    void setAttachment(Skeleton &skeleton, spine::Slot &slot, const String &attachmentName, bool attachments);
+    void setAttachment(Skeleton& skeleton, spine::Slot& slot, const String& attachmentName, bool attachments);
 };
-}
+} // namespace spine
 
 #endif /* Spine_AnimationState_h */

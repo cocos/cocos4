@@ -100,4 +100,3 @@ float TransformConstraintData::getOffsetScaleY() {
 float TransformConstraintData::getOffsetShearY() {
     return _offsetShearY;
 }
-

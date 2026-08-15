@@ -171,7 +171,7 @@ public:
      * @zh 获取指定的渲染组合调试模式是否开启。
      * @param Specified composite type.
      */
-    inline bool isCompositeModeEnabled (uint32_t val) const {
+    inline bool isCompositeModeEnabled(uint32_t val) const {
         uint32_t mode = _compositeModeValue & (1 << val);
         return mode != 0;
     }
@@ -180,7 +180,7 @@ public:
      * @zh 开关指定的渲染组合调试模式。
      * @param Specified composite type, enable or disable.
      */
-    inline void enableCompositeMode (DebugViewCompositeType val, bool enable) {
+    inline void enableCompositeMode(DebugViewCompositeType val, bool enable) {
         enableCompositeModeValue(val, enable);
         updatePipeline();
     }
@@ -189,7 +189,7 @@ public:
      * @en Toggle all rendering composite debug mode.
      * @zh 开关所有的渲染组合调试模式。
      */
-    inline void enableAllCompositeMode (bool enable) {
+    inline void enableAllCompositeMode(bool enable) {
         enableAllCompositeModeValue(enable);
         updatePipeline();
     }
@@ -206,7 +206,7 @@ public:
      * @en Disable all debug view modes, reset to standard rendering mode.
      * @zh 关闭所有的渲染调试模式，恢复到正常渲染。
      */
-    void reset () {
+    void reset() {
         activate();
         updatePipeline();
     }
@@ -234,7 +234,7 @@ private:
         }
     }
 
-    inline RenderingDebugViewType getType () const {
+    inline RenderingDebugViewType getType() const {
         if (_singleMode != DebugViewSingleType::NONE) {
             return RenderingDebugViewType::SINGLE;
         } else if (!_lightingWithAlbedo || _csmLayerColoration) {

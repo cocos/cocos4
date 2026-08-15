@@ -34,31 +34,31 @@
 
 namespace spine {
 
-	class SP_API PathConstraintPositionTimeline : public CurveTimeline1 {
-		friend class SkeletonBinary;
+class SP_API PathConstraintPositionTimeline : public CurveTimeline1 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		static const int ENTRIES;
+public:
+    static const int ENTRIES;
 
-		explicit PathConstraintPositionTimeline(size_t frameCount, size_t bezierCount, int pathConstraintIndex);
+    explicit PathConstraintPositionTimeline(size_t frameCount, size_t bezierCount, int pathConstraintIndex);
 
-		virtual ~PathConstraintPositionTimeline();
+    virtual ~PathConstraintPositionTimeline();
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		int getPathConstraintIndex() { return _constraintIndex; }
+    int getPathConstraintIndex() { return _constraintIndex; }
 
-		void setPathConstraintIndex(int inValue) { _constraintIndex = inValue; }
+    void setPathConstraintIndex(int inValue) { _constraintIndex = inValue; }
 
-	protected:
-		int _constraintIndex;
-	};
-}
+protected:
+    int _constraintIndex;
+};
+} // namespace spine
 
 #endif /* Spine_PathConstraintPositionTimeline_h */

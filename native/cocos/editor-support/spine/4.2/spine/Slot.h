@@ -30,108 +30,108 @@
 #ifndef Spine_Slot_h
 #define Spine_Slot_h
 
-#include <spine/Vector.h>
-#include <spine/SpineObject.h>
 #include <spine/Color.h>
+#include <spine/SpineObject.h>
+#include <spine/Vector.h>
 
 namespace spine {
-	class SlotData;
+class SlotData;
 
-	class Bone;
+class Bone;
 
-	class Skeleton;
+class Skeleton;
 
-	class Attachment;
+class Attachment;
 
-	class SP_API Slot : public SpineObject {
-		friend class VertexAttachment;
+class SP_API Slot : public SpineObject {
+    friend class VertexAttachment;
 
-		friend class Skeleton;
+    friend class Skeleton;
 
-		friend class SkeletonBounds;
+    friend class SkeletonBounds;
 
-		friend class SkeletonClipping;
+    friend class SkeletonClipping;
 
-		friend class AttachmentTimeline;
+    friend class AttachmentTimeline;
 
-		friend class RGBATimeline;
+    friend class RGBATimeline;
 
-		friend class RGBTimeline;
+    friend class RGBTimeline;
 
-		friend class AlphaTimeline;
+    friend class AlphaTimeline;
 
-		friend class RGBA2Timeline;
+    friend class RGBA2Timeline;
 
-		friend class RGB2Timeline;
+    friend class RGB2Timeline;
 
-		friend class DeformTimeline;
+    friend class DeformTimeline;
 
-		friend class DrawOrderTimeline;
+    friend class DrawOrderTimeline;
 
-		friend class EventTimeline;
+    friend class EventTimeline;
 
-		friend class IkConstraintTimeline;
+    friend class IkConstraintTimeline;
 
-		friend class PathConstraintMixTimeline;
+    friend class PathConstraintMixTimeline;
 
-		friend class PathConstraintPositionTimeline;
+    friend class PathConstraintPositionTimeline;
 
-		friend class PathConstraintSpacingTimeline;
+    friend class PathConstraintSpacingTimeline;
 
-		friend class ScaleTimeline;
+    friend class ScaleTimeline;
 
-		friend class ShearTimeline;
+    friend class ShearTimeline;
 
-		friend class TransformConstraintTimeline;
+    friend class TransformConstraintTimeline;
 
-		friend class TranslateTimeline;
+    friend class TranslateTimeline;
 
-		friend class TwoColorTimeline;
+    friend class TwoColorTimeline;
 
-	public:
-		Slot(SlotData &data, Bone &bone);
+public:
+    Slot(SlotData &data, Bone &bone);
 
-		void setToSetupPose();
+    void setToSetupPose();
 
-		SlotData &getData();
+    SlotData &getData();
 
-		Bone &getBone();
+    Bone &getBone();
 
-		Skeleton &getSkeleton();
+    Skeleton &getSkeleton();
 
-		Color &getColor();
+    Color &getColor();
 
-		Color &getDarkColor();
+    Color &getDarkColor();
 
-		bool hasDarkColor();
+    bool hasDarkColor();
 
-		/// May be NULL.
-		Attachment *getAttachment();
+    /// May be NULL.
+    Attachment *getAttachment();
 
-		void setAttachment(Attachment *inValue);
+    void setAttachment(Attachment *inValue);
 
-		int getAttachmentState();
+    int getAttachmentState();
 
-		void setAttachmentState(int state);
+    void setAttachmentState(int state);
 
-		Vector<float> &getDeform();
+    Vector<float> &getDeform();
 
-		int getSequenceIndex();
+    int getSequenceIndex();
 
-		void setSequenceIndex(int index);
+    void setSequenceIndex(int index);
 
-	private:
-		SlotData &_data;
-		Bone &_bone;
-		Skeleton &_skeleton;
-		Color _color;
-		Color _darkColor;
-		bool _hasDarkColor;
-		Attachment *_attachment;
-		int _attachmentState;
-		int _sequenceIndex;
-		Vector<float> _deform;
-	};
-}
+private:
+    SlotData &_data;
+    Bone &_bone;
+    Skeleton &_skeleton;
+    Color _color;
+    Color _darkColor;
+    bool _hasDarkColor;
+    Attachment *_attachment;
+    int _attachmentState;
+    int _sequenceIndex;
+    Vector<float> _deform;
+};
+} // namespace spine
 
 #endif /* Spine_Slot_h */

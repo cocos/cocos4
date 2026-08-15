@@ -23,96 +23,87 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(linker, "\"/manifestdependency:type='Win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='X86' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
-#include "stdafx.h"
-#include <io.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <stdio.h>
-#include <fcntl.h>
 #include <Commdlg.h>
 #include <Shlobj.h>
-#include <winnls.h>
-#include <shobjidl.h>
+#include <fcntl.h>
+#include <io.h>
+#include <malloc.h>
 #include <objbase.h>
 #include <objidl.h>
-#include <shlguid.h>
 #include <shellapi.h>
+#include <shlguid.h>
+#include <shobjidl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <winnls.h>
+#include "stdafx.h"
 
 #include "SimulatorWin.h"
 
 #include "glfw3.h"
 #include "glfw3native.h"
 
-#include "CCLuaEngine.h"
 #include "AppEvent.h"
 #include "AppLang.h"
+#include "CCLuaEngine.h"
 #include "ConfigParser.h"
 
 USING_NS_CC;
 
 static WNDPROC g_oldWindowProc = NULL;
-INT_PTR CALLBACK AboutDialogCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
+INT_PTR CALLBACK AboutDialogCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
+    switch (message) {
+        case WM_INITDIALOG:
             return (INT_PTR)TRUE;
-        }
-        break;
+
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+                EndDialog(hDlg, LOWORD(wParam));
+                return (INT_PTR)TRUE;
+            }
+            break;
     }
     return (INT_PTR)FALSE;
 }
-void onHelpAbout()
-{
-    DialogBox(GetModuleHandle(NULL), 
-        MAKEINTRESOURCE(IDD_DIALOG_ABOUT), 
-        Director::getInstance()->getOpenGLView()->getWin32Window(), 
-        AboutDialogCallback);
+void onHelpAbout() {
+    DialogBox(GetModuleHandle(NULL),
+              MAKEINTRESOURCE(IDD_DIALOG_ABOUT),
+              Director::getInstance()->getOpenGLView()->getWin32Window(),
+              AboutDialogCallback);
 }
 
-void shutDownApp()
-{
-    auto glview = dynamic_cast<GLViewImpl*> (Director::getInstance()->getOpenGLView());
+void shutDownApp() {
+    auto glview = dynamic_cast<GLViewImpl *>(Director::getInstance()->getOpenGLView());
     HWND hWnd = glview->getWin32Window();
     ::SendMessage(hWnd, WM_CLOSE, NULL, NULL);
 }
 
-std::string getCurAppPath(void)
-{
-    TCHAR szAppDir[MAX_PATH] = { 0 };
+std::string getCurAppPath(void) {
+    TCHAR szAppDir[MAX_PATH] = {0};
     if (!GetModuleFileName(NULL, szAppDir, MAX_PATH))
         return "";
     int nEnd = 0;
-    for (int i = 0; szAppDir[i]; i++)
-    {
+    for (int i = 0; szAppDir[i]; i++) {
         if (szAppDir[i] == '\\')
             nEnd = i;
     }
     szAppDir[nEnd] = 0;
     int iLen = 2 * wcslen(szAppDir);
-    char* chRtn = new char[iLen + 1];
+    char *chRtn = new char[iLen + 1];
     wcstombs(chRtn, szAppDir, iLen + 1);
     std::string strPath = chRtn;
     delete[] chRtn;
     chRtn = NULL;
-    char fuldir[MAX_PATH] = { 0 };
+    char fuldir[MAX_PATH] = {0};
     _fullpath(fuldir, strPath.c_str(), MAX_PATH);
     return fuldir;
 }
 
-static void initGLContextAttrs()
-{
+static void initGLContextAttrs() {
     //set OpenGL context attributions,now can only set six attributions:
     //red,green,blue,alpha,depth,stencil
     GLContextAttrs glContextAttrs = {8, 8, 8, 8, 24, 8};
@@ -122,51 +113,39 @@ static void initGLContextAttrs()
 
 SimulatorWin *SimulatorWin::_instance = nullptr;
 
-SimulatorWin *SimulatorWin::getInstance()
-{
-    if (!_instance)
-    {
+SimulatorWin *SimulatorWin::getInstance() {
+    if (!_instance) {
         _instance = new SimulatorWin();
     }
     return _instance;
 }
 SimulatorWin::SimulatorWin()
-    : _app(nullptr)
-    , _hwnd(NULL)
-    , _hwndConsole(NULL)
-    , _writeDebugLogFile(nullptr)
-{
+: _app(nullptr), _hwnd(NULL), _hwndConsole(NULL), _writeDebugLogFile(nullptr) {
 }
 
-SimulatorWin::~SimulatorWin()
-{
+SimulatorWin::~SimulatorWin() {
     CC_SAFE_DELETE(_app);
-    if (_writeDebugLogFile)
-    {
+    if (_writeDebugLogFile) {
         fclose(_writeDebugLogFile);
     }
 }
 
-void SimulatorWin::quit()
-{
+void SimulatorWin::quit() {
     Director::getInstance()->end();
 }
 
-void SimulatorWin::relaunch()
-{
+void SimulatorWin::relaunch() {
     _project.setWindowOffset(Vec2(getPositionX(), getPositionY()));
     openNewPlayerWithProjectConfig(_project);
 
     quit();
 }
 
-void SimulatorWin::openNewPlayer()
-{
+void SimulatorWin::openNewPlayer() {
     openNewPlayerWithProjectConfig(_project);
 }
 
-void SimulatorWin::openNewPlayerWithProjectConfig(const ProjectConfig &config)
-{
+void SimulatorWin::openNewPlayerWithProjectConfig(const ProjectConfig &config) {
     static long taskid = 100;
     stringstream buf;
     buf << taskid++;
@@ -175,7 +154,7 @@ void SimulatorWin::openNewPlayerWithProjectConfig(const ProjectConfig &config)
     commandLine.append(getApplicationExePath());
     commandLine.append(" ");
     commandLine.append(config.makeCommandLine());
-    
+
     CCLOG("SimulatorWin::openNewPlayerWithProjectConfig(): %s", commandLine.c_str());
 
     // http://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
@@ -193,44 +172,39 @@ void SimulatorWin::openNewPlayerWithProjectConfig(const ProjectConfig &config)
     MultiByteToWideChar(CP_UTF8, 0, commandLine.c_str(), -1, command, MAX_COMMAND);
 
     BOOL success = CreateProcess(NULL,
-                                 command,   // command line 
-                                 NULL,      // process security attributes 
-                                 NULL,      // primary thread security attributes 
-                                 FALSE,     // handles are inherited 
-                                 0,         // creation flags 
-                                 NULL,      // use parent's environment 
-                                 NULL,      // use parent's current directory 
-                                 &si,       // STARTUPINFO pointer 
-                                 &pi);      // receives PROCESS_INFORMATION 
+                                 command, // command line
+                                 NULL,    // process security attributes
+                                 NULL,    // primary thread security attributes
+                                 FALSE,   // handles are inherited
+                                 0,       // creation flags
+                                 NULL,    // use parent's environment
+                                 NULL,    // use parent's current directory
+                                 &si,     // STARTUPINFO pointer
+                                 &pi);    // receives PROCESS_INFORMATION
 
-    if (!success)
-    {
+    if (!success) {
         CCLOG("PlayerTaskWin::run() - create process failed, for execute %s", commandLine.c_str());
     }
 }
 
-void SimulatorWin::openProjectWithProjectConfig(const ProjectConfig &config)
-{
+void SimulatorWin::openProjectWithProjectConfig(const ProjectConfig &config) {
     openNewPlayerWithProjectConfig(config);
     quit();
 }
 
-int SimulatorWin::getPositionX()
-{
+int SimulatorWin::getPositionX() {
     RECT rect;
     GetWindowRect(_hwnd, &rect);
     return rect.left;
 }
 
-int SimulatorWin::getPositionY()
-{
+int SimulatorWin::getPositionY() {
     RECT rect;
     GetWindowRect(_hwnd, &rect);
     return rect.top;
 }
 
-int SimulatorWin::run()
-{
+int SimulatorWin::run() {
     auto player = player::PlayerWin::create();
 
     INITCOMMONCONTROLSEX InitCtrls;
@@ -242,8 +216,7 @@ int SimulatorWin::run()
 
     // load project config from command line args
     vector<string> args;
-    for (int i = 0; i < __argc; ++i)
-    {
+    for (int i = 0; i < __argc; ++i) {
         wstring ws(__wargv[i]);
         string s;
         s.assign(ws.begin(), ws.end());
@@ -251,10 +224,8 @@ int SimulatorWin::run()
     }
     _project.parseCommandLine(args);
 
-    if (_project.getProjectDir().empty())
-    {
-        if (args.size() == 2)
-        {
+    if (_project.getProjectDir().empty()) {
+        if (args.size() == 2) {
             // for Code IDE before RC2
             _project.setProjectDir(args.at(1));
             _project.setDebuggerType(kCCRuntimeDebuggerCodeIDE);
@@ -266,32 +237,27 @@ int SimulatorWin::run()
     _app->setProjectConfig(_project);
 
     // create console window
-    if (_project.isShowConsole())
-    {
+    if (_project.isShowConsole()) {
         AllocConsole();
         _hwndConsole = GetConsoleWindow();
-        if (_hwndConsole != NULL)
-        {
+        if (_hwndConsole != NULL) {
             ShowWindow(_hwndConsole, SW_SHOW);
             BringWindowToTop(_hwndConsole);
             freopen("CONOUT$", "wt", stdout);
             freopen("CONOUT$", "wt", stderr);
 
             HMENU hmenu = GetSystemMenu(_hwndConsole, FALSE);
-            if (hmenu != NULL)
-            {
+            if (hmenu != NULL) {
                 DeleteMenu(hmenu, SC_CLOSE, MF_BYCOMMAND);
             }
         }
     }
 
     // log file
-    if (_project.isWriteDebugLogToFile())
-    {
+    if (_project.isWriteDebugLogToFile()) {
         const string debugLogFilePath = _project.getDebugLogFilePath();
         _writeDebugLogFile = fopen(debugLogFilePath.c_str(), "w");
-        if (!_writeDebugLogFile)
-        {
+        if (!_writeDebugLogFile) {
             CCLOG("Cannot create debug log file %s", debugLogFilePath.c_str());
         }
     }
@@ -316,16 +282,11 @@ int SimulatorWin::run()
     // enable DPI-Aware with DeclareDPIAware.manifest
     // http://msdn.microsoft.com/en-us/library/windows/desktop/dn469266%28v=vs.85%29.aspx#declaring_dpi_awareness
     float screenScale = 1.0f;
-    if (dpi >= 120 && dpi < 144)
-    {
+    if (dpi >= 120 && dpi < 144) {
         screenScale = 1.25f;
-    }
-    else if (dpi >= 144 && dpi < 192)
-    {
+    } else if (dpi >= 144 && dpi < 192) {
         screenScale = 1.5f;
-    }
-    else if (dpi >= 192)
-    {
+    } else if (dpi >= 192) {
         screenScale = 2.0f;
     }
     CCLOG("SCREEN DPI = %d, SCREEN SCALE = %0.2f", dpi, screenScale);
@@ -333,13 +294,10 @@ int SimulatorWin::run()
     // create opengl view
     Size frameSize = _project.getFrameSize();
     float frameScale = 1.0f;
-    if (_project.isRetinaDisplay())
-    {
+    if (_project.isRetinaDisplay()) {
         frameSize.width *= screenScale;
         frameSize.height *= screenScale;
-    }
-    else
-    {
+    } else {
         frameScale = screenScale;
     }
 
@@ -361,13 +319,11 @@ int SimulatorWin::run()
     director->setAnimationInterval(1.0 / 60.0);
 
     // set window position
-    if (_project.getProjectDir().length())
-    {
-        setZoom(_project.getFrameScale()); 
+    if (_project.getProjectDir().length()) {
+        setZoom(_project.getFrameScale());
     }
     Vec2 pos = _project.getWindowOffset();
-    if (pos.x != 0 && pos.y != 0)
-    {
+    if (pos.x != 0 && pos.y != 0) {
         RECT rect;
         GetWindowRect(_hwnd, &rect);
         MoveWindow(_hwnd, pos.x, pos.y, rect.right - rect.left, rect.bottom - rect.top, FALSE);
@@ -399,8 +355,7 @@ int SimulatorWin::run()
 
 // services
 
-void SimulatorWin::setupUI()
-{
+void SimulatorWin::setupUI() {
     auto menuBar = player::PlayerProtocol::getInstance()->getMenuService();
 
     // FILE
@@ -411,15 +366,13 @@ void SimulatorWin::setupUI()
     menuBar->addItem("VIEW_MENU", tr("View"));
     SimulatorConfig *config = SimulatorConfig::getInstance();
     int current = config->checkScreenSize(_project.getFrameSize());
-    for (int i = 0; i < config->getScreenSizeCount(); i++)
-    {
+    for (int i = 0; i < config->getScreenSizeCount(); i++) {
         SimulatorScreenSize size = config->getScreenSize(i);
         std::stringstream menuId;
         menuId << "VIEWSIZE_ITEM_MENU_" << i;
         auto menuItem = menuBar->addItem(menuId.str(), size.title.c_str(), "VIEW_MENU");
 
-        if (i == current)
-        {
+        if (i == current) {
             menuItem->setChecked(true);
         }
     }
@@ -431,30 +384,21 @@ void SimulatorWin::setupUI()
         ->setChecked(_project.isLandscapeFrame());
 
     menuBar->addItem("VIEW_SCALE_MENU_SEP", "-", "VIEW_MENU");
-    std::vector<player::PlayerMenuItem*> scaleMenuVector;
+    std::vector<player::PlayerMenuItem *> scaleMenuVector;
     auto scale100Menu = menuBar->addItem("VIEW_SCALE_MENU_100", tr("Zoom Out").append(" (100%)"), "VIEW_MENU");
     auto scale75Menu = menuBar->addItem("VIEW_SCALE_MENU_75", tr("Zoom Out").append(" (75%)"), "VIEW_MENU");
     auto scale50Menu = menuBar->addItem("VIEW_SCALE_MENU_50", tr("Zoom Out").append(" (50%)"), "VIEW_MENU");
     auto scale25Menu = menuBar->addItem("VIEW_SCALE_MENU_25", tr("Zoom Out").append(" (25%)"), "VIEW_MENU");
     int frameScale = int(_project.getFrameScale() * 100);
-    if (frameScale == 100)
-    {
+    if (frameScale == 100) {
         scale100Menu->setChecked(true);
-    }
-    else if (frameScale == 75)
-    {
+    } else if (frameScale == 75) {
         scale75Menu->setChecked(true);
-    }
-    else if (frameScale == 50)
-    {
+    } else if (frameScale == 50) {
         scale50Menu->setChecked(true);
-    }
-    else if (frameScale == 25)
-    {
+    } else if (frameScale == 25) {
         scale25Menu->setChecked(true);
-    }
-    else
-    {
+    } else {
         scale100Menu->setChecked(true);
     }
 
@@ -469,104 +413,86 @@ void SimulatorWin::setupUI()
     HWND &hwnd = _hwnd;
     ProjectConfig &project = _project;
     auto dispatcher = Director::getInstance()->getEventDispatcher();
-    dispatcher->addEventListenerWithFixedPriority(EventListenerCustom::create("APP.EVENT", [&project, &hwnd, scaleMenuVector](EventCustom* event){
-        auto menuEvent = dynamic_cast<AppEvent*>(event);
-        if (menuEvent)
-        {
-            rapidjson::Document dArgParse;
-            dArgParse.Parse<0>(menuEvent->getDataString().c_str());
-            if (dArgParse.HasMember("name"))
-            {
-                string strcmd = dArgParse["name"].GetString();
+    dispatcher->addEventListenerWithFixedPriority(EventListenerCustom::create("APP.EVENT", [&project, &hwnd, scaleMenuVector](EventCustom *event) {
+                                                      auto menuEvent = dynamic_cast<AppEvent *>(event);
+                                                      if (menuEvent) {
+                                                          rapidjson::Document dArgParse;
+                                                          dArgParse.Parse<0>(menuEvent->getDataString().c_str());
+                                                          if (dArgParse.HasMember("name")) {
+                                                              string strcmd = dArgParse["name"].GetString();
 
-                if (strcmd == "menuClicked")
-                {
-                    player::PlayerMenuItem *menuItem = static_cast<player::PlayerMenuItem*>(menuEvent->getUserData());
-                    if (menuItem)
-                    {
-                        if (menuItem->isChecked())
-                        {
-                            return;
-                        }
+                                                              if (strcmd == "menuClicked") {
+                                                                  player::PlayerMenuItem *menuItem = static_cast<player::PlayerMenuItem *>(menuEvent->getUserData());
+                                                                  if (menuItem) {
+                                                                      if (menuItem->isChecked()) {
+                                                                          return;
+                                                                      }
 
-                        string data = dArgParse["data"].GetString();
-                        auto player = player::PlayerProtocol::getInstance();
+                                                                      string data = dArgParse["data"].GetString();
+                                                                      auto player = player::PlayerProtocol::getInstance();
 
-                        if ((data == "CLOSE_MENU") || (data == "EXIT_MENU"))
-                        {
-                            player->quit();
-                        }
-                        else if (data == "REFRESH_MENU")
-                        {
-                            player->relaunch();
-                        }
-                        else if (data.find("VIEW_SCALE_MENU_") == 0) // begin with VIEW_SCALE_MENU_
-                        {
-                            string tmp = data.erase(0, strlen("VIEW_SCALE_MENU_"));
-                            float scale = atof(tmp.c_str()) / 100.0f;
-                            project.setFrameScale(scale);
+                                                                      if ((data == "CLOSE_MENU") || (data == "EXIT_MENU")) {
+                                                                          player->quit();
+                                                                      } else if (data == "REFRESH_MENU") {
+                                                                          player->relaunch();
+                                                                      } else if (data.find("VIEW_SCALE_MENU_") == 0) // begin with VIEW_SCALE_MENU_
+                                                                      {
+                                                                          string tmp = data.erase(0, strlen("VIEW_SCALE_MENU_"));
+                                                                          float scale = atof(tmp.c_str()) / 100.0f;
+                                                                          project.setFrameScale(scale);
 
-                            auto glview = static_cast<GLViewImpl*>(Director::getInstance()->getOpenGLView());
-                            glview->setFrameZoomFactor(scale);
+                                                                          auto glview = static_cast<GLViewImpl *>(Director::getInstance()->getOpenGLView());
+                                                                          glview->setFrameZoomFactor(scale);
 
-                            // update scale menu state
-                            for (auto &it : scaleMenuVector)
-                            {
-                                it->setChecked(false);
-                            }
-                            menuItem->setChecked(true);
+                                                                          // update scale menu state
+                                                                          for (auto &it : scaleMenuVector) {
+                                                                              it->setChecked(false);
+                                                                          }
+                                                                          menuItem->setChecked(true);
 
-                            // update window size
-                            RECT rect;
-                            GetWindowRect(hwnd, &rect);
-                            MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top + GetSystemMetrics(SM_CYMENU), FALSE);
-                        
-                            // fix: can not update window on some windows system 
-                            ::SendMessage(hwnd, WM_MOVE, NULL, NULL);
-                        }
-                        else if (data.find("VIEWSIZE_ITEM_MENU_") == 0) // begin with VIEWSIZE_ITEM_MENU_
-                        {
-                            string tmp = data.erase(0, strlen("VIEWSIZE_ITEM_MENU_"));
-                            int index = atoi(tmp.c_str());
-                            SimulatorScreenSize size = SimulatorConfig::getInstance()->getScreenSize(index);
+                                                                          // update window size
+                                                                          RECT rect;
+                                                                          GetWindowRect(hwnd, &rect);
+                                                                          MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top + GetSystemMetrics(SM_CYMENU), FALSE);
 
-                            if (project.isLandscapeFrame())
-                            {
-                                std::swap(size.width, size.height);
-                            }
+                                                                          // fix: can not update window on some windows system
+                                                                          ::SendMessage(hwnd, WM_MOVE, NULL, NULL);
+                                                                      } else if (data.find("VIEWSIZE_ITEM_MENU_") == 0) // begin with VIEWSIZE_ITEM_MENU_
+                                                                      {
+                                                                          string tmp = data.erase(0, strlen("VIEWSIZE_ITEM_MENU_"));
+                                                                          int index = atoi(tmp.c_str());
+                                                                          SimulatorScreenSize size = SimulatorConfig::getInstance()->getScreenSize(index);
 
-                            project.setFrameSize(cocos2d::Size(size.width, size.height));
-                            project.setWindowOffset(cocos2d::Vec2(player->getPositionX(), player->getPositionY()));
-                            player->openProjectWithProjectConfig(project);
-                        }
-                        else if (data == "DIRECTION_PORTRAIT_MENU")
-                        {
-                            project.changeFrameOrientationToPortait();
-                            player->openProjectWithProjectConfig(project);
-                        }
-                        else if (data == "DIRECTION_LANDSCAPE_MENU")
-                        {
-                            project.changeFrameOrientationToLandscape();
-                            player->openProjectWithProjectConfig(project);
-                        }
-                    }
-                }
-            }
-        }
-    }), 1);
+                                                                          if (project.isLandscapeFrame()) {
+                                                                              std::swap(size.width, size.height);
+                                                                          }
+
+                                                                          project.setFrameSize(cocos2d::Size(size.width, size.height));
+                                                                          project.setWindowOffset(cocos2d::Vec2(player->getPositionX(), player->getPositionY()));
+                                                                          player->openProjectWithProjectConfig(project);
+                                                                      } else if (data == "DIRECTION_PORTRAIT_MENU") {
+                                                                          project.changeFrameOrientationToPortait();
+                                                                          player->openProjectWithProjectConfig(project);
+                                                                      } else if (data == "DIRECTION_LANDSCAPE_MENU") {
+                                                                          project.changeFrameOrientationToLandscape();
+                                                                          player->openProjectWithProjectConfig(project);
+                                                                      }
+                                                                  }
+                                                              }
+                                                          }
+                                                      }
+                                                  }),
+                                                  1);
 
     AppDelegate *app = _app;
-    auto listener = EventListenerCustom::create(kAppEventDropName, [&project, app](EventCustom* event)
-    {
-        AppEvent *dropEvent = dynamic_cast<AppEvent*>(event);
-        if (dropEvent)
-        {
+    auto listener = EventListenerCustom::create(kAppEventDropName, [&project, app](EventCustom *event) {
+        AppEvent *dropEvent = dynamic_cast<AppEvent *>(event);
+        if (dropEvent) {
             string dirPath = dropEvent->getDataString() + "/";
             string configFilePath = dirPath + CONFIG_FILE;
 
             if (FileUtils::getInstance()->isDirectoryExist(dirPath) &&
-                FileUtils::getInstance()->isFileExist(configFilePath))
-            {
+                FileUtils::getInstance()->isFileExist(configFilePath)) {
                 // parse config.json
                 ConfigParser::getInstance()->readConfig(configFilePath);
 
@@ -582,15 +508,13 @@ void SimulatorWin::setupUI()
     dispatcher->addEventListenerWithFixedPriority(listener, 1);
 }
 
-void SimulatorWin::setZoom(float frameScale)
-{
+void SimulatorWin::setZoom(float frameScale) {
     _project.setFrameScale(frameScale);
     cocos2d::Director::getInstance()->getOpenGLView()->setFrameZoomFactor(frameScale);
 }
 
 // debug log
-void SimulatorWin::writeDebugLog(const char *log)
-{
+void SimulatorWin::writeDebugLog(const char *log) {
     if (!_writeDebugLogFile) return;
 
     fputs(log, _writeDebugLogFile);
@@ -598,24 +522,20 @@ void SimulatorWin::writeDebugLog(const char *log)
     fflush(_writeDebugLogFile);
 }
 
-void SimulatorWin::parseCocosProjectConfig(ProjectConfig &config)
-{
+void SimulatorWin::parseCocosProjectConfig(ProjectConfig &config) {
     // get project directory
     ProjectConfig tmpConfig;
     // load project config from command line args
     vector<string> args;
-    for (int i = 0; i < __argc; ++i)
-    {
+    for (int i = 0; i < __argc; ++i) {
         wstring ws(__wargv[i]);
         string s;
         s.assign(ws.begin(), ws.end());
         args.push_back(s);
     }
 
-    if (args.size() >= 2)
-    {
-        if (args.size() && args.at(1).at(0) == '/')
-        {
+    if (args.size() >= 2) {
+        if (args.size() && args.at(1).at(0) == '/') {
             // IDEA:
             // for Code IDE before RC2
             tmpConfig.setProjectDir(args.at(1));
@@ -636,12 +556,9 @@ void SimulatorWin::parseCocosProjectConfig(ProjectConfig &config)
     config.setConsolePort(parser->getConsolePort());
     config.setFileUploadPort(parser->getUploadPort());
     config.setFrameSize(parser->getInitViewSize());
-    if (parser->isLanscape())
-    {
+    if (parser->isLanscape()) {
         config.changeFrameOrientationToLandscape();
-    }
-    else
-    {
+    } else {
         config.changeFrameOrientationToPortait();
     }
     config.setScriptFile(parser->getEntryFile());
@@ -650,14 +567,11 @@ void SimulatorWin::parseCocosProjectConfig(ProjectConfig &config)
 //
 // D:\aaa\bbb\ccc\ddd\abc.txt --> D:/aaa/bbb/ccc/ddd/abc.txt
 //
-std::string SimulatorWin::convertPathFormatToUnixStyle(const std::string& path)
-{
+std::string SimulatorWin::convertPathFormatToUnixStyle(const std::string &path) {
     std::string ret = path;
     int len = ret.length();
-    for (int i = 0; i < len; ++i)
-    {
-        if (ret[i] == '\\')
-        {
+    for (int i = 0; i < len; ++i) {
+        if (ret[i] == '\\') {
             ret[i] = '/';
         }
     }
@@ -667,15 +581,14 @@ std::string SimulatorWin::convertPathFormatToUnixStyle(const std::string& path)
 //
 // @return: C:/Users/win8/Documents/
 //
-std::string SimulatorWin::getUserDocumentPath()
-{
+std::string SimulatorWin::getUserDocumentPath() {
     TCHAR filePath[MAX_PATH];
     SHGetSpecialFolderPath(NULL, filePath, CSIDL_PERSONAL, FALSE);
     int length = 2 * wcslen(filePath);
-    char* tempstring = new char[length + 1];
+    char *tempstring = new char[length + 1];
     wcstombs(tempstring, filePath, length + 1);
     string userDocumentPath(tempstring);
-    delete [] tempstring;
+    delete[] tempstring;
 
     userDocumentPath = convertPathFormatToUnixStyle(userDocumentPath);
     userDocumentPath.append("/");
@@ -686,24 +599,23 @@ std::string SimulatorWin::getUserDocumentPath()
 //
 // convert Unicode/LocalCode TCHAR to Utf8 char
 //
-char* SimulatorWin::convertTCharToUtf8(const TCHAR* src)
-{
+char *SimulatorWin::convertTCharToUtf8(const TCHAR *src) {
 #ifdef UNICODE
-    WCHAR* tmp = (WCHAR*)src;
+    WCHAR *tmp = (WCHAR *)src;
     size_t size = wcslen(src) * 3 + 1;
-    char* dest = new char[size];
+    char *dest = new char[size];
     memset(dest, 0, size);
     WideCharToMultiByte(CP_UTF8, 0, tmp, -1, dest, size, NULL, NULL);
     return dest;
 #else
-    char* tmp = (char*)src;
+    char *tmp = (char *)src;
     uint32 size = strlen(tmp) + 1;
-    WCHAR* dest = new WCHAR[size];
-    memset(dest, 0, sizeof(WCHAR)*size);
+    WCHAR *dest = new WCHAR[size];
+    memset(dest, 0, sizeof(WCHAR) * size);
     MultiByteToWideChar(CP_ACP, 0, src, -1, dest, (int)size); // convert local code to unicode.
 
     size = wcslen(dest) * 3 + 1;
-    char* dest2 = new char[size];
+    char *dest2 = new char[size];
     memset(dest2, 0, size);
     WideCharToMultiByte(CP_UTF8, 0, dest, -1, dest2, size, NULL, NULL); // convert unicode to utf8.
     delete[] dest;
@@ -712,8 +624,7 @@ char* SimulatorWin::convertTCharToUtf8(const TCHAR* src)
 }
 
 //
-std::string SimulatorWin::getApplicationExePath()
-{
+std::string SimulatorWin::getApplicationExePath() {
     TCHAR szFileName[MAX_PATH];
     GetModuleFileName(NULL, szFileName, MAX_PATH);
     std::u16string u16ApplicationName;
@@ -724,109 +635,94 @@ std::string SimulatorWin::getApplicationExePath()
     return path;
 }
 
-std::string SimulatorWin::getApplicationPath()
-{
+std::string SimulatorWin::getApplicationPath() {
     std::string path = getApplicationExePath();
     size_t pos;
-    while ((pos = path.find_first_of("\\")) != std::string::npos)
-    {
+    while ((pos = path.find_first_of("\\")) != std::string::npos) {
         path.replace(pos, 1, "/");
     }
     size_t p = path.find_last_of("/");
     string workdir;
-    if (p != path.npos)
-    {
+    if (p != path.npos) {
         workdir = path.substr(0, p);
     }
 
     return workdir;
 }
 
-LRESULT CALLBACK SimulatorWin::windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
+LRESULT CALLBACK SimulatorWin::windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (!_instance) return 0;
 
-    switch (uMsg)
-    {
-    case WM_COMMAND:
-    {
-        if (HIWORD(wParam) == 0)
-        {
-            // menu
-            WORD menuId = LOWORD(wParam);
-            PlayerMenuItemWin *menuItem = _instance->_menuService->getItemByCommandId(menuId);
-            if (menuItem)
-            {
-                AppEvent event("APP.EVENT", APP_EVENT_MENU);
+    switch (uMsg) {
+        case WM_COMMAND: {
+            if (HIWORD(wParam) == 0) {
+                // menu
+                WORD menuId = LOWORD(wParam);
+                PlayerMenuItemWin *menuItem = _instance->_menuService->getItemByCommandId(menuId);
+                if (menuItem) {
+                    AppEvent event("APP.EVENT", APP_EVENT_MENU);
 
-                std::stringstream buf;
-                buf << "{\"data\":\"" << menuItem->getMenuId().c_str() << "\"";
-                buf << ",\"name\":" << "\"menuClicked\"" << "}";
-                event.setDataString(buf.str());
-                event.setUserData(menuItem);
-                Director::getInstance()->getEventDispatcher()->dispatchEvent(&event);
+                    std::stringstream buf;
+                    buf << "{\"data\":\"" << menuItem->getMenuId().c_str() << "\"";
+                    buf << ",\"name\":"
+                        << "\"menuClicked\""
+                        << "}";
+                    event.setDataString(buf.str());
+                    event.setUserData(menuItem);
+                    Director::getInstance()->getEventDispatcher()->dispatchEvent(&event);
+                }
+
+                if (menuId == ID_HELP_ABOUT) {
+                    onHelpAbout();
+                }
             }
-
-            if (menuId == ID_HELP_ABOUT)
-            {
-                onHelpAbout();
+            break;
+        }
+        case WM_KEYDOWN: {
+            if (wParam == VK_F5) {
+                PlayerProtocol::getInstance()->relaunch();
             }
+            break;
         }
-        break;
-    }
-    case WM_KEYDOWN:
-    {
-        if (wParam == VK_F5)
-        {
-            PlayerProtocol::getInstance()->relaunch();
-        }
-        break;
-    }
 
-    case WM_COPYDATA:
-        {
-            PCOPYDATASTRUCT pMyCDS = (PCOPYDATASTRUCT) lParam;
-            if (pMyCDS->dwData == 1)
-            {
-                const char *szBuf = (const char*)(pMyCDS->lpData);
+        case WM_COPYDATA: {
+            PCOPYDATASTRUCT pMyCDS = (PCOPYDATASTRUCT)lParam;
+            if (pMyCDS->dwData == 1) {
+                const char *szBuf = (const char *)(pMyCDS->lpData);
                 SimulatorWin::getInstance()->writeDebugLog(szBuf);
                 break;
             }
         }
 
-    case WM_DESTROY:
-    {
-        DragAcceptFiles(hWnd, FALSE);
-        break;
-    }
-
-    case WM_DROPFILES:
-    {
-        HDROP hDrop = (HDROP)wParam;
-
-        const int count = DragQueryFileW(hDrop, 0xffffffff, NULL, 0);
-        
-        if (count > 0)
-        {
-            int fileIndex = 0;
-
-            const UINT length = DragQueryFileW(hDrop, fileIndex, NULL, 0);
-            WCHAR* buffer = (WCHAR*)calloc(length + 1, sizeof(WCHAR));
-
-            DragQueryFileW(hDrop, fileIndex, buffer, length + 1);
-            char *utf8 = SimulatorWin::convertTCharToUtf8(buffer);
-            std::string firstFile(utf8);
-            CC_SAFE_FREE(utf8);
-            DragFinish(hDrop);
-
-            // broadcast drop event
-            AppEvent forwardEvent("APP.EVENT.DROP", APP_EVENT_DROP);
-            forwardEvent.setDataString(firstFile);
-
-            Director::getInstance()->getEventDispatcher()->dispatchEvent(&forwardEvent);
+        case WM_DESTROY: {
+            DragAcceptFiles(hWnd, FALSE);
+            break;
         }
-    }   // WM_DROPFILES
 
+        case WM_DROPFILES: {
+            HDROP hDrop = (HDROP)wParam;
+
+            const int count = DragQueryFileW(hDrop, 0xffffffff, NULL, 0);
+
+            if (count > 0) {
+                int fileIndex = 0;
+
+                const UINT length = DragQueryFileW(hDrop, fileIndex, NULL, 0);
+                WCHAR *buffer = (WCHAR *)calloc(length + 1, sizeof(WCHAR));
+
+                DragQueryFileW(hDrop, fileIndex, buffer, length + 1);
+                char *utf8 = SimulatorWin::convertTCharToUtf8(buffer);
+                std::string firstFile(utf8);
+                CC_SAFE_FREE(utf8);
+                DragFinish(hDrop);
+
+                // broadcast drop event
+                AppEvent forwardEvent("APP.EVENT.DROP", APP_EVENT_DROP);
+                forwardEvent.setDataString(firstFile);
+
+                Director::getInstance()->getEventDispatcher()->dispatchEvent(&forwardEvent);
+            }
+        } // WM_DROPFILES
     }
     return g_oldWindowProc(hWnd, uMsg, wParam, lParam);
 }

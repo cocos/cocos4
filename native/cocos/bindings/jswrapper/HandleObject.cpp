@@ -37,7 +37,7 @@ HandleObject::HandleObject(Object *obj)
     }
 }
 
-HandleObject::HandleObject(HandleObject &&o) noexcept{
+HandleObject::HandleObject(HandleObject &&o) noexcept {
     _obj = o._obj;
     o._obj = nullptr;
 }
@@ -49,7 +49,7 @@ HandleObject::~HandleObject() {
     }
 }
 
-HandleObject& HandleObject::operator=(HandleObject &&o) noexcept {
+HandleObject &HandleObject::operator=(HandleObject &&o) noexcept {
     _obj = o._obj;
     o._obj = nullptr;
     return *this;

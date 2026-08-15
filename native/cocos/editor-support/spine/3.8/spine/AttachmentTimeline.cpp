@@ -57,7 +57,7 @@ AttachmentTimeline::AttachmentTimeline(int frameCount) : Timeline(), _slotIndex(
     }
 }
 
-void AttachmentTimeline::setAttachment(Skeleton& skeleton, Slot& slot, String* attachmentName) {
+void AttachmentTimeline::setAttachment(Skeleton &skeleton, Slot &slot, String *attachmentName) {
     slot.setAttachment(attachmentName == NULL || attachmentName->isEmpty() ? NULL : skeleton.getAttachment(_slotIndex, *attachmentName));
 }
 

@@ -48,7 +48,7 @@ public:
 
     int32_t loop() override;
     void exit() override;
-    
+
     void *getActivity();
 
     static void *getEnv();

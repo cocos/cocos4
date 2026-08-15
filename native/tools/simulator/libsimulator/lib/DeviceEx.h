@@ -31,8 +31,7 @@
 
 PLAYER_NS_BEGIN
 
-class CC_LIBSIM_DLL DeviceEx
-{
+class CC_LIBSIM_DLL DeviceEx {
 public:
     static DeviceEx *getInstance();
 

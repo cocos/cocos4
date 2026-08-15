@@ -59,7 +59,6 @@ String::String(const char *chars, bool own /* = false*/, bool tofree /* = true*/
     _tempowner = tofree;
 }
 
-
 String::String(const String &other) {
     _tempowner = true;
     if (!other._buffer) {

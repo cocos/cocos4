@@ -3,7 +3,7 @@
 //#include "LogUtil.h"
 using namespace spine;
 
-AttachmentVertices::AttachmentVertices(int verticesCount, uint16_t *triangles, int trianglesCount, const spine::String& textureName) {
+AttachmentVertices::AttachmentVertices(int verticesCount, uint16_t *triangles, int trianglesCount, const spine::String &textureName) {
     _triangles = new Triangles();
     _triangles->verts = new V3F_T2F_C4B[verticesCount];
     _triangles->vertCount = verticesCount;

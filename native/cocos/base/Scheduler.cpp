@@ -346,7 +346,7 @@ void Scheduler::runFunctionsToBePerformedInCocosThread() {
         // fixed #4123: Save the callback functions, they must be invoked after '_performMutex.unlock()', otherwise if new functions are added in callback, it will cause thread deadlock.
         auto temp = std::move(_functionsToPerform);
         _performMutex.unlock();
-        
+
         auto iter = temp.begin();
         for (; iter != temp.end(); ++iter) {
             nowTime = std::chrono::steady_clock::now();
@@ -355,10 +355,10 @@ void Scheduler::runFunctionsToBePerformedInCocosThread() {
             if (passedMS > 16) {
                 break;
             }
-            
+
             (*iter)();
         }
-        
+
         std::lock_guard<std::mutex> lk(_performMutex);
         _functionsToPerform.insert(_functionsToPerform.begin(), std::make_move_iterator(iter), std::make_move_iterator(temp.end()));
     }

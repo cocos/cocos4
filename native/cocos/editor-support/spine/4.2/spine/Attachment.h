@@ -35,28 +35,28 @@
 #include <spine/SpineString.h>
 
 namespace spine {
-	class SP_API Attachment : public SpineObject {
-	RTTI_DECL
+class SP_API Attachment : public SpineObject {
+    RTTI_DECL
 
-	public:
-		explicit Attachment(const String &name);
+public:
+    explicit Attachment(const String &name);
 
-		virtual ~Attachment();
+    virtual ~Attachment();
 
-		const String &getName() const;
+    const String &getName() const;
 
-		virtual Attachment *copy() = 0;
+    virtual Attachment *copy() = 0;
 
-		int getRefCount();
+    int getRefCount();
 
-		void reference();
+    void reference();
 
-		void dereference();
+    void dereference();
 
-	private:
-		const String _name;
-		int _refCount;
-	};
-}
+private:
+    const String _name;
+    int _refCount;
+};
+} // namespace spine
 
 #endif /* Spine_Attachment_h */

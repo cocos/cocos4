@@ -34,81 +34,81 @@
 #include <spine/Vector.h>
 
 namespace spine {
-	/// Base class for frames that use an interpolation bezier curve.
-	class SP_API CurveTimeline : public Timeline {
-	RTTI_DECL
+/// Base class for frames that use an interpolation bezier curve.
+class SP_API CurveTimeline : public Timeline {
+    RTTI_DECL
 
-	public:
-		explicit CurveTimeline(size_t frameCount, size_t frameEntries, size_t bezierCount);
+public:
+    explicit CurveTimeline(size_t frameCount, size_t frameEntries, size_t bezierCount);
 
-		virtual ~CurveTimeline();
+    virtual ~CurveTimeline();
 
-		void setLinear(size_t frame);
+    void setLinear(size_t frame);
 
-		void setStepped(size_t frame);
+    void setStepped(size_t frame);
 
-		virtual void
-		setBezier(size_t bezier, size_t frame, float value, float time1, float value1, float cx1, float cy1, float cx2,
-				  float cy2, float time2, float value2);
+    virtual void
+    setBezier(size_t bezier, size_t frame, float value, float time1, float value1, float cx1, float cy1, float cx2,
+              float cy2, float time2, float value2);
 
-		float getBezierValue(float time, size_t frame, size_t valueOffset, size_t i);
+    float getBezierValue(float time, size_t frame, size_t valueOffset, size_t i);
 
-		Vector<float> &getCurves();
-		
-    #ifndef __EMSCRIPTEN__
-	protected:
-	#endif
-		static const int LINEAR = 0;
-		static const int STEPPED = 1;
-		static const int BEZIER = 2;
-		static const int BEZIER_SIZE = 18;
+    Vector<float> &getCurves();
 
-		Vector<float> _curves; // type, x, y, ...
-	};
+#ifndef __EMSCRIPTEN__
+protected:
+#endif
+    static const int LINEAR = 0;
+    static const int STEPPED = 1;
+    static const int BEZIER = 2;
+    static const int BEZIER_SIZE = 18;
 
-	class SP_API CurveTimeline1 : public CurveTimeline {
-	RTTI_DECL
+    Vector<float> _curves; // type, x, y, ...
+};
 
-	public:
-		explicit CurveTimeline1(size_t frameCount, size_t bezierCount);
+class SP_API CurveTimeline1 : public CurveTimeline {
+    RTTI_DECL
 
-		virtual ~CurveTimeline1();
+public:
+    explicit CurveTimeline1(size_t frameCount, size_t bezierCount);
 
-		void setFrame(size_t frame, float time, float value);
+    virtual ~CurveTimeline1();
 
-		float getCurveValue(float time);
+    void setFrame(size_t frame, float time, float value);
 
-        float getRelativeValue(float time, float alpha, MixBlend blend, float current, float setup);
+    float getCurveValue(float time);
 
-        float getAbsoluteValue(float time, float alpha, MixBlend blend, float current, float setup);
+    float getRelativeValue(float time, float alpha, MixBlend blend, float current, float setup);
 
-        float getAbsoluteValue (float time, float alpha, MixBlend blend, float current, float setup, float value);
+    float getAbsoluteValue(float time, float alpha, MixBlend blend, float current, float setup);
 
-        float getScaleValue (float time, float alpha, MixBlend blend, MixDirection direction, float current, float setup);
-    #ifndef __EMSCRIPTEN__
-	protected:
-	#endif
-		static const int ENTRIES = 2;
-		static const int VALUE = 1;
-	};
+    float getAbsoluteValue(float time, float alpha, MixBlend blend, float current, float setup, float value);
 
-	class SP_API CurveTimeline2 : public CurveTimeline {
-	RTTI_DECL
+    float getScaleValue(float time, float alpha, MixBlend blend, MixDirection direction, float current, float setup);
+#ifndef __EMSCRIPTEN__
+protected:
+#endif
+    static const int ENTRIES = 2;
+    static const int VALUE = 1;
+};
 
-	public:
-		explicit CurveTimeline2(size_t frameCount, size_t bezierCount);
+class SP_API CurveTimeline2 : public CurveTimeline {
+    RTTI_DECL
 
-		virtual ~CurveTimeline2();
+public:
+    explicit CurveTimeline2(size_t frameCount, size_t bezierCount);
 
-		void setFrame(size_t frame, float time, float value1, float value2);
+    virtual ~CurveTimeline2();
 
-	#ifndef __EMSCRIPTEN__
-	protected:
-	#endif
-		static const int ENTRIES = 3;
-		static const int VALUE1 = 1;
-		static const int VALUE2 = 2;
-	};
-}
+    void setFrame(size_t frame, float time, float value1, float value2);
+
+#ifndef __EMSCRIPTEN__
+protected:
+#endif
+    static const int ENTRIES = 3;
+    static const int VALUE1 = 1;
+    static const int VALUE2 = 2;
+};
+} // namespace spine
 
 #endif /* Spine_CurveTimeline_h */

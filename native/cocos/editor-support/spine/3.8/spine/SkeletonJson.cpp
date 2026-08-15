@@ -131,9 +131,9 @@ SkeletonData *SkeletonJson::readSkeletonData(const char *json) {
     if (skeleton) {
         skeletonData->_hash = Json::getString(skeleton, "hash", 0);
         skeletonData->_version = Json::getString(skeleton, "spine", 0);
-        const auto& version = skeletonData->_version;
+        const auto &version = skeletonData->_version;
         int versionLength = version.length();
-        const char* spineVersion = version.buffer();
+        const char *spineVersion = version.buffer();
         if (versionLength < 3 || spineVersion[0] != '3' || spineVersion[1] != '.' || spineVersion[2] != '8') {
             char errorMsg[255] = {0};
             char skeletonVersion[] = "Skeleton version ";
@@ -628,8 +628,8 @@ SkeletonData *SkeletonJson::readSkeletonData(const char *json) {
                             } else {
                                 bool inheritDeform = Json::getInt(attachmentMap, "deform", 1) ? true : false;
                                 LinkedMesh *linkedMesh = spine_new LinkedMesh(mesh,
-                                                                                             String(Json::getString(attachmentMap, "skin", 0)), slot->getIndex(), String(entry->_valueString),
-                                                                                             inheritDeform);
+                                                                              String(Json::getString(attachmentMap, "skin", 0)), slot->getIndex(), String(entry->_valueString),
+                                                                              inheritDeform);
                                 _linkedMeshes.add(linkedMesh);
                             }
                             break;

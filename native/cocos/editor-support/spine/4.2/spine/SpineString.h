@@ -61,7 +61,6 @@ public:
     int lastIndexOf(const char c) const;
     bool startsWith(const String &needle) const;
 
-
     void own(const String &other);
     void own(const char *chars);
     void unown();
@@ -76,7 +75,7 @@ public:
 
     friend bool operator==(const String &a, const String &b);
     friend bool operator!=(const String &a, const String &b);
-    
+
 private:
     mutable size_t _length;
     mutable char *_buffer;

@@ -13,8 +13,8 @@ void SpineModel::addSlotMesh(SlotMesh& mesh, bool needMerge) {
     if (needMerge && count > 0) {
         if (_data[count - 1] == mesh.blendMode && _textures[count / 5 - 1] == mesh.textureID) {
             canMerge = true;
-            _data[count-3] += mesh.vCount;
-            _data[count-2] += mesh.iCount;
+            _data[count - 3] += mesh.vCount;
+            _data[count - 2] += mesh.iCount;
         }
     }
     if (!canMerge) {
@@ -31,7 +31,7 @@ void SpineModel::addSlotMesh(SlotMesh& mesh, bool needMerge) {
     uint16_t* iiPtr = mesh.iBuf;
     for (uint32_t i = 0; i < indexCount; i++) {
         iiPtr[i] += vCount;
-    } 
+    }
 
     auto vertexCount = mesh.vCount;
     float* floatPtr = (float*)mesh.vBuf;

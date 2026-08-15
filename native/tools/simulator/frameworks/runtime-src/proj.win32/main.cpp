@@ -29,8 +29,8 @@
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                        HINSTANCE hPrevInstance,
-                       LPTSTR    lpCmdLine,
-                       int       nCmdShow) {
+                       LPTSTR lpCmdLine,
+                       int nCmdShow) {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
     START_PLATFORM(0, (const char**)nullptr);

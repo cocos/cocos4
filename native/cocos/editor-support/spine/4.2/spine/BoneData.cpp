@@ -34,133 +34,133 @@
 using namespace spine;
 
 BoneData::BoneData(int index, const String &name, BoneData *parent) : _index(index),
-																	  _name(name),
-																	  _parent(parent),
-																	  _length(0),
-																	  _x(0),
-																	  _y(0),
-																	  _rotation(0),
-																	  _scaleX(1),
-																	  _scaleY(1),
-																	  _shearX(0),
-																	  _shearY(0),
-																	  _inherit(Inherit_Normal),
-																	  _skinRequired(false),
-																	  _color(),
-																	  _icon(),
-																	  _visible(true) {
-	assert(index >= 0);
-	assert(_name.length() > 0);
+                                                                      _name(name),
+                                                                      _parent(parent),
+                                                                      _length(0),
+                                                                      _x(0),
+                                                                      _y(0),
+                                                                      _rotation(0),
+                                                                      _scaleX(1),
+                                                                      _scaleY(1),
+                                                                      _shearX(0),
+                                                                      _shearY(0),
+                                                                      _inherit(Inherit_Normal),
+                                                                      _skinRequired(false),
+                                                                      _color(),
+                                                                      _icon(),
+                                                                      _visible(true) {
+    assert(index >= 0);
+    assert(_name.length() > 0);
 }
 
 int BoneData::getIndex() {
-	return _index;
+    return _index;
 }
 
 const String &BoneData::getName() {
-	return _name;
+    return _name;
 }
 
 BoneData *BoneData::getParent() {
-	return _parent;
+    return _parent;
 }
 
 float BoneData::getLength() {
-	return _length;
+    return _length;
 }
 
 void BoneData::setLength(float inValue) {
-	_length = inValue;
+    _length = inValue;
 }
 
 float BoneData::getX() {
-	return _x;
+    return _x;
 }
 
 void BoneData::setX(float inValue) {
-	_x = inValue;
+    _x = inValue;
 }
 
 float BoneData::getY() {
-	return _y;
+    return _y;
 }
 
 void BoneData::setY(float inValue) {
-	_y = inValue;
+    _y = inValue;
 }
 
 float BoneData::getRotation() {
-	return _rotation;
+    return _rotation;
 }
 
 void BoneData::setRotation(float inValue) {
-	_rotation = inValue;
+    _rotation = inValue;
 }
 
 float BoneData::getScaleX() {
-	return _scaleX;
+    return _scaleX;
 }
 
 void BoneData::setScaleX(float inValue) {
-	_scaleX = inValue;
+    _scaleX = inValue;
 }
 
 float BoneData::getScaleY() {
-	return _scaleY;
+    return _scaleY;
 }
 
 void BoneData::setScaleY(float inValue) {
-	_scaleY = inValue;
+    _scaleY = inValue;
 }
 
 float BoneData::getShearX() {
-	return _shearX;
+    return _shearX;
 }
 
 void BoneData::setShearX(float inValue) {
-	_shearX = inValue;
+    _shearX = inValue;
 }
 
 float BoneData::getShearY() {
-	return _shearY;
+    return _shearY;
 }
 
 void BoneData::setShearY(float inValue) {
-	_shearY = inValue;
+    _shearY = inValue;
 }
 
 Inherit BoneData::getInherit() {
-	return _inherit;
+    return _inherit;
 }
 
 void BoneData::setInherit(Inherit inValue) {
-	_inherit = inValue;
+    _inherit = inValue;
 }
 
 bool BoneData::isSkinRequired() {
-	return _skinRequired;
+    return _skinRequired;
 }
 
 void BoneData::setSkinRequired(bool inValue) {
-	_skinRequired = inValue;
+    _skinRequired = inValue;
 }
 
 Color &BoneData::getColor() {
-	return _color;
+    return _color;
 }
 
 const String &BoneData::getIcon() {
-	return _icon;
+    return _icon;
 }
 
 void BoneData::setIcon(const String &icon) {
-	this->_icon = icon;
+    this->_icon = icon;
 }
 
 bool BoneData::isVisible() {
-	return _visible;
+    return _visible;
 }
 
 void BoneData::setVisible(bool inValue) {
-	this->_visible = inValue;
+    this->_visible = inValue;
 }

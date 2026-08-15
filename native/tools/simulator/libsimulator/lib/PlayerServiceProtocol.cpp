@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #include "PlayerServiceProtocol.h"
 
 PLAYER_NS_BEGIN

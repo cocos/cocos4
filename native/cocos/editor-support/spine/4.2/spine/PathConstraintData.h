@@ -30,92 +30,93 @@
 #ifndef Spine_PathConstraintData_h
 #define Spine_PathConstraintData_h
 
+#include <spine/ConstraintData.h>
 #include <spine/PositionMode.h>
-#include <spine/SpacingMode.h>
 #include <spine/RotateMode.h>
-#include <spine/Vector.h>
+#include <spine/SpacingMode.h>
 #include <spine/SpineObject.h>
 #include <spine/SpineString.h>
-#include <spine/ConstraintData.h>
+#include <spine/Vector.h>
 
 namespace spine {
-	class BoneData;
+class BoneData;
 
-	class SlotData;
+class SlotData;
 
-	class SP_API PathConstraintData : public ConstraintData {
-		friend class SkeletonBinary;
+class SP_API PathConstraintData : public ConstraintData {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class PathConstraint;
+    friend class PathConstraint;
 
-		friend class Skeleton;
+    friend class Skeleton;
 
-		friend class PathConstraintMixTimeline;
+    friend class PathConstraintMixTimeline;
 
-		friend class PathConstraintPositionTimeline;
+    friend class PathConstraintPositionTimeline;
 
-		friend class PathConstraintSpacingTimeline;
-	public:
-		RTTI_DECL
+    friend class PathConstraintSpacingTimeline;
 
-		explicit PathConstraintData(const String &name);
+public:
+    RTTI_DECL
 
-		Vector<BoneData *> &getBones();
+    explicit PathConstraintData(const String &name);
 
-		SlotData *getTarget();
+    Vector<BoneData *> &getBones();
 
-		void setTarget(SlotData *inValue);
+    SlotData *getTarget();
 
-		PositionMode getPositionMode();
+    void setTarget(SlotData *inValue);
 
-		void setPositionMode(PositionMode inValue);
+    PositionMode getPositionMode();
 
-		SpacingMode getSpacingMode();
+    void setPositionMode(PositionMode inValue);
 
-		void setSpacingMode(SpacingMode inValue);
+    SpacingMode getSpacingMode();
 
-		RotateMode getRotateMode();
+    void setSpacingMode(SpacingMode inValue);
 
-		void setRotateMode(RotateMode inValue);
+    RotateMode getRotateMode();
 
-		float getOffsetRotation();
+    void setRotateMode(RotateMode inValue);
 
-		void setOffsetRotation(float inValue);
+    float getOffsetRotation();
 
-		float getPosition();
+    void setOffsetRotation(float inValue);
 
-		void setPosition(float inValue);
+    float getPosition();
 
-		float getSpacing();
+    void setPosition(float inValue);
 
-		void setSpacing(float inValue);
+    float getSpacing();
 
-		float getMixRotate();
+    void setSpacing(float inValue);
 
-		void setMixRotate(float inValue);
+    float getMixRotate();
 
-		float getMixX();
+    void setMixRotate(float inValue);
 
-		void setMixX(float inValue);
+    float getMixX();
 
-		float getMixY();
+    void setMixX(float inValue);
 
-		void setMixY(float inValue);
+    float getMixY();
 
-    #ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		Vector<BoneData *> _bones;
-		SlotData *_target;
-		PositionMode _positionMode;
-		SpacingMode _spacingMode;
-		RotateMode _rotateMode;
-		float _offsetRotation;
-		float _position, _spacing;
-		float _mixRotate, _mixX, _mixY;
-	};
-}
+    void setMixY(float inValue);
+
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    Vector<BoneData *> _bones;
+    SlotData *_target;
+    PositionMode _positionMode;
+    SpacingMode _spacingMode;
+    RotateMode _rotateMode;
+    float _offsetRotation;
+    float _position, _spacing;
+    float _mixRotate, _mixX, _mixY;
+};
+} // namespace spine
 
 #endif /* Spine_PathConstraintData_h */

@@ -31,18 +31,18 @@
     #include "SpinePluginPrivatePCH.h"
 #endif
 
-#include <spine/AnimationState.h>
 #include <spine/Animation.h>
-#include <spine/Event.h>
+#include <spine/AnimationState.h>
 #include <spine/AnimationStateData.h>
-#include <spine/Skeleton.h>
-#include <spine/RotateTimeline.h>
-#include <spine/SkeletonData.h>
+#include <spine/AttachmentTimeline.h>
 #include <spine/Bone.h>
 #include <spine/BoneData.h>
-#include <spine/AttachmentTimeline.h>
 #include <spine/DrawOrderTimeline.h>
+#include <spine/Event.h>
 #include <spine/EventTimeline.h>
+#include <spine/RotateTimeline.h>
+#include <spine/Skeleton.h>
+#include <spine/SkeletonData.h>
 #include <spine/Slot.h>
 #include <spine/SlotData.h>
 
@@ -57,12 +57,7 @@ void dummyOnAnimationEventFunc(AnimationState *state, spine::EventType type, Tra
     SP_UNUSED(event);
 }
 
-TrackEntry::TrackEntry() : _animation(NULL), _next(NULL), _mixingFrom(NULL), _mixingTo(0), _trackIndex(0), 
-    _loop(false), _holdPrevious(false), _eventThreshold(0), _attachmentThreshold(0), _drawOrderThreshold(0), 
-    _animationStart(0), _animationEnd(0), _animationLast(0), _nextAnimationLast(0), _delay(0), _trackTime(0),
-    _trackLast(0), _nextTrackLast(0), _trackEnd(0), _timeScale(1.0f), _alpha(0), _mixTime(0),
-    _mixDuration(0), _interruptAlpha(0), _totalAlpha(0), _mixBlend(MixBlend_Replace),
-    _listener(dummyOnAnimationEventFunc), _listenerObject(NULL) {
+TrackEntry::TrackEntry() : _animation(NULL), _next(NULL), _mixingFrom(NULL), _mixingTo(0), _trackIndex(0), _loop(false), _holdPrevious(false), _eventThreshold(0), _attachmentThreshold(0), _drawOrderThreshold(0), _animationStart(0), _animationEnd(0), _animationLast(0), _nextAnimationLast(0), _delay(0), _trackTime(0), _trackLast(0), _nextTrackLast(0), _trackEnd(0), _timeScale(1.0f), _alpha(0), _mixTime(0), _mixDuration(0), _interruptAlpha(0), _totalAlpha(0), _mixBlend(MixBlend_Replace), _listener(dummyOnAnimationEventFunc), _listenerObject(NULL) {
 }
 
 TrackEntry::~TrackEntry() {}
@@ -303,7 +298,6 @@ void EventQueue::drain() {
     _drainDisabled = false;
 }
 
-
 const int Subsequent = 0;
 const int First = 1;
 const int HoldSubsequent = 2;
@@ -475,11 +469,11 @@ bool AnimationState::apply(Skeleton &skeleton) {
     }
 
     int setupState = _unkeyedState + Setup;
-    Vector<Slot*>& slots = skeleton.getSlots();
+    Vector<Slot *> &slots = skeleton.getSlots();
     for (int i = 0, n = slots.size(); i < n; i++) {
-        Slot* slot = slots[i];
+        Slot *slot = slots[i];
         if (slot->getAttachmentState() == setupState) {
-            const String& attachmentName = slot->getData().getAttachmentName();
+            const String &attachmentName = slot->getData().getAttachmentName();
             slot->setAttachment(attachmentName.isEmpty() ? NULL : skeleton.getAttachment(slot->getData().getIndex(), attachmentName));
         }
     }
@@ -668,11 +662,11 @@ Animation *AnimationState::getEmptyAnimation() {
     return &ret;
 }
 
-void AnimationState::applyAttachmentTimeline(AttachmentTimeline* attachmentTimeline, Skeleton& skeleton, float time, MixBlend blend, bool attachments) {
-    Slot* slot = skeleton.getSlots()[attachmentTimeline->getSlotIndex()];
+void AnimationState::applyAttachmentTimeline(AttachmentTimeline *attachmentTimeline, Skeleton &skeleton, float time, MixBlend blend, bool attachments) {
+    Slot *slot = skeleton.getSlots()[attachmentTimeline->getSlotIndex()];
     if (!slot->getBone().isActive()) return;
 
-    Vector<float>& frames = attachmentTimeline->getFrames();
+    Vector<float> &frames = attachmentTimeline->getFrames();
     if (time < frames[0]) {
         if (blend == MixBlend_Setup || blend == MixBlend_First)
             setAttachment(skeleton, *slot, slot->getData().getAttachmentName(), attachments);
@@ -885,7 +879,7 @@ float AnimationState::applyMixingFrom(TrackEntry *to, Skeleton &skeleton, MixBle
     return mix;
 }
 
-void AnimationState::setAttachment(Skeleton& skeleton, Slot& slot, const String& attachmentName, bool attachments) {
+void AnimationState::setAttachment(Skeleton &skeleton, Slot &slot, const String &attachmentName, bool attachments) {
     slot.setAttachment(attachmentName.isEmpty() ? NULL : skeleton.getAttachment(slot.getData().getIndex(), attachmentName));
     if (attachments) slot.setAttachmentState(_unkeyedState + Current);
 }
@@ -1003,11 +997,11 @@ void AnimationState::animationsChanged() {
         while (entry->_mixingFrom != NULL)
             entry = entry->_mixingFrom;
 
-		do {
-			if (entry->_mixingTo == NULL || entry->_mixBlend != MixBlend_Add) computeHold(entry);
-			entry = entry->_mixingTo;
-		} while (entry != NULL);
-	}
+        do {
+            if (entry->_mixingTo == NULL || entry->_mixBlend != MixBlend_Add) computeHold(entry);
+            entry = entry->_mixingTo;
+        } while (entry != NULL);
+    }
 }
 
 void AnimationState::computeHold(TrackEntry *entry) {

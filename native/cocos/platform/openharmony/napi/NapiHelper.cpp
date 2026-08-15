@@ -26,12 +26,12 @@
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
 
+#include <thread>
 #include "bindings/jswrapper/SeApi.h"
 #include "platform/interfaces//modules/IScreen.h"
 #include "platform/openharmony/FileUtils-OpenHarmony.h"
 #include "platform/openharmony/OpenHarmonyPlatform.h"
 #include "platform/openharmony/modules/SystemWindow.h"
-#include <thread>
 
 #if CC_USE_EDITBOX
     #include "ui/edit-box/EditBox-openharmony.h"
@@ -128,13 +128,13 @@ Napi::Value NapiHelper::napiCallFunction(const char *functionName, float duratio
 }
 
 /* static */
-Napi::Value NapiHelper::napiCallFunction(const char *functionName, const std::string& str) {
+Napi::Value NapiHelper::napiCallFunction(const char *functionName, const std::string &str) {
     auto env = getWorkerEnv();
     auto funcVal = env.Global().Get(functionName);
     if (!funcVal.IsFunction()) {
         return {};
     }
-    const std::initializer_list<napi_value> args = { Napi::String::New(env, str) };
+    const std::initializer_list<napi_value> args = {Napi::String::New(env, str)};
     return funcVal.As<Napi::Function>().Call(env.Global(), args);
 }
 
@@ -296,8 +296,8 @@ static void registerFunction(const Napi::CallbackInfo &info) {
     napi_threadsafe_function save_func;
 
     status = napi_create_threadsafe_function(
-                env, jsFunction, nullptr, workName, 0, 1, nullptr, [](napi_env env, void *raw, void *hint) {}, nullptr,
-               JSFunction::CallJS, &save_func);
+        env, jsFunction, nullptr, workName, 0, 1, nullptr, [](napi_env env, void *raw, void *hint) {}, nullptr,
+        JSFunction::CallJS, &save_func);
 
     JSFunction JSFunction(env, save_func);
     JSFunction::addFunction(functionName, JSFunction);
@@ -340,7 +340,7 @@ static void napiOnVideoEvent(const Napi::CallbackInfo &info) {
 }
 
 static void napiOnMouseWheel(const Napi::CallbackInfo &info) {
-    if(info.Length() != 2) {
+    if (info.Length() != 2) {
         Napi::Error::New(info.Env(), "napiOnMouseWheel , 1 argument expected").ThrowAsJavaScriptException();
         return;
     }
@@ -480,7 +480,7 @@ static bool sevalue_to_napivalue(const se::Value &seVal, Napi::Value *napiVal, N
     return true;
 }
 
-Napi::Value evalString(const Napi::CallbackInfo &info){
+Napi::Value evalString(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
     size_t argc = info.Length();
     if (argc != 1) {
@@ -494,14 +494,14 @@ Napi::Value evalString(const Napi::CallbackInfo &info){
     }
 
     std::string value = info[0].As<Napi::String>().ToString();
-    
+
     if (!se::ScriptEngine::getInstance()->isValid()) {
         CC_LOG_WARNING("ScriptEngine has not been initialized");
         return env.Undefined();
     }
 
     size_t length = value.length();
-    char* cValue = new char[length + 1];
+    char *cValue = new char[length + 1];
     strcpy(cValue, value.c_str());
 
     BaseEngine::SchedulerPtr scheduler =
@@ -511,7 +511,7 @@ Napi::Value evalString(const Napi::CallbackInfo &info){
         return env.Undefined();
     }
     Napi::Value result = env.Undefined();
-    if(gMainThreadId == std::this_thread::get_id()) {
+    if (gMainThreadId == std::this_thread::get_id()) {
         scheduler->performFunctionInCocosThread([cValue, length]() {
             se::AutoHandleScope hs;
             se::Value ret;

@@ -671,7 +671,8 @@ void SceneCulling::fillRenderQueues() {
             }
             // not culled by light bounds
             return frustumCullingResults.at(frustomCulledResultID.value);
-        }();
+        }
+        ();
 
         // skybox
         const auto* camera = nativeQueue.camera;

@@ -28,18 +28,17 @@
 
 #include <string>
 #include <vector>
-#include "json/document.h"
-#include "ProjectConfig/SimulatorConfig.h"
 #include "ProjectConfig/ProjectConfig.h"
+#include "ProjectConfig/SimulatorConfig.h"
 #include "SimulatorExport.h"
+#include "json/document.h"
 
 using namespace std;
 
 #define CONFIG_FILE "config.json"
 
 typedef vector<SimulatorScreenSize> ScreenSizeArray;
-class CC_LIBSIM_DLL ConfigParser
-{
+class CC_LIBSIM_DLL ConfigParser {
 public:
     static ConfigParser *getInstance(void);
     static void purge();
@@ -51,7 +50,7 @@ public:
     cc::Size getInitViewSize();
     string getInitViewName();
     string getEntryFile();
-    rapidjson::Document& getConfigJsonRoot();
+    rapidjson::Document &getConfigJsonRoot();
     const SimulatorScreenSize getScreenSize(int index);
     void setConsolePort(int port);
     void setUploadPort(int port);
@@ -61,12 +60,12 @@ public:
     bool isLanscape();
     bool isWindowTop();
     bool isWaitForConnect();
-    
+
     void setEntryFile(const std::string &file);
     void setInitViewSize(const cc::Size &size);
     void setBindAddress(const std::string &address);
     const std::string &getBindAddress();
-    
+
 private:
     ConfigParser(void);
     void setDebugPort(int port);
@@ -82,9 +81,8 @@ private:
     int _uploadPort;
     int _debugPort;
     string _bindAddress;
-    
+
     rapidjson::Document _docRootjson;
 };
 
-#endif  // __CONFIG_PARSER_H__
-
+#endif // __CONFIG_PARSER_H__

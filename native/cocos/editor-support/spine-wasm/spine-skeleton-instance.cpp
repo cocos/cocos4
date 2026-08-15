@@ -9,12 +9,12 @@ SlotMesh globalMesh(nullptr, nullptr, 0, 0);
 extern "C" {
 extern void spineListenerCallBackFromJS();
 extern void spineTrackListenerCallback();
-AttachmentVertices* generateAttachmentVertices(spine::Attachment* attachment);
+AttachmentVertices *generateAttachmentVertices(spine::Attachment *attachment);
 }
 
 using namespace spine;
-extern HashMap<SkeletonData *, HashMap<Attachment *, AttachmentVertices *>*> spineAttachmentVerticesMap;
-extern HashMap<SkeletonData *, HashMap<spine::String, spine::String>*> spineTexturesMap;
+extern HashMap<SkeletonData *, HashMap<Attachment *, AttachmentVertices *> *> spineAttachmentVerticesMap;
+extern HashMap<SkeletonData *, HashMap<spine::String, spine::String> *> spineTexturesMap;
 
 /**
  * The slot-associated attachment may exist on different skeletonData, so setSlotTexture needs to traverse all skeletonData.
@@ -32,8 +32,8 @@ AttachmentVertices *getAttachmentVertices(Attachment *attachment) {
     return nullptr;
 }
 
-template<typename VertexType, typename UVArrayType>
-void loopUVCoords(VertexType* tmp, const UVArrayType& uvs, int count) {
+template <typename VertexType, typename UVArrayType>
+void loopUVCoords(VertexType *tmp, const UVArrayType &uvs, int count) {
     for (int i = 0, ii = 0; i < count; ++i, ii += 2) {
         tmp[i].texCoord.u = uvs[ii];
         tmp[i].texCoord.v = uvs[ii + 1];
@@ -41,15 +41,15 @@ void loopUVCoords(VertexType* tmp, const UVArrayType& uvs, int count) {
 }
 
 #ifdef CC_SPINE_VERSION_4_2
-template<typename MeshT, 
-         typename AttachmentT,
-         typename VerticesT,
-         typename TexMapT>
-void setSpineTextureID(MeshT& currMesh,
-                      AttachmentT* attachment,
-                      VerticesT* vertices,
-                      TexMapT* texMap) {
-    if (auto* region = static_cast<AtlasRegion*>(attachment->getRegion())) {
+template <typename MeshT,
+          typename AttachmentT,
+          typename VerticesT,
+          typename TexMapT>
+void setSpineTextureID(MeshT &currMesh,
+                       AttachmentT *attachment,
+                       VerticesT *vertices,
+                       TexMapT *texMap) {
+    if (auto *region = static_cast<AtlasRegion *>(attachment->getRegion())) {
         if (region->page && region->page->name != vertices->_textureName) {
             currMesh.textureID = (*texMap)[region->page->name];
             return;
@@ -58,14 +58,13 @@ void setSpineTextureID(MeshT& currMesh,
     currMesh.textureID = vertices->_textureUUID;
 }
 
-template<typename VerticesT, typename AttachmentT, 
-         typename SlotT, typename TexMapT, typename VertMapT>
-void initAttachmentVertices(VerticesT*& vertices,
-                      AttachmentT* attachment,
-                      SlotT* slot,
-                      TexMapT* texMap,
-                      VertMapT* vertMap) 
-{
+template <typename VerticesT, typename AttachmentT,
+          typename SlotT, typename TexMapT, typename VertMapT>
+void initAttachmentVertices(VerticesT *&vertices,
+                            AttachmentT *attachment,
+                            SlotT *slot,
+                            TexMapT *texMap,
+                            VertMapT *vertMap) {
     if (!vertices && !attachment->getRegion()) {
         attachment->getSequence()->apply(slot, attachment);
         if (attachment->getRegion()) {
@@ -78,27 +77,24 @@ void initAttachmentVertices(VerticesT*& vertices,
     }
 }
 #else
-template<typename MeshT, 
-         typename AttachmentT,
-         typename VerticesT,
-         typename TexMapT>
-void setSpineTextureID(MeshT& currMesh,
-                      AttachmentT*,
-                      VerticesT* vertices,
-                      TexMapT*)
-{
+template <typename MeshT,
+          typename AttachmentT,
+          typename VerticesT,
+          typename TexMapT>
+void setSpineTextureID(MeshT &currMesh,
+                       AttachmentT *,
+                       VerticesT *vertices,
+                       TexMapT *) {
     //do nothing
     currMesh.textureID = vertices->_textureUUID;
 }
 
-template<typename VerticesT, typename AttachmentT, 
-         typename SlotT, typename TexMapT, typename VertMapT>
-void initAttachmentVertices(VerticesT*&, AttachmentT*, SlotT*, TexMapT*, VertMapT*) 
-{
+template <typename VerticesT, typename AttachmentT,
+          typename SlotT, typename TexMapT, typename VertMapT>
+void initAttachmentVertices(VerticesT *&, AttachmentT *, SlotT *, TexMapT *, VertMapT *) {
     //do nothing
 }
 #endif
-
 
 static void animationCallback(AnimationState *state, EventType type, TrackEntry *entry, Event *event) {
     SpineSkeletonInstance *instance = (static_cast<SpineSkeletonInstance *>(state->getRendererObject()));
@@ -263,20 +259,20 @@ void SpineSkeletonInstance::collectMeshData() {
         _effect->begin(*_skeleton);
     }
 #else
-    void* _effect = nullptr;
+    void *_effect = nullptr;
 #endif
 #ifdef CC_SPINE_VERSION_4_2
     if (!spineTexturesMap.containsKey(_skeletonData)) return;
-    auto* texturesMap = spineTexturesMap[_skeletonData];
+    auto *texturesMap = spineTexturesMap[_skeletonData];
 #else
     HashMap<spine::String, spine::String> *texturesMap = nullptr;
 #endif
     if (!spineAttachmentVerticesMap.containsKey(_skeletonData)) return;
-    auto* attachmentVerticesMap = spineAttachmentVerticesMap[_skeletonData];
-    const Color& skeletonColor = _skeleton->getColor();
+    auto *attachmentVerticesMap = spineAttachmentVerticesMap[_skeletonData];
+    const Color &skeletonColor = _skeleton->getColor();
     for (uint32_t drawIdx = 0; drawIdx < slotCount; ++drawIdx) {
-        auto* slot = slotArray[drawIdx];
-        auto& bone = slot->getBone();
+        auto *slot = slotArray[drawIdx];
+        auto &bone = slot->getBone();
         if (!bone.isActive()) {
             continue;
         }
@@ -284,12 +280,12 @@ void SpineSkeletonInstance::collectMeshData() {
         if (!slot->getAttachment()) {
             _clipper->clipEnd(*slot);
             continue;
-        } 
+        }
         color.r = _userData.color.r;
         color.g = _userData.color.g;
         color.b = _userData.color.b;
         color.a = _userData.color.a;
-        spine::Attachment* attachmentSlot = slot->getAttachment();
+        spine::Attachment *attachmentSlot = slot->getAttachment();
         AttachmentVertices *cacheSlotAttachmentVertices = nullptr;
         AttachmentVertices *attachmentVertices = nullptr;
         if (attachmentVerticesMap->containsKey(attachmentSlot)) {
@@ -306,7 +302,7 @@ void SpineSkeletonInstance::collectMeshData() {
         if (cacheSlotAttachmentVertices) {
             attachmentVertices = cacheSlotAttachmentVertices;
         }
-        const spine::RTTI& attachmentRTTI = attachmentSlot->getRTTI();
+        const spine::RTTI &attachmentRTTI = attachmentSlot->getRTTI();
         if (attachmentRTTI.isExactly(spine::RegionAttachment::rtti)) {
             debugShapeType = DEBUG_SHAPE_TYPE::DEBUG_REGION;
             auto *attachment = static_cast<spine::RegionAttachment *>(attachmentSlot);
@@ -323,19 +319,19 @@ void SpineSkeletonInstance::collectMeshData() {
             if (!_userData.useTint) {
                 memcpy(static_cast<void *>(vertices), static_cast<void *>(triangles->verts), vbSize);
 #ifdef CC_SPINE_VERSION_4_2
-                const auto& uvs = attachment->getUVs();
-                V3F_T2F_C4B* tmp = (V3F_T2F_C4B *)(vertices);
+                const auto &uvs = attachment->getUVs();
+                V3F_T2F_C4B *tmp = (V3F_T2F_C4B *)(vertices);
                 loopUVCoords(tmp, uvs, 4);
- #endif
+#endif
             } else {
                 V3F_T2F_C4B_C4B *verts = (V3F_T2F_C4B_C4B *)vertices;
 #ifdef CC_SPINE_VERSION_4_2
-                    const auto& uvs = attachment->getUVs();
-                    loopUVCoords(verts, uvs, vertCount);
+                const auto &uvs = attachment->getUVs();
+                loopUVCoords(verts, uvs, vertCount);
 #else
-                    for (int ii = 0; ii < vertCount; ii++) {
-                        verts[ii].texCoord = triangles->verts[ii].texCoord;
-                    }
+                for (int ii = 0; ii < vertCount; ii++) {
+                    verts[ii].texCoord = triangles->verts[ii].texCoord;
+                }
 #endif
             }
             memcpy(indices, triangles->indices, ibSize);
@@ -345,7 +341,7 @@ void SpineSkeletonInstance::collectMeshData() {
             attachment->computeWorldVertices(*slot, (float *)vertices, 0, strideColor);
 #endif
             currMesh.set((uint8_t *)vertices, indices, vertCount, indexCount);
-            const Color& attachmentColor = attachment->getColor();
+            const Color &attachmentColor = attachment->getColor();
             color.r *= attachmentColor.r;
             color.g *= attachmentColor.g;
             color.b *= attachmentColor.b;
@@ -368,14 +364,14 @@ void SpineSkeletonInstance::collectMeshData() {
                 memcpy(static_cast<void *>(vertices), static_cast<void *>(triangles->verts), vbSize);
 #ifdef CC_SPINE_VERSION_4_2
                 // Calling 'attachment->computeWorldVertices()' can alter the UV coordinates.
-                const auto& uvs = attachment->getUVs();
-                V3F_T2F_C4B* tmp = (V3F_T2F_C4B *)(vertices);
+                const auto &uvs = attachment->getUVs();
+                V3F_T2F_C4B *tmp = (V3F_T2F_C4B *)(vertices);
                 loopUVCoords(tmp, uvs, 4);
 #endif
             } else {
                 V3F_T2F_C4B_C4B *verts = (V3F_T2F_C4B_C4B *)vertices;
 #ifdef CC_SPINE_VERSION_4_2
-                const auto& uvs = attachment->getUVs();
+                const auto &uvs = attachment->getUVs();
                 loopUVCoords(verts, uvs, vertCount);
 #else
                 for (int ii = 0; ii < vertCount; ii++) {
@@ -386,7 +382,7 @@ void SpineSkeletonInstance::collectMeshData() {
             memcpy(indices, triangles->indices, ibSize);
             attachment->computeWorldVertices(*slot, 0, attachment->getWorldVerticesLength(), (float *)vertices, 0, strideColor);
             currMesh.set((uint8_t *)vertices, indices, vertCount, indexCount);
-            const Color& attachmentColor = attachment->getColor();
+            const Color &attachmentColor = attachment->getColor();
             color.r *= attachmentColor.r;
             color.g *= attachmentColor.g;
             color.b *= attachmentColor.b;
@@ -399,7 +395,7 @@ void SpineSkeletonInstance::collectMeshData() {
             _clipper->clipEnd(*slot);
             continue;
         }
-        const Color& slotColor = slot->getColor();
+        const Color &slotColor = slot->getColor();
         uint32_t uintA = (uint32_t)(255 * skeletonColor.a * slotColor.a * color.a);
         uint32_t multiplier = _userData.premultipliedAlpha ? uintA : 255;
         uint32_t uintR = (uint32_t)(skeletonColor.r * slotColor.r * color.r * multiplier);
@@ -408,7 +404,7 @@ void SpineSkeletonInstance::collectMeshData() {
         uint32_t light = (uintA << 24) + (uintB << 16) + (uintG << 8) + uintR;
 
         if (slot->hasDarkColor()) {
-            const Color& slotDarkColor = slot->getDarkColor();
+            const Color &slotDarkColor = slot->getDarkColor();
             uintR = (uint32_t)(skeletonColor.r * slotDarkColor.r * color.r * multiplier);
             uintG = (uint32_t)(skeletonColor.g * slotDarkColor.g * color.g * multiplier);
             uintB = (uint32_t)(skeletonColor.b * slotDarkColor.b * color.b * multiplier);
@@ -423,13 +419,13 @@ void SpineSkeletonInstance::collectMeshData() {
         if (!_userData.useTint) {
             if (_clipper->isClipping()) {
                 _clipper->clipTriangles(reinterpret_cast<float *>(currMesh.vBuf), currMesh.iBuf, currMesh.iCount, (float *)(&currMesh.vBuf[3 * 4]), strideColor);
-                auto& clippedTriangles = _clipper->getClippedTriangles();
+                auto &clippedTriangles = _clipper->getClippedTriangles();
                 if (clippedTriangles.size() == 0) {
                     _clipper->clipEnd(*slot);
                     continue;
                 }
-                auto& clippedVertices = _clipper->getClippedVertices();
-                auto& clippedUVs = _clipper->getClippedUVs();
+                auto &clippedVertices = _clipper->getClippedVertices();
+                auto &clippedUVs = _clipper->getClippedUVs();
                 const auto vertCount = static_cast<int>(clippedVertices.size()) >> 1;
                 const auto indexCount = static_cast<int>(clippedTriangles.size());
                 const auto vbSize = vertCount * byteStrideColor;
@@ -480,13 +476,13 @@ void SpineSkeletonInstance::collectMeshData() {
         } else {
             if (_clipper->isClipping()) {
                 _clipper->clipTriangles(reinterpret_cast<float *>(currMesh.vBuf), currMesh.iBuf, currMesh.iCount, (float *)(&currMesh.vBuf[3 * 4]), strideColor);
-                auto& clippedTriangles = _clipper->getClippedTriangles();
+                auto &clippedTriangles = _clipper->getClippedTriangles();
                 if (clippedTriangles.size() == 0) {
                     _clipper->clipEnd(*slot);
                     continue;
                 }
-                auto& clippedVertices = _clipper->getClippedVertices();
-                auto& clippedUVs = _clipper->getClippedUVs();
+                auto &clippedVertices = _clipper->getClippedVertices();
+                auto &clippedUVs = _clipper->getClippedUVs();
                 const auto vertCount = static_cast<int>(clippedVertices.size()) >> 1;
                 const auto indexCount = static_cast<int>(clippedTriangles.size());
                 const auto vbSize = vertCount * byteStrideColor;
@@ -546,7 +542,7 @@ void SpineSkeletonInstance::collectMeshData() {
         if (_userData.debugMode) {
             size_t currentShapesLen = _debugShapes.size();
             _debugShapes.setSize(currentShapesLen + 1, {});
-            SpineDebugShape& debugShape = _debugShapes[currentShapesLen];
+            SpineDebugShape &debugShape = _debugShapes[currentShapesLen];
             debugShape.type = static_cast<uint32_t>(debugShapeType);
             debugShape.vOffset = _model->vCount;
             debugShape.vCount = currMesh.vCount;
@@ -639,7 +635,7 @@ void SpineSkeletonInstance::onAnimationStateEvent(TrackEntry *entry, EventType t
 
 void SpineSkeletonInstance::resizeSlotRegion(const spine::String &slotName, uint32_t width, uint32_t height, bool createNew) {
     if (!_skeleton) return;
-    auto* slot = _skeleton->findSlot(slotName);
+    auto *slot = _skeleton->findSlot(slotName);
     if (!slot) return;
     auto *attachment = slot->getAttachment();
     if (!attachment) return;
@@ -754,9 +750,9 @@ void SpineSkeletonInstance::resizeSlotRegion(const spine::String &slotName, uint
     _skeleton->updateCache();
 }
 
-void SpineSkeletonInstance::setSlotTexture(const spine::String &slotName, const spine::String& textureUuid) {
+void SpineSkeletonInstance::setSlotTexture(const spine::String &slotName, const spine::String &textureUuid) {
     if (!_skeleton) return;
-    auto* slot = _skeleton->findSlot(slotName);
+    auto *slot = _skeleton->findSlot(slotName);
     if (!slot) return;
     _userData.useSlotTexture = true;
     if (_slotTextureSet.containsKey(slot)) {
@@ -781,11 +777,11 @@ void SpineSkeletonInstance::dispatchEvents() {
         trackEvents.clear();
     }
     for (int i = 0; i < vecAnimationEvents.size(); i++) {
-        auto& info = vecAnimationEvents[i];
+        auto &info = vecAnimationEvents[i];
         onAnimationStateEvent(info.entry, info.eventType, info.event);
     }
     for (int i = 0; i < vecTrackEvents.size(); i++) {
-        auto& info = vecTrackEvents[i];
+        auto &info = vecTrackEvents[i];
         onTrackEntryEvent(info.entry, info.eventType, info.event);
     }
 }

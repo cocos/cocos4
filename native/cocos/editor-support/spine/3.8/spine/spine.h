@@ -55,8 +55,8 @@
 #include <spine/EventData.h>
 #include <spine/EventTimeline.h>
 #include <spine/Extension.h>
-#include <spine/HashMap.h>
 #include <spine/HasRendererObject.h>
+#include <spine/HashMap.h>
 #include <spine/IkConstraint.h>
 #include <spine/IkConstraintData.h>
 #include <spine/IkConstraintTimeline.h>
@@ -75,10 +75,10 @@
 #include <spine/PointAttachment.h>
 #include <spine/Pool.h>
 #include <spine/PositionMode.h>
+#include <spine/RTTI.h>
 #include <spine/RegionAttachment.h>
 #include <spine/RotateMode.h>
 #include <spine/RotateTimeline.h>
-#include <spine/RTTI.h>
 #include <spine/ScaleTimeline.h>
 #include <spine/ShearTimeline.h>
 #include <spine/Skeleton.h>

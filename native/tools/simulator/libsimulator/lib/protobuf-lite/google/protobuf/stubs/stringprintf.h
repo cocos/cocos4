@@ -70,7 +70,7 @@ LIBPROTOBUF_EXPORT extern const int kStringPrintfVectorMaxArgs;
 // StringPrintfVector will LOG(FATAL) if v.size() > kStringPrintfVectorMaxArgs
 LIBPROTOBUF_EXPORT extern string StringPrintfVector(const char* format, const vector<string>& v);
 
-}  // namespace protobuf
-}  // namespace google
+} // namespace protobuf
+} // namespace google
 
-#endif  // GOOGLE_PROTOBUF_STUBS_STRINGPRINTF_H
+#endif // GOOGLE_PROTOBUF_STUBS_STRINGPRINTF_H

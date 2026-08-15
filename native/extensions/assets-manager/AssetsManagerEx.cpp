@@ -57,7 +57,7 @@ NS_CC_EXT_BEGIN
 const std::string AssetsManagerEx::VERSION_ID = "@version";
 const std::string AssetsManagerEx::MANIFEST_ID = "@manifest";
 
-AssetsManagerEx* AssetsManagerEx::assetsManager = nullptr;
+AssetsManagerEx *AssetsManagerEx::assetsManager = nullptr;
 
 // Implementation of AssetsManagerEx
 
@@ -689,7 +689,7 @@ void AssetsManagerEx::prepareUpdateAsync(const PrepareUpdateFinishedCallback &cb
     _downloadResumed = false;
     _downloadedSize.clear();
     _totalEnabled = false;
-    std::function<void(void *)> prepareFinished = [this, cb](void * param) {
+    std::function<void(void *)> prepareFinished = [this, cb](void *param) {
         CC_UNUSED_PARAM(param);
         _updateState = State::READY_TO_UPDATE;
         if (cb) {
@@ -1159,8 +1159,7 @@ void AssetsManagerEx::queueDowload() {
         return;
     }
 
-    while (_currConcurrentTask < _maxConcurrentTask && !_queue.empty() && !_canceled)
-    {
+    while (_currConcurrentTask < _maxConcurrentTask && !_queue.empty() && !_canceled) {
         std::string key = _queue.back();
         _queue.pop_back();
 
@@ -1192,19 +1191,16 @@ void AssetsManagerEx::onDownloadUnitsFinished() {
     }
 }
 
-void AssetsManagerEx::cancelUpdate()
-{
-    if (_canceled)
-	{
+void AssetsManagerEx::cancelUpdate() {
+    if (_canceled) {
         return;
     }
     _canceled = true;
     std::vector<std::shared_ptr<const network::DownloadTask>> tasks;
-    for (const auto& it : _downloadingTask)
-    {
+    for (const auto &it : _downloadingTask) {
         tasks.push_back(it.second);
     }
-    for (const auto& taskPtr : tasks) {
+    for (const auto &taskPtr : tasks) {
         _downloader->abort(taskPtr); // taskPtr 是 std::shared_ptr<DownloadTask>
     }
     _downloadingTask.clear();

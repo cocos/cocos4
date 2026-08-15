@@ -30,10 +30,10 @@
     #include <hilog/log.h>
 
     #ifndef LOGI
-        #define LOGI(...) ((void) OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGW(...) ((void) OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGE(...) ((void) OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGD(...) ((void) OH_LOG_Print(LOG_APP, LOG_DEBUG, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGI(...) ((void)OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGW(...) ((void)OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGE(...) ((void)OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGD(...) ((void)OH_LOG_Print(LOG_APP, LOG_DEBUG, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
     #endif
 #else
     #define LOGI
@@ -91,17 +91,17 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT(readability-identifier-
 #define SE_QUOTEME(x)             SE_QUOTEME_(x)
 #define SE_REPORT_ERROR(fmt, ...) SE_LOGE("[ERROR] (" __FILE__ ", " SE_QUOTEME(__LINE__) "): " fmt "\n", ##__VA_ARGS__)
 
-#define SE_BIND_PROP_GET_IMPL(funcName, postFix)                                                      \
-    napi_value funcName##postFix##Registry(napi_env env, napi_callback_info info) {                            \
-        return jsbGetterWrapper(env, info, funcName, #funcName);                                                                                \
+#define SE_BIND_PROP_GET_IMPL(funcName, postFix)                                    \
+    napi_value funcName##postFix##Registry(napi_env env, napi_callback_info info) { \
+        return jsbGetterWrapper(env, info, funcName, #funcName);                    \
     }
 
 #define SE_BIND_PROP_GET(funcName)         SE_BIND_PROP_GET_IMPL(funcName, )
 #define SE_BIND_FUNC_AS_PROP_GET(funcName) SE_BIND_PROP_GET_IMPL(funcName, _asGetter)
 
-#define SE_BIND_PROP_SET_IMPL(funcName, postFix)                                                                    \
-    napi_value funcName##postFix##Registry(napi_env env, napi_callback_info info) {                            \
-        return jsbSetterWrapper(env, info, funcName, #funcName);                                                                               \
+#define SE_BIND_PROP_SET_IMPL(funcName, postFix)                                    \
+    napi_value funcName##postFix##Registry(napi_env env, napi_callback_info info) { \
+        return jsbSetterWrapper(env, info, funcName, #funcName);                    \
     }
 
 #define SE_BIND_PROP_SET(funcName)         SE_BIND_PROP_SET_IMPL(funcName, )
@@ -110,10 +110,10 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT(readability-identifier-
 #define SE_DECLARE_FUNC(funcName) \
     napi_value funcName##Registry(napi_env env, napi_callback_info info)
 
-#define SE_BIND_FUNC(funcName)                                                                          \
-    napi_value funcName##Registry(                                                                      \
-        napi_env env, napi_callback_info info) {                                                        \
-        return jsbFunctionWrapper(env, info, funcName, #funcName);                                      \
+#define SE_BIND_FUNC(funcName)                                     \
+    napi_value funcName##Registry(                                 \
+        napi_env env, napi_callback_info info) {                   \
+        return jsbFunctionWrapper(env, info, funcName, #funcName); \
     }
 
 #define SE_BIND_FUNC_FAST(funcName)                                                                      \
@@ -130,10 +130,10 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT(readability-identifier-
         return nullptr;                                                                                  \
     }
 
-#define SE_BIND_CTOR(funcName, cls, finalizeCb)                                                       \
-    napi_value funcName##Registry(                                                                    \
-        napi_env env, napi_callback_info info) {                                                      \
-        return jsbConstructorWrapper(env, info, funcName, _SE(finalizeCb), cls, #funcName);           \
+#define SE_BIND_CTOR(funcName, cls, finalizeCb)                                             \
+    napi_value funcName##Registry(                                                          \
+        napi_env env, napi_callback_info info) {                                            \
+        return jsbConstructorWrapper(env, info, funcName, _SE(finalizeCb), cls, #funcName); \
     }
 
 #define SE_BIND_SUB_CLS_CTOR SE_BIND_CTOR
@@ -142,12 +142,11 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT(readability-identifier-
     void funcName##Registry(               \
         napi_env env, void *nativeObject, void * /*finalize_hint*/);
 
-#define SE_BIND_FINALIZE_FUNC(funcName)                                                               \
-    void funcName##Registry(                                                                          \
-        napi_env env, void *nativeObject, void *hint /*finalize_hint*/) {                             \
-        if (nativeObject == nullptr) {                                                                \
-            return;                                                                                   \
-        }                                                                                             \
-        jsbFinalizeWrapper(nativeObject, funcName, #funcName);                                        \
+#define SE_BIND_FINALIZE_FUNC(funcName)                                   \
+    void funcName##Registry(                                              \
+        napi_env env, void *nativeObject, void *hint /*finalize_hint*/) { \
+        if (nativeObject == nullptr) {                                    \
+            return;                                                       \
+        }                                                                 \
+        jsbFinalizeWrapper(nativeObject, funcName, #funcName);            \
     }
-

@@ -59,14 +59,12 @@ void PostSettings::setToneMappingType(ToneMappingType toneMappingType) {
 }
 
 void PostSettings::updatePipeline() const {
-    
     Root *root = Root::getInstance();
     auto *pipeline = root->getPipeline();
 
     pipeline->setValue("CC_TONE_MAPPING_TYPE", static_cast<int32_t>(_toneMappingType));
 
-    if (_activated)
-    {
+    if (_activated) {
         root->onGlobalPipelineStateChanged();
     }
 }

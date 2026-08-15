@@ -30,69 +30,70 @@
 #ifndef Spine_Sequence_h
 #define Spine_Sequence_h
 
-#include <spine/Vector.h>
 #include <spine/SpineString.h>
 #include <spine/TextureRegion.h>
+#include <spine/Vector.h>
 
 namespace spine {
-	class Slot;
+class Slot;
 
-	class Attachment;
+class Attachment;
 
-	class SkeletonBinary;
-	class SkeletonJson;
+class SkeletonBinary;
+class SkeletonJson;
 
-	class SP_API Sequence : public SpineObject {
-		friend class SkeletonBinary;
-		friend class SkeletonJson;
-	public:
-		Sequence(int count);
+class SP_API Sequence : public SpineObject {
+    friend class SkeletonBinary;
+    friend class SkeletonJson;
 
-		~Sequence();
+public:
+    Sequence(int count);
 
-		Sequence *copy();
+    ~Sequence();
 
-		void apply(Slot *slot, Attachment *attachment);
+    Sequence *copy();
 
-		String getPath(const String &basePath, int index);
+    void apply(Slot *slot, Attachment *attachment);
 
-		int getId() { return _id; }
+    String getPath(const String &basePath, int index);
 
-		void setId(int id) { _id = id; }
+    int getId() { return _id; }
 
-		int getStart() { return _start; }
+    void setId(int id) { _id = id; }
 
-		void setStart(int start) { _start = start; }
+    int getStart() { return _start; }
 
-		int getDigits() { return _digits; }
+    void setStart(int start) { _start = start; }
 
-		void setDigits(int digits) { _digits = digits; }
+    int getDigits() { return _digits; }
 
-		int getSetupIndex() { return _setupIndex; }
+    void setDigits(int digits) { _digits = digits; }
 
-		void setSetupIndex(int setupIndex) { _setupIndex = setupIndex; }
+    int getSetupIndex() { return _setupIndex; }
 
-		Vector<TextureRegion *> &getRegions() { return _regions; }
+    void setSetupIndex(int setupIndex) { _setupIndex = setupIndex; }
 
-	private:
-		int _id;
-		Vector<TextureRegion *> _regions;
-		int _start;
-		int _digits;
-		int _setupIndex;
+    Vector<TextureRegion *> &getRegions() { return _regions; }
 
-		int getNextID();
-	};
+private:
+    int _id;
+    Vector<TextureRegion *> _regions;
+    int _start;
+    int _digits;
+    int _setupIndex;
 
-	enum SequenceMode {
-		hold = 0,
-		once = 1,
-		loop = 2,
-		pingpong = 3,
-		onceReverse = 4,
-		loopReverse = 5,
-		pingpongReverse = 6
-	};
-}
+    int getNextID();
+};
+
+enum SequenceMode {
+    hold = 0,
+    once = 1,
+    loop = 2,
+    pingpong = 3,
+    onceReverse = 4,
+    loopReverse = 5,
+    pingpongReverse = 6
+};
+} // namespace spine
 
 #endif

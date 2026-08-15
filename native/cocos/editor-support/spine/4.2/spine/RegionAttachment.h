@@ -31,112 +31,112 @@
 #define Spine_RegionAttachment_h
 
 #include <spine/Attachment.h>
-#include <spine/Vector.h>
 #include <spine/Color.h>
 #include <spine/Sequence.h>
 #include <spine/TextureRegion.h>
+#include <spine/Vector.h>
 
 #include <spine/HasRendererObject.h>
 
 #define NUM_UVS 8
 
 namespace spine {
-	class Bone;
+class Bone;
 
-	/// Attachment that displays a texture region.
-	class SP_API RegionAttachment : public Attachment {
-		friend class SkeletonBinary;
+/// Attachment that displays a texture region.
+class SP_API RegionAttachment : public Attachment {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class AtlasAttachmentLoader;
+    friend class AtlasAttachmentLoader;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit RegionAttachment(const String &name);
+public:
+    explicit RegionAttachment(const String &name);
 
-		virtual ~RegionAttachment();
+    virtual ~RegionAttachment();
 
-		void updateRegion();
+    void updateRegion();
 
-		/// Transforms the attachment's four vertices to world coordinates.
-		/// @param slot The parent slot.
-		/// @param worldVertices The output world vertices. Must have a length greater than or equal to offset + 8.
-		/// @param offset The worldVertices index to begin writing values.
-		/// @param stride The number of worldVertices entries between the value pairs written.
-		void computeWorldVertices(Slot &slot, float *worldVertices, size_t offset, size_t stride = 2);
+    /// Transforms the attachment's four vertices to world coordinates.
+    /// @param slot The parent slot.
+    /// @param worldVertices The output world vertices. Must have a length greater than or equal to offset + 8.
+    /// @param offset The worldVertices index to begin writing values.
+    /// @param stride The number of worldVertices entries between the value pairs written.
+    void computeWorldVertices(Slot &slot, float *worldVertices, size_t offset, size_t stride = 2);
 
-		void computeWorldVertices(Slot &slot, Vector<float> &worldVertices, size_t offset, size_t stride = 2);
+    void computeWorldVertices(Slot &slot, Vector<float> &worldVertices, size_t offset, size_t stride = 2);
 
-		float getX();
+    float getX();
 
-		void setX(float inValue);
+    void setX(float inValue);
 
-		float getY();
+    float getY();
 
-		void setY(float inValue);
+    void setY(float inValue);
 
-		float getRotation();
+    float getRotation();
 
-		void setRotation(float inValue);
+    void setRotation(float inValue);
 
-		float getScaleX();
+    float getScaleX();
 
-		void setScaleX(float inValue);
+    void setScaleX(float inValue);
 
-		float getScaleY();
+    float getScaleY();
 
-		void setScaleY(float inValue);
+    void setScaleY(float inValue);
 
-		float getWidth();
+    float getWidth();
 
-		void setWidth(float inValue);
+    void setWidth(float inValue);
 
-		float getHeight();
+    float getHeight();
 
-		void setHeight(float inValue);
+    void setHeight(float inValue);
 
-		Color &getColor();
+    Color &getColor();
 
-		const String &getPath();
+    const String &getPath();
 
-		void setPath(const String &inValue);
+    void setPath(const String &inValue);
 
-		TextureRegion *getRegion();
+    TextureRegion *getRegion();
 
-		void setRegion(TextureRegion *region);
+    void setRegion(TextureRegion *region);
 
-		Sequence *getSequence();
+    Sequence *getSequence();
 
-		void setSequence(Sequence *sequence);
+    void setSequence(Sequence *sequence);
 
-		Vector<float> &getOffset();
+    Vector<float> &getOffset();
 
-		Vector<float> &getUVs();
+    Vector<float> &getUVs();
 
-		virtual Attachment *copy();
+    virtual Attachment *copy();
 
-	#ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		static const int BLX;
-		static const int BLY;
-		static const int ULX;
-		static const int ULY;
-		static const int URX;
-		static const int URY;
-		static const int BRX;
-		static const int BRY;
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    static const int BLX;
+    static const int BLY;
+    static const int ULX;
+    static const int ULY;
+    static const int URX;
+    static const int URY;
+    static const int BRX;
+    static const int BRY;
 
-		float _x, _y, _rotation, _scaleX, _scaleY, _width, _height;
-		Vector<float> _vertexOffset;
-		Vector<float> _uvs;
-		String _path;
-		Color _color;
-		TextureRegion *_region;
-		Sequence *_sequence;
-	};
-}
+    float _x, _y, _rotation, _scaleX, _scaleY, _width, _height;
+    Vector<float> _vertexOffset;
+    Vector<float> _uvs;
+    String _path;
+    Color _color;
+    TextureRegion *_region;
+    Sequence *_sequence;
+};
+} // namespace spine
 
 #endif /* Spine_RegionAttachment_h */

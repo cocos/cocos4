@@ -40,13 +40,13 @@ THE SOFTWARE.
 
 #include <spine/Extension.h>
 #include <spine/Json.h>
-#include <spine/SpineString.h>
 #include <spine/MathUtil.h>
+#include <spine/SpineString.h>
 
 #include <assert.h>
 #include <math.h>
 #ifndef __EMSCRIPTEN__
-#include <stdio.h>
+    #include <stdio.h>
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -309,7 +309,7 @@ const char *Json::parseString(Json *item, const char *str) {
                             break; /* missing second-half of surrogate.	*/
                         }
 #ifdef __EMSCRIPTEN__
-                        parseHex(ptr + 3, &uc2);                        
+                        parseHex(ptr + 3, &uc2);
 #else
                         sscanf(ptr + 3, "%4x", &uc2);
 #endif

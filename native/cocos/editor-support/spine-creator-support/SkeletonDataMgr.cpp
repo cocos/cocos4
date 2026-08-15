@@ -33,8 +33,7 @@
 #include "AttachmentVertices.h"
 
 using namespace spine; //NOLINT
-using namespace cc; //NOLINT
-
+using namespace cc;    //NOLINT
 
 static uint16_t quadTriangles[6] = {0, 1, 2, 2, 3, 0};
 

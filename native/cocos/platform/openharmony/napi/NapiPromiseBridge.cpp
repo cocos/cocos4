@@ -23,8 +23,8 @@
  THE SOFTWARE.
 ****************************************************************************/
 #include "cocos/platform/openharmony/napi/NapiPromiseBridge.h"
-#include "cocos/platform/openharmony/napi/NapiHelper.h"
 #include "cocos/bindings/jswrapper/SeApi.h"
+#include "cocos/platform/openharmony/napi/NapiHelper.h"
 
 namespace cc {
 struct CallbackData {
@@ -53,7 +53,8 @@ void NapiPromiseBridge::bindArkPromise(Napi::Value napiPromise, se::Object* sePr
     auto cbData = new CallbackData{sePromise};
     auto env = NapiHelper::getWorkerEnv();
     napi_value onFulfilled;
-    napi_create_function(env, "onFulfilled", -1, [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_create_function(
+        env, "onFulfilled", -1, [](napi_env env, napi_callback_info info) -> napi_value {
             se::AutoHandleScope hs;
             size_t argc = 1;
             napi_value argv[1];
@@ -70,7 +71,8 @@ void NapiPromiseBridge::bindArkPromise(Napi::Value napiPromise, se::Object* sePr
             return undefined; }, cbData, &onFulfilled);
 
     napi_value onRejected;
-    napi_create_function(env, "onRejected", -1, [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_create_function(
+        env, "onRejected", -1, [](napi_env env, napi_callback_info info) -> napi_value {
             se::AutoHandleScope hs;
             size_t argc = 1;
             napi_value argv[1];

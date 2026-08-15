@@ -25,8 +25,8 @@
 
 #define LOG_TAG "AudioDecoderSLES"
 
-#include "base/Macros.h"
 #include "audio/android/AudioDecoderSLES.h"
+#include "base/Macros.h"
 #include "platform/FileUtils.h"
 
 #include <mutex>

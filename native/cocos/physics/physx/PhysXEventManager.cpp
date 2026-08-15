@@ -173,15 +173,13 @@ void PhysXEventManager::refreshPairs() {
             continue;
         }
 
-        const auto& cctIter = getPxCCTMap().find(reinterpret_cast<uintptr_t>(&(reinterpret_cast<PhysXCharacterController*>(wrapperPtrCCT)->getCCT())));
-        const auto& shapeIter = getPxShapeMap().find(reinterpret_cast<uintptr_t>(&(reinterpret_cast<PhysXShape*>(wrapperPtrShape)->getShape())));
+        const auto &cctIter = getPxCCTMap().find(reinterpret_cast<uintptr_t>(&(reinterpret_cast<PhysXCharacterController *>(wrapperPtrCCT)->getCCT())));
+        const auto &shapeIter = getPxShapeMap().find(reinterpret_cast<uintptr_t>(&(reinterpret_cast<PhysXShape *>(wrapperPtrShape)->getShape())));
         if (cctIter == getPxCCTMap().end() || shapeIter == getPxShapeMap().end()) {
             iter = getCCTTriggerPairs().erase(iter);
-        }
-        else if (iter->get()->state == ETouchState::EXIT) {
+        } else if (iter->get()->state == ETouchState::EXIT) {
             iter = getCCTTriggerPairs().erase(iter);
-        }
-        else {
+        } else {
             iter->get()->state = ETouchState::STAY;
             iter++;
         }

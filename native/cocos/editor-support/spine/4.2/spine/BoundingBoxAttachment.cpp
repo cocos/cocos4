@@ -37,11 +37,11 @@ BoundingBoxAttachment::BoundingBoxAttachment(const String &name) : VertexAttachm
 }
 
 Color &BoundingBoxAttachment::getColor() {
-	return _color;
+    return _color;
 }
 
 Attachment *BoundingBoxAttachment::copy() {
-	BoundingBoxAttachment *copy = new (__FILE__, __LINE__) BoundingBoxAttachment(getName());
-	copyTo(copy);
-	return copy;
+    BoundingBoxAttachment *copy = new (__FILE__, __LINE__) BoundingBoxAttachment(getName());
+    copyTo(copy);
+    return copy;
 }

@@ -11,13 +11,12 @@
 
 using namespace spine;
 
-HashMap<SkeletonData *, HashMap<Attachment *, AttachmentVertices *>*> spineAttachmentVerticesMap{};
-HashMap<SkeletonData *, HashMap<spine::String, spine::String>*> spineTexturesMap{};
+HashMap<SkeletonData*, HashMap<Attachment*, AttachmentVertices*>*> spineAttachmentVerticesMap{};
+HashMap<SkeletonData*, HashMap<spine::String, spine::String>*> spineTexturesMap{};
 
 #ifdef CC_SPINE_VERSION_4_2
-HashMap<SkeletonData *, Atlas*> spineAtlasMap{};
+HashMap<SkeletonData*, Atlas*> spineAtlasMap{};
 #endif
-
 
 static const uint16_t quadTriangles[6] = {0, 1, 2, 2, 3, 0};
 
@@ -68,15 +67,18 @@ void logToConsole(const char* message, int logLevel = LOG_LEVEL_INFO) {
     if (logLevel == LOG_LEVEL_INFO) {
         EM_ASM({
             console.log('[Spine]', UTF8ToString($0));
-        }, message);
+        },
+               message);
     } else if (logLevel == LOG_LEVEL_WARN) {
         EM_ASM({
             console.warn('[Spine]', UTF8ToString($0));
-        }, message);
+        },
+               message);
     } else if (logLevel == LOG_LEVEL_ERROR) {
         EM_ASM({
             console.error('[Spine]', UTF8ToString($0));
-        }, message);
+        },
+               message);
     }
 }
 
@@ -183,11 +185,11 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithJson(const String& jsonS
     }
     {
         AttachmentLoader* attachmentLoader = new AtlasAttachmentLoaderExtension(atlas);
-        #ifdef CC_SPINE_VERSION_3_8
+    #ifdef CC_SPINE_VERSION_3_8
         SkeletonJson json(attachmentLoader);
-        #else
+    #else
         SkeletonJson json(attachmentLoader, true);
-        #endif
+    #endif
         json.setScale(1.0F);
         skeletonData = json.readSkeletonData(jsonStr.buffer());
         auto& errorMsg = json.getError();
@@ -197,11 +199,11 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithJson(const String& jsonS
 
         saveAttachmentVertices(skeletonData, textureNames, textureUUIDs);
     }
-#ifdef CC_SPINE_VERSION_3_8
+    #ifdef CC_SPINE_VERSION_3_8
     delete atlas;
-#else
+    #else
     spineAtlasMap.put(skeletonData, atlas);
-#endif
+    #endif
 
 #endif
 
@@ -217,11 +219,11 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize
     }
     {
         AttachmentLoader* attachmentLoader = new AtlasAttachmentLoaderExtension(atlas);
-        #ifdef CC_SPINE_VERSION_3_8
+    #ifdef CC_SPINE_VERSION_3_8
         SkeletonBinary binary(attachmentLoader);
-        #else
+    #else
         SkeletonBinary binary(attachmentLoader, true);
-        #endif
+    #endif
         binary.setScale(1.0F);
         skeletonData = binary.readSkeletonData(s_mem, byteSize);
         auto& errorMsg = binary.getError();
@@ -231,11 +233,11 @@ SkeletonData* SpineWasmUtil::createSpineSkeletonDataWithBinary(uint32_t byteSize
 
         saveAttachmentVertices(skeletonData, textureNames, textureUUIDs);
     }
-#ifdef CC_SPINE_VERSION_3_8
+    #ifdef CC_SPINE_VERSION_3_8
     delete atlas;
-#else
+    #else
     spineAtlasMap.put(skeletonData, atlas);
-#endif
+    #endif
 
 #endif
     return skeletonData;
@@ -250,7 +252,7 @@ void SpineWasmUtil::registerSpineSkeletonDataWithUUID(SkeletonData* data, const 
 void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const String& uuid) {
     if (skeletonDataMap.containsKey(uuid)) {
         auto* data = skeletonDataMap[uuid];
-        HashMap<Attachment *, AttachmentVertices *> *attachmentVerticesMap = nullptr;
+        HashMap<Attachment*, AttachmentVertices*>* attachmentVerticesMap = nullptr;
         if (spineAttachmentVerticesMap.containsKey(data)) {
             attachmentVerticesMap = spineAttachmentVerticesMap[data];
             auto entries = attachmentVerticesMap->getEntries();
@@ -266,7 +268,7 @@ void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const String& uuid) {
 #ifndef CC_SPINE_VERSION_3_8
         auto* atlas = spineAtlasMap[data];
         delete atlas;
-#endif        
+#endif
         delete data;
         skeletonDataMap.remove(uuid);
     }

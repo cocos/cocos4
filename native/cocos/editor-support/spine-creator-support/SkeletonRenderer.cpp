@@ -44,7 +44,6 @@
 #include "spine-creator-support/AttachmentVertices.h"
 #include "spine-creator-support/spine-cocos2dx.h"
 
-
 USING_NS_MW;             // NOLINT(google-build-using-namespace)
 using namespace spine;   // NOLINT(google-build-using-namespace)
 using namespace cc;      // NOLINT(google-build-using-namespace)
@@ -190,7 +189,7 @@ SkeletonRenderer::~SkeletonRenderer() {
         CC_SAFE_DELETE(item.second);
     }
 
-    for (auto iter: _slotTextureSet) {
+    for (auto iter : _slotTextureSet) {
         auto &info = iter.second;
         releaseSlotCacheInfo(info);
     }
@@ -424,7 +423,7 @@ void SkeletonRenderer::render(float /*deltaTime*/) {
         effect->begin(*_skeleton);
     }
 #else
-   void *effect = nullptr;
+    void *effect = nullptr;
 #endif
 
     auto *skeletonDataInfo = SkeletonDataMgr::getInstance()->getSkeletonDataInfo(_uuid);
@@ -821,7 +820,7 @@ void SkeletonRenderer::render(float /*deltaTime*/) {
         } else {
             curTexture = nullptr;
         }
-        
+
         // If texture or blendMode change,will change material.
         if (preTexture != curTexture || preBlendMode != slot->getData().getBlendMode() || isFull) {
             flush();

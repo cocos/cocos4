@@ -23,19 +23,17 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_MESSAGEBOX_SERVICE_WIN_H_
 #define __PLAYER_MESSAGEBOX_SERVICE_WIN_H_
 
 #include <string>
 
-#include "stdafx.h"
 #include "PlayerMessageBoxServiceProtocol.h"
+#include "stdafx.h"
 
 PLAYER_NS_BEGIN
 
-class PlayerMessageBoxServiceWin : public PlayerMessageBoxServiceProtocol
-{
+class PlayerMessageBoxServiceWin : public PlayerMessageBoxServiceProtocol {
 public:
     PlayerMessageBoxServiceWin(HWND hwnd);
 

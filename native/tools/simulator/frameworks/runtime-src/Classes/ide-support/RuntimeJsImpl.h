@@ -35,22 +35,22 @@
 #include "ide-support/CodeIDESupport.h"
 
 #if (CC_CODE_IDE_DEBUG_SUPPORT > 0)
-#include "runtime/RuntimeProtocol.h"
+    #include "runtime/RuntimeProtocol.h"
 
-class RuntimeJsImpl : public RuntimeProtocol
-{
+class RuntimeJsImpl : public RuntimeProtocol {
 public:
     static RuntimeJsImpl* create();
-    
+
     void startScript(const std::string& file);
     void onStartDebuger(const rapidjson::Document& dArgParse, rapidjson::Document& dReplyParse);
     void onClearCompile(const rapidjson::Document& dArgParse, rapidjson::Document& dReplyParse);
     void onPrecompile(const rapidjson::Document& dArgParse, rapidjson::Document& dReplyParse);
     void onReload(const rapidjson::Document& dArgParse, rapidjson::Document& dReplyParse);
-    void onRemove(const std::string &filename);
+    void onRemove(const std::string& filename);
     void end();
-    
+
     bool startWithDebugger();
+
 private:
     RuntimeJsImpl();
     bool initJsEnv();

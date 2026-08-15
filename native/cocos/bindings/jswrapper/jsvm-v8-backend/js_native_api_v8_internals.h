@@ -24,10 +24,10 @@
 
 #define JSVM_ARRAYSIZE(array) node::arraysize((array))
 
-#define JSVM_FIXED_ONE_BYTE_STRING(isolate, string)                            \
-  node::FIXED_ONE_BYTE_STRING((isolate), (string))
+#define JSVM_FIXED_ONE_BYTE_STRING(isolate, string) \
+    node::FIXED_ONE_BYTE_STRING((isolate), (string))
 
-#define JSVM_PRIVATE_KEY(isolate, suffix)                                      \
+#define JSVM_PRIVATE_KEY(isolate, suffix) \
     (v8impl::GetIsolateData(isolate)->jsvm_##suffix##_key.Get(isolate))
 
 namespace v8impl {
@@ -38,10 +38,10 @@ using Persistent = v8::Global<T>;
 using PersistentToLocal = node::PersistentToLocal;
 
 inline void OnFatalError(const char* location,
-                                      const char* message) {
-//cjh  node::OnFatalError(location, message);
+                         const char* message) {
+    //cjh  node::OnFatalError(location, message);
 }
 
-}  // end of namespace v8impl
+} // end of namespace v8impl
 
-#endif  // SRC_JS_NATIVE_API_V8_INTERNALS_H_
+#endif // SRC_JS_NATIVE_API_V8_INTERNALS_H_

@@ -54,6 +54,4 @@ private:
     static RecallClient _recallClient;
 };
 
-
-
 } // namespace cc

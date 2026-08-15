@@ -42,20 +42,20 @@
  * @since 11
  */
 
+#include <stdbool.h> // NOLINT(modernize-deprecated-headers)
 #include <stddef.h>  // NOLINT(modernize-deprecated-headers)
 #include <stdint.h>  // NOLINT(modernize-deprecated-headers)
-#include <stdbool.h>  // NOLINT(modernize-deprecated-headers)
 
 #if !defined __cplusplus || (defined(_MSC_VER) && _MSC_VER < 1900)
 typedef uint16_t char16_t;
 #endif
 
 #ifndef JSVM_CDECL
-#ifdef _WIN32
-#define JSVM_CDECL __cdecl
-#else
-#define JSVM_CDECL
-#endif
+    #ifdef _WIN32
+        #define JSVM_CDECL __cdecl
+    #else
+        #define JSVM_CDECL
+    #endif
 #endif
 
 /**
@@ -142,7 +142,6 @@ typedef struct JSVM_CallbackInfo__* JSVM_CallbackInfo;
  */
 typedef struct JSVM_Deferred__* JSVM_Deferred;
 
-
 /**
  * @brief Callback function pointer and data for user-provided native function which are to exposed to js via JSVM-API.
  *
@@ -150,7 +149,7 @@ typedef struct JSVM_Deferred__* JSVM_Deferred;
  */
 typedef struct {
     JSVM_Value(JSVM_CDECL* callback)(JSVM_Env env,
-                                   JSVM_CallbackInfo info);
+                                     JSVM_CallbackInfo info);
     void* data;
 } JSVM_CallbackStruct;
 
@@ -699,12 +698,12 @@ typedef struct {
     JSVM_CompileOptionId id;
     /** option content. */
     union {
-      /** ptr type. */
-      void *ptr;
-      /** int type. */
-      int num;
-      /** bool type. */
-      bool boolean;
+        /** ptr type. */
+        void* ptr;
+        /** int type. */
+        int num;
+        /** bool type. */
+        bool boolean;
     } content;
 } JSVM_CompileOptions;
 
@@ -715,7 +714,7 @@ typedef struct {
  */
 typedef struct {
     /** cache pointer. */
-    uint8_t *cache;
+    uint8_t* cache;
     /** length. */
     size_t length;
 } JSVM_CodeCache;
@@ -751,7 +750,7 @@ typedef enum {
  */
 typedef const struct {
     /** profile pointer. */
-    int *profile;
+    int* profile;
     /** length. */
     size_t length;
 } JSVM_CompileProfile;

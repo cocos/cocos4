@@ -35,17 +35,17 @@
 #ifndef GOOGLE_PROTOBUF_STUBS_HASH_H__
 #define GOOGLE_PROTOBUF_STUBS_HASH_H__
 
-#include <string.h>
 #include <google/protobuf/stubs/common.h>
+#include <string.h>
 #include "config.h"
 
 #if defined(HAVE_HASH_MAP) && defined(HAVE_HASH_SET)
-#include HASH_MAP_H
-#include HASH_SET_H
+    #include HASH_MAP_H
+    #include HASH_SET_H
 #else
-#define MISSING_HASH
-#include <map>
-#include <set>
+    #define MISSING_HASH
+    #include <map>
+    #include <set>
 #endif
 
 namespace google {
@@ -61,45 +61,45 @@ namespace protobuf {
 // that they can be used as "less" functions, which is required by MSVC anyway.
 template <typename Key>
 struct hash {
-  // Dummy, just to make derivative hash functions compile.
-  int operator()(const Key& key) {
-    GOOGLE_LOG(FATAL) << "Should never be called.";
-    return 0;
-  }
+    // Dummy, just to make derivative hash functions compile.
+    int operator()(const Key& key) {
+        GOOGLE_LOG(FATAL) << "Should never be called.";
+        return 0;
+    }
 
-  inline bool operator()(const Key& a, const Key& b) const {
-    return a < b;
-  }
+    inline bool operator()(const Key& a, const Key& b) const {
+        return a < b;
+    }
 };
 
 // Make sure char* is compared by value.
 template <>
 struct hash<const char*> {
-  // Dummy, just to make derivative hash functions compile.
-  int operator()(const char* key) {
-    GOOGLE_LOG(FATAL) << "Should never be called.";
-    return 0;
-  }
+    // Dummy, just to make derivative hash functions compile.
+    int operator()(const char* key) {
+        GOOGLE_LOG(FATAL) << "Should never be called.";
+        return 0;
+    }
 
-  inline bool operator()(const char* a, const char* b) const {
-    return strcmp(a, b) < 0;
-  }
+    inline bool operator()(const char* a, const char* b) const {
+        return strcmp(a, b) < 0;
+    }
 };
 
 template <typename Key, typename Data,
           typename HashFcn = hash<Key>,
-          typename EqualKey = int >
+          typename EqualKey = int>
 class hash_map : public std::map<Key, Data, HashFcn> {
- public:
-  hash_map(int = 0) {}
+public:
+    hash_map(int = 0) {}
 };
 
 template <typename Key,
           typename HashFcn = hash<Key>,
-          typename EqualKey = int >
+          typename EqualKey = int>
 class hash_set : public std::set<Key, HashFcn> {
- public:
-  hash_set(int = 0) {}
+public:
+    hash_set(int = 0) {}
 };
 
 #elif defined(_MSC_VER) && !defined(_STLPORT_VERSION)
@@ -111,33 +111,33 @@ struct hash : public HASH_NAMESPACE::hash_compare<Key> {
 // MSVC's hash_compare<const char*> hashes based on the string contents but
 // compares based on the string pointer.  WTF?
 class CstringLess {
- public:
-  inline bool operator()(const char* a, const char* b) const {
-    return strcmp(a, b) < 0;
-  }
+public:
+    inline bool operator()(const char* a, const char* b) const {
+        return strcmp(a, b) < 0;
+    }
 };
 
 template <>
 struct hash<const char*>
-  : public HASH_NAMESPACE::hash_compare<const char*, CstringLess> {
+: public HASH_NAMESPACE::hash_compare<const char*, CstringLess> {
 };
 
 template <typename Key, typename Data,
           typename HashFcn = hash<Key>,
-          typename EqualKey = int >
+          typename EqualKey = int>
 class hash_map : public HASH_NAMESPACE::hash_map<
-    Key, Data, HashFcn> {
- public:
-  hash_map(int = 0) {}
+                     Key, Data, HashFcn> {
+public:
+    hash_map(int = 0) {}
 };
 
 template <typename Key,
           typename HashFcn = hash<Key>,
-          typename EqualKey = int >
+          typename EqualKey = int>
 class hash_set : public HASH_NAMESPACE::hash_set<
-    Key, HashFcn> {
- public:
-  hash_set(int = 0) {}
+                     Key, HashFcn> {
+public:
+    hash_set(int = 0) {}
 };
 
 #else
@@ -148,85 +148,85 @@ struct hash : public HASH_NAMESPACE::hash<Key> {
 
 template <typename Key>
 struct hash<const Key*> {
-  inline size_t operator()(const Key* key) const {
-    return reinterpret_cast<size_t>(key);
-  }
+    inline size_t operator()(const Key* key) const {
+        return reinterpret_cast<size_t>(key);
+    }
 };
 
 // Unlike the old SGI version, the TR1 "hash" does not special-case char*.  So,
 // we go ahead and provide our own implementation.
 template <>
 struct hash<const char*> {
-  inline size_t operator()(const char* str) const {
-    size_t result = 0;
-    for (; *str != '\0'; str++) {
-      result = 5 * result + *str;
+    inline size_t operator()(const char* str) const {
+        size_t result = 0;
+        for (; *str != '\0'; str++) {
+            result = 5 * result + *str;
+        }
+        return result;
     }
-    return result;
-  }
 };
 
 template <typename Key, typename Data,
           typename HashFcn = hash<Key>,
           typename EqualKey = std::equal_to<Key> >
 class hash_map : public HASH_NAMESPACE::HASH_MAP_CLASS<
-    Key, Data, HashFcn, EqualKey> {
- public:
-  hash_map(int = 0) {}
+                     Key, Data, HashFcn, EqualKey> {
+public:
+    hash_map(int = 0) {}
 };
 
 template <typename Key,
           typename HashFcn = hash<Key>,
           typename EqualKey = std::equal_to<Key> >
 class hash_set : public HASH_NAMESPACE::HASH_SET_CLASS<
-    Key, HashFcn, EqualKey> {
- public:
-  hash_set(int = 0) {}
+                     Key, HashFcn, EqualKey> {
+public:
+    hash_set(int = 0) {}
 };
 
 #endif
 
 template <>
 struct hash<string> {
-  inline size_t operator()(const string& key) const {
-    return hash<const char*>()(key.c_str());
-  }
+    inline size_t operator()(const string& key) const {
+        return hash<const char*>()(key.c_str());
+    }
 
-  static const size_t bucket_size = 4;
-  static const size_t min_buckets = 8;
-  inline size_t operator()(const string& a, const string& b) const {
-    return a < b;
-  }
+    static const size_t bucket_size = 4;
+    static const size_t min_buckets = 8;
+    inline size_t operator()(const string& a, const string& b) const {
+        return a < b;
+    }
 };
 
 template <typename First, typename Second>
 struct hash<pair<First, Second> > {
-  inline size_t operator()(const pair<First, Second>& key) const {
-    size_t first_hash = hash<First>()(key.first);
-    size_t second_hash = hash<Second>()(key.second);
+    inline size_t operator()(const pair<First, Second>& key) const {
+        size_t first_hash = hash<First>()(key.first);
+        size_t second_hash = hash<Second>()(key.second);
 
-    // IDEA(kenton):  What is the best way to compute this hash?  I have
-    // no idea!  This seems a bit better than an XOR.
-    return first_hash * ((1 << 16) - 1) + second_hash;
-  }
+        // IDEA(kenton):  What is the best way to compute this hash?  I have
+        // no idea!  This seems a bit better than an XOR.
+        return first_hash * ((1 << 16) - 1) + second_hash;
+    }
 
-  static const size_t bucket_size = 4;
-  static const size_t min_buckets = 8;
-  inline size_t operator()(const pair<First, Second>& a,
-                           const pair<First, Second>& b) const {
-    return a < b;
-  }
+    static const size_t bucket_size = 4;
+    static const size_t min_buckets = 8;
+    inline size_t operator()(const pair<First, Second>& a,
+                             const pair<First, Second>& b) const {
+        return a < b;
+    }
 };
 
 // Used by GCC/SGI STL only.  (Why isn't this provided by the standard
 // library?  :( )
 struct streq {
-  inline bool operator()(const char* a, const char* b) const {
-    return strcmp(a, b) == 0;
-  }
+    inline bool operator()(const char* a, const char* b) const {
+        return strcmp(a, b) == 0;
+    }
 };
 
-}  // namespace protobuf
-}  // namespace google
+} // namespace protobuf
+} // namespace google
 
-#endif  // GOOGLE_PROTOBUF_STUBS_HASH_H__
+#endif // GOOGLE_PROTOBUF_STUBS_HASH_H__

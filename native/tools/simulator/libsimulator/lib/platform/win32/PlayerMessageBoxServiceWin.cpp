@@ -23,21 +23,19 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#include "cocos/base/UTF8.h"
-#include "cocos/base/Log.h"
 #include "PlayerMessageBoxServiceWin.h"
+#include "cocos/base/Log.h"
+#include "cocos/base/UTF8.h"
 
 PLAYER_NS_BEGIN
 
 PlayerMessageBoxServiceWin::PlayerMessageBoxServiceWin(HWND hwnd)
-: _hwnd(hwnd)
-{
+: _hwnd(hwnd) {
 }
 
 int PlayerMessageBoxServiceWin::showMessageBox(const std::string &title,
                                                const std::string &message,
-                                               int buttonsType /* = BUTTONS_OK */)
-{
+                                               int buttonsType /* = BUTTONS_OK */) {
     std::u16string u16title;
     cc::StringUtils::UTF8ToUTF16(title, u16title);
     std::u16string u16message;
@@ -46,43 +44,41 @@ int PlayerMessageBoxServiceWin::showMessageBox(const std::string &title,
     CC_LOG_DEBUG("PlayerMessageBoxServiceWin::showMessageBox() - title = %s, message = %s", title.c_str(), message.c_str());
 
     UINT mbtype = MB_APPLMODAL;
-    switch (buttonsType)
-    {
-    case BUTTONS_OK_CANCEL:
-        mbtype |= MB_OKCANCEL | MB_ICONQUESTION;
-        break;
+    switch (buttonsType) {
+        case BUTTONS_OK_CANCEL:
+            mbtype |= MB_OKCANCEL | MB_ICONQUESTION;
+            break;
 
-    case BUTTONS_YES_NO:
-        mbtype |= MB_YESNO | MB_ICONQUESTION;
-        break;
+        case BUTTONS_YES_NO:
+            mbtype |= MB_YESNO | MB_ICONQUESTION;
+            break;
 
-    case BUTTONS_YES_NO_CANCEL:
-        mbtype |= MB_YESNOCANCEL | MB_ICONQUESTION;
-        break;
+        case BUTTONS_YES_NO_CANCEL:
+            mbtype |= MB_YESNOCANCEL | MB_ICONQUESTION;
+            break;
 
-    default:
-        mbtype |= MB_OK | MB_ICONINFORMATION;
+        default:
+            mbtype |= MB_OK | MB_ICONINFORMATION;
     }
 
     // MessageBox() used by cocos2d
     int result = ::MessageBoxW(_hwnd, (LPCWSTR)u16message.c_str(), (LPCWSTR)u16title.c_str(), mbtype);
 
-    switch (result)
-    {
-    case IDCANCEL:
-        result = BUTTON_CANCEL;
-        break;
+    switch (result) {
+        case IDCANCEL:
+            result = BUTTON_CANCEL;
+            break;
 
-    case IDYES:
-        result = BUTTON_YES;
-        break;
+        case IDYES:
+            result = BUTTON_YES;
+            break;
 
-    case IDNO:
-        result = BUTTON_NO;
-        break;
+        case IDNO:
+            result = BUTTON_NO;
+            break;
 
-    default:
-        result = BUTTON_OK;
+        default:
+            result = BUTTON_OK;
     }
 
     CC_LOG_DEBUG("PlayerMessageBoxServiceWin::showMessageBox() - result = %d", result);

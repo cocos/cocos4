@@ -24,8 +24,8 @@
 
 #include "MessageQueue.h"
 #include "AutoReleasePool.h"
-#include "base/Utils.h"
 #include "base/Log.h"
+#include "base/Utils.h"
 
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
     #include <unistd.h>

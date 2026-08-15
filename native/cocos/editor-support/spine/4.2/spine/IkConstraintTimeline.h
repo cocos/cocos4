@@ -34,38 +34,38 @@
 
 namespace spine {
 
-	class SP_API IkConstraintTimeline : public CurveTimeline {
-		friend class SkeletonBinary;
+class SP_API IkConstraintTimeline : public CurveTimeline {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit IkConstraintTimeline(size_t frameCount, size_t bezierCount, int ikConstraintIndex);
+public:
+    explicit IkConstraintTimeline(size_t frameCount, size_t bezierCount, int ikConstraintIndex);
 
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-		/// Sets the time, mix and bend direction of the specified keyframe.
-		void setFrame(int frame, float time, float mix, float softness, int bendDirection, bool compress, bool stretch);
+    /// Sets the time, mix and bend direction of the specified keyframe.
+    void setFrame(int frame, float time, float mix, float softness, int bendDirection, bool compress, bool stretch);
 
-		int getIkConstraintIndex() { return _constraintIndex; }
+    int getIkConstraintIndex() { return _constraintIndex; }
 
-		void setIkConstraintIndex(int inValue) { _constraintIndex = inValue; }
-    #ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		int _constraintIndex;
+    void setIkConstraintIndex(int inValue) { _constraintIndex = inValue; }
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    int _constraintIndex;
 
-		static const int ENTRIES = 6;
-		static const int MIX = 1;
-		static const int SOFTNESS = 2;
-		static const int BEND_DIRECTION = 3;
-		static const int COMPRESS = 4;
-		static const int STRETCH = 5;
-	};
-}
+    static const int ENTRIES = 6;
+    static const int MIX = 1;
+    static const int SOFTNESS = 2;
+    static const int BEND_DIRECTION = 3;
+    static const int COMPRESS = 4;
+    static const int STRETCH = 5;
+};
+} // namespace spine
 
 #endif /* Spine_IkConstraintTimeline_h */

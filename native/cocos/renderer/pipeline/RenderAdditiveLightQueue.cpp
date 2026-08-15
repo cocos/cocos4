@@ -68,7 +68,9 @@ RenderAdditiveLightQueue::RenderAdditiveLightQueue(RenderPipeline *pipeline) : _
 void RenderAdditiveLightQueue::recordCommandBuffer(gfx::Device *device, scene::Camera *camera, gfx::RenderPass *renderPass, gfx::CommandBuffer *cmdBuffer) {
     const uint32_t offset = _pipeline->getPipelineUBO()->getCurrentCameraUBOOffset();
     for (uint32_t i = 0; i < _instancedQueues.size(); ++i) {
-        if (!this->_instancedQueues[i]) { continue; }
+        if (!this->_instancedQueues[i]) {
+            continue;
+        }
         const auto *light = _instancedLightPass.lights[i];
         _dynamicOffsets[0] = _instancedLightPass.dynamicOffsets[i];
         auto *globalDescriptorSet = _pipeline->getGlobalDSManager()->getOrCreateDescriptorSet(light);
@@ -503,7 +505,7 @@ bool RenderAdditiveLightQueue::getLightPassIndex(const scene::Model *model, ccst
             }
             ++k;
         }
-        lightPassIndices->push_back(static_cast<uint32_t>(lightPassIndex)); 
+        lightPassIndices->push_back(static_cast<uint32_t>(lightPassIndex));
     }
 
     return hasValidLightPass;

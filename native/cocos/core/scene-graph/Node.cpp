@@ -55,15 +55,15 @@ Node::Node(const ccstd::string &name) {
     _active = 1;
     _isStatic = 0;
     _colorDirty = 1;
-    
+
 #define NODE_SHARED_MEMORY_BYTE_LENGTH (36)
 #ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winvalid-offsetof"
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Winvalid-offsetof"
 #endif
     static_assert(offsetof(Node, _finalOpacity) + sizeof(_finalOpacity) - offsetof(Node, _eventMask) == NODE_SHARED_MEMORY_BYTE_LENGTH, "Wrong shared memory size");
 #ifdef __clang__
-#pragma clang diagnostic pop
+    #pragma clang diagnostic pop
 #endif
     _sharedMemoryActor.initialize(&_eventMask, NODE_SHARED_MEMORY_BYTE_LENGTH);
 #undef NODE_SHARED_MEMORY_BYTE_LENGTH
@@ -480,9 +480,9 @@ void Node::updateLocalMatrixBySkew(Mat4 *outLocalMatrix) const {
     if (_skewX == 0 && _skewY == 0) {
         return;
     }
-    
+
     float *m = outLocalMatrix->m;
-    
+
     if (_skewType == static_cast<uint8_t>(SkewType::ROTATIONAL)) {
         const float radiansX = -mathutils::toRadian(_skewX);
         const float radiansY = mathutils::toRadian(_skewY);
@@ -546,7 +546,7 @@ void Node::updateWorldTransformRecursive(uint32_t &dirtyBits) { // NOLINT(misc-n
                     // Save the original world matrix without skew side effect.
                     Mat4::multiply(tempMat4, localMatrix, &tempMat4);
                     originalWorldMatrix = &tempMat4;
-                    
+
                     if (_skewType != static_cast<uint8_t>(SkewType::NONE)) {
                         updateLocalMatrixBySkew(&localMatrix);
                     }
@@ -582,7 +582,7 @@ void Node::updateWorldTransformRecursive(uint32_t &dirtyBits) { // NOLINT(misc-n
             }
         }
     }
-    
+
     _transformFlags = (static_cast<uint32_t>(TransformBit::NONE));
 }
 
@@ -691,43 +691,43 @@ void Node::setWorldScale(float x, float y, float z) {
     TransformBit rotationFlag = TransformBit::NONE;
     if (_parent != nullptr) {
         updateWorldTransform(); // ensure reentryability
-        
+
         if (_skewType != static_cast<uint8_t>(SkewType::NONE)) {
             Mat4::fromRTS(_localRotation, _localPosition, _localScale, &_worldMatrix);
             Mat4::multiply(_parent->_worldMatrix, _worldMatrix, &_worldMatrix);
         }
-        
+
         float *m = _worldMatrix.m;
         Vec3 oldWorldScale(Vec3(m[0], m[1], m[2]).length(),
                            Vec3(m[4], m[5], m[6]).length(),
                            Vec3(m[8], m[9], m[10]).length());
-        
+
         _worldScale.set(x, y, z);
         Mat3 localRS;
         Mat3 localRotInv;
         Mat4 worldMatrixTmp = _worldMatrix;
         Vec3 rescaleFactor;
-        
+
         if (oldWorldScale.x == 0) {
             oldWorldScale.x = 1;
             worldMatrixTmp.m[0] = 1.F;
             rotationFlag = TransformBit::ROTATION;
         }
-        
+
         if (oldWorldScale.y == 0) {
             oldWorldScale.y = 1;
             worldMatrixTmp.m[5] = 1.F;
             rotationFlag = TransformBit::ROTATION;
         }
-        
+
         if (oldWorldScale.z == 0) {
             oldWorldScale.z = 1;
             worldMatrixTmp.m[10] = 1.F;
             rotationFlag = TransformBit::ROTATION;
         }
-        
+
         rescaleFactor = _worldScale / oldWorldScale;
-        
+
         // apply new world scale to temp world matrix
         worldMatrixTmp.scale(rescaleFactor); // need opt
         // get temp local matrix
@@ -742,7 +742,7 @@ void Node::setWorldScale(float x, float y, float z) {
         _localScale.x = Vec3{localRS.m[0], localRS.m[1], localRS.m[2]}.length();
         _localScale.y = Vec3{localRS.m[3], localRS.m[4], localRS.m[5]}.length();
         _localScale.z = Vec3{localRS.m[6], localRS.m[7], localRS.m[8]}.length();
-        
+
         if (_localScale.x == 0 || _localScale.y == 0 || _localScale.z == 0) {
             rotationFlag = TransformBit::ROTATION;
         }
@@ -793,7 +793,7 @@ bool Node::findSkewAndGetOriginalWorldMatrix(Node *node, Mat4 *out) {
     if (!node) {
         return false;
     }
-    static ccstd::vector<Node*> tempNodes;
+    static ccstd::vector<Node *> tempNodes;
     tempNodes.resize(0);
     auto &ancestors = tempNodes;
     Node *startNode = nullptr;
@@ -853,14 +853,14 @@ void Node::onSetParent(Node *oldParent, bool keepWorldTransform) {
                         // Calculate current node's world matrix without skew side effect.
                         Mat4::multiply(oldParentMatrix, localMatrix, &_worldMatrix);
                     }
-                    
+
                     // Calculate new parent's world matrix without skew side effect.
                     const bool foundSkewInNewParent = Node::findSkewAndGetOriginalWorldMatrix(_parent, &tempMatrix);
                     if (foundSkewInNewParent) {
                         newParentMatrix = &tempMatrix;
                     }
                 }
-                
+
                 // Calculate current node's new local transform
                 localMatrix = newParentMatrix->getInversed() * _worldMatrix;
                 Mat4::toRTS(localMatrix, &_localRotation, &_localPosition, &_localScale);

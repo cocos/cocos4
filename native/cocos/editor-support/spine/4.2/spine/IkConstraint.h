@@ -35,86 +35,86 @@
 #include <spine/Vector.h>
 
 namespace spine {
-	class IkConstraintData;
+class IkConstraintData;
 
-	class Skeleton;
+class Skeleton;
 
-	class Bone;
+class Bone;
 
-	class SP_API IkConstraint : public Updatable {
-		friend class Skeleton;
+class SP_API IkConstraint : public Updatable {
+    friend class Skeleton;
 
-		friend class IkConstraintTimeline;
+    friend class IkConstraintTimeline;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		/// Adjusts the bone rotation so the tip is as close to the target position as possible. The target is specified
-		/// in the world coordinate system.
-		static void
-		apply(Bone &bone, float targetX, float targetY, bool compress, bool stretch, bool uniform, float alpha);
+public:
+    /// Adjusts the bone rotation so the tip is as close to the target position as possible. The target is specified
+    /// in the world coordinate system.
+    static void
+    apply(Bone &bone, float targetX, float targetY, bool compress, bool stretch, bool uniform, float alpha);
 
-		/// Adjusts the parent and child bone rotations so the tip of the child is as close to the target position as
-		/// possible. The target is specified in the world coordinate system.
-		/// @param child A direct descendant of the parent bone.
-		static void
-		apply(Bone &parent, Bone &child, float targetX, float targetY, int bendDir, bool stretch, bool uniform,
-			  float softness,
-			  float alpha);
+    /// Adjusts the parent and child bone rotations so the tip of the child is as close to the target position as
+    /// possible. The target is specified in the world coordinate system.
+    /// @param child A direct descendant of the parent bone.
+    static void
+    apply(Bone &parent, Bone &child, float targetX, float targetY, int bendDir, bool stretch, bool uniform,
+          float softness,
+          float alpha);
 
-		IkConstraint(IkConstraintData &data, Skeleton &skeleton);
+    IkConstraint(IkConstraintData &data, Skeleton &skeleton);
 
-		virtual void update(Physics physics);
+    virtual void update(Physics physics);
 
-		virtual int getOrder();
+    virtual int getOrder();
 
-		IkConstraintData &getData();
+    IkConstraintData &getData();
 
-		Vector<Bone *> &getBones();
+    Vector<Bone *> &getBones();
 
-		Bone *getTarget();
+    Bone *getTarget();
 
-		void setTarget(Bone *inValue);
+    void setTarget(Bone *inValue);
 
-		int getBendDirection();
+    int getBendDirection();
 
-		void setBendDirection(int inValue);
+    void setBendDirection(int inValue);
 
-		bool getCompress();
+    bool getCompress();
 
-		void setCompress(bool inValue);
+    void setCompress(bool inValue);
 
-		bool getStretch();
+    bool getStretch();
 
-		void setStretch(bool inValue);
+    void setStretch(bool inValue);
 
-		float getMix();
+    float getMix();
 
-		void setMix(float inValue);
+    void setMix(float inValue);
 
-		float getSoftness();
+    float getSoftness();
 
-		void setSoftness(float inValue);
+    void setSoftness(float inValue);
 
-		bool isActive();
+    bool isActive();
 
-		void setActive(bool inValue);
+    void setActive(bool inValue);
 
-        void setToSetupPose();
+    void setToSetupPose();
 
-	#ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		IkConstraintData &_data;
-		Vector<Bone *> _bones;
-		int _bendDirection;
-		bool _compress;
-		bool _stretch;
-		float _mix;
-		float _softness;
-		Bone *_target;
-		bool _active;
-	};
-}
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    IkConstraintData &_data;
+    Vector<Bone *> _bones;
+    int _bendDirection;
+    bool _compress;
+    bool _stretch;
+    float _mix;
+    float _softness;
+    Bone *_target;
+    bool _active;
+};
+} // namespace spine
 
 #endif /* Spine_IkConstraint_h */

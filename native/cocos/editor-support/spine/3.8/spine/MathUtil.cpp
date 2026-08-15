@@ -73,15 +73,15 @@ float MathUtil::randomTriangular(float min, float max, float mode) {
 }
 
 uint64_t MathUtil::ipow(uint64_t base, uint32_t exp) {
-	uint64_t result = 1;
+    uint64_t result = 1;
 
-	while (exp) {
-		if (exp & 1) {
-			result *= base;
+    while (exp) {
+        if (exp & 1) {
+            result *= base;
         }
-		exp >>= 1;
-		base *= base;
-	}
+        exp >>= 1;
+        base *= base;
+    }
 
-	return result;
+    return result;
 }

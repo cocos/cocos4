@@ -28,9 +28,9 @@
 #include "base/Scheduler.h"
 #include "base/UTF8.h"
 #include "base/memory/Memory.h"
+#include "engine/Engine.h"
 #include "platform/FileUtils.h"
 #include "platform/java/jni/JniHelper.h"
-#include "engine/Engine.h"
 
 #ifdef JAVA_CLASS_WEBSOCKET
     #error "JAVA_CLASS_WEBSOCKET is already defined"

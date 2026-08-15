@@ -30,36 +30,36 @@
 #ifndef Spine_ClippingAttachment_h
 #define Spine_ClippingAttachment_h
 
-#include <spine/VertexAttachment.h>
 #include <spine/Color.h>
+#include <spine/VertexAttachment.h>
 
 namespace spine {
-	class SlotData;
+class SlotData;
 
-	class SP_API ClippingAttachment : public VertexAttachment {
-		friend class SkeletonBinary;
+class SP_API ClippingAttachment : public VertexAttachment {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class SkeletonClipping;
+    friend class SkeletonClipping;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		explicit ClippingAttachment(const String &name);
+public:
+    explicit ClippingAttachment(const String &name);
 
-		SlotData *getEndSlot();
+    SlotData *getEndSlot();
 
-		void setEndSlot(SlotData *inValue);
+    void setEndSlot(SlotData *inValue);
 
-		Color &getColor();
+    Color &getColor();
 
-		virtual Attachment *copy();
+    virtual Attachment *copy();
 
-	private:
-		SlotData *_endSlot;
-		Color _color;
-	};
-}
+private:
+    SlotData *_endSlot;
+    Color _color;
+};
+} // namespace spine
 
 #endif /* Spine_ClippingAttachment_h */

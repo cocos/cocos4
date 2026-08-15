@@ -28,8 +28,8 @@
 #define NODE_ADDON_API_ENABLE_TYPE_CHECK_ON_AS 1
 #define NAPI_DISABLE_CPP_EXCEPTIONS            1
 #define NODE_ADDON_API_DISABLE_DEPRECATED      1
-#include "cocos/platform/openharmony/napi/napi.h"
 #include "cocos/bindings/jswrapper/config.h"
+#include "cocos/platform/openharmony/napi/napi.h"
 
 namespace se {
 class Object;
@@ -39,6 +39,7 @@ namespace cc {
 class NapiPromiseBridge {
 public:
     static se::Object* createPromise(Napi::Value napiPromise);
+
 private:
 #if (SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_JSVM) || (SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_V8)
     static void bindArkPromise(Napi::Value napiPromise, se::Object* sePromise);

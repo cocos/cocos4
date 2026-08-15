@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __CC_EXTENSION_CCHTTP_REQUEST_DELEGATE_H_
 #define __CC_EXTENSION_CCHTTP_REQUEST_DELEGATE_H_
 
@@ -33,8 +32,7 @@ NS_CC_EXTRA_BEGIN
 
 class HTTPRequest;
 
-class HTTPRequestDelegate
-{
+class HTTPRequestDelegate {
 public:
     virtual void requestFinished(HTTPRequest* request) {}
     virtual void requestFailed(HTTPRequest* request) {}

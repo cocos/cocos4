@@ -30,10 +30,10 @@
     #include <hilog/log.h>
 
     #ifndef LOGI
-        #define LOGI(...) ((void) OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGW(...) ((void) OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGE(...) ((void) OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-        #define LOGD(...) ((void) OH_LOG_Print(LOG_APP, LOG_DEBUG, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGI(...) ((void)OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGW(...) ((void)OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGE(...) ((void)OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+        #define LOGD(...) ((void)OH_LOG_Print(LOG_APP, LOG_DEBUG, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
     #endif
 #else
     #define LOGI CC_LOG_INFO
@@ -80,67 +80,66 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT(readability-identifier-
 #define SE_QUOTEME(x)             SE_QUOTEME_(x)
 #define SE_REPORT_ERROR(fmt, ...) SE_LOGE("[ERROR] (" __FILE__ ", " SE_QUOTEME(__LINE__) "): " fmt "\n", ##__VA_ARGS__)
 
-#define SE_BIND_PROP_GET_IMPL(funcName, postFix)                                                              \
-    JSVM_Value funcName##postFix##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                            \
-        return jsbGetterWrapper(env, info, funcName, #funcName);                                              \
-    }                                                                                                         \
-    JSVM_CallbackStruct funcName##postFix##RegistryStruct = {(funcName##postFix##Registry),nullptr};
+#define SE_BIND_PROP_GET_IMPL(funcName, postFix)                                   \
+    JSVM_Value funcName##postFix##Registry(JSVM_Env env, JSVM_CallbackInfo info) { \
+        return jsbGetterWrapper(env, info, funcName, #funcName);                   \
+    }                                                                              \
+    JSVM_CallbackStruct funcName##postFix##RegistryStruct = {(funcName##postFix##Registry), nullptr};
 
 #define SE_BIND_PROP_GET(funcName)         SE_BIND_PROP_GET_IMPL(funcName, )
 #define SE_BIND_FUNC_AS_PROP_GET(funcName) SE_BIND_PROP_GET_IMPL(funcName, _asGetter)
 
-#define SE_BIND_PROP_SET_IMPL(funcName, postFix)                                                              \
-    JSVM_Value funcName##postFix##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                            \
-        return jsbSetterWrapper(env, info, funcName, #funcName);                                              \
-    }                                                                                                         \
-    JSVM_CallbackStruct funcName##postFix##RegistryStruct = {(funcName##postFix##Registry),nullptr};
+#define SE_BIND_PROP_SET_IMPL(funcName, postFix)                                   \
+    JSVM_Value funcName##postFix##Registry(JSVM_Env env, JSVM_CallbackInfo info) { \
+        return jsbSetterWrapper(env, info, funcName, #funcName);                   \
+    }                                                                              \
+    JSVM_CallbackStruct funcName##postFix##RegistryStruct = {(funcName##postFix##Registry), nullptr};
 
 #define SE_BIND_PROP_SET(funcName)         SE_BIND_PROP_SET_IMPL(funcName, )
 #define SE_BIND_FUNC_AS_PROP_SET(funcName) SE_BIND_PROP_SET_IMPL(funcName, _asSetter)
 
-#define SE_DECLARE_FUNC(funcName)                                                                             \
-    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info);                                      \
-    extern JSVM_CallbackStruct funcName##RegistryStruct;                                                      
+#define SE_DECLARE_FUNC(funcName)                                        \
+    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info); \
+    extern JSVM_CallbackStruct funcName##RegistryStruct;
 
-#define SE_BIND_FUNC(funcName)                                                                          \
-    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                               \
-        return jsbFunctionWrapper(env, info, funcName, #funcName);                                      \
-    }                                                                                                   \
-    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry),nullptr};
+#define SE_BIND_FUNC(funcName)                                            \
+    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) { \
+        return jsbFunctionWrapper(env, info, funcName, #funcName);        \
+    }                                                                     \
+    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry), nullptr};
 
-#define SE_BIND_FUNC_FAST(funcName)                                                                      \
-    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                                \
-        JSVM_Status status;                                                                              \
-        JSVM_Value _this;                                                                                \
-        size_t argc = 15;                                                                                \
-        JSVM_Value args[15];                                                                             \
-        void *nativeThisObject = nullptr;                                                                \
-        NODE_API_CALL(status, env, OH_JSVM_GetCbInfo(env, info, &argc, args, &_this, NULL));             \
-        status = OH_JSVM_Unwrap(env, _this, &nativeThisObject);                                          \
-        auto *nativeObject = nativeThisObject != nullptr ? ((se::Object*)nativeThisObject)->getPrivateData() : nullptr; \
-        funcName(nativeObject);                                                                          \
-        return nullptr;                                                                                  \
-    }                                                                                                    \
-    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry),nullptr};
+#define SE_BIND_FUNC_FAST(funcName)                                                                                      \
+    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                                                \
+        JSVM_Status status;                                                                                              \
+        JSVM_Value _this;                                                                                                \
+        size_t argc = 15;                                                                                                \
+        JSVM_Value args[15];                                                                                             \
+        void *nativeThisObject = nullptr;                                                                                \
+        NODE_API_CALL(status, env, OH_JSVM_GetCbInfo(env, info, &argc, args, &_this, NULL));                             \
+        status = OH_JSVM_Unwrap(env, _this, &nativeThisObject);                                                          \
+        auto *nativeObject = nativeThisObject != nullptr ? ((se::Object *)nativeThisObject)->getPrivateData() : nullptr; \
+        funcName(nativeObject);                                                                                          \
+        return nullptr;                                                                                                  \
+    }                                                                                                                    \
+    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry), nullptr};
 
-#define SE_BIND_CTOR(funcName, cls, finalizeCb)                                                       \
-    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                             \
-        return jsbConstructorWrapper(env, info, funcName, _SE(finalizeCb), cls, #funcName);           \
-    }                                                                                                 \
-    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry),nullptr};
-
+#define SE_BIND_CTOR(funcName, cls, finalizeCb)                                             \
+    JSVM_Value funcName##Registry(JSVM_Env env, JSVM_CallbackInfo info) {                   \
+        return jsbConstructorWrapper(env, info, funcName, _SE(finalizeCb), cls, #funcName); \
+    }                                                                                       \
+    JSVM_CallbackStruct funcName##RegistryStruct = {(funcName##Registry), nullptr};
 
 #define SE_BIND_SUB_CLS_CTOR SE_BIND_CTOR
 
-#define SE_DECLARE_FINALIZE_FUNC(funcName)                                                            \
-    void funcName##RegistryStruct(JSVM_Env env, void *nativeObject, void * /*finalize_hint*/);        \
+#define SE_DECLARE_FINALIZE_FUNC(funcName) \
+    void funcName##RegistryStruct(JSVM_Env env, void *nativeObject, void * /*finalize_hint*/);
 
-#define SE_BIND_FINALIZE_FUNC(funcName)                                                               \
-    void funcName##RegistryStruct(JSVM_Env env, void *nativeObject, void *hint /*finalize_hint*/) {   \
-        if (nativeObject == nullptr) {                                                                \
-            return;                                                                                   \
-        }                                                                                             \
-        jsbFinalizeWrapper(nativeObject, funcName, #funcName);                                        \
+#define SE_BIND_FINALIZE_FUNC(funcName)                                                             \
+    void funcName##RegistryStruct(JSVM_Env env, void *nativeObject, void *hint /*finalize_hint*/) { \
+        if (nativeObject == nullptr) {                                                              \
+            return;                                                                                 \
+        }                                                                                           \
+        jsbFinalizeWrapper(nativeObject, funcName, #funcName);                                      \
     }
 
-#define _SE(name) &(name##RegistryStruct) 
+#define _SE(name) &(name##RegistryStruct)

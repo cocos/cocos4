@@ -45,6 +45,7 @@ public:
         return getMessage();
     }
     void printStackTrace();
+
 private:
     friend class PlayTask;
     int _exceptionId{0};

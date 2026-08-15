@@ -4,23 +4,23 @@
 
 #include <cstdint>
 #include <string>
+#include "AtlasAttachmentLoaderExtension.h"
 #include "mesh-type-define.h"
 #include "spine-model.h"
-#include "AtlasAttachmentLoaderExtension.h"
 
 namespace {
-    struct SpineEventInfo {
-        spine::TrackEntry *entry{nullptr};
-        spine::EventType eventType{spine::EventType::EventType_Start};
-        spine::Event *event{nullptr};
-    };
+struct SpineEventInfo {
+    spine::TrackEntry *entry{nullptr};
+    spine::EventType eventType{spine::EventType::EventType_Start};
+    spine::Event *event{nullptr};
+};
 
-    struct SlotCacheInfo {
-        bool isOwner{false};
-        spine::Attachment *attachment{nullptr};
-        AttachmentVertices *attachmentVertices{nullptr};
-    };
-}
+struct SlotCacheInfo {
+    bool isOwner{false};
+    spine::Attachment *attachment{nullptr};
+    AttachmentVertices *attachmentVertices{nullptr};
+};
+} // namespace
 enum DEBUG_SHAPE_TYPE {
     DEBUG_REGION = 0,
     DEBUG_MESH = 1
@@ -64,13 +64,13 @@ public:
 #endif
     spine::AnimationState *getAnimationState();
     void setMix(const spine::String &from, const spine::String &to, float duration);
-    inline void setListener(uint32_t listenerID) { _eventListenerID = listenerID;}
+    inline void setListener(uint32_t listenerID) { _eventListenerID = listenerID; }
     void setTrackEntryListener(uint32_t trackId, spine::TrackEntry *entry);
     void onAnimationStateEvent(spine::TrackEntry *entry, spine::EventType type, spine::Event *event);
     void onTrackEntryEvent(spine::TrackEntry *entry, spine::EventType type, spine::Event *event);
     inline spine::Vector<SpineDebugShape> &getDebugShapes() { return _debugShapes; }
     void resizeSlotRegion(const spine::String &slotName, uint32_t width, uint32_t height, bool createNew = false);
-    void setSlotTexture(const spine::String &slotName, const spine::String& textureUuid);
+    void setSlotTexture(const spine::String &slotName, const spine::String &textureUuid);
     void destroy();
     bool isCache{false};
     float dtRate{1.0F};
@@ -80,6 +80,7 @@ public:
     spine::Vector<SpineEventInfo> trackEvents;
     // Used internal for dispatch event
     void dispatchEvents();
+
 private:
     void collectMeshData();
     void releaseSlotCacheInfo(SlotCacheInfo &info);
@@ -102,5 +103,5 @@ private:
      * The slot's attachment may be modified when calling AnimationState::apply(), which can cause custom attachments to malfunction. 
      * To prevent this, we need to cache the original attachment.
      */
-    spine::HashMap<spine::Slot*, SlotCacheInfo> _slotTextureSet{};
+    spine::HashMap<spine::Slot *, SlotCacheInfo> _slotTextureSet{};
 };

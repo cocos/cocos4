@@ -38,17 +38,17 @@ static napi_value init(napi_env env, napi_value exports) {
  * Napi Module define
  */
 static napi_module cocos2dModule = {
-    .nm_version       = 1,
-    .nm_flags         = 0,
-    .nm_filename      = nullptr,
+    .nm_version = 1,
+    .nm_flags = 0,
+    .nm_filename = nullptr,
     .nm_register_func = init, // called by ACE XComponent
-    .nm_modname       = kLibname,
-    .nm_priv          = ((void*)0),
-    .reserved         = {0},
+    .nm_modname = kLibname,
+    .nm_priv = ((void*)0),
+    .reserved = {0},
 };
 /*
  * Module register function
  */
-extern "C" __attribute__((visibility ("default"))) __attribute__((constructor)) void RegisterModule(void) {
+extern "C" __attribute__((visibility("default"))) __attribute__((constructor)) void RegisterModule(void) {
     napi_module_register(&cocos2dModule);
 }

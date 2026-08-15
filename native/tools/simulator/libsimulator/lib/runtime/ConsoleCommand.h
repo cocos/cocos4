@@ -24,25 +24,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ****************************************************************************/
 
-#ifndef  _CONSOLE_COMMAND__H_
-#define  _CONSOLE_COMMAND__H_
+#ifndef _CONSOLE_COMMAND__H_
+#define _CONSOLE_COMMAND__H_
 
 #include "FileServer.h"
 
-class ConsoleCommand
-{
-	static ConsoleCommand *s_sharedConsoleCommand;
+class ConsoleCommand {
+    static ConsoleCommand* s_sharedConsoleCommand;
 
 public:
-	static ConsoleCommand* getShareInstance();
-	static void purge();
+    static ConsoleCommand* getShareInstance();
+    static void purge();
 
     void init();
-    void onSendCommand(int fd, const std::string &args);
+    void onSendCommand(int fd, const std::string& args);
+
 private:
-	~ConsoleCommand();
+    ~ConsoleCommand();
     FileServer* _fileserver;
 };
 
 #endif // _CONSOLE_COMMAND__H_
-

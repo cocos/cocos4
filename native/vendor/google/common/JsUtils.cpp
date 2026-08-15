@@ -48,4 +48,4 @@ se::Value callJSfunc(se::Object* obj, const char* jsFunctionName) { // NOLINT(re
     se::AutoHandleScope scope;
     return invokeJsCallback(obj, jsFunctionName, se::ValueArray());
 }
-}
+} // namespace cc

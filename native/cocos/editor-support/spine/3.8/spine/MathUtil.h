@@ -30,9 +30,9 @@
 #ifndef Spine_MathUtil_h
 #define Spine_MathUtil_h
 
-#include <spine/SpineObject.h>
-#include <spine/RTTI.h>
 #include <math.h>
+#include <spine/RTTI.h>
+#include <spine/SpineObject.h>
 #include <cstdint>
 
 namespace spine {
@@ -128,7 +128,6 @@ struct SP_API Interpolation {
 
     virtual ~Interpolation(){};
 };
-
 
 struct SP_API PowInterpolation : public Interpolation {
     RTTI_DECL

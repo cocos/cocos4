@@ -34,66 +34,66 @@
 using namespace spine;
 
 SlotData::SlotData(int index, const String &name, BoneData &boneData) : _index(index),
-																		_name(name),
-																		_boneData(boneData),
-																		_color(1, 1, 1, 1),
-																		_darkColor(0, 0, 0, 0),
-																		_hasDarkColor(false),
-																		_attachmentName(),
-																		_blendMode(BlendMode_Normal),
-																		_visible(true) {
-	assert(_index >= 0);
-	assert(_name.length() > 0);
+                                                                        _name(name),
+                                                                        _boneData(boneData),
+                                                                        _color(1, 1, 1, 1),
+                                                                        _darkColor(0, 0, 0, 0),
+                                                                        _hasDarkColor(false),
+                                                                        _attachmentName(),
+                                                                        _blendMode(BlendMode_Normal),
+                                                                        _visible(true) {
+    assert(_index >= 0);
+    assert(_name.length() > 0);
 }
 
 int SlotData::getIndex() {
-	return _index;
+    return _index;
 }
 
 const String &SlotData::getName() {
-	return _name;
+    return _name;
 }
 
 BoneData &SlotData::getBoneData() {
-	return _boneData;
+    return _boneData;
 }
 
 Color &SlotData::getColor() {
-	return _color;
+    return _color;
 }
 
 Color &SlotData::getDarkColor() {
-	return _darkColor;
+    return _darkColor;
 }
 
 bool SlotData::hasDarkColor() {
-	return _hasDarkColor;
+    return _hasDarkColor;
 }
 
 void SlotData::setHasDarkColor(bool inValue) {
-	_hasDarkColor = inValue;
+    _hasDarkColor = inValue;
 }
 
 const String &SlotData::getAttachmentName() {
-	return _attachmentName;
+    return _attachmentName;
 }
 
 void SlotData::setAttachmentName(const String &inValue) {
-	_attachmentName = inValue;
+    _attachmentName = inValue;
 }
 
 BlendMode SlotData::getBlendMode() {
-	return _blendMode;
+    return _blendMode;
 }
 
 void SlotData::setBlendMode(BlendMode inValue) {
-	_blendMode = inValue;
+    _blendMode = inValue;
 }
 
 bool SlotData::isVisible() {
-	return _visible;
+    return _visible;
 }
 
 void SlotData::setVisible(bool inValue) {
-	this->_visible = inValue;
+    this->_visible = inValue;
 }

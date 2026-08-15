@@ -23,17 +23,16 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_PROTOCOL_H_
 #define __PLAYER_PROTOCOL_H_
 
 #include "PlayerMacros.h"
 #include "PlayerSettings.h"
 
-#include "PlayerFileDialogServiceProtocol.h"
-#include "PlayerMessageBoxServiceProtocol.h"
-#include "PlayerMenuServiceProtocol.h"
 #include "PlayerEditBoxServiceProtocol.h"
+#include "PlayerFileDialogServiceProtocol.h"
+#include "PlayerMenuServiceProtocol.h"
+#include "PlayerMessageBoxServiceProtocol.h"
 #include "PlayerTaskServiceProtocol.h"
 
 #include "ProjectConfig/ProjectConfig.h"
@@ -41,8 +40,7 @@
 
 PLAYER_NS_BEGIN
 
-class CC_LIBSIM_DLL PlayerProtocol
-{
+class CC_LIBSIM_DLL PlayerProtocol {
 public:
     virtual ~PlayerProtocol();
 
@@ -55,9 +53,9 @@ public:
     virtual PlayerFileDialogServiceProtocol *getFileDialogService() = 0; // implemented in platform related source files
     virtual PlayerMessageBoxServiceProtocol *getMessageBoxService() = 0;
     virtual PlayerMenuServiceProtocol *getMenuService() = 0;
-//    virtual PlayerEditBoxServiceProtocol *getEditBoxService() = 0;
+    //    virtual PlayerEditBoxServiceProtocol *getEditBoxService() = 0;
     virtual PlayerTaskServiceProtocol *getTaskService() = 0;
-    
+
 protected:
     PlayerProtocol(); // avoid create instance from outside
 

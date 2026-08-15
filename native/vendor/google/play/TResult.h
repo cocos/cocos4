@@ -32,9 +32,10 @@ public:
     bool isAuthenticated() const {
         return _isAuthenticated;
     }
+
 private:
     friend class PlayTask;
-    bool _isAuthenticated {false};
+    bool _isAuthenticated{false};
 };
 
 class RecallAccess : public RefCounted {
@@ -48,11 +49,12 @@ public:
     }
 
     bool equals(const RecallAccess& other) {
-        if(&other == this) {
+        if (&other == this) {
             return true;
         }
         return _sessionId == other._sessionId;
     }
+
 private:
     friend class PlayTask;
     int _hashCode{0};
@@ -61,7 +63,6 @@ private:
 
 class Achievement {
 public:
-
     int getCurrentSteps() const {
         return _currentSteps;
     }
@@ -101,6 +102,7 @@ public:
     const std::string& getUnlockedImageUrl() const {
         return _unlockedImageUrl;
     }
+
 private:
     friend class PlayTask;
     static const char TYPE_INCREMENTAL{1};
@@ -126,7 +128,7 @@ public:
     }
 
     Achievement* createAchievement() {
-        auto* achievement = new Achievement(); 
+        auto* achievement = new Achievement();
         _achievements.emplace_back(achievement);
         return achievement;
     }
@@ -136,7 +138,7 @@ public:
     }
 
     const Achievement* get(int i) const {
-        if(i >= 0 && i < _achievements.size()) {
+        if (i >= 0 && i < _achievements.size()) {
             return _achievements[i];
         }
         return nullptr;
@@ -151,12 +153,13 @@ public:
     }
 
     void release() {
-        for(auto* achievement : _achievements) {
+        for (auto* achievement : _achievements) {
             delete achievement;
         }
         _achievements.clear();
         _isClosed = true;
     }
+
 private:
     bool _isClosed{false};
     std::vector<Achievement*> _achievements;
@@ -164,16 +167,17 @@ private:
 
 class AnnotatedData : public RefCounted {
 public:
-    bool isStale() const  {
+    bool isStale() const {
         return _isStale;
     }
     const AchievementBuffer* get() const {
         return &_achievementBuffer;
     }
+
 private:
     friend class PlayTask;
     bool _isStale{false};
     AchievementBuffer _achievementBuffer;
 };
 
-}
+} // namespace cc

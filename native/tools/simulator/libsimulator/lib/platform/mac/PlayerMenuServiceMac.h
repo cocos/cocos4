@@ -28,10 +28,10 @@
 
 #include <unordered_map>
 
+#import <AppKit/AppKit.h>
 #include "PlayerMacros.h"
 #include "PlayerMenuServiceProtocol.h"
 #include "cocos/base/RefVector.h"
-#import <AppKit/AppKit.h>
 
 //
 // Menu item Helper

@@ -54,7 +54,6 @@ namespace internal {
 #undef DEPRECATED_PROTOBUF_FIELD
 #define PROTOBUF_DEPRECATED
 
-
 // Constants for special floating point values.
 LIBPROTOBUF_EXPORT double Infinity();
 LIBPROTOBUF_EXPORT double NaN();
@@ -70,8 +69,8 @@ LIBPROTOBUF_EXPORT extern const ::std::string kEmptyString;
 // get the declaration from this file.
 LIBPROTOBUF_EXPORT int StringSpaceUsedExcludingSelf(const string& str);
 
-}  // namespace internal
-}  // namespace protobuf
+} // namespace internal
+} // namespace protobuf
 
-}  // namespace google
-#endif  // GOOGLE_PROTOBUF_GENERATED_MESSAGE_UTIL_H__
+} // namespace google
+#endif // GOOGLE_PROTOBUF_GENERATED_MESSAGE_UTIL_H__

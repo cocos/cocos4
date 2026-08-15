@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_FILE_DIALOG_SERVICE_PROTOCOL_H_
 #define __PLAYER_FILE_DIALOG_SERVICE_PROTOCOL_H_
 
@@ -35,8 +34,7 @@
 
 PLAYER_NS_BEGIN
 
-class PlayerFileDialogServiceProtocol : public PlayerServiceProtocol
-{
+class PlayerFileDialogServiceProtocol : public PlayerServiceProtocol {
 public:
     /**
      * extensions = "Lua Script File|*.lua;JSON File|*.json";

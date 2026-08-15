@@ -30,40 +30,40 @@
 #ifndef Spine_Object_h
 #define Spine_Object_h
 
-#include <new>
 #include <stddef.h>
+#include <new>
 
 #include <spine/dll.h>
 
 namespace spine {
-	class String;
+class String;
 
-	class SP_API SpineObject {
-	public:
-		void *operator new(size_t sz);
+class SP_API SpineObject {
+public:
+    void *operator new(size_t sz);
 
-		void *operator new(size_t sz, const char *file, int line);
+    void *operator new(size_t sz, const char *file, int line);
 
-		void *operator new(size_t sz, void *ptr);
+    void *operator new(size_t sz, void *ptr);
 
-		void operator delete(void *p, const char *file, int line);
+    void operator delete(void *p, const char *file, int line);
 
-		void operator delete(void *p, void *mem);
+    void operator delete(void *p, void *mem);
 
-		void operator delete(void *p);
+    void operator delete(void *p);
 
-		virtual ~SpineObject();
-	};
-}
+    virtual ~SpineObject();
+};
+} // namespace spine
 
 #ifdef __EMSCRIPTEN__
     #define __SPINE_FILE__ ""
     #define __SPINE_LINE__ __LINE__
-    #define spine_new new
+    #define spine_new      new
 #else
     #define __SPINE_FILE__ __FILE__
     #define __SPINE_LINE__ __LINE__
-    #define spine_new new (__FILE__, __LINE__)
+    #define spine_new      new (__FILE__, __LINE__)
 #endif
 
 #endif

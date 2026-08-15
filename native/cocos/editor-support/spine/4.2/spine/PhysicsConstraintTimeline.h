@@ -36,253 +36,254 @@
 
 namespace spine {
 
-	class SP_API PhysicsConstraintTimeline : public CurveTimeline1 {
-		friend class SkeletonBinary;
+class SP_API PhysicsConstraintTimeline : public CurveTimeline1 {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
-
-	RTTI_DECL
-
-	public:
-		explicit PhysicsConstraintTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex, Property property);
-
-		virtual void
-		apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-			  MixDirection direction);
-
-		int getPhysicsConstraintIndex() { return _constraintIndex; }
-
-		void setPhysicsConstraintIndex(int inValue) { _constraintIndex = inValue; }
-
-    protected:
-        virtual float setup(PhysicsConstraint *constraint) = 0;
-        virtual float get(PhysicsConstraint *constraint) = 0;
-        virtual void set(PhysicsConstraint *constraint, float value) = 0;
-        virtual bool global(PhysicsConstraintData &constraintData) = 0;
-
-	private:
-		int _constraintIndex;
-	};
-
-    class SP_API PhysicsConstraintInertiaTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
-
-        friend class SkeletonJson;
+    friend class SkeletonJson;
 
     RTTI_DECL
 
-    public:
-        explicit PhysicsConstraintInertiaTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintInertia) {};
+public:
+    explicit PhysicsConstraintTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex, Property property);
 
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getInertia();
-        }
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
 
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_inertia;
-        }
+    int getPhysicsConstraintIndex() { return _constraintIndex; }
 
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_inertia = value;
-        }
+    void setPhysicsConstraintIndex(int inValue) { _constraintIndex = inValue; }
 
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isInertiaGlobal();
-        }
-    };
+protected:
+    virtual float setup(PhysicsConstraint *constraint) = 0;
+    virtual float get(PhysicsConstraint *constraint) = 0;
+    virtual void set(PhysicsConstraint *constraint, float value) = 0;
+    virtual bool global(PhysicsConstraintData &constraintData) = 0;
 
-    class SP_API PhysicsConstraintStrengthTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
+private:
+    int _constraintIndex;
+};
 
-        friend class SkeletonJson;
+class SP_API PhysicsConstraintInertiaTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
 
-    RTTI_DECL
-
-    public:
-        explicit PhysicsConstraintStrengthTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintStrength) {};
-
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getStrength();
-        }
-
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_strength;
-        }
-
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_strength = value;
-        }
-
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isStrengthGlobal();
-        }
-    };
-
-    class SP_API PhysicsConstraintDampingTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
-
-        friend class SkeletonJson;
+    friend class SkeletonJson;
 
     RTTI_DECL
 
-    public:
-        explicit PhysicsConstraintDampingTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintDamping) {};
+public:
+    explicit PhysicsConstraintInertiaTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintInertia){};
 
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getDamping();
-        }
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getInertia();
+    }
 
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_damping;
-        }
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_inertia;
+    }
 
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_damping = value;
-        }
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_inertia = value;
+    }
 
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isDampingGlobal();
-        }
-    };
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isInertiaGlobal();
+    }
+};
 
-    class SP_API PhysicsConstraintMassTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
+class SP_API PhysicsConstraintStrengthTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
 
-        friend class SkeletonJson;
-
-    RTTI_DECL
-
-    public:
-        explicit PhysicsConstraintMassTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintMass) {};
-
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return 1 / constraint->_data.getMassInverse();
-        }
-
-        float get(PhysicsConstraint *constraint) {
-            return 1 / constraint->_massInverse;
-        }
-
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_massInverse = 1 / value;
-        }
-
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isMassGlobal();
-        }
-    };
-
-    class SP_API PhysicsConstraintWindTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
-
-        friend class SkeletonJson;
+    friend class SkeletonJson;
 
     RTTI_DECL
 
-    public:
-        explicit PhysicsConstraintWindTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintWind) {};
+public:
+    explicit PhysicsConstraintStrengthTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintStrength){};
 
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getWind();
-        }
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getStrength();
+    }
 
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_wind;
-        }
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_strength;
+    }
 
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_wind = value;
-        }
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_strength = value;
+    }
 
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isWindGlobal();
-        }
-    };
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isStrengthGlobal();
+    }
+};
 
-    class SP_API PhysicsConstraintGravityTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
+class SP_API PhysicsConstraintDampingTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
 
-        friend class SkeletonJson;
-
-    RTTI_DECL
-
-    public:
-        explicit PhysicsConstraintGravityTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintGravity) {};
-
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getGravity();
-        }
-
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_gravity;
-        }
-
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_gravity = value;
-        }
-
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isGravityGlobal();
-        }
-    };
-
-    class SP_API PhysicsConstraintMixTimeline : public PhysicsConstraintTimeline {
-        friend class SkeletonBinary;
-
-        friend class SkeletonJson;
+    friend class SkeletonJson;
 
     RTTI_DECL
 
-    public:
-        explicit PhysicsConstraintMixTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex): PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintMix) {};
+public:
+    explicit PhysicsConstraintDampingTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintDamping){};
 
-    protected:
-        float setup(PhysicsConstraint *constraint) {
-            return constraint->_data.getMix();
-        }
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getDamping();
+    }
 
-        float get(PhysicsConstraint *constraint) {
-            return constraint->_mix;
-        }
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_damping;
+    }
 
-        void set(PhysicsConstraint *constraint, float value) {
-            constraint->_mix = value;
-        }
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_damping = value;
+    }
 
-        bool global(PhysicsConstraintData &constraintData) {
-            return constraintData.isMixGlobal();
-        }
-    };
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isDampingGlobal();
+    }
+};
 
-    class SP_API PhysicsConstraintResetTimeline : public Timeline {
-        friend class SkeletonBinary;
+class SP_API PhysicsConstraintMassTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
 
-        friend class SkeletonJson;
+    friend class SkeletonJson;
 
     RTTI_DECL
 
-    public:
-        explicit PhysicsConstraintResetTimeline(size_t frameCount, int physicsConstraintIndex): Timeline(frameCount, 1), _constraintIndex(physicsConstraintIndex) {
-            PropertyId ids[] = {((PropertyId)Property_PhysicsConstraintReset) << 32};
-            setPropertyIds(ids, 1);
-        }
+public:
+    explicit PhysicsConstraintMassTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintMass){};
 
-        virtual void
-        apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
-              MixDirection direction);
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return 1 / constraint->_data.getMassInverse();
+    }
 
-        void setFrame(int frame, float time) {
-            _frames[frame] = time;
-        }
-    private:
-        int _constraintIndex;
-    };
-}
+    float get(PhysicsConstraint *constraint) {
+        return 1 / constraint->_massInverse;
+    }
+
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_massInverse = 1 / value;
+    }
+
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isMassGlobal();
+    }
+};
+
+class SP_API PhysicsConstraintWindTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
+
+    friend class SkeletonJson;
+
+    RTTI_DECL
+
+public:
+    explicit PhysicsConstraintWindTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintWind){};
+
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getWind();
+    }
+
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_wind;
+    }
+
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_wind = value;
+    }
+
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isWindGlobal();
+    }
+};
+
+class SP_API PhysicsConstraintGravityTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
+
+    friend class SkeletonJson;
+
+    RTTI_DECL
+
+public:
+    explicit PhysicsConstraintGravityTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintGravity){};
+
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getGravity();
+    }
+
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_gravity;
+    }
+
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_gravity = value;
+    }
+
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isGravityGlobal();
+    }
+};
+
+class SP_API PhysicsConstraintMixTimeline : public PhysicsConstraintTimeline {
+    friend class SkeletonBinary;
+
+    friend class SkeletonJson;
+
+    RTTI_DECL
+
+public:
+    explicit PhysicsConstraintMixTimeline(size_t frameCount, size_t bezierCount, int physicsConstraintIndex) : PhysicsConstraintTimeline(frameCount, bezierCount, physicsConstraintIndex, Property_PhysicsConstraintMix){};
+
+protected:
+    float setup(PhysicsConstraint *constraint) {
+        return constraint->_data.getMix();
+    }
+
+    float get(PhysicsConstraint *constraint) {
+        return constraint->_mix;
+    }
+
+    void set(PhysicsConstraint *constraint, float value) {
+        constraint->_mix = value;
+    }
+
+    bool global(PhysicsConstraintData &constraintData) {
+        return constraintData.isMixGlobal();
+    }
+};
+
+class SP_API PhysicsConstraintResetTimeline : public Timeline {
+    friend class SkeletonBinary;
+
+    friend class SkeletonJson;
+
+    RTTI_DECL
+
+public:
+    explicit PhysicsConstraintResetTimeline(size_t frameCount, int physicsConstraintIndex) : Timeline(frameCount, 1), _constraintIndex(physicsConstraintIndex) {
+        PropertyId ids[] = {((PropertyId)Property_PhysicsConstraintReset) << 32};
+        setPropertyIds(ids, 1);
+    }
+
+    virtual void
+    apply(Skeleton &skeleton, float lastTime, float time, Vector<Event *> *pEvents, float alpha, MixBlend blend,
+          MixDirection direction);
+
+    void setFrame(int frame, float time) {
+        _frames[frame] = time;
+    }
+
+private:
+    int _constraintIndex;
+};
+} // namespace spine
 
 #endif /* Spine_PhysicsConstraintTimeline_h */

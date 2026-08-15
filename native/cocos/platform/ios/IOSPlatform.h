@@ -44,9 +44,9 @@ public:
      * @brief Start base platform initialization.
      */
     int32_t run(int argc, const char **argv) override;
-    
+
     void requestExit();
-    
+
     void exit() override;
     /**
      * @brief Implement the main logic of the base platform.

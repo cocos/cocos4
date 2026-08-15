@@ -30,99 +30,99 @@
 #ifndef Spine_TransformConstraintData_h
 #define Spine_TransformConstraintData_h
 
-#include <spine/Vector.h>
+#include <spine/ConstraintData.h>
 #include <spine/SpineObject.h>
 #include <spine/SpineString.h>
-#include <spine/ConstraintData.h>
+#include <spine/Vector.h>
 
 namespace spine {
-	class BoneData;
+class BoneData;
 
-	class SP_API TransformConstraintData : public ConstraintData {
-		friend class SkeletonBinary;
+class SP_API TransformConstraintData : public ConstraintData {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-		friend class TransformConstraint;
+    friend class TransformConstraint;
 
-		friend class Skeleton;
+    friend class Skeleton;
 
-		friend class TransformConstraintTimeline;
+    friend class TransformConstraintTimeline;
 
-	public:
-		RTTI_DECL
+public:
+    RTTI_DECL
 
-		explicit TransformConstraintData(const String &name);
+    explicit TransformConstraintData(const String &name);
 
-		Vector<BoneData *> &getBones();
+    Vector<BoneData *> &getBones();
 
-		BoneData *getTarget();
+    BoneData *getTarget();
 
-        void setTarget(BoneData *target);
+    void setTarget(BoneData *target);
 
-		float getMixRotate();
+    float getMixRotate();
 
-        void setMixRotate(float mixRotate);
+    void setMixRotate(float mixRotate);
 
-		float getMixX();
+    float getMixX();
 
-        void setMixX(float mixX);
+    void setMixX(float mixX);
 
-		float getMixY();
+    float getMixY();
 
-        void setMixY(float mixY);
+    void setMixY(float mixY);
 
-		float getMixScaleX();
+    float getMixScaleX();
 
-        void setMixScaleX(float mixScaleX);
+    void setMixScaleX(float mixScaleX);
 
-		float getMixScaleY();
+    float getMixScaleY();
 
-        void setMixScaleY(float mixScaleY);
+    void setMixScaleY(float mixScaleY);
 
-		float getMixShearY();
+    float getMixShearY();
 
-        void setMixShearY(float mixShearY);
+    void setMixShearY(float mixShearY);
 
-		float getOffsetRotation();
+    float getOffsetRotation();
 
-        void setOffsetRotation(float offsetRotation);
+    void setOffsetRotation(float offsetRotation);
 
-		float getOffsetX();
+    float getOffsetX();
 
-        void setOffsetX(float offsetX);
+    void setOffsetX(float offsetX);
 
-		float getOffsetY();
+    float getOffsetY();
 
-        void setOffsetY(float offsetY);
+    void setOffsetY(float offsetY);
 
-		float getOffsetScaleX();
+    float getOffsetScaleX();
 
-        void setOffsetScaleX(float offsetScaleX);
+    void setOffsetScaleX(float offsetScaleX);
 
-		float getOffsetScaleY();
+    float getOffsetScaleY();
 
-        void setOffsetScaleY(float offsetScaleY);
+    void setOffsetScaleY(float offsetScaleY);
 
-		float getOffsetShearY();
+    float getOffsetShearY();
 
-        void setOffsetShearY(float offsetShearY);
+    void setOffsetShearY(float offsetShearY);
 
-		bool isRelative();
+    bool isRelative();
 
-        void setRelative(bool isRelative);
+    void setRelative(bool isRelative);
 
-		bool isLocal();
+    bool isLocal();
 
-        void setLocal(bool isLocal);
+    void setLocal(bool isLocal);
 
-	private:
-		Vector<BoneData *> _bones;
-		BoneData *_target;
-		float _mixRotate, _mixX, _mixY, _mixScaleX, _mixScaleY, _mixShearY;
-		float _offsetRotation, _offsetX, _offsetY, _offsetScaleX, _offsetScaleY, _offsetShearY;
-		bool _relative, _local;
-	};
-}
+private:
+    Vector<BoneData *> _bones;
+    BoneData *_target;
+    float _mixRotate, _mixX, _mixY, _mixScaleX, _mixScaleY, _mixShearY;
+    float _offsetRotation, _offsetX, _offsetY, _offsetScaleX, _offsetScaleY, _offsetShearY;
+    bool _relative, _local;
+};
+} // namespace spine
 
 #endif /* Spine_TransformConstraintData_h */

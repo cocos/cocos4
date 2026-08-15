@@ -23,34 +23,30 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #include <string.h>
 
-#include "cocos/base/UTF8.h"
-#include "cocos/base/Log.h"
-#include "stdafx.h"
-#include <Windowsx.h>
-#include <Shlobj.h>
 #include <Commdlg.h>
+#include <Shlobj.h>
+#include <Windowsx.h>
 #include <algorithm>
+#include "cocos/base/Log.h"
+#include "cocos/base/UTF8.h"
+#include "stdafx.h"
 
-#include "PlayerUtils.h"
 #include "PlayerFileDialogServiceWin.h"
+#include "PlayerUtils.h"
 
 PLAYER_NS_BEGIN
 
 PlayerFileDialogServiceWin::PlayerFileDialogServiceWin(HWND hwnd)
-: _hwnd(hwnd)
-{
+: _hwnd(hwnd) {
 }
 
 std::string PlayerFileDialogServiceWin::openFile(const std::string &title,
                                                  const std::string &directory,
-                                                 const std::string &extensions) const
-{
+                                                 const std::string &extensions) const {
     vector<std::string> result = openMultipleInternal(title, directory, extensions, false);
-    if (result.size())
-    {
+    if (result.size()) {
         return result.at(0);
     }
     return std::string();
@@ -58,23 +54,20 @@ std::string PlayerFileDialogServiceWin::openFile(const std::string &title,
 
 std::vector<std::string> PlayerFileDialogServiceWin::openMultiple(const std::string &title,
                                                                   const std::string &directory,
-                                                                  const std::string &extensions) const
-{
+                                                                  const std::string &extensions) const {
     return openMultipleInternal(title, directory, extensions, true);
 }
 
 std::string PlayerFileDialogServiceWin::saveFile(const std::string &title,
-                                                 const std::string &path) const
-{
+                                                 const std::string &path) const {
     std::u16string u16title;
     cc::StringUtils::UTF8ToUTF16(title, u16title);
 
     WCHAR buff[MAX_PATH + 1] = {0};
-    if (path.length() > 0)
-    {
+    if (path.length() > 0) {
         std::u16string u16filename;
         cc::StringUtils::UTF8ToUTF16(path, u16filename);
-        wcscpy_s(buff, (WCHAR*)u16filename.c_str());
+        wcscpy_s(buff, (WCHAR *)u16filename.c_str());
     }
 
     OPENFILENAME ofn = {0};
@@ -87,26 +80,22 @@ std::string PlayerFileDialogServiceWin::saveFile(const std::string &title,
     ofn.nMaxFile = MAX_PATH;
 
     std::string result;
-    if (!GetSaveFileName(&ofn))
-    {
+    if (!GetSaveFileName(&ofn)) {
         // user cancel dialog, GetSaveFileName() will return FALSE
         DWORD err = CommDlgExtendedError();
-        if (err)
-        {
+        if (err) {
             CC_LOG_DEBUG("PlayerFileDialogServiceWin::saveFile() - failed, title (%s),  error code = %u", title.c_str(), err);
         }
         return result;
     }
 
-    cc::StringUtils::UTF16ToUTF8((char16_t*)buff, result);
+    cc::StringUtils::UTF16ToUTF8((char16_t *)buff, result);
     return result;
 }
 
 // for openDirectory
-int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
-{
-    if (uMsg == BFFM_INITIALIZED && lpData)
-    {
+int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
+    if (uMsg == BFFM_INITIALIZED && lpData) {
         LPCTSTR path = (LPCTSTR)lpData;
         SendMessage(hwnd, BFFM_SETSELECTION, true, (LPARAM)path);
     }
@@ -114,20 +103,16 @@ int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lp
 }
 
 std::string PlayerFileDialogServiceWin::openDirectory(const std::string &title,
-                                                      const std::string &directory) const
-{
+                                                      const std::string &directory) const {
     std::u16string u16title;
     cc::StringUtils::UTF8ToUTF16(title, u16title);
 
     WCHAR basedir[MAX_PATH + 1];
-    if (directory.length())
-    {
+    if (directory.length()) {
         std::u16string u16directory;
         cc::StringUtils::UTF8ToUTF16(directory, u16directory);
-        wcscpy_s(basedir, (WCHAR*)u16directory.c_str());
-    }
-    else
-    {
+        wcscpy_s(basedir, (WCHAR *)u16directory.c_str());
+    } else {
         GetCurrentDirectory(MAX_PATH, (LPSTR)basedir);
     }
 
@@ -141,24 +126,19 @@ std::string PlayerFileDialogServiceWin::openDirectory(const std::string &title,
     bi.lpfn = BrowseFolderCallback;
 
     PIDLIST_ABSOLUTE pid = SHBrowseForFolder(&bi);
-    if (pid)
-    {
+    if (pid) {
         SHGetPathFromIDList(pid, (LPSTR)buff);
         std::string result;
-        cc::StringUtils::UTF16ToUTF8((char16_t*)buff, result);
+        cc::StringUtils::UTF16ToUTF8((char16_t *)buff, result);
         return result;
-    }
-    else
-    {
+    } else {
         return std::string("");
     }
 }
 
-LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions) const
-{
+LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions) const {
     static WCHAR *defaultExtensions = L"All Files (*.*)\0*.*\0";
-    if (extensions.length() == 0)
-    {
+    if (extensions.length() == 0) {
         WCHAR *buff = new WCHAR[wcslen(defaultExtensions) + 1];
         wcscpy(buff, defaultExtensions);
         return (LPSTR)buff;
@@ -168,15 +148,15 @@ LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions
     // "Lua Script File|*.lua;JSON File|*.json"
     // to
     // "Lua Script File (*.lua)\0*.lua\0JSON File (*.json)\0*.json\0";
-    // 
+    //
     // 2.
     // "Lua Script File|*.lua;Cocos Studio File|*.csd,*.csb"
     // to
     // "Lua Script File (*.lua)\0*.lua\0Cocos Studio File (*.csd;*.csb")\0*.csd;*.csb"\0";
     std::u16string u16extensions;
-    std::u16string split1((char16_t*)L";");
-    std::u16string split2((char16_t*)L"|");
-    std::u16string split3((char16_t*)L",");
+    std::u16string split1((char16_t *)L";");
+    std::u16string split2((char16_t *)L"|");
+    std::u16string split3((char16_t *)L",");
     std::string extensionsArg(extensions);
     cc::StringUtils::UTF8ToUTF16(extensions, u16extensions);
     vector<std::u16string> pairs = splitString(u16extensions, split1);
@@ -185,16 +165,12 @@ LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions
     WCHAR *buff = new WCHAR[buffsize];
     memset(buff, 0, sizeof(WCHAR) * buffsize);
     size_t offset = 0;
-    for (auto it = pairs.begin(); it != pairs.end(); ++it)
-    {
+    for (auto it = pairs.begin(); it != pairs.end(); ++it) {
         vector<std::u16string> p = splitString(*it, split2);
         std::u16string descr, ext;
-        if (p.size() < 2)
-        {
+        if (p.size() < 2) {
             descr = ext = *it;
-        }
-        else
-        {
+        } else {
             descr = p.at(0);
             ext = p.at(1);
         }
@@ -202,12 +178,12 @@ LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions
         // *.csd,*.csb -> *.csd;*.csb
         std::replace(ext.begin(), ext.end(), ',', ';');
 
-        wcscat(buff + offset, (WCHAR*)descr.c_str());
+        wcscat(buff + offset, (WCHAR *)descr.c_str());
         wcscat(buff + offset, L" (");
-        wcscat(buff + offset, (WCHAR*)ext.c_str());
+        wcscat(buff + offset, (WCHAR *)ext.c_str());
         wcscat(buff + offset, L")");
         offset += descr.length() + ext.length() + 4;
-        wcscat(buff + offset, (WCHAR*)ext.c_str());
+        wcscat(buff + offset, (WCHAR *)ext.c_str());
         offset += ext.length() + 1;
     }
 
@@ -217,20 +193,16 @@ LPTSTR PlayerFileDialogServiceWin::parseExtensions(const std::string &extensions
 std::vector<std::string> PlayerFileDialogServiceWin::openMultipleInternal(const std::string &title,
                                                                           const std::string &directory,
                                                                           const std::string &extensions,
-                                                                          bool isMulti) const
-{
+                                                                          bool isMulti) const {
     std::u16string u16title;
     cc::StringUtils::UTF8ToUTF16(title, u16title);
 
     WCHAR basedir[MAX_PATH + 1];
-    if (directory.length())
-    {
+    if (directory.length()) {
         std::u16string u16directory;
         cc::StringUtils::UTF8ToUTF16(directory, u16directory);
-        wcscpy_s(basedir, (WCHAR*)u16directory.c_str());
-    }
-    else
-    {
+        wcscpy_s(basedir, (WCHAR *)u16directory.c_str());
+    } else {
         GetCurrentDirectory(MAX_PATH, (LPSTR)basedir);
     }
 
@@ -253,47 +225,37 @@ std::vector<std::string> PlayerFileDialogServiceWin::openMultipleInternal(const 
     vector<std::string> result;
     BOOL ret = GetOpenFileName(&ofn);
     delete[] ofn.lpstrFilter;
-    if (!ret)
-    {
+    if (!ret) {
         // user cancel dialog, GetOpenFileName() will return FALSE
         DWORD err = CommDlgExtendedError();
-        if (err)
-        {
+        if (err) {
             CC_LOG_DEBUG("PlayerFileDialogServiceWin::openMultipleInternal() - failed, title (%s),  error code = %u", title.c_str(), err);
         }
         delete[] buff;
         return result;
     }
 
-    if (isMulti)
-    {
+    if (isMulti) {
         WORD offset = 0;
         std::string path;
-        while (buff[offset] != '\0')
-        {
+        while (buff[offset] != '\0') {
             std::string filename;
-            std::u16string u16filename((char16_t*)(buff + offset));
+            std::u16string u16filename((char16_t *)(buff + offset));
             cc::StringUtils::UTF16ToUTF8(u16filename, filename);
 
-            if (offset == 0)
-            {
+            if (offset == 0) {
                 path = filename;
-                if (path[path.length() - 1] != '\\')
-                {
+                if (path[path.length() - 1] != '\\') {
                     path.append("\\");
                 }
-            }
-            else
-            {
+            } else {
                 result.push_back(path + filename);
             }
             offset += u16filename.length() + 1;
         }
-    }
-    else
-    {
+    } else {
         std::string path;
-        cc::StringUtils::UTF16ToUTF8((char16_t*)buff, path);
+        cc::StringUtils::UTF16ToUTF8((char16_t *)buff, path);
         result.push_back(path);
     }
     delete[] buff;

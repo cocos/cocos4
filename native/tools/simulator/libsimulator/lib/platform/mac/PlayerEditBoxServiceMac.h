@@ -39,52 +39,50 @@
 
 typedef std::array<uint8_t, 3> Color3B;
 
-@interface EditBoxServiceImplMac : NSObject <NSTextFieldDelegate>
-{
+@interface EditBoxServiceImplMac : NSObject <NSTextFieldDelegate> {
     NSTextField* textField_;
     void* editBox_;
     BOOL editState_;
     NSMutableDictionary* placeholderAttributes_;
 }
 
-@property(nonatomic, retain) NSTextField* textField;
-@property(nonatomic, retain) NSMutableDictionary* placeholderAttributes;
-@property(nonatomic, readonly, getter = isEditState) BOOL editState;
-@property(nonatomic, assign) void* editBox;
+@property (nonatomic, retain) NSTextField* textField;
+@property (nonatomic, retain) NSMutableDictionary* placeholderAttributes;
+@property (nonatomic, readonly, getter=isEditState) BOOL editState;
+@property (nonatomic, assign) void* editBox;
 
--(id) initWithFrame: (NSRect) frameRect editBox: (void*) editBox;
--(void) doAnimationWhenKeyboardMoveWithDuration:(float)duration distance:(float)distance;
--(void) setPosition:(NSPoint) pos;
--(void) setContentSize:(NSSize) size;
--(void) visit;
--(void) openKeyboard;
--(void) closeKeyboard;
+- (id)initWithFrame:(NSRect)frameRect editBox:(void*)editBox;
+- (void)doAnimationWhenKeyboardMoveWithDuration:(float)duration distance:(float)distance;
+- (void)setPosition:(NSPoint)pos;
+- (void)setContentSize:(NSSize)size;
+- (void)visit;
+- (void)openKeyboard;
+- (void)closeKeyboard;
 
 @end
 
-
 PLAYER_NS_BEGIN
-class PlayerEditBoxServiceMac : public PlayerEditBoxServiceProtocol
-{
+class PlayerEditBoxServiceMac : public PlayerEditBoxServiceProtocol {
 public:
     PlayerEditBoxServiceMac();
     virtual ~PlayerEditBoxServiceMac();
-    
+
     // overwrite
-    virtual void showSingleLineEditBox(const cc::Rect &rect) ;
-    virtual void showMultiLineEditBox(const cc::Rect &rect)  ;
-    virtual void hide() ;
-    
-    virtual void setText(const std::string &text);
-    virtual void setFont(const std::string &name, int size);
-    virtual void setFontColor(const Color3B &color);
-    
+    virtual void showSingleLineEditBox(const cc::Rect& rect);
+    virtual void showMultiLineEditBox(const cc::Rect& rect);
+    virtual void hide();
+
+    virtual void setText(const std::string& text);
+    virtual void setFont(const std::string& name, int size);
+    virtual void setFontColor(const Color3B& color);
+
     virtual void setFormator(int formator);
+
 private:
     void show();
-    
+
 private:
-    EditBoxServiceImplMac*  _sysEdit;
+    EditBoxServiceImplMac* _sysEdit;
 };
 
 PLAYER_NS_END

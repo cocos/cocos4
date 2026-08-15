@@ -106,7 +106,7 @@ void NativeSetter::setMat4ArrayElem(const ccstd::string &name, const cc::Mat4 &m
 
 void NativeSetter::setBuiltinCameraConstants(const scene::Camera *camera) {
     auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
-    const auto* scene = camera->getScene();
+    const auto *scene = camera->getScene();
     setCameraUBOValues(
         *camera,
         *layoutGraph,

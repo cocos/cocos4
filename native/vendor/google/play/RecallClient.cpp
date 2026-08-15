@@ -22,9 +22,9 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 ****************************************************************************/
+#include "vendor/google/play/RecallClient.h"
 #include "cocos/platform/java/jni/JniHelper.h"
 #include "vendor/google/play/PlayTaskManager.h"
-#include "vendor/google/play/RecallClient.h"
 
 namespace cc {
 

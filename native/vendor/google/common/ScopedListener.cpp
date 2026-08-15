@@ -28,4 +28,4 @@ void scopedListener::reset(se::Object* obj) {
         _obj->incRef();
     }
 }
-}
+} // namespace cc

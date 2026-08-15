@@ -13,7 +13,7 @@ void SpineMeshData::initMeshMemory() {
     const auto vCount = 65535;
     const auto byteStride = 7 * sizeof(float);
     vBuf = static_cast<uint8_t*>(::malloc(sizeof(uint8_t) * (2 * vCount * byteStride))); // 2 * 64KB * 28 = 3.5MB
-    iBuf = static_cast<uint16_t*>(::malloc(sizeof(uint16_t) * (8 * 65535))); // 512KB
+    iBuf = static_cast<uint16_t*>(::malloc(sizeof(uint16_t) * (8 * 65535)));             // 512KB
 
     vPtr = vBuf;
     iPtr = iBuf;
@@ -22,7 +22,7 @@ void SpineMeshData::initMeshMemory() {
 void SpineMeshData::releaseMeshMemory() {
     ::free(vBuf);
     vBuf = nullptr;
-    
+
     ::free(iBuf);
     iBuf = nullptr;
 }

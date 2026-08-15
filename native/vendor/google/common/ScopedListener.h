@@ -45,4 +45,4 @@ public:
 private:
     se::Object* _obj{nullptr};
 };
-}
+} // namespace cc

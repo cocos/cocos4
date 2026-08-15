@@ -23,11 +23,11 @@
 ****************************************************************************/
 
 #pragma once
+#include <boost/container/static_vector.hpp>
 #include "FGDispatcherTypes.h"
 #include "LayoutGraphTypes.h"
 #include "NativePipelineTypes.h"
 #include "RenderGraphTypes.h"
-#include <boost/container/static_vector.hpp>
 
 namespace cc {
 

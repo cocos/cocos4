@@ -47,11 +47,11 @@ const typename Collection::value_type::second_type&
 FindWithDefault(const Collection& collection,
                 const typename Collection::value_type::first_type& key,
                 const typename Collection::value_type::second_type& value) {
-  typename Collection::const_iterator it = collection.find(key);
-  if (it == collection.end()) {
-    return value;
-  }
-  return it->second;
+    typename Collection::const_iterator it = collection.find(key);
+    if (it == collection.end()) {
+        return value;
+    }
+    return it->second;
 }
 
 // Perform a lookup in a map or hash_map.
@@ -61,11 +61,11 @@ template <class Collection>
 const typename Collection::value_type::second_type*
 FindOrNull(const Collection& collection,
            const typename Collection::value_type::first_type& key) {
-  typename Collection::const_iterator it = collection.find(key);
-  if (it == collection.end()) {
-    return 0;
-  }
-  return &it->second;
+    typename Collection::const_iterator it = collection.find(key);
+    if (it == collection.end()) {
+        return 0;
+    }
+    return &it->second;
 }
 
 // Perform a lookup in a map or hash_map, assuming that the key exists.
@@ -87,9 +87,9 @@ template <class Collection>
 const typename Collection::value_type::second_type&
 FindOrDie(const Collection& collection,
           const typename Collection::value_type::first_type& key) {
-  typename Collection::const_iterator it = collection.find(key);
-  GOOGLE_CHECK(it != collection.end()) << "Map key not found: " << key;
-  return it->second;
+    typename Collection::const_iterator it = collection.find(key);
+    GOOGLE_CHECK(it != collection.end()) << "Map key not found: " << key;
+    return it->second;
 }
 
 // Perform a lookup in a map or hash_map whose values are pointers.
@@ -101,11 +101,11 @@ template <class Collection>
 const typename Collection::value_type::second_type
 FindPtrOrNull(const Collection& collection,
               const typename Collection::value_type::first_type& key) {
-  typename Collection::const_iterator it = collection.find(key);
-  if (it == collection.end()) {
-    return 0;
-  }
-  return it->second;
+    typename Collection::const_iterator it = collection.find(key);
+    if (it == collection.end()) {
+        return 0;
+    }
+    return it->second;
 }
 
 // Change the value associated with a particular key in a map or hash_map.
@@ -113,16 +113,16 @@ FindPtrOrNull(const Collection& collection,
 // otherwise the value is updated to be a copy of the value provided.
 // True indicates that an insert took place, false indicates an update.
 template <class Collection, class Key, class Value>
-bool InsertOrUpdate(Collection * const collection,
-                   const Key& key, const Value& value) {
-  pair<typename Collection::iterator, bool> ret =
-    collection->insert(typename Collection::value_type(key, value));
-  if (!ret.second) {
-    // update
-    ret.first->second = value;
-    return false;
-  }
-  return true;
+bool InsertOrUpdate(Collection* const collection,
+                    const Key& key, const Value& value) {
+    pair<typename Collection::iterator, bool> ret =
+        collection->insert(typename Collection::value_type(key, value));
+    if (!ret.second) {
+        // update
+        ret.first->second = value;
+        return false;
+    }
+    return true;
 }
 
 // Insert a new key and value into a map or hash_map.
@@ -130,14 +130,14 @@ bool InsertOrUpdate(Collection * const collection,
 // inserted, otherwise nothing happens. True indicates that an insert
 // took place, false indicates the key was already present.
 template <class Collection, class Key, class Value>
-bool InsertIfNotPresent(Collection * const collection,
+bool InsertIfNotPresent(Collection* const collection,
                         const Key& key, const Value& value) {
-  pair<typename Collection::iterator, bool> ret =
-    collection->insert(typename Collection::value_type(key, value));
-  return ret.second;
+    pair<typename Collection::iterator, bool> ret =
+        collection->insert(typename Collection::value_type(key, value));
+    return ret.second;
 }
 
-}  // namespace protobuf
-}  // namespace google
+} // namespace protobuf
+} // namespace google
 
-#endif  // GOOGLE_PROTOBUF_STUBS_MAP_UTIL_H__
+#endif // GOOGLE_PROTOBUF_STUBS_MAP_UTIL_H__

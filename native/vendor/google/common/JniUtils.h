@@ -46,4 +46,4 @@ jstring stringToJString(JNIEnv* env, const std::string& str);
 int integerObjectToInt(JNIEnv* env, jclass clazz, jobject obj);
 double doubleObjectToDouble(JNIEnv* env, jclass clazz, jobject obj);
 bool BooleanObjectToBool(JNIEnv* env, jclass clazz, jobject obj);
-}
+} // namespace cc

@@ -42,20 +42,21 @@ public:
 
     void onTaskCanceled(int taskId, int listenerId);
     void onTaskComplete(int taskId, int listenerId, int nextTaskId);
-    void onTaskFailure(int taskId, int listenerId, void*  obj, int exceptionId);
-    void onTaskSucess(int taskId, int listenerId, void*  obj);
+    void onTaskFailure(int taskId, int listenerId, void* obj, int exceptionId);
+    void onTaskSucess(int taskId, int listenerId, void* obj);
     void* onContinueWith(int taskId, int listenerId, int nextTaskId);
     PlayTask* addTask(int taskId);
     void removeTask(int taskId);
-private:
-  int getNextListenerId();
-  int addListener(se::Object* listener);
-
-  PlayTaskManager(/* args */) = default;
-  ~PlayTaskManager() = default;
 
 private:
-  std::unordered_map<int, PlayTask*> _tasks;
+    int getNextListenerId();
+    int addListener(se::Object* listener);
+
+    PlayTaskManager(/* args */) = default;
+    ~PlayTaskManager() = default;
+
+private:
+    std::unordered_map<int, PlayTask*> _tasks;
 };
 
 } // namespace cc

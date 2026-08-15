@@ -30,7 +30,6 @@ GamesSignInClient PlayGames::_signinClient;
 AchievementsClient PlayGames::_achievementsClient;
 RecallClient PlayGames::_recallClient;
 
-
 void PlayGamesSdk::initialize() {
     JniHelper::callStaticVoidMethod("google/play/PlayGamesSdkHelper", "initialize");
 }

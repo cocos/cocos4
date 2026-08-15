@@ -23,7 +23,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 #ifndef __PLAYER_SERVICE_PROTOCOL_H_
 #define __PLAYER_SERVICE_PROTOCOL_H_
 
@@ -31,10 +30,9 @@
 
 PLAYER_NS_BEGIN
 
-class PlayerServiceProtocol
-{
+class PlayerServiceProtocol {
 public:
-    virtual ~PlayerServiceProtocol() {};
+    virtual ~PlayerServiceProtocol(){};
 };
 
 PLAYER_NS_END

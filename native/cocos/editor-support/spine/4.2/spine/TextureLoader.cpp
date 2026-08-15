@@ -30,9 +30,9 @@
 #include <spine/TextureLoader.h>
 
 namespace spine {
-	TextureLoader::TextureLoader() {
-	}
+TextureLoader::TextureLoader() {
+}
 
-	TextureLoader::~TextureLoader() {
-	}
-}// namespace spine
+TextureLoader::~TextureLoader() {
+}
+} // namespace spine

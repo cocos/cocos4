@@ -1,38 +1,38 @@
-## ===== ctor function implementation template
+## == == = ctor function implementation template
 
-static bool ${signature_name}(se::State& s) // NOLINT(readability-identifier-naming)
+    static bool ${signature_name}(se::State & s) // NOLINT(readability-identifier-naming)
 {
 #if $is_skip_constructor
     //#2 ${namespaced_class_name}: is_skip_construtor ${is_skip_constructor}
     se::ScriptEngine::getInstance()->evalString("throw new Error(\"${namespaced_class_name} constructor is skipped\")");
     return false;
 #else
-#if len($arguments) >= $min_args
-    #set arg_count = len($arguments)
-    #set arg_idx = $min_args
-    #set $count = 0
-    #if $arg_idx > 0
+    #if len($arguments) >= $min_args
+        #set arg_count = len($arguments)
+        #set arg_idx = $min_args
+        #set $count = 0
+        #if $arg_idx > 0
     CC_UNUSED bool ok = true;
     const auto& args = s.args();
-    #end if
-    #while $count < $arg_idx
-        #set $arg = $arguments[$count]
-        #set $arg_type = arg.to_string($generator)
-        #if $arg.is_numeric
+            #end if
+            #while $count < $arg_idx
+            #set $arg = $arguments[$count]
+            #set $arg_type = arg.to_string($generator)
+            #if $arg.is_numeric
     ${arg.to_string($generator)} arg${count} = 0;
-        #elif $arg.is_pointer
+            #elif $arg.is_pointer
     ${arg.to_string($generator)} arg${count} = nullptr;
-        #else
+            #else
     ${arg.to_string($generator)} arg${count};
-        #end if
-        #set $count = $count + 1
-    #end while
-    #set $count = 0
-    #set arg_list = ""
-    #set arg_array = []
-    #while $count < $arg_idx
-        #set $arg = $arguments[$count]
-        #set $arg_type = arg.to_string($generator)
+                #end if
+                #set $count = $count + 1
+                #end while
+                #set $count = 0
+                #set arg_list = ""
+                #set arg_array = []
+                #while $count < $arg_idx
+                #set $arg = $arguments[$count]
+                #set $arg_type = arg.to_string($generator)
     ${arg.to_native({"generator": $generator,
                          "arg": $arg,
                          "arg_type": $arg_type,
@@ -44,21 +44,21 @@ static bool ${signature_name}(se::State& s) // NOLINT(readability-identifier-nam
                          "is_static": False,
                          "is_persistent": $is_persistent,
                          "ntype": str($arg)})};
-        #set $arg_array += ["arg"+str(count)]
-        #set $count = $count + 1
-    #end while
-    #if $arg_idx > 0
+                #set $arg_array += ["arg" + str(count)]
+                #set $count = $count + 1
+                #end while
+                #if $arg_idx > 0
     SE_PRECONDITION2(ok, false, "Error processing arguments");
-    #end if
-    #if len($arg_array) == 0
-    #set $arg_list=""
-    #else
-    #set $arg_list = "," + ", ".join($arg_array)
-    #end if
+                    #end if
+                    #if len($arg_array) == 0
+                        #set $arg_list = ""
+                    #else
+                        #set $arg_list = "," + ", ".join($arg_array)
+                        #end if
     auto *ptr = JSB_MAKE_PRIVATE_OBJECT(${namespaced_class_name}$arg_list);
     s.thisObject()->setPrivateObject(ptr);
-#end if
+                        #end if
     return true;
-#end if
+                        #end if
 }
 SE_BIND_SUB_CLS_CTOR(${signature_name}, __jsb_${underlined_class_name}_class, js_${underlined_class_name}_finalize)

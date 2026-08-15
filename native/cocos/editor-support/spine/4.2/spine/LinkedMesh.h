@@ -34,28 +34,28 @@
 #include <spine/SpineString.h>
 
 namespace spine {
-	class MeshAttachment;
+class MeshAttachment;
 
-	class SP_API LinkedMesh : public SpineObject {
-		friend class SkeletonBinary;
+class SP_API LinkedMesh : public SpineObject {
+    friend class SkeletonBinary;
 
-		friend class SkeletonJson;
+    friend class SkeletonJson;
 
-	public:
-		LinkedMesh(MeshAttachment *mesh, const int skinIndex, size_t slotIndex, const String &parent,
-				   bool inheritTimeline);
+public:
+    LinkedMesh(MeshAttachment *mesh, const int skinIndex, size_t slotIndex, const String &parent,
+               bool inheritTimeline);
 
-        LinkedMesh(MeshAttachment *mesh, const String &skin, size_t slotIndex, const String &parent,
-                   bool inheritTimeline);
+    LinkedMesh(MeshAttachment *mesh, const String &skin, size_t slotIndex, const String &parent,
+               bool inheritTimeline);
 
-	private:
-		MeshAttachment *_mesh;
-		int _skinIndex;
-        String _skin;
-		size_t _slotIndex;
-		String _parent;
-		bool _inheritTimeline;
-	};
-}
+private:
+    MeshAttachment *_mesh;
+    int _skinIndex;
+    String _skin;
+    size_t _slotIndex;
+    String _parent;
+    bool _inheritTimeline;
+};
+} // namespace spine
 
 #endif /* Spine_LinkedMesh_h */

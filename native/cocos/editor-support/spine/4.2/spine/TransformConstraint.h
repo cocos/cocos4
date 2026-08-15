@@ -35,81 +35,81 @@
 #include <spine/Vector.h>
 
 namespace spine {
-	class TransformConstraintData;
+class TransformConstraintData;
 
-	class Skeleton;
+class Skeleton;
 
-	class Bone;
+class Bone;
 
-	class SP_API TransformConstraint : public Updatable {
-		friend class Skeleton;
+class SP_API TransformConstraint : public Updatable {
+    friend class Skeleton;
 
-		friend class TransformConstraintTimeline;
+    friend class TransformConstraintTimeline;
 
-	RTTI_DECL
+    RTTI_DECL
 
-	public:
-		TransformConstraint(TransformConstraintData &data, Skeleton &skeleton);
+public:
+    TransformConstraint(TransformConstraintData &data, Skeleton &skeleton);
 
-		virtual void update(Physics physics);
+    virtual void update(Physics physics);
 
-		virtual int getOrder();
+    virtual int getOrder();
 
-		TransformConstraintData &getData();
+    TransformConstraintData &getData();
 
-		Vector<Bone *> &getBones();
+    Vector<Bone *> &getBones();
 
-		Bone *getTarget();
+    Bone *getTarget();
 
-		void setTarget(Bone *inValue);
+    void setTarget(Bone *inValue);
 
-		float getMixRotate();
+    float getMixRotate();
 
-		void setMixRotate(float inValue);
+    void setMixRotate(float inValue);
 
-		float getMixX();
+    float getMixX();
 
-		void setMixX(float inValue);
+    void setMixX(float inValue);
 
-		float getMixY();
+    float getMixY();
 
-		void setMixY(float inValue);
+    void setMixY(float inValue);
 
-		float getMixScaleX();
+    float getMixScaleX();
 
-		void setMixScaleX(float inValue);
+    void setMixScaleX(float inValue);
 
-		float getMixScaleY();
+    float getMixScaleY();
 
-		void setMixScaleY(float inValue);
+    void setMixScaleY(float inValue);
 
-		float getMixShearY();
+    float getMixShearY();
 
-		void setMixShearY(float inValue);
+    void setMixShearY(float inValue);
 
-		bool isActive();
+    bool isActive();
 
-		void setActive(bool inValue);
+    void setActive(bool inValue);
 
-        void setToSetupPose();
+    void setToSetupPose();
 
-	#ifndef __EMSCRIPTEN__
-	private:
-	#endif
-		TransformConstraintData &_data;
-		Vector<Bone *> _bones;
-		Bone *_target;
-		float _mixRotate, _mixX, _mixY, _mixScaleX, _mixScaleY, _mixShearY;
-		bool _active;
+#ifndef __EMSCRIPTEN__
+private:
+#endif
+    TransformConstraintData &_data;
+    Vector<Bone *> _bones;
+    Bone *_target;
+    float _mixRotate, _mixX, _mixY, _mixScaleX, _mixScaleY, _mixShearY;
+    bool _active;
 
-		void applyAbsoluteWorld();
+    void applyAbsoluteWorld();
 
-		void applyRelativeWorld();
+    void applyRelativeWorld();
 
-		void applyAbsoluteLocal();
+    void applyAbsoluteLocal();
 
-		void applyRelativeLocal();
-	};
-}
+    void applyRelativeLocal();
+};
+} // namespace spine
 
 #endif /* Spine_TransformConstraint_h */
