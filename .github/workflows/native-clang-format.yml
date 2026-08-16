@@ -29,7 +29,7 @@ jobs:
     - uses: DoozyX/clang-format-lint-action@v0.18
       with:
         source: ./native
-        exclude: ./native/cocos/bindings/auto ./native/cocos/base/std ./native/cocos/editor-support/spine-wasm ./native/cocos/editor-support/spine ./native/cocos/gi/light-probe/predicates.cpp ./native/cocos/gi/light-probe/tetgen.cpp ./native/cocos/gi/light-probe/tetgen.h ./native/cocos/platform/openharmony/napi ./native/tools ./native/vendor
+        exclude: ./native/cocos/bindings/auto ./native/cocos/base/std ./native/cocos/editor-support/spine-wasm ./native/cocos/editor-support/spine ./native/cocos/gi/light-probe/predicates.cpp ./native/cocos/gi/light-probe/tetgen.cpp ./native/cocos/gi/light-probe/tetgen.h ./native/cocos/platform/openharmony/napi ./native/tools ./native/vendor ./native/cocos/cocos-version.h
         extensions: 'c,h,hpp,cpp,cxx'
         style: file
         inplace: true

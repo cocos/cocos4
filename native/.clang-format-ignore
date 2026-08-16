@@ -1,6 +1,7 @@
 # ignore third_party code from clang-format checks
 ./cocos/bindings/auto/*
 ./cocos/base/std/**
+./cocos/cocos-version.h
 ./cocos/editor-support/spine-wasm/**
 ./cocos/editor-support/spine/**
 ./cocos/gi/light-probe/predicates.cpp
