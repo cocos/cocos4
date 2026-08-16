@@ -29,9 +29,9 @@
 
 #include <SLES/OpenSLES.h>
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <SLES/OpenSLES_Android.h>
+    #include <SLES/OpenSLES_Android.h>
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include <SLES/OpenSLES_Platform.h>
+    #include <SLES/OpenSLES_Platform.h>
 #endif
 
 #include <functional>

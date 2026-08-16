@@ -64,10 +64,10 @@
 #define DECLARE_NODE_API_GETTER(name, func) \
     { (name), nullptr, nullptr, (func), nullptr, nullptr, napi_default, nullptr }
 
-void add_returned_status(napi_env    env,
+void add_returned_status(napi_env env,
                          const char* key,
-                         napi_value  object,
-                         char*       expected_message,
+                         napi_value object,
+                         char* expected_message,
                          napi_status expected_status,
                          napi_status actual_status);
 

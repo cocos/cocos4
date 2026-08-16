@@ -317,7 +317,7 @@ void XRRemotePreviewManager::sendControllerKeyInfo(const ControllerInfo::AxisInf
 }
 
 void XRRemotePreviewManager::sendControllerKeyInfo(const ControllerInfo::TouchInfo &info) {
-#if CC_USE_WEBSOCKET_SERVER
+    #if CC_USE_WEBSOCKET_SERVER
     if (_webSocketServer && _isConnectionChanged) {
         _isConnectionChanged = false;
         _wssConnections = _webSocketServer->getConnections();
@@ -340,7 +340,7 @@ void XRRemotePreviewManager::sendControllerKeyInfo(const ControllerInfo::TouchIn
             }
         }
     }
-#endif
+    #endif
 }
 
 void XRRemotePreviewManager::resume() {

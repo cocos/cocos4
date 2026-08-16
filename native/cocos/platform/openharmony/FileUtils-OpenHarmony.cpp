@@ -179,7 +179,7 @@ long FileUtilsOpenHarmony::getFileSize(const std::string &filepath) {
         return 0;
     }
 
-    if(fullPath[0] == '/') {
+    if (fullPath[0] == '/') {
         return FileUtils::getFileSize(fullPath);
     }
 

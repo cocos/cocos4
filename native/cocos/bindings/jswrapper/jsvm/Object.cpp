@@ -38,7 +38,7 @@ namespace se {
 std::unique_ptr<std::unordered_set<Object*>> __objectSet;
 std::unordered_set<Object*> __objectSetToBeReleasedInCleanup;
 
-Object::Object(): _objRef(this) {}
+Object::Object() : _objRef(this) {}
 Object::~Object() {
     if (!_destructInFinalizer && _cls != nullptr) {
         // Remove wrap will ensure that we release the underlying `v8impl::Reference` that the private wrap associates with.
@@ -46,7 +46,7 @@ Object::~Object() {
         // We just do this if `_cls` is not null since only JSB objects get wrapped,
         OH_JSVM_RemoveWrap(_env, _objRef.getValue(_env), nullptr);
     }
-    
+
     if (__objectSet) {
         __objectSet->erase(this);
     }
@@ -65,7 +65,7 @@ bool Object::setProperty(const char* name, const Value& data) {
     JSVM_Status status;
     JSVM_Value jsVal;
     bool ret = internal::seToJsValue(data, &jsVal);
-    if(!ret) {
+    if (!ret) {
         return false;
     }
     NODE_API_CALL(status, _env, OH_JSVM_SetNamedProperty(_env, _objRef.getValue(_env), name, jsVal));
@@ -119,7 +119,7 @@ void Object::setPrivateObject(PrivateObjectBase* data) {
 
     // Passing nullptr to the `result` parameter to make JSVM mangle the lifecycle of `v8impl::Reference`
     NODE_API_CALL(status, _env, OH_JSVM_Wrap(_env, tmpThis, this, weakCallback, this /* finalize_hint */, nullptr));
-    
+
     // WORKAROUND: See the explain in `ObjectRef::deleteRef` about why we need to `decRef` here.
     _objRef.decRef(_env);
     //
@@ -163,7 +163,7 @@ bool Object::setArrayElement(uint32_t index, const Value& data) {
     JSVM_Status status;
     JSVM_Value val;
     bool ret = internal::seToJsValue(data, &val);
-    if(!ret) {
+    if (!ret) {
         return false;
     }
     NODE_API_CALL_RESULT(status, _env, OH_JSVM_SetElement(_env, _objRef.getValue(_env), index, val), false);
@@ -521,7 +521,7 @@ bool Object::getAllKeys(std::vector<std::string>* allKeys) const {
         if (status == JSVM_OK) {
             size_t result = 0;
             NODE_API_CALL(status, _env, OH_JSVM_GetValueStringUtf8(_env, val, nullptr, 0, &result));
-            if(status == JSVM_OK){
+            if (status == JSVM_OK) {
                 result += 1;
                 char buffer[result];
                 NODE_API_CALL(status, _env, OH_JSVM_GetValueStringUtf8(_env, val, buffer, sizeof(buffer), &result));
@@ -558,14 +558,14 @@ bool Object::call(const ValueArray& args, Object* thisObject, Value* rval) {
     argv.reserve(10);
     argc = args.size();
     bool valid = internal::seToJsArgs(_env, args, &argv);
-    if(!valid) {
+    if (!valid) {
         SE_LOGE("Failed to convert arguments from se::Value to JSVM_Value");
         return false;
     }
     JSVM_Value return_val;
     JSVM_Status status;
     assert(isFunction());
-    if(thisObject != nullptr && !thisObject->_getJSObject()) {
+    if (thisObject != nullptr && !thisObject->_getJSObject()) {
         SE_LOGE("Invalid 'this' object passed to function call (JS object is invalid or released)");
         return false;
     }
@@ -575,7 +575,7 @@ bool Object::call(const ValueArray& args, Object* thisObject, Value* rval) {
         undefinedValue;
     });
     NODE_API_CALL_RESULT(status, _env,
-                  OH_JSVM_CallFunction(_env, thisObj, _getJSObject(), argc, argv.data(), &return_val), false);
+                         OH_JSVM_CallFunction(_env, thisObj, _getJSObject(), argc, argv.data(), &return_val), false);
     if (rval) {
         internal::jsToSeValue(return_val, rval);
     }
@@ -703,7 +703,7 @@ void Object::sendWeakCallback(JSVM_Env env, void* nativeObject, void* finalizeHi
 
 void Object::setClearMappingInFinalizer(bool v) {
     _clearMappingInFinalizer = v;
-    
+
     // The lifecycle of Spine and Dragonbones c++ objects are controlled by their runtime.
     // See the `cc::setSpineObjectDisposeCallback` invocation in jsb_spine_manuall.cpp.
     // It listens on spine C++ objects's destruction and when the callback comes,
@@ -727,7 +727,7 @@ void Object::weakCallback(JSVM_Env env, void* nativeObject, void* finalizeHint /
         if (seObj->_onCleaingPrivateData) { //called by cleanPrivateData, not release seObj;
             return;
         }
-        if(!NativePtrToObjectMap::isValid()) {
+        if (!NativePtrToObjectMap::isValid()) {
             return;
         }
         if (seObj->_clearMappingInFinalizer && rawPtr != nullptr) {
@@ -747,9 +747,9 @@ void Object::weakCallback(JSVM_Env env, void* nativeObject, void* finalizeHint /
                 seObj->_getClass()->_getFinalizeFunction()(env, finalizeHint, finalizeHint);
             }
         }
-        
+
         __objectSetToBeReleasedInCleanup.erase(seObj);
-        
+
         seObj->_destructInFinalizer = true;
         seObj->decRef();
     }
@@ -780,14 +780,14 @@ void Object::cleanup() {
         }
         obj->decRef();
     }
-    
-    for (auto *obj : __objectSetToBeReleasedInCleanup) {
+
+    for (auto* obj : __objectSetToBeReleasedInCleanup) {
         obj->decRef();
     }
     __objectSetToBeReleasedInCleanup.clear();
 
     NativePtrToObjectMap::clear();
-    
+
     if (__objectSet) {
         for (const auto& obj : *__objectSet) {
             cls = obj->_getClass();
@@ -890,20 +890,19 @@ Object* Object::createPromise() {
     return object;
 }
 
-ObjectRef::ObjectRef(Object *parent)
+ObjectRef::ObjectRef(Object* parent)
 : _parent(parent) {
-
 }
 
 ObjectRef::~ObjectRef() {
     deleteRef();
 }
-    
+
 void ObjectRef::init(JSVM_Env env, JSVM_Value obj) {
     assert(_ref == nullptr);
     _obj = obj;
     _env = env;
-    
+
     // There is a bug in JSVM implementation:
     // If we initialize the reference to 0 which means weak reference in JSVM,
     // then we call the JSVM API in the following order:
@@ -915,7 +914,7 @@ void ObjectRef::init(JSVM_Env env, JSVM_Value obj) {
     //
     OH_JSVM_CreateReference(_env, _obj, 1, &_ref);
 }
-    
+
 JSVM_Value ObjectRef::getValue(JSVM_Env env) const {
     JSVM_Value r = nullptr;
     JSVM_Status status;
@@ -1010,7 +1009,7 @@ void ObjectRef::deleteRef() {
     In `se::Object::setPrivateObject`, after invoking `OH_JSVM_Wrap`, we need to call `ObjectRef::decRef` to reset
     the object state to weak, which makes sure that weak callback get called.
     */
-    
+
     // If we have already been in the weak callback ( finalizer ), no need to apply this workaround fix.
     if (!_parent->_destructInFinalizer) {
         // WORKAROUND HERE
@@ -1023,4 +1022,3 @@ void ObjectRef::deleteRef() {
 }
 
 } // namespace se
-

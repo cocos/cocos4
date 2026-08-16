@@ -60,7 +60,6 @@ ISystemWindow *SystemWindowManager::getWindow(uint32_t windowId) const {
     return nullptr;
 }
 
-
 ISystemWindow *SystemWindowManager::getWindowFromHandle(void *window) const {
     if (!window) {
         return nullptr;
@@ -75,7 +74,7 @@ ISystemWindow *SystemWindowManager::getWindowFromHandle(void *window) const {
     return nullptr;
 }
 
-void SystemWindowManager::removeWindow(void* window) {
+void SystemWindowManager::removeWindow(void *window) {
     if (!window) {
         return;
     }

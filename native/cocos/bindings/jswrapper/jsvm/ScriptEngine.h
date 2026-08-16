@@ -35,7 +35,7 @@ using HandleScope = JSVM_HandleScope;
 namespace se {
 class AutoHandleScope {
 public:
-    // This interface needs to be implemented in JSVM, similar to V8. 
+    // This interface needs to be implemented in JSVM, similar to V8.
     // Ref:https://nodejs.org/docs/latest-v17.x/api/n-api.html#object-lifetime-management
     AutoHandleScope();
     ~AutoHandleScope();
@@ -43,7 +43,7 @@ public:
 private:
     HandleScope _handleScope;
 };
-using RegisterCallback  = bool (*)(Object *);
+using RegisterCallback = bool (*)(Object *);
 using ExceptionCallback = std::function<void(const char *, const char *, const char *)>; // location, message, stack
 
 class ScriptEngine {
@@ -80,8 +80,8 @@ public:
     /**
 	     *  @brief Shut down the JSVM engine, because cleanup doesn't destroy all objects immediately.
 	     */
-	void closeEngine();
-	
+    void closeEngine();
+
     /**
          *  @brief Sets the delegate for file operation.
          *  @param delegate[in] The delegate instance for file operation.
@@ -126,9 +126,9 @@ public:
          */
     void setExceptionCallback(const ExceptionCallback &cb);
 
-     ExceptionCallback& getExceptionCallback() {
-          return _exceptionCallback;
-     }
+    ExceptionCallback &getExceptionCallback() {
+        return _exceptionCallback;
+    }
 
     /**
          * @brief Grab a snapshot of the current JavaScript execution stack.
@@ -150,7 +150,7 @@ public:
          *  @param[in] cb A callback for registering a native binding module.
          *  @note This method just add a callback to a vector, callbacks is invoked in `start` method.
          */
-     void addPermanentRegisterCallback(RegisterCallback cb);
+    void addPermanentRegisterCallback(RegisterCallback cb);
 
     /**
          *  @brief Starts the script engine.
@@ -206,7 +206,7 @@ public:
     Object *getGlobalObject() const;
 
     static JSVM_Env getEnv();
-    static void     setEnv(JSVM_Env env);
+    static void setEnv(JSVM_Env env);
 
     /**
          *  @brief Adds a callback for registering a native binding module.
@@ -272,12 +272,12 @@ public:
      */
     void throwException(const std::string &errorMessage);
 
-     /**
+    /**
      * @brief for jsvm_new_instance, skip constructor.
      */
     void _setNeedCallConstructor(bool need);
 
-     /**
+    /**
      * @brief for jsvm_new_instance, skip constructor.
      */
     bool _needCallConstructor();
@@ -292,7 +292,7 @@ public:
     void handlePromiseExceptions();
 
 private:
-    FileOperationDelegate         _fileOperationDelegate;
+    FileOperationDelegate _fileOperationDelegate;
     std::vector<RegisterCallback> _registerCallbackArray;
     std::vector<RegisterCallback> _permRegisterCallbackArray;
 
@@ -301,12 +301,12 @@ private:
     std::vector<std::function<void()>> _beforeCleanupHookArray;
     std::vector<std::function<void()>> _afterCleanupHookArray;
 
-    Object * _globalObj = nullptr;
+    Object *_globalObj = nullptr;
     Value _gcFuncValue;
     Object *_gcFunc{nullptr};
 
-    JSVM_Env _env       = nullptr;
-    JSVM_VM _vm         = nullptr;
+    JSVM_Env _env = nullptr;
+    JSVM_VM _vm = nullptr;
     JSVM_VMScope _vmScope = nullptr;
     JSVM_EnvScope _envScope = nullptr;
     ExceptionCallback _exceptionCallback;
@@ -316,7 +316,7 @@ private:
     bool _isInCleanup{false};
     bool _isErrorHandleWorking{false};
     bool _isneedCallConstructor{true};
-    
+
     bool _isWaitForConnect{false};
     uint32_t _debuggerServerPort{0};
     ccstd::string _debuggerServerAddr;

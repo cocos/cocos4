@@ -23,20 +23,19 @@
 ****************************************************************************/
 
 #pragma once
-#include <string>
-#include <map>
-#include <string>
-#include <vector>
-#include <cocos/scene/raytracing/Def.h>
-#include <cocos/math/Mat4.h>
-#include <cocos/math/Vec3.h>
-#include <cocos/math/Quaternion.h>
-#include <cocos/scene/SubModel.h>
+#include <cocos/base/Ptr.h>
 #include <cocos/core/scene-graph/Node.h>
+#include <cocos/math/Mat4.h>
+#include <cocos/math/Quaternion.h>
+#include <cocos/math/Vec3.h>
+#include <cocos/scene/SubModel.h>
+#include <cocos/scene/raytracing/Def.h>
 #include <renderer/gfx-base/GFXBuffer.h>
 #include <renderer/gfx-base/GFXTexture.h>
 #include <renderer/gfx-base/states/GFXSampler.h>
-#include <cocos/base/Ptr.h>
+#include <map>
+#include <string>
+#include <vector>
 namespace cc {
 namespace scene {
 namespace raytracing {
@@ -158,7 +157,6 @@ struct Texture {
 //    std::string name;
 //};
 
-
 struct Skin {
     ccstd::vector<int> joints;
     int skeleton;
@@ -208,8 +206,6 @@ struct Entity {
     ccstd::vector<float> weights;
     ccstd::string name;
 };
-
-
 
 enum class RayTracingPrimitiveType : uint32_t {
     PER_INSTANCE,
@@ -269,7 +265,6 @@ struct GpuVirtualAddressAndStride {
     uint64_t startAddress = 0;
     uint64_t strideInBytes = 0;
 };
-
 
 struct RayTracingGeometryTrianglesDesc {
     uint64_t mTransform3x4 = 0;

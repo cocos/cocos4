@@ -69,7 +69,6 @@ void PhysXJoint::setConnectedBody(uint32_t rigidBodyID) {
     if (pxRigidBody == nullptr)
         return;
 
-
     auto *oldConnectedBody = _mConnectedBody;
     if (oldConnectedBody) {
         oldConnectedBody->removeJoint(*this, physx::PxJointActorIndex::eACTOR1);

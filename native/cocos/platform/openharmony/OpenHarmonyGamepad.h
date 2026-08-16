@@ -32,7 +32,6 @@ class CC_DLL OpenHarmonyGamePad {
 public:
     OpenHarmonyGamePad();
     virtual ~OpenHarmonyGamePad();
-
 };
 
 } // namespace cc

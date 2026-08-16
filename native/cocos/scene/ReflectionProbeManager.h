@@ -41,7 +41,8 @@ public:
     const ccstd::vector<scene::ReflectionProbe*>& getAllProbes() const { return _probes; }
     ReflectionProbe* getReflectionProbeById(int32_t probeId);
     int32_t getMaxProbeId();
-private: 
+
+private:
     ccstd::vector<scene::ReflectionProbe*> _probes;
 };
 

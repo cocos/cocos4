@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <iostream>
 #include <AppKit/AppKit.h>
+#include <iostream>
 #include "platform/interfaces/modules/ISystemWindow.h"
 
 struct SDL_Window;
@@ -58,9 +58,10 @@ public:
      */
     void setCursorEnabled(bool value) override;
     NSWindow* getNSWindow() const;
+
 private:
     SDL_Window* getSDLWindow() const { return _window; }
-    void initWindowProperty(SDL_Window* window, const char *title, int x, int y, int w, int h);
+    void initWindowProperty(SDL_Window* window, const char* title, int x, int y, int w, int h);
     uint32_t _width{0};
     uint32_t _height{0};
 

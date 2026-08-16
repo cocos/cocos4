@@ -103,7 +103,7 @@ public:
     CCVKGPUDeviceObject() = default;
     ~CCVKGPUDeviceObject() = default;
 
-    virtual void shutdown() {};
+    virtual void shutdown(){};
 };
 
 template <typename T>

@@ -131,15 +131,15 @@ void copyTypedArray(TypedArray &dst, uint32_t dstOffset, const TypedArray &src) 
     CC_ASSERT(dstOffset + srcLength <= dstLength);
 
     // Optimization: If src and dst are of the same type, use memcpy for efficiency
-#define COPY_TYPED_ARRAY_MEMCPY(type)                               \
-    do {                                                            \
-        auto *srcArray = ccstd::get_if<type>(&src);                 \
-        auto *dstArray = ccstd::get_if<type>(&dst);                 \
-        if (srcArray != nullptr && dstArray != nullptr) {           \
-            memcpy(&(*dstArray)[dstOffset], &(*srcArray)[0],        \
-                   srcLength * srcBytesPerElement);                 \
-            return;                                                 \
-        }                                                           \
+#define COPY_TYPED_ARRAY_MEMCPY(type)                        \
+    do {                                                     \
+        auto *srcArray = ccstd::get_if<type>(&src);          \
+        auto *dstArray = ccstd::get_if<type>(&dst);          \
+        if (srcArray != nullptr && dstArray != nullptr) {    \
+            memcpy(&(*dstArray)[dstOffset], &(*srcArray)[0], \
+                   srcLength *srcBytesPerElement);           \
+            return;                                          \
+        }                                                    \
     } while (false)
 
     COPY_TYPED_ARRAY_MEMCPY(Float32Array);
@@ -154,15 +154,15 @@ void copyTypedArray(TypedArray &dst, uint32_t dstOffset, const TypedArray &src) 
 #undef COPY_TYPED_ARRAY_MEMCPY
 
     // Cross-type copy: Use a loop for element-wise copying with type conversion
-#define COPY_TYPED_ARRAY_TO_DEST(type)                                 \
-    do {                                                               \
-        auto *dstArray = ccstd::get_if<type>(&dst);                    \
-        if (dstArray != nullptr) {                                     \
-            for (uint32_t i = 0; i < srcLength; ++i) {                 \
+#define COPY_TYPED_ARRAY_TO_DEST(type)                                                     \
+    do {                                                                                   \
+        auto *dstArray = ccstd::get_if<type>(&dst);                                        \
+        if (dstArray != nullptr) {                                                         \
+            for (uint32_t i = 0; i < srcLength; ++i) {                                     \
                 (*dstArray)[dstOffset + i] = getTypedArrayValue<type::value_type>(src, i); \
-            }                                                          \
-            return;                                                    \
-        }                                                              \
+            }                                                                              \
+            return;                                                                        \
+        }                                                                                  \
     } while (false)
 
     COPY_TYPED_ARRAY_TO_DEST(Float32Array);

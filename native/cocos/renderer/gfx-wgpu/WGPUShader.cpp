@@ -88,8 +88,8 @@ void CCWGPUShader::initialize(const ShaderInfo &info, const std::vector<std::vec
     }
 }
 
-void CCWGPUShader::initWithWGSL(const ShaderInfo& info) {
-     _gpuShaderObject = ccnew CCWGPUShaderObject;
+void CCWGPUShader::initWithWGSL(const ShaderInfo &info) {
+    _gpuShaderObject = ccnew CCWGPUShaderObject;
 
     _name = info.name;
     _stages = info.stages;

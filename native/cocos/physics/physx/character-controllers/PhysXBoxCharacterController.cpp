@@ -23,14 +23,13 @@
 ****************************************************************************/
 
 #include "physics/physx/character-controllers/PhysXBoxCharacterController.h"
+#include "math/Utils.h"
 #include "physics/physx/PhysXUtils.h"
 #include "physics/physx/PhysXWorld.h"
-#include "math/Utils.h"
 
 namespace cc {
 namespace physics {
-PhysXBoxCharacterController::PhysXBoxCharacterController() :
-_mHalfHeight(0.5F), _mHalfSideExtent(0.5F), _mHalfForwardExtent(0.5F) {
+PhysXBoxCharacterController::PhysXBoxCharacterController() : _mHalfHeight(0.5F), _mHalfSideExtent(0.5F), _mHalfForwardExtent(0.5F) {
 }
 
 void PhysXBoxCharacterController::setHalfHeight(float v) {
@@ -55,7 +54,7 @@ void PhysXBoxCharacterController::onComponentSet() {
 void PhysXBoxCharacterController::create() {
     release();
 
-    physx::PxControllerManager& controllerManager = PhysXWorld::getInstance().getControllerManager();
+    physx::PxControllerManager &controllerManager = PhysXWorld::getInstance().getControllerManager();
     auto pxMtl = reinterpret_cast<physx::PxMaterial *>(PhysXWorld::getInstance().getPXMaterialPtrWithMaterialID(0));
 
     physx::PxBoxControllerDesc boxDesc;
@@ -76,28 +75,28 @@ void PhysXBoxCharacterController::create() {
     boxDesc.material = pxMtl;
     boxDesc.userData = this;
     boxDesc.reportCallback = &report;
-    _impl = static_cast<physx::PxBoxController*>(controllerManager.createController(boxDesc));
+    _impl = static_cast<physx::PxBoxController *>(controllerManager.createController(boxDesc));
 
     updateScale();
     insertToCCTMap();
     updateFilterData();
 }
 
-void PhysXBoxCharacterController::updateScale(){
+void PhysXBoxCharacterController::updateScale() {
     updateGeometry();
 }
 
-void PhysXBoxCharacterController::updateGeometry(){
-    if(!_impl) return;
+void PhysXBoxCharacterController::updateGeometry() {
+    if (!_impl) return;
 
     auto *node = _mNode;
     node->updateWorldTransform();
     float s = _mHalfSideExtent * physx::PxAbs(node->getWorldScale().x);
     float h = _mHalfHeight * physx::PxAbs(node->getWorldScale().y);
     float f = _mHalfForwardExtent * physx::PxAbs(node->getWorldScale().z);
-    static_cast<physx::PxBoxController*>(_impl)->setHalfSideExtent(physx::PxMax(s, PX_NORMALIZATION_EPSILON));
-    static_cast<physx::PxBoxController*>(_impl)->setHalfHeight(physx::PxMax(h, PX_NORMALIZATION_EPSILON));
-    static_cast<physx::PxBoxController*>(_impl)->setHalfForwardExtent(physx::PxMax(f, PX_NORMALIZATION_EPSILON));
+    static_cast<physx::PxBoxController *>(_impl)->setHalfSideExtent(physx::PxMax(s, PX_NORMALIZATION_EPSILON));
+    static_cast<physx::PxBoxController *>(_impl)->setHalfHeight(physx::PxMax(h, PX_NORMALIZATION_EPSILON));
+    static_cast<physx::PxBoxController *>(_impl)->setHalfForwardExtent(physx::PxMax(f, PX_NORMALIZATION_EPSILON));
 }
 
 } // namespace physics

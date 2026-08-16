@@ -69,21 +69,21 @@ void SensorDataCallbackImpl(Sensor_Event *event) {
         return;
     }
     switch (sensorType) {
-    case SENSOR_TYPE_ACCELEROMETER:
-        motionValue.accelerationIncludingGravityX = data[0];
-        motionValue.accelerationIncludingGravityY = data[1];
-        motionValue.accelerationIncludingGravityZ = -data[2];
-        break;
-    case SENSOR_TYPE_LINEAR_ACCELERATION:
-        motionValue.accelerationX = data[0];
-        motionValue.accelerationY = data[1];
-        motionValue.accelerationZ = data[2];
-        break;
-    case SENSOR_TYPE_GYROSCOPE:
-        motionValue.rotationRateAlpha = radiansToDegrees(data[0]);
-        motionValue.rotationRateBeta = radiansToDegrees(data[1]);
-        motionValue.rotationRateGamma = radiansToDegrees(data[2]);
-        break;
+        case SENSOR_TYPE_ACCELEROMETER:
+            motionValue.accelerationIncludingGravityX = data[0];
+            motionValue.accelerationIncludingGravityY = data[1];
+            motionValue.accelerationIncludingGravityZ = -data[2];
+            break;
+        case SENSOR_TYPE_LINEAR_ACCELERATION:
+            motionValue.accelerationX = data[0];
+            motionValue.accelerationY = data[1];
+            motionValue.accelerationZ = data[2];
+            break;
+        case SENSOR_TYPE_GYROSCOPE:
+            motionValue.rotationRateAlpha = radiansToDegrees(data[0]);
+            motionValue.rotationRateBeta = radiansToDegrees(data[1]);
+            motionValue.rotationRateGamma = radiansToDegrees(data[2]);
+            break;
     }
 }
 
@@ -123,7 +123,7 @@ static void disableSensor(int index) {
     Sensor_SubscriptionAttribute *at = g_attr[index];
     Sensor_Subscriber *gUser = g_user[index];
 
-    if(it == nullptr || at == nullptr || gUser == nullptr) {
+    if (it == nullptr || at == nullptr || gUser == nullptr) {
         return;
     }
     ret = OH_Sensor_Unsubscribe(it, gUser);
