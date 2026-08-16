@@ -23,11 +23,11 @@ THE SOFTWARE.
 ****************************************************************************/
 #pragma once
 
-#define COCOS_MAJOR_VERSION   4
-#define COCOS_MINJOR_VERSION  0
-#define COCOS_PATCH_VERSION   0
-#define COCOS_VERSION_STRING  "4.0.0"
-#define COCOS_VERSION_DEFINED 1
-#define COCOS_VERSION         40000
+#define COCOS_MAJOR_VERSION     4
+#define COCOS_MINJOR_VERSION    0
+#define COCOS_PATCH_VERSION     0
+#define COCOS_VERSION_STRING    "4.0.0"
+#define COCOS_VERSION_DEFINED   1
+#define COCOS_VERSION           40000
 
 // #define COCOS_PRE_RELEASE       "alpha"
