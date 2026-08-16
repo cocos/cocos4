@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <sys/cdefs.h>
+    #include <sys/cdefs.h>
 #endif
 
 #include "audio/android/audio.h"

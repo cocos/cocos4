@@ -34,10 +34,10 @@
 #include <time.h>
 #include <unistd.h>
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <android/log.h>
+    #include <android/log.h>
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#include <hilog/log.h>
-#define LOG_VERBOSE LOG_INFO
+    #include <hilog/log.h>
+    #define LOG_VERBOSE LOG_INFO
 #endif
 
 #ifdef __cplusplus
@@ -90,11 +90,11 @@ extern "C" {
  * Simplified macro to send a verbose log message using the current LOG_TAG.
  */
     #ifndef ALOGV
-#if CC_PLATFORM == CC_PLATFORM_ANDROID
-    #define __ALOGV(...) ((void)ALOG(LOG_VERBOSE, LOG_TAG, __VA_ARGS__))
-#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-    #define __ALOGV(...) ((void)ALOG(LOG_INFO, LOG_TAG, __VA_ARGS__))
-#endif
+        #if CC_PLATFORM == CC_PLATFORM_ANDROID
+            #define __ALOGV(...) ((void)ALOG(LOG_VERBOSE, LOG_TAG, __VA_ARGS__))
+        #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+            #define __ALOGV(...) ((void)ALOG(LOG_INFO, LOG_TAG, __VA_ARGS__))
+        #endif
         #if LOG_NDEBUG
             #define ALOGV(...)                \
                 do {                          \
@@ -413,23 +413,23 @@ extern "C" {
  * is -inverted- from the normal assert() semantics.
  */
 #ifndef LOG_ALWAYS_FATAL_IF
-#if CC_PLATFORM == CC_PLATFORM_ANDROID
-    #define LOG_ALWAYS_FATAL_IF(cond, ...)                                \
-        ((__predict_false(cond))                                          \
-             ? ((void)android_printAssert(#cond, LOG_TAG, ##__VA_ARGS__)) \
-             : (void)0)
-#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-    #define LOG_ALWAYS_FATAL_IF(cond, ...) ((void)0 )
-#endif
+    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+        #define LOG_ALWAYS_FATAL_IF(cond, ...)                                \
+            ((__predict_false(cond))                                          \
+                 ? ((void)android_printAssert(#cond, LOG_TAG, ##__VA_ARGS__)) \
+                 : (void)0)
+    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        #define LOG_ALWAYS_FATAL_IF(cond, ...) ((void)0)
+    #endif
 #endif
 
 #ifndef LOG_ALWAYS_FATAL
-#if CC_PLATFORM == CC_PLATFORM_ANDROID
-    #define LOG_ALWAYS_FATAL(...) \
-        (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
-#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-    #define LOG_ALWAYS_FATAL(...) ((void) OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-#endif
+    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+        #define LOG_ALWAYS_FATAL(...) \
+            (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
+    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        #define LOG_ALWAYS_FATAL(...) ((void)OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+    #endif
 #endif
 
 /*
@@ -476,26 +476,25 @@ extern "C" {
  * The second argument may be NULL or "" to indicate the "global" tag.
  */
 #ifndef ALOG
-#if CC_PLATFORM == CC_PLATFORM_ANDROID
-#define ALOG(priority, tag, ...) \
-        LOG_PRI(ANDROID_##priority, tag, __VA_ARGS__)
-#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-#define ALOG(priority, tag, ...) \
-        LOG_PRI(priority, tag, __VA_ARGS__) 
+    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+        #define ALOG(priority, tag, ...) \
+            LOG_PRI(ANDROID_##priority, tag, __VA_ARGS__)
+    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        #define ALOG(priority, tag, ...) \
+            LOG_PRI(priority, tag, __VA_ARGS__)
+    #endif
 #endif
-#endif
-
 
 /*
  * Log macro that allows you to specify a number for the priority.
  */
 #ifndef LOG_PRI
-#if CC_PLATFORM == CC_PLATFORM_ANDROID
-    #define LOG_PRI(priority, tag, ...) \
-        android_printLog(priority, tag, __VA_ARGS__)
-#elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-    #define LOG_PRI(priority, tag, ...) ((void) OH_LOG_Print(LOG_APP, priority, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
-#endif
+    #if CC_PLATFORM == CC_PLATFORM_ANDROID
+        #define LOG_PRI(priority, tag, ...) \
+            android_printLog(priority, tag, __VA_ARGS__)
+    #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+        #define LOG_PRI(priority, tag, ...) ((void)OH_LOG_Print(LOG_APP, priority, LOG_DOMAIN, "HMG_LOG", __VA_ARGS__))
+    #endif
 #endif
 
 /*

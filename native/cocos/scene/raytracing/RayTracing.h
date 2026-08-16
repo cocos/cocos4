@@ -23,15 +23,15 @@
 ****************************************************************************/
 
 #pragma once
+#include <cocos/base/Ptr.h>
 #include <cocos/math/Mat4.h>
 #include <cocos/renderer/gfx-base/GFXBuffer.h>
-#include <cocos/base/Ptr.h>
-#include <cocos/scene/raytracing/Description.h>
 #include <cocos/scene/SubModel.h>
+#include <cocos/scene/raytracing/Description.h>
 #include "cocos/scene/raytracing/Def.h"
 namespace cc {
 namespace scene {
-    class RenderScene;
+class RenderScene;
 namespace raytracing {
 
 class RayTracing : public RefCounted {
@@ -39,7 +39,7 @@ public:
     explicit RayTracing(RenderScene* scene);
     ~RayTracing() override = default;
     // getter
-    inline const ccstd::vector<Mat4>& getTransforms() const  { return _description->transforms; }
+    inline const ccstd::vector<Mat4>& getTransforms() const { return _description->transforms; }
     inline const ccstd::vector<Mat4>& getTransformPrev() const { return _description->transformPrev; }
     inline const ccstd::vector<uint32_t>& getOpaqueOrMaskInstanceIDs() const { return _description->opaqueOrMaskInstanceIDs; }
     inline const gfx::Buffer* getInstanceBuffer() const { return _description->instanceBuffer.get(); }
@@ -65,8 +65,7 @@ private:
     void addTexture(const IntrusivePtr<Pass>& pass, const std::string& name, uint32_t binding);
     void addMaterial(const IntrusivePtr<Pass>& pass);
     static MaterialProperty getPassUniform(const IntrusivePtr<Pass>& pass, const std::string& name);
-    static float getPassUniformAsFloat(const IntrusivePtr<Pass>& pass,  const std::string& name);
-    
+    static float getPassUniformAsFloat(const IntrusivePtr<Pass>& pass, const std::string& name);
 };
 } // namespace raytracing
 } // namespace scene

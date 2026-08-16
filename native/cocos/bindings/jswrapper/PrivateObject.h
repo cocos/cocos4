@@ -27,10 +27,10 @@
 #include <cmath>
 #include <memory>
 #include <type_traits>
+#include "base/HasMemberFunction.h"
 #include "base/Ptr.h"
 #include "base/RefCounted.h"
 #include "base/memory/Memory.h"
-#include "base/HasMemberFunction.h"
 
 namespace se {
 
@@ -116,7 +116,7 @@ public:
     explicit CCIntrusivePtrPrivateObject(const cc::IntrusivePtr<T> &p) : _ptr(p) {}
     explicit CCIntrusivePtrPrivateObject(cc::IntrusivePtr<T> &&p) : _ptr(std::move(p)) {}
     ~CCIntrusivePtrPrivateObject() override {
-        if constexpr (cc::has_setScriptObject<T,void(se::Object *)>::value) {
+        if constexpr (cc::has_setScriptObject<T, void(se::Object *)>::value) {
             _ptr->setScriptObject(nullptr);
         }
     }

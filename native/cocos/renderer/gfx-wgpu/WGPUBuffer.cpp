@@ -24,10 +24,10 @@
 
 #include "WGPUBuffer.h"
 #include <webgpu/webgpu.h>
+#include <boost/align/align_up.hpp>
 #include "WGPUDevice.h"
 #include "WGPUObject.h"
 #include "WGPUUtils.h"
-#include <boost/align/align_up.hpp>
 
 namespace cc {
 namespace gfx {

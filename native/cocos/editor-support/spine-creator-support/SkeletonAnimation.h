@@ -28,16 +28,16 @@
  *****************************************************************************/
 
 #pragma once
+#include <vector>
 #include "spine-creator-support/SkeletonRenderer.h"
 #include "spine/spine.h"
-#include <vector>
 
 namespace cc {
 
 struct CacheEventInfo {
-  spine::EventType type{spine::EventType::EventType_Start};
-  spine::TrackEntry *entry{nullptr};
-  spine::Event *event{nullptr};
+    spine::EventType type{spine::EventType::EventType_Start};
+    spine::TrackEntry *entry{nullptr};
+    spine::Event *event{nullptr};
 };
 typedef std::function<void(spine::TrackEntry *entry)> StartListener;
 typedef std::function<void(spine::TrackEntry *entry)> InterruptListener;

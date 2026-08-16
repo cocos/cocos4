@@ -134,7 +134,6 @@ void HttpClient::networkThread() {
 
 // Worker thread
 void HttpClient::networkThreadAlone(HttpRequest *request, HttpResponse *response) {
-
     char responseMessage[RESPONSE_BUFFER_SIZE] = {0};
     processResponse(response, responseMessage);
 
@@ -521,12 +520,12 @@ void HttpClient::processResponse(HttpResponse *response, char *responseMessage) 
 
         case HttpRequest::Type::PATCH:
             retValue = processPatchTask(this, request,
-                                      writeData,
-                                      response->getResponseData(),
-                                      &responseCode,
-                                      writeHeaderData,
-                                      response->getResponseHeader(),
-                                      responseMessage);
+                                        writeData,
+                                        response->getResponseData(),
+                                        &responseCode,
+                                        writeHeaderData,
+                                        response->getResponseHeader(),
+                                        responseMessage);
             break;
 
         default:

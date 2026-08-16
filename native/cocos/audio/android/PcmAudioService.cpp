@@ -25,28 +25,28 @@
 
 #define LOG_TAG "PcmAudioService"
 
-#include "base/Macros.h"
 #include "audio/android/PcmAudioService.h"
 #include "audio/android/AudioMixerController.h"
 #include "audio/android/utils/Compat.h"
+#include "base/Macros.h"
 
 namespace cc {
 
-static ccstd::vector<char> __silenceData;//NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
+static ccstd::vector<char> __silenceData; //NOLINT(bugprone-reserved-identifier, readability-identifier-naming)
 
 #define AUDIO_PLAYER_BUFFER_COUNT (2)
 
 class SLPcmAudioPlayerCallbackProxy {
 public:
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-    static void samplePlayerCallback(CCSLBufferQueueItf bq, void *context) {
+    static void samplePlayerCallback(CCSLBufferQueueItf bq, void *context){
 #elif CC_PLATFORM == CC_PLATFORM_OPENHARMONY
     static void samplePlayerCallback(CCSLBufferQueueItf bq, void *context, SLuint32 size) {
 #endif
         auto *thiz = reinterpret_cast<PcmAudioService *>(context);
-        thiz->bqFetchBufferCallback(bq);
-    }
-};
+    thiz->bqFetchBufferCallback(bq);
+}
+}; // namespace cc
 
 PcmAudioService::PcmAudioService(SLEngineItf engineItf, SLObjectItf outputMixObject)
 : _engineItf(engineItf), _outputMixObj(outputMixObject), _playObj(nullptr), _playItf(nullptr), _volumeItf(nullptr), _bufferQueueItf(nullptr), _numChannels(-1), _sampleRate(-1), _bufferSizeInBytes(0), _controller(nullptr) {
@@ -59,12 +59,12 @@ PcmAudioService::~PcmAudioService() {
 }
 
 bool PcmAudioService::enqueue() {
-    #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-        // We need to call this interface in openharmony, otherwise there will be noise
-        SLuint8 *buffer = nullptr;
-        SLuint32 size = 0;
-        (*_bufferQueueItf)->GetBuffer(_bufferQueueItf, &buffer, &size);
-    #endif
+#if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+    // We need to call this interface in openharmony, otherwise there will be noise
+    SLuint8 *buffer = nullptr;
+    SLuint32 size = 0;
+    (*_bufferQueueItf)->GetBuffer(_bufferQueueItf, &buffer, &size);
+#endif
     if (_controller->hasPlayingTacks()) {
         if (_controller->isPaused()) {
             SLresult r = (*_bufferQueueItf)->Enqueue(_bufferQueueItf, __silenceData.data(), __silenceData.size());
@@ -141,7 +141,7 @@ bool PcmAudioService::init(AudioMixerController *controller, int numChannels, in
 
     SLresult r;
 
-    r = (*_engineItf)->CreateAudioPlayer(_engineItf, &_playObj, &source, &sink, sizeof(ids) / sizeof(ids[0]), ids, req);//NOLINT(bugprone-sizeof-expression)
+    r = (*_engineItf)->CreateAudioPlayer(_engineItf, &_playObj, &source, &sink, sizeof(ids) / sizeof(ids[0]), ids, req); //NOLINT(bugprone-sizeof-expression)
     SL_RETURN_VAL_IF_FAILED(r, false, "CreateAudioPlayer failed");
 
     r = (*_playObj)->Realize(_playObj, SL_BOOLEAN_FALSE);
@@ -162,12 +162,12 @@ bool PcmAudioService::init(AudioMixerController *controller, int numChannels, in
     if (__silenceData.empty()) {
         __silenceData.resize(_numChannels * _bufferSizeInBytes, 0x00);
     }
-    #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
-        // We need to call this interface in openharmony, otherwise there will be noise
-        SLuint8 *buffer = nullptr;
-        SLuint32 size = 0;
-        (*_bufferQueueItf)->GetBuffer(_bufferQueueItf, &buffer, &size);
-    #endif
+#if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
+    // We need to call this interface in openharmony, otherwise there will be noise
+    SLuint8 *buffer = nullptr;
+    SLuint32 size = 0;
+    (*_bufferQueueItf)->GetBuffer(_bufferQueueItf, &buffer, &size);
+#endif
     r = (*_bufferQueueItf)->Enqueue(_bufferQueueItf, __silenceData.data(), __silenceData.size());
     SL_RETURN_VAL_IF_FAILED(r, false, "_bufferQueueItf Enqueue failed");
 

@@ -39,7 +39,7 @@
 #include "core/assets/Texture2D.h"
 #include "middleware-adapter.h"
 #if CC_USE_SPINE_3_8
-#include "spine-creator-support/VertexEffectDelegate.h"
+    #include "spine-creator-support/VertexEffectDelegate.h"
 #endif
 #include "spine/spine.h"
 
@@ -49,7 +49,6 @@ class RenderDrawInfo;
 class Material;
 
 class AttachmentVertices;
-
 
 template <typename VertexType, typename UVArrayType>
 void loopUVCoords(VertexType *tmp, const UVArrayType &uvs, int count) {

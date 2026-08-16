@@ -167,7 +167,7 @@ void CCWGPUDevice::copyBuffersToTexture(const emscripten::val& v, Texture* dst, 
     return copyBuffersToTexture(buffers.data(), dst, regions.data(), regions.size());
 }
 
-void CCWGPUShader::reflectBinding(const emscripten::val &vals) {
+void CCWGPUShader::reflectBinding(const emscripten::val& vals) {
     const std::vector<uint8_t>& bindings = convertJSArrayToNumberVector<uint8_t>(vals);
     _gpuShaderObject->bindings.emplace_back(bindings);
 }

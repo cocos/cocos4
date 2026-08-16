@@ -26,17 +26,17 @@
 #define LOG_TAG "UrlAudioPlayer"
 
 #include "audio/android/UrlAudioPlayer.h"
-#include "audio/android/ICallerThreadUtils.h"
-#include "base/std/container/vector.h"
-#include "base/Macros.h"
-#include <cmath>
 #include <algorithm> // for std::find
+#include <cmath>
+#include "audio/android/ICallerThreadUtils.h"
+#include "base/Macros.h"
+#include "base/std/container/vector.h"
 
 namespace {
 
-std::mutex __playerContainerMutex;//NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
-ccstd::vector<cc::UrlAudioPlayer *> __playerContainer;//NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
-std::once_flag __onceFlag;//NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
+std::mutex __playerContainerMutex;                     //NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
+ccstd::vector<cc::UrlAudioPlayer *> __playerContainer; //NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
+std::once_flag __onceFlag;                             //NOLINT(bugprone-reserved-identifier,readability-identifier-naming)
 
 } // namespace
 
@@ -216,7 +216,7 @@ float UrlAudioPlayer::getDuration() const {
 
     if (duration == SL_TIME_UNKNOWN) {
         return -1.0F;
-    } else {// NOLINT(readability-else-after-return)
+    } else { // NOLINT(readability-else-after-return)
         const_cast<UrlAudioPlayer *>(this)->_duration = duration / 1000.0F;
 
         if (_duration <= 0) {

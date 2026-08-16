@@ -23,12 +23,12 @@
 ****************************************************************************/
 
 #include "jsb_scene_manual.h"
+#include "application/ApplicationManager.h"
 #include "bindings/auto/jsb_gfx_auto.h"
 #include "bindings/auto/jsb_scene_auto.h"
 #include "core/Root.h"
 #include "core/scene-graph/Node.h"
 #include "scene/Model.h"
-#include "application/ApplicationManager.h"
 
 #ifndef JSB_ALLOC
     #define JSB_ALLOC(kls, ...) ccnew kls(__VA_ARGS__)
@@ -689,7 +689,7 @@ static bool js_Model_setInstancedAttribute(se::State &s) // NOLINT(readability-i
             if (val.toObject()->isArray()) {
                 uint32_t len = 0;
                 val.toObject()->getArrayLength(&len);
-                
+
                 cc::Float32Array value(len);
 
                 se::Value dataVal;

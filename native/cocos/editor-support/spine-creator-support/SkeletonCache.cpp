@@ -28,9 +28,9 @@
  *****************************************************************************/
 
 #include "SkeletonCache.h"
+#include "SkeletonDataMgr.h"
 #include "base/memory/Memory.h"
 #include "spine-creator-support/AttachmentVertices.h"
-#include "SkeletonDataMgr.h"
 
 USING_NS_MW;        // NOLINT(google-build-using-namespace)
 using namespace cc; // NOLINT(google-build-using-namespace)
@@ -315,7 +315,6 @@ void SkeletonCache::renderAnimationFrame(AnimationData *animationData) {
         matm[12] = bone->getWorldX();
         matm[13] = bone->getWorldY();
     }
-
 
     auto *skeletonDataInfo = SkeletonDataMgr::getInstance()->getSkeletonDataInfo(_uuid);
     if (!skeletonDataInfo) return;

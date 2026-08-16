@@ -823,9 +823,9 @@ void GeometryRenderer::addBezier(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2,
 void GeometryRenderer::addSpline(const geometry::Spline &spline, gfx::Color color, uint32_t index, float knotSize, uint32_t segments, bool depthTest, bool useTransform, const Mat4 &transform) {
     const auto numPoints = segments + 1;
     auto points = spline.getPoints(numPoints, index);
-    
+
     if (useTransform) {
-        for (auto& point : points) {
+        for (auto &point : points) {
             point.transformMat4(transform);
         }
     }

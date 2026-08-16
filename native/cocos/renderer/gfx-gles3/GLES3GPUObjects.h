@@ -359,7 +359,7 @@ struct GLES3GPUFramebufferObject {
     void destroy(GLES3GPUStateCache *cache, GLES3GPUFramebufferCacheMap *framebufferCacheMap);
     GLuint getHandle() const { return swapchain != nullptr ? swapchain->glFramebuffer : handle; }
 
-    using Reference = std::pair<const GLES3GPUTextureView*, GLint>;
+    using Reference = std::pair<const GLES3GPUTextureView *, GLint>;
 
     GLES3GPUSwapchain *swapchain{nullptr};
 
@@ -369,6 +369,7 @@ struct GLES3GPUFramebufferObject {
 
     ccstd::vector<GLenum> loadInvalidates;
     ccstd::vector<GLenum> storeInvalidates;
+
 private:
     GLuint handle{0};
 };

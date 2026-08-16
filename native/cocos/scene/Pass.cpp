@@ -129,8 +129,8 @@ void Pass::fillPipelineInfo(Pass *pass, const IPassInfoFull &info) {
         if (pass->_blendState.isA2C) {
             const bool passWantsMultisample =
                 (info.rasterizerState.has_value() && info.rasterizerState.value().isMultisample.has_value()
-                    ? info.rasterizerState.value().isMultisample.value() != 0
-                    : pass->_rs.isMultisample != 0);
+                     ? info.rasterizerState.value().isMultisample.value() != 0
+                     : pass->_rs.isMultisample != 0);
 
             bool msaaDisabled = true;
             const auto *device = gfx::Device::getInstance();

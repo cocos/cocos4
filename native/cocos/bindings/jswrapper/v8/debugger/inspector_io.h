@@ -9,9 +9,9 @@
     #include "node_mutex.h"
     #include "uv.h"
 
+    #include <stddef.h>
     #include <deque>
     #include <memory>
-    #include <stddef.h>
 
     #if !HAVE_INSPECTOR
         #error("This header can only be used when inspector is enabled")

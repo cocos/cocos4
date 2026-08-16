@@ -111,7 +111,7 @@ void PhysXGenericJoint::setAngularExtent(float twist, float swing1, float swing2
     _angularLimit.twistExtent = mathutils::toRadian(std::fmax(twist, 1e-9));
     _angularLimit.swing1Extent = mathutils::toRadian(std::fmax(swing1, 1e-9));
     _angularLimit.swing2Extent = mathutils::toRadian(std::fmax(swing2, 1e-9));
-    
+
     updateTwistLimit();
     updateSwingLimit();
 }

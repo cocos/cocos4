@@ -90,7 +90,7 @@ std::string System::getCurrentLanguageCode() const {
     }
     auto str = ret.As<Napi::String>().Utf8Value();
     std::string::size_type pos = str.find('-');
-    if(pos != std::string::npos) {
+    if (pos != std::string::npos) {
         str = str.substr(0, pos);
     }
     return str;

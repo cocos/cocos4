@@ -65,7 +65,7 @@ protected:
     void doInit(const ShaderInfo &info) override;
     void doDestroy() override;
 
-    bool checkInputAttachment(const ShaderInfo& info) const;
+    bool checkInputAttachment(const ShaderInfo &info) const;
     bool createMTLFunction(const ShaderStage &, CCMTLRenderPass *renderPass, uint32_t subPass);
     void setAvailableBufferBindingIndex();
 

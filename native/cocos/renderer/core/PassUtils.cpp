@@ -35,38 +35,38 @@ const ccstd::unordered_map<gfx::Type, GFXTypeReaderCallback> type2reader = {
          CC_LOG_ERROR("type2reader unknown type");
      }},
     {gfx::Type::INT, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = static_cast<int32_t>(a[idx]);
+         v = static_cast<int32_t>(a[idx]);
      }},
     {gfx::Type::INT2, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec2(a[idx], a[idx + 1]);
+         v = Vec2(a[idx], a[idx + 1]);
      }},
     {gfx::Type::INT3, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec3(a[idx], a[idx + 1], a[idx + 2]);
+         v = Vec3(a[idx], a[idx + 1], a[idx + 2]);
      }},
     {gfx::Type::INT4, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec4(a[idx], a[idx + 1], a[idx + 2], a[idx + 3]);
+         v = Vec4(a[idx], a[idx + 1], a[idx + 2], a[idx + 3]);
      }},
     {gfx::Type::FLOAT, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = a[idx];
+         v = a[idx];
      }},
     {gfx::Type::FLOAT2, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec2(a[idx], a[idx + 1]);
+         v = Vec2(a[idx], a[idx + 1]);
      }},
     {gfx::Type::FLOAT3, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec3(a[idx], a[idx + 1], a[idx + 2]);
+         v = Vec3(a[idx], a[idx + 1], a[idx + 2]);
      }},
     {gfx::Type::FLOAT4, [](const float *a, MaterialProperty &v, index_t idx) {
-        v = Vec4(a[idx], a[idx + 1], a[idx + 2], a[idx + 3]);
+         v = Vec4(a[idx], a[idx + 1], a[idx + 2], a[idx + 3]);
      }},
     {gfx::Type::MAT3, [](const float *a, MaterialProperty &v, index_t idx) {
-        Mat3 mat3;
-        memcpy(&mat3.m[0], &a[idx], sizeof(Mat3));
-        v = mat3;
+         Mat3 mat3;
+         memcpy(&mat3.m[0], &a[idx], sizeof(Mat3));
+         v = mat3;
      }},
     {gfx::Type::MAT4, [](const float *a, MaterialProperty &v, index_t idx) {
-        Mat4 mat4;
-        memcpy(&mat4.m[0], &a[idx], sizeof(Mat4));
-        v = mat4;
+         Mat4 mat4;
+         memcpy(&mat4.m[0], &a[idx], sizeof(Mat4));
+         v = mat4;
      }},
 };
 

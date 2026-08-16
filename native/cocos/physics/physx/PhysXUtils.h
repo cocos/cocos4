@@ -27,11 +27,11 @@
 #include "base/Macros.h"
 #include "base/std/container/unordered_map.h"
 #include "base/std/container/vector.h"
-#include "renderer/pipeline/Define.h"
 #include "math/Vec3.h"
 #include "math/Vec4.h"
 #include "physics/physx/PhysXFilterShader.h"
 #include "physics/physx/PhysXInc.h"
+#include "renderer/pipeline/Define.h"
 
 #define PX_RELEASE(x)   \
     if (x) {            \
@@ -117,10 +117,10 @@ inline void pxSetQuatExt(T1 &p, const T2 &cp) {
     p = T1(cp.x, cp.y, cp.z, cp.w);
 }
 
-inline void pxSetColor(gfx::Color& color, physx::PxU32 rgba) {
+inline void pxSetColor(gfx::Color &color, physx::PxU32 rgba) {
     color.z = ((rgba >> 16) & 0xff);
     color.y = ((rgba >> 8) & 0xff);
-    color.x = ((rgba) & 0xff);
+    color.x = ((rgba)&0xff);
     color.w = 255;
 }
 
@@ -137,7 +137,7 @@ inline ccstd::unordered_map<uintptr_t, uint32_t> &getPxShapeMap() {
 }
 
 //physx::PxCharacterController ptr <--> PhysxCharacterController ObjectID
-inline ccstd::unordered_map<uintptr_t, uint32_t>& getPxCCTMap() {
+inline ccstd::unordered_map<uintptr_t, uint32_t> &getPxCCTMap() {
     static ccstd::unordered_map<uintptr_t, uint32_t> m;
     return m;
 }
