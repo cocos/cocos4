@@ -384,10 +384,10 @@ export class ReflectionProbe extends Component {
                 }
             }
         }
-        if (this.probeType === ProbeType.PLANAR && this.sourceCamera) {
+        if (!EDITOR_NOT_IN_PREVIEW && this.probeType === ProbeType.PLANAR && this.sourceCamera) {
             if ((this.sourceCamera.node.hasChangedFlags & TransformBit.TRS)
             || !this._sourceCameraPos.equals(this.sourceCamera.node.getWorldPosition())) {
-                this._sourceCameraPos = this.sourceCamera.node.getWorldPosition();
+                this._sourceCameraPos.set(this.sourceCamera.node.getWorldPosition());
                 this.probe.renderPlanarReflection(this.sourceCamera.camera);
             }
         }
