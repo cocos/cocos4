@@ -54,8 +54,8 @@ class ExternalStringResource : public v8::String::ExternalStringResource {
 public:
     explicit ExternalStringResource(std::u16string &&s);
     ~ExternalStringResource() override = default;
-    
-    const uint16_t* data() const override;
+
+    const uint16_t *data() const override;
     size_t length() const override;
     void Dispose() override;
 

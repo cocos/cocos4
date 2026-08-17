@@ -507,7 +507,7 @@ void CCVKCommandBuffer::draw(const DrawInfo &info) {
         if (hasIndexBuffer) {
             if (info.indexCount > 0) {
                 vkCmdDrawIndexed(_gpuCommandBuffer->vkCommandBuffer, info.indexCount, instanceCount,
-                             info.firstIndex, info.vertexOffset, info.firstInstance);
+                                 info.firstIndex, info.vertexOffset, info.firstInstance);
             }
         } else {
             vkCmdDraw(_gpuCommandBuffer->vkCommandBuffer, info.vertexCount, instanceCount,
@@ -892,7 +892,7 @@ void CCVKCommandBuffer::pipelineBarrier(const GeneralBarrier *barrier, const Buf
                 signalEvent(ccBuffer, gpuBarrier->srcStageMask);
             } else {
                 bool fullBarrier = ccBarrier->getInfo().type == BarrierType::FULL;
-                bool missed = _barrierEvents.find(ccBuffer) != _barrierEvents.end();
+                bool missed = _barrierEvents.find(ccBuffer) == _barrierEvents.end();
                 if (!fullBarrier && !missed) {
                     CC_ASSERT(_barrierEvents.find(ccBuffer) != _barrierEvents.end());
                     VkEvent event = _barrierEvents.at(ccBuffer);
@@ -966,8 +966,8 @@ void CCVKCommandBuffer::pipelineBarrier(const GeneralBarrier *barrier, const Buf
             }
         }
 
-        if (!fullBufferBarriers.empty() || !fullImageBarriers.empty()) {
-            vkCmdPipelineBarrier(_gpuCommandBuffer->vkCommandBuffer, fullSrcStageMask, fullDstStageMask, 0, 0, pMemoryBarrier,
+        if (!fullBufferBarriers.empty() || !fullImageBarriers.empty() || pMemoryBarrier) {
+            vkCmdPipelineBarrier(_gpuCommandBuffer->vkCommandBuffer, fullSrcStageMask, fullDstStageMask, 0, pMemoryBarrier ? 1 : 0, pMemoryBarrier,
                                  fullBufferBarriers.size(), fullBufferBarriers.data(), fullImageBarriers.size(), fullImageBarriers.data());
         }
     }

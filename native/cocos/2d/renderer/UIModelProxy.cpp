@@ -58,13 +58,13 @@ void UIModelProxy::activeSubModels() {
                 auto* vertexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
                     gfx::MemoryUsageBit::DEVICE,
-                    65535 * _stride,
+                    65536 * _stride, // Uint16 can address 65536 vertices (indices 0–65535)
                     _stride,
                 });
                 auto* indexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::INDEX | gfx::BufferUsageBit::TRANSFER_DST,
                     gfx::MemoryUsageBit::DEVICE,
-                    65535 * sizeof(uint16_t) * 2,
+                    65536 * sizeof(uint16_t) * 2, // Uint16 can address 65536 vertices (indices 0–65535)
                     sizeof(uint16_t),
                 });
                 gfx::BufferList vbReference;
@@ -133,8 +133,8 @@ void UIModelProxy::clear() {
         return;
     }
     const auto& subModels = _model->getSubModels();
-    for (const auto &subModel : subModels) {
-        auto *ia = subModel->getInputAssembler();
+    for (const auto& subModel : subModels) {
+        auto* ia = subModel->getInputAssembler();
         ia->setVertexCount(0);
         ia->setIndexCount(0);
     }

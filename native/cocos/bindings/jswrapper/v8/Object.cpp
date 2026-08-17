@@ -24,8 +24,8 @@
 ****************************************************************************/
 
 #include "Object.h"
-#include "v8/HelperMacros.h"
 #include "application/ApplicationManager.h"
+#include "v8/HelperMacros.h"
 
 // Use node::Buffer to replace v8 api,to avoid link err in editor platform.
 #if CC_EDITOR && CC_PLATFORM == CC_PLATFORM_WINDOWS
@@ -164,7 +164,7 @@ Object *Object::createPlainObject() {
     return obj;
 }
 
-std::unordered_map<Object*, v8::Persistent<v8::Promise::Resolver>*> Object::resolverMap;
+std::unordered_map<Object *, v8::Persistent<v8::Promise::Resolver> *> Object::resolverMap;
 
 void Object::resolverPromise(Object *object, const Value &value) {
     auto it = resolverMap.find(object);
@@ -172,7 +172,7 @@ void Object::resolverPromise(Object *object, const Value &value) {
         v8::Isolate *isolate = __isolate;
         v8::HandleScope scope(isolate);
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
-        auto* resolver = it->second;
+        auto *resolver = it->second;
         v8::Local<v8::Value> v8Val;
         se::internal::seToJsValue(__isolate, value, &v8Val);
         resolver->Get(isolate)->Resolve(context, v8Val).ToChecked();
@@ -188,7 +188,7 @@ void Object::rejectPromise(Object *object, const Value &value) {
         v8::Isolate *isolate = __isolate;
         v8::HandleScope scope(isolate);
         v8::Local<v8::Context> context = isolate->GetCurrentContext();
-        auto* resolver = it->second;
+        auto *resolver = it->second;
         v8::Local<v8::Value> v8Val;
         se::internal::seToJsValue(isolate, value, &v8Val);
         resolver->Get(isolate)->Reject(context, v8Val).ToChecked();

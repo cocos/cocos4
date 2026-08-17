@@ -30,10 +30,10 @@
 #include "scene/Ambient.h"
 #include "scene/Fog.h"
 #include "scene/Octree.h"
+#include "scene/PostSettings.h"
 #include "scene/Shadow.h"
 #include "scene/Skin.h"
 #include "scene/Skybox.h"
-#include "scene/PostSettings.h"
 
 namespace cc {
 

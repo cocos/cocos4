@@ -51,7 +51,7 @@ Class *Class::create(const std::string &clsName, se::Object *parent, Object *par
     return cls;
 }
 
-Class* Class::create(const std::initializer_list<const char *> &classPath, se::Object *parent, Object *parentProto, JSVM_Callback ctor) {
+Class *Class::create(const std::initializer_list<const char *> &classPath, se::Object *parent, Object *parentProto, JSVM_Callback ctor) {
     se::AutoHandleScope scope;
     se::Object *currentParent = parent;
     se::Value tmp;
@@ -64,7 +64,7 @@ Class* Class::create(const std::initializer_list<const char *> &classPath, se::O
 }
 
 bool Class::init(const std::string &clsName, Object *parent, Object *parentProto, JSVM_Callback ctor) {
-    _name   = clsName;
+    _name = clsName;
     _parent = parent;
     if (_parent != nullptr)
         _parent->incRef();
@@ -86,7 +86,7 @@ JSVM_Value Class::_defaultCtor(JSVM_Env env, JSVM_CallbackInfo info) {
     return thisArg;
 }
 
-void Class::defineProperty(const char* name, JSVM_Callback g, JSVM_Callback s) {
+void Class::defineProperty(const char *name, JSVM_Callback g, JSVM_Callback s) {
     _properties.push_back({name, nullptr, nullptr, g, s, 0, JSVM_DEFAULT_JSPROPERTY});
 }
 
@@ -96,18 +96,18 @@ void Class::defineProperty(const std::initializer_list<const char *> &names, JSV
     }
 }
 
-void Class::defineStaticProperty(const char* name, JSVM_Callback g, JSVM_Callback s) {
-    if(g != nullptr && s != nullptr) 
+void Class::defineStaticProperty(const char *name, JSVM_Callback g, JSVM_Callback s) {
+    if (g != nullptr && s != nullptr)
         _properties.push_back({name, nullptr, nullptr, g, s, 0, JSVM_STATIC});
 }
 
-void Class::defineFunction(const char* name, JSVM_Callback func) {
-	// When JSVM defines a function, it needs to add the enum attribute, otherwise JS cannot traverse the function
+void Class::defineFunction(const char *name, JSVM_Callback func) {
+    // When JSVM defines a function, it needs to add the enum attribute, otherwise JS cannot traverse the function
     _properties.push_back({name, nullptr, func, nullptr, nullptr, nullptr, JSVM_JSPROPERTY_NO_RECEIVER_CHECK});
 }
 
-void Class::defineStaticFunction(const char* name, JSVM_Callback func) {
-    _properties.push_back({name, nullptr, func, nullptr, nullptr, 0, JSVM_PropertyAttributes((int)JSVM_STATIC|(int)JSVM_WRITABLE)});
+void Class::defineStaticFunction(const char *name, JSVM_Callback func) {
+    _properties.push_back({name, nullptr, func, nullptr, nullptr, 0, JSVM_PropertyAttributes((int)JSVM_STATIC | (int)JSVM_WRITABLE)});
 }
 
 bool Class::defineStaticProperty(const char *name, const Value &v, PropertyAttribute attribute /* = PropertyAttribute::NONE */) {
@@ -129,7 +129,7 @@ JSVM_Finalize Class::_getFinalizeFunction() const {
 
 bool Class::install() {
     auto env = ScriptEngine::getEnv();
-    JSVM_Value  cons;
+    JSVM_Value cons;
     JSVM_Status status;
     NODE_API_CALL(status, env, OH_JSVM_DefineClass(env, _name.c_str(), -1, _ctorFunc, _properties.size(), _properties.data(), &cons));
     if (_parentProto) {
@@ -147,7 +147,7 @@ bool Class::install() {
         _proto->root();
     }
 
-	return true;
+    return true;
 }
 
 JSVM_Status Class::inherit(JSVM_Env env, JSVM_Value subclass, JSVM_Value superProto) {
@@ -205,7 +205,7 @@ JSVM_Ref Class::_getCtorRef() const {
 
 JSVM_Value Class::_getCtorFunc() const {
     assert(_constructor);
-    JSVM_Value  result = nullptr;
+    JSVM_Value result = nullptr;
     JSVM_Status status;
     NODE_API_CALL(status, ScriptEngine::getEnv(), OH_JSVM_GetReferenceValue(ScriptEngine::getEnv(), _constructor, &result));
     return result;
@@ -231,7 +231,7 @@ void Class::destroy() {
         }
         _ctor.reset();
     }
-    
+
     OH_JSVM_DeleteReference(ScriptEngine::getEnv(), _constructor);
 }
 

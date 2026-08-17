@@ -26,8 +26,8 @@ THE SOFTWARE.
 #define LOG_TAG "UrlAudioPlayer"
 
 #include "audio/openharmony/UrlAudioPlayer.h"
-#include <map>
 #include <algorithm> // for std::find
+#include <map>
 #include "audio/android/ICallerThreadUtils.h"
 #include "audio/android/cutils/log.h"
 #include "cocos/application/ApplicationManager.h"

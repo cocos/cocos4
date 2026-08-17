@@ -34,8 +34,8 @@
 #include "ConvertUTF/ConvertUTF.h"
 
 #if CC_USE_SIMD_UTF
-#include "simdutf/simdutf.cpp" //NOLINT
-#include "simdutf/simdutf.h"
+    #include "simdutf/simdutf.cpp" //NOLINT
+    #include "simdutf/simdutf.h"
 #endif
 
 #include "base/Log.h"

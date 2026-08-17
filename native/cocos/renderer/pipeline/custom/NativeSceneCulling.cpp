@@ -224,6 +224,10 @@ uint32_t isModelVisible(const scene::Model& model, uint32_t visibility) {
     return visibility & static_cast<uint32_t>(model.getVisFlags());
 }
 
+uint32_t isVisible(const scene::Model& model, uint32_t visibility) {
+    return isNodeVisible(model.getNode(), visibility) || isModelVisible(model, visibility);
+}
+
 bool isReflectProbeMask(const scene::Model& model) {
     return ((model.getNode()->getLayer() & REFLECTION_PROBE_DEFAULT_MASK) == model.getNode()->getLayer()) ||
            (REFLECTION_PROBE_DEFAULT_MASK & static_cast<uint32_t>(model.getVisFlags()));
@@ -432,8 +436,12 @@ void executeSphereLightCulling(
     const ccstd::vector<const scene::Model*>& frustumCullingResult,
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
@@ -447,8 +455,12 @@ void executeSpotLightCulling(
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
     const auto& lightFrustum = light.getFrustum();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || (modelBounds->aabbAabb(lightAABB) && modelBounds->aabbFrustum(lightFrustum))) {
             lightBoundsCullingResult.emplace_back(model);
@@ -461,8 +473,12 @@ void executePointLightCulling(
     const ccstd::vector<const scene::Model*>& frustumCullingResult,
     ccstd::vector<const scene::Model*>& lightBoundsCullingResult) {
     const auto& lightAABB = light.getAABB();
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
@@ -479,8 +495,12 @@ void executeRangedDirectionalLightCulling(
     // light->getNode()->updateWorldTransform();
     geometry::AABB lightAABB{};
     rangedDirLightBoundingBox.transform(light.getNode()->getWorldMatrix(), &lightAABB);
+    const auto visibility = light.getVisibility();
     for (const auto* const model : frustumCullingResult) {
         CC_EXPECTS(model);
+        if (!isVisible(*model, visibility)) {
+            continue;
+        }
         const auto* const modelBounds = model->getWorldBounds();
         if (!modelBounds || modelBounds->aabbAabb(lightAABB)) {
             lightBoundsCullingResult.emplace_back(model);
@@ -651,7 +671,8 @@ void SceneCulling::fillRenderQueues() {
             }
             // not culled by light bounds
             return frustumCullingResults.at(frustomCulledResultID.value);
-        }();
+        }
+        ();
 
         // skybox
         const auto* camera = nativeQueue.camera;
@@ -753,7 +774,7 @@ uint32_t LightResource::addLight(
     // already added
     auto iter = lightIndex.find(light);
     if (iter != lightIndex.end()) {
-        return iter->second;
+        return iter->second * elementSize;
     }
 
     // resize buffer

@@ -79,7 +79,6 @@ void OhosPlatform::waitWindowInitialized() {
 }
 
 void OhosPlatform::exit() {
-
 }
 
 int32_t OhosPlatform::loop() {

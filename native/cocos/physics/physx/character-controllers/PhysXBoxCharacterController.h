@@ -33,7 +33,7 @@ class PhysXBoxCharacterController final : public PhysXCharacterController, publi
 public:
     PhysXBoxCharacterController();
     ~PhysXBoxCharacterController() override = default;
-    
+
     // IBoxCharacterController
     void setHalfHeight(float v) override;
     void setHalfSideExtent(float v) override;

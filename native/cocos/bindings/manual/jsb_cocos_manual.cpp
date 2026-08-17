@@ -738,7 +738,6 @@ static bool js_readFile_doJob(const ccstd::string &fullPath, typename ReadFileDo
         return false;
     }
 
-
     if constexpr (std::is_same_v<T, ccstd::string> && isJson) {
 // TODO(cjh): OpenHarmony NAPI support
 #if SCRIPT_ENGINE_TYPE != SCRIPT_ENGINE_NAPI

@@ -27,7 +27,7 @@ import { Material, Texture2D } from '../asset/assets';
 import { error, errorID, logID, warnID } from '../core/platform/debug';
 import { Enum, EnumType, ccenum } from '../core/value-types/enum';
 import { Node, NodeEventType } from '../scene-graph';
-import { CCObjectFlags, Color, RecyclePool, js } from '../core';
+import { CCObjectFlags, Color, RecyclePool, js, math } from '../core';
 import { SkeletonData } from './skeleton-data';
 import type { Graphics } from '../2d/components/graphics';
 import { UIRenderer } from '../2d/framework/ui-renderer';
@@ -850,14 +850,12 @@ export class Skeleton extends UIRenderer {
                 warnID(16410);
             }
             const skeletonInfo = this._skeletonCache!.getSkeletonInfo(this._skeletonData!);
-            if (this._skeletonInfo !== skeletonInfo) {
+            if (this._skeletonInfo !== skeletonInfo || (!this._skeletonInfo && !skeletonInfo)) {
                 this._destroySkeletonInfo(this._skeletonCache);
                 if (!skeletonInfo && this._cacheMode === SpineAnimationCacheMode.PRIVATE_CACHE) {
                     this._animCache = this._skeletonCache!.initAnimationCache(this.skeletonData!.uuid, this._skeletonData!, this._animationName);
                 }
                 this._skeletonInfo = this._skeletonCache!.createSkeletonInfo(this._skeletonData!);
-            }
-            if (this._skeletonInfo) {
                 this._skeleton = this._skeletonInfo.skeleton!;
             }
         } else {
@@ -1589,7 +1587,7 @@ export class Skeleton extends UIRenderer {
             const socket = this._sockets[i];
             if (socket.path && socket.target) {
                 const boneIdx = this._cachedSockets.get(socket.path);
-                if (!boneIdx) {
+                if (boneIdx == null || boneIdx < 0) {
                     error(`Skeleton data does not contain path ${socket.path}`);
                     continue;
                 }
@@ -1883,10 +1881,16 @@ export class Skeleton extends UIRenderer {
      */
     public setTrackCompleteListener (entry: spine.TrackEntry, listener: TrackListener2): void {
         const onComplete = (trackEntry: spine.TrackEntry): void => {
-            const loopCount = Math.floor(trackEntry.trackTime / trackEntry.animationEnd);
-            listener(trackEntry, loopCount);
-            // this._instance.setListener(listenerID, spine.EventType.event);
-            // this._listener!.event = listener;
+            const animEnd = math.equals(trackEntry.animationEnd, -1.0) ? trackEntry.animation.duration : trackEntry.animationEnd;
+            const duration = animEnd - trackEntry.animationStart;
+            if (duration > 0) {
+                const loopCount = trackEntry.loop ? Math.floor(trackEntry.trackTime / duration) : 1;
+                listener(trackEntry, loopCount);
+                // this._instance.setListener(listenerID, spine.EventType.event);
+                // this._listener!.event = listener;
+            } else {
+                warnID(16420);
+            }
         };
         TrackEntryListeners.getListeners(entry, this._instance!).complete = onComplete;
     }

@@ -209,23 +209,23 @@ void Log::logMessage(LogType type, LogLevel level, const char *formats, ...) {
     ::LogLevel ohosLoglevel = ::LogLevel::LOG_DEBUG;
     switch (level) {
         case LogLevel::LEVEL_DEBUG:
-        ohosLoglevel = ::LogLevel::LOG_DEBUG;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_DEBUG;
+            break;
         case LogLevel::INFO:
-        ohosLoglevel = ::LogLevel::LOG_INFO;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_INFO;
+            break;
         case LogLevel::WARN:
-        ohosLoglevel = ::LogLevel::LOG_WARN;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_WARN;
+            break;
         case LogLevel::ERR:
-        ohosLoglevel = ::LogLevel::LOG_ERROR;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_ERROR;
+            break;
         case LogLevel::FATAL:
-        ohosLoglevel = ::LogLevel::LOG_FATAL;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_FATAL;
+            break;
         default:
-        ohosLoglevel = ::LogLevel::LOG_INFO;
-        break;
+            ohosLoglevel = ::LogLevel::LOG_INFO;
+            break;
     }
     OH_LOG_Print(LOG_APP, ohosLoglevel, LOG_DOMAIN, "HMG_LOG", "%{public}s", buff);
 #else

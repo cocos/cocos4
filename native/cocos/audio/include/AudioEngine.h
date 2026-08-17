@@ -339,6 +339,19 @@ protected:
     static void pauseAll(ccstd::vector<int> *pausedAudioIDs);
     static void resumeAll(ccstd::vector<int> *pausedAudioIDs);
 
+    /**
+     * @brief Get Audio Decoder
+     *
+     * Strategy:
+     *      1. If the full impl (with OpenAL) is already alive, reuse it (cache + decoder both available).
+     *      2. If OpenAL init has not been attempted yet, try lazyInit() so that a successful OpenAL
+     *          environment still gets the full impl (keeps _audioCaches coherent with play2d).
+     *      3. Only fall back to the decoder-only sDecoderImpl when lazyInit() has failed
+     *          (alcOpenDevice returned null, headless / OHOS / CI environments).
+     * @return The impl instance to use for PCM decoding.
+     */
+    static AudioEngineImpl *getDecoderImpl();
+
     struct ProfileHelper {
         AudioProfile profile;
 
@@ -382,6 +395,10 @@ protected:
     static ProfileHelper *sDefaultProfileHelper;
 
     static AudioEngineImpl *sAudioEngineImpl;
+    // Decoder-only fallback instance used when OpenAL is unavailable.
+    // getPCMHeader / getOriginalPCMBuffer do not depend on OpenAL and use this
+    // instance directly instead of going through lazyInit().
+    static AudioEngineImpl *sDecoderImpl;
 
     class AudioEngineThreadPool;
     static AudioEngineThreadPool *sThreadPool;

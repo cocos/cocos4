@@ -47,7 +47,6 @@
 #endif
 #define JNI_AUDIO(FUNC) JNI_METHOD1(COM_AUDIOFOCUS_CLASS_NAME, FUNC)
 
-
 /***********************************************************
  * Functions invoke from cpp to Java.
  ***********************************************************/
@@ -138,12 +137,12 @@ float getBatteryLevelJNI() {
 
 void flushTasksOnGameThreadJNI() {
     JniHelper::callStaticVoidMethod(JCLS_HELPER,
-                                        "flushTasksOnGameThread");
+                                    "flushTasksOnGameThread");
 }
 
 void flushTasksOnGameThreadAtForegroundJNI() {
     JniHelper::callStaticVoidMethod(JCLS_HELPER,
-                                        "flushTasksOnGameThreadAtForeground");
+                                    "flushTasksOnGameThreadAtForeground");
 }
 
 void setAccelerometerEnabledJNI(bool isEnabled) {

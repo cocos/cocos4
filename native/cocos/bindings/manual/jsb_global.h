@@ -28,7 +28,7 @@
 #include "jsb_global_init.h"
 
 namespace cc {
-    class LegacyThreadPool;
+class LegacyThreadPool;
 }
 extern cc::LegacyThreadPool *gIOThreadPool;
 

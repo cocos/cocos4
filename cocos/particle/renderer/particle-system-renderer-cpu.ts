@@ -747,6 +747,12 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         this._defines[ROTATION_OVER_TIME_MODULE_ENABLE] = enable;
         this._defines[INSTANCE_PARTICLE] = this._useInstance;
 
+        const matIns: MaterialInstance | null = ps.getMaterialInstance(0);
+        if (matIns === null || matIns === undefined) {
+            ps.setSharedMaterial(mat.parent, 0); // set material[0] as material for ui-mesh-renderer to use
+            ps.setMaterialInstance(mat, 0);
+        }
+
         mat.recompileShaders(this._defines);
         if (this._model) {
             this._model.updateMaterial(mat);
@@ -776,6 +782,13 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 _matInsInfo.subModelIdx = 0;
             }
             mat = mat || this._defaultTrailMat!;
+
+            const matIns: MaterialInstance | null = ps.getMaterialInstance(1);
+            if (matIns === null || matIns === undefined) {
+                ps.setSharedMaterial(mat.parent, 1); // set material[1] as trail material for ui-mesh-renderer to use
+                ps.setMaterialInstance(mat, 1);
+            }
+
             const texture = mat.getProperty('mainTexture', 0) as Texture2D | null;
             if (texture && texture.isAlphaAtlas) {
                 this._trailDefines[CC_USE_EMBEDDED_ALPHA] = true;

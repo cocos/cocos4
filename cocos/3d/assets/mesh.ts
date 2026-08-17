@@ -508,7 +508,7 @@ export class Mesh extends Asset {
                     let dstSize = idxView.length;
                     if (dstStride === 4 && !gfxDevice.hasFeature(Feature.ELEMENT_INDEX_UINT)) {
                         const vertexCount = this._struct.vertexBundles[prim.vertexBundelIndices[0]].view.count;
-                        if (vertexCount >= 65536) {
+                        if (vertexCount > 65536) {  // Uint16 can address 65536 vertices (indices 0–65535)
                             warnID(10001, vertexCount, 65536);
                             continue; // Ignore this primitive
                         } else {

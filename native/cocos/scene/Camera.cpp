@@ -67,8 +67,7 @@ const ccstd::vector<float> Camera::SHUTTERS{1.0F, 1.0F / 2.0F, 1.0F / 4.0F, 1.0F
 const ccstd::vector<float> Camera::ISOS{100.0F, 200.0F, 400.0F, 800.0F};
 
 Camera::Camera(gfx::Device *device)
-: _device(device)
-, _cameraId(sCameraId++) {
+: _device(device), _cameraId(sCameraId++) {
     _apertureValue = Camera::FSTOPS.at(static_cast<int>(_aperture));
     _shutterValue = Camera::SHUTTERS.at(static_cast<int>(_shutter));
     _isoValue = Camera::ISOS[static_cast<int>(_iso)];

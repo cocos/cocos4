@@ -157,9 +157,9 @@ void CCWGPUCommandBuffer::beginRenderPass(RenderPass *renderPass, Framebuffer *f
     }
 
     ccstd::vector<WGPURenderPassDepthStencilAttachment> depthStencils;
-    if(renderPass->getDepthStencilAttachment().format == Format::UNKNOWN) {
+    if (renderPass->getDepthStencilAttachment().format == Format::UNKNOWN) {
         renderPassDesc.depthStencilAttachment = nullptr;
-    } else if(dsTexture) {
+    } else if (dsTexture) {
         WGPURenderPassDepthStencilAttachment depthStencil = {
             .view = static_cast<CCWGPUTexture *>(dsTexture)->gpuTextureObject()->selfView,
             .depthLoadOp = toWGPULoadOp(depthStencilConfig.depthLoadOp),
@@ -174,17 +174,17 @@ void CCWGPUCommandBuffer::beginRenderPass(RenderPass *renderPass, Framebuffer *f
         depthStencils.emplace_back(depthStencil);
     } else {
         WGPURenderPassDepthStencilAttachment depthStencil = {
-                .view = swapchain->gpuSwapchainObject()->swapchainDepthStencil->gpuTextureObject()->selfView,
-                .depthLoadOp = toWGPULoadOp(depthStencilConfig.depthLoadOp),
-                .depthStoreOp = toWGPUStoreOp(depthStencilConfig.depthStoreOp),
-                .depthClearValue = depth,
-                .depthReadOnly = false,
-                .stencilLoadOp = toWGPULoadOp(depthStencilConfig.stencilLoadOp),
-                .stencilStoreOp = toWGPUStoreOp(depthStencilConfig.stencilStoreOp),
-                .stencilClearValue = stencil,
-                .stencilReadOnly = false,
-            };
-            depthStencils.emplace_back(depthStencil);
+            .view = swapchain->gpuSwapchainObject()->swapchainDepthStencil->gpuTextureObject()->selfView,
+            .depthLoadOp = toWGPULoadOp(depthStencilConfig.depthLoadOp),
+            .depthStoreOp = toWGPUStoreOp(depthStencilConfig.depthStoreOp),
+            .depthClearValue = depth,
+            .depthReadOnly = false,
+            .stencilLoadOp = toWGPULoadOp(depthStencilConfig.stencilLoadOp),
+            .stencilStoreOp = toWGPUStoreOp(depthStencilConfig.stencilStoreOp),
+            .stencilClearValue = stencil,
+            .stencilReadOnly = false,
+        };
+        depthStencils.emplace_back(depthStencil);
     }
 
     setViewport({renderArea.x, renderArea.y, renderArea.width, renderArea.height, 0.0F, 1.0F});

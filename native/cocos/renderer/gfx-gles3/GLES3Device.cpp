@@ -132,17 +132,17 @@ bool GLES3Device::doInit(const DeviceInfo & /*info*/) {
             if (*it == CC_TOSTR(GL_EXT_shader_framebuffer_fetch_non_coherent)) {
                 _gpuConstantRegistry->mFBF = FBFSupportLevel::NON_COHERENT_EXT;
                 _features[toNumber(Feature::RASTERIZATION_ORDER_NOCOHERENT)] = true;
-                fbfLevelStr                = "NON_COHERENT_EXT";
+                fbfLevelStr = "NON_COHERENT_EXT";
             } else if (*it == CC_TOSTR(GL_QCOM_shader_framebuffer_fetch_noncoherent)) {
                 _gpuConstantRegistry->mFBF = FBFSupportLevel::NON_COHERENT_QCOM;
-                fbfLevelStr                = "NON_COHERENT_QCOM";
+                fbfLevelStr = "NON_COHERENT_QCOM";
                 _features[toNumber(Feature::RASTERIZATION_ORDER_NOCOHERENT)] = true;
                 GL_CHECK(glEnable(GL_FRAMEBUFFER_FETCH_NONCOHERENT_QCOM));
             }
         } else if (checkExtension(CC_TOSTR(GL_EXT_shader_framebuffer_fetch))) {
             // we only care about EXT_shader_framebuffer_fetch, the ARM version does not support MRT
             _gpuConstantRegistry->mFBF = FBFSupportLevel::COHERENT;
-            fbfLevelStr                = "COHERENT";
+            fbfLevelStr = "COHERENT";
         }
         _features[toNumber(Feature::INPUT_ATTACHMENT_BENEFIT)] = _gpuConstantRegistry->mFBF != FBFSupportLevel::NONE;
         _features[toNumber(Feature::SUBPASS_COLOR_INPUT)] = true;
@@ -154,7 +154,7 @@ bool GLES3Device::doInit(const DeviceInfo & /*info*/) {
 
     if (checkExtension(CC_TOSTR(ARM_shader_framebuffer_fetch_depth_stencil))) {
         _features[toNumber(Feature::SUBPASS_DEPTH_STENCIL_INPUT)] = true;
-        fbfLevelStr                += "_DEPTH_STENCIL";
+        fbfLevelStr += "_DEPTH_STENCIL";
     }
 
     ccstd::string msaaLevelStr = "NONE";

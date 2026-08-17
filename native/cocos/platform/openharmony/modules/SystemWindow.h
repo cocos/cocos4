@@ -27,8 +27,8 @@
 
 #include <iostream>
 
-#include "platform/interfaces/modules/ISystemWindow.h"
 #include <ace/xcomponent/native_interface_xcomponent.h>
+#include "platform/interfaces/modules/ISystemWindow.h"
 
 namespace cc {
 
@@ -36,7 +36,7 @@ class SystemWindow : public ISystemWindow {
 public:
     explicit SystemWindow(uint32_t windowId, void* externalHandle);
     ~SystemWindow() override;
-    
+
     bool createWindow(const char* title,
                       int x, int y, int w,
                       int h, int flags) override;
@@ -50,7 +50,7 @@ public:
     /**
      @brief enable/disable(lock) the cursor, default is enabled
      */
-    void               setCursorEnabled(bool value) override;
+    void setCursorEnabled(bool value) override;
 
 private:
     void* _windowHandle{nullptr};

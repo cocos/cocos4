@@ -266,6 +266,15 @@ export class Graphics extends UIRenderer {
         this._updateMtlForGraphics();
     }
 
+    protected override get _keepRenderData (): boolean {
+        // Graphics is a retained-mode renderer: its MeshRenderData is the result of the
+        // user's previous fill()/stroke() calls. Destroying it here would leave Impl's
+        // render-data list pointing at cleared geometry, so re-enabling the node on native
+        // platforms would require the user to draw the paths again. Keep it attached to the
+        // disabled RenderEntity; clear() and onDestroy() remain the owning release points.
+        return true;
+    }
+
     public onDestroy (): void {
         this._sceneGetter = null;
         if (JSB) {
@@ -637,13 +646,13 @@ export class Graphics extends UIRenderer {
             const vertexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65535 * stride,
+                65536 * stride, // Uint16 can address 65536 vertices (indices 0–65535)
                 stride,
             ));
             const indexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.INDEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65535 * Uint16Array.BYTES_PER_ELEMENT * 2,
+                65536 * Uint16Array.BYTES_PER_ELEMENT * 2,  // Uint16 can address 65536 vertices (indices 0–65535)
                 Uint16Array.BYTES_PER_ELEMENT,
             ));
 

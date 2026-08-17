@@ -283,12 +283,12 @@ void ARBackground::render(cc::scene::Camera *camera, gfx::RenderPass *renderPass
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
     if (armodule->getTexInitFlag()) {
         gfx::SamplerInfo samplerInfo = {
-                gfx::Filter::LINEAR,
-                gfx::Filter::LINEAR,
-                gfx::Filter::NONE,
-                gfx::Address::CLAMP,
-                gfx::Address::CLAMP,
-                gfx::Address::CLAMP,
+            gfx::Filter::LINEAR,
+            gfx::Filter::LINEAR,
+            gfx::Filter::NONE,
+            gfx::Address::CLAMP,
+            gfx::Address::CLAMP,
+            gfx::Address::CLAMP,
         };
 
         auto *sampler = _device->getSampler(samplerInfo);

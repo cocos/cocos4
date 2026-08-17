@@ -480,7 +480,7 @@ void ScriptEngine::cleanup() {
             hook();
         }
         _beforeCleanupHookArray.clear();
-        
+
         // Clear unhandled promises
         _unhandledPromises.clear();
         _ignoreUnhandledPromises = false;
@@ -911,7 +911,7 @@ bool ScriptEngine::runByteCodeFile(const ccstd::string &pathBc, Value *ret /* = 
         internal::jsToSeValue(_isolate, result.ToLocalChecked(), ret);
     }
 
-    SE_LOGE("ScriptEngine::runByteCodeFile success %s!\n", pathBc.c_str());
+    SE_LOGD("ScriptEngine::runByteCodeFile success %s!\n", pathBc.c_str());
 
     return true;
 }

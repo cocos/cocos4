@@ -24,12 +24,12 @@
 
 #pragma once
 
+#include <cocos/scene/raytracing/RayTracing.h>
 #include "base/Macros.h"
 #include "base/Ptr.h"
 #include "base/RefCounted.h"
 #include "base/std/container/string.h"
 #include "base/std/container/vector.h"
-#include <cocos/scene/raytracing/RayTracing.h>
 
 namespace cc {
 

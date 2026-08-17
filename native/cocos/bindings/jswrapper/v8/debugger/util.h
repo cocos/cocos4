@@ -316,7 +316,8 @@ public:
     // Current maximum capacity of the buffer with which SetLength() can be used
     // without first calling AllocateSufficientStorage().
     size_t capacity() const {
-        return IsAllocated() ? capacity_ : IsInvalidated() ? 0 : kStackStorageSize;
+        return IsAllocated() ? capacity_ : IsInvalidated() ? 0
+                                                           : kStackStorageSize;
     }
 
     // Make sure enough space for `storage` entries is available.

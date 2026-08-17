@@ -46,6 +46,7 @@ public:
 
     ISystemWindow *getWindowFromSDLWindow(SDL_Window *window) const;
     ISystemWindow *getWindowFromNSWindow(NSWindow *window) const;
+
 private:
     uint32_t _nextWindowId{1}; // start from 1, 0 means an invalid ID
     SystemWindowMap _windows;

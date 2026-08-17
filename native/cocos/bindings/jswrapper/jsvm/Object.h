@@ -24,8 +24,9 @@
 ****************************************************************************/
 
 #pragma once
-#include <set>
 #include <cassert>
+#include <set>
+#include <unordered_map>
 #include "../PrivateObject.h"
 #include "../RefCounter.h"
 #include "../Value.h"
@@ -33,7 +34,6 @@
 #include "CommonHeader.h"
 #include "HelperMacros.h"
 #include "Utils.h"
-#include <unordered_map>
 
 namespace se {
 class Class;
@@ -47,12 +47,12 @@ private:
     JSVM_Ref _ref{nullptr};
     JSVM_Env _env{nullptr};
     JSVM_Value _obj{nullptr};
-    Object* _parent{nullptr};
+    Object *_parent{nullptr};
 
 public:
     ObjectRef(Object *parent);
     ~ObjectRef();
-    
+
     JSVM_Value getValue(JSVM_Env env) const;
     void init(JSVM_Env env, JSVM_Value obj);
     void incRef(JSVM_Env env);
@@ -76,7 +76,7 @@ public:
         BIGINT64,
         BIGUINT64
     };
-    
+
     using BufferContentsFreeFunc = void (*)(void *contents, size_t byteLength, void *userData);
 
     struct ExternalArrayBufferCallbackParams {
@@ -458,9 +458,9 @@ private:
     uint32_t _rootCount = 0;
     bool _onCleaingPrivateData = false;
     internal::PrivateData *_internalData;
-    
-    static std::unordered_map<Object*, JSVM_Deferred> resolverMap;
-    
+
+    static std::unordered_map<Object *, JSVM_Deferred> resolverMap;
+
     friend class ObjectRef;
     friend class ScriptEngine;
 };

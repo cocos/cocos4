@@ -37,11 +37,11 @@ JNIEXPORT void JNICALL Java_google_play_TaskManager_onTaskCompleteNative(JNIEnv 
 }
 
 JNIEXPORT void JNICALL Java_google_play_TaskManager_onTaskFailureNative(JNIEnv *env, jclass clazz, jint taskId, jint listenerId, jobject obj, jint exceptionId) {
-    cc::PlayTaskManager::getInstance()->onTaskFailure(taskId, listenerId, reinterpret_cast<void*>(obj), exceptionId);
+    cc::PlayTaskManager::getInstance()->onTaskFailure(taskId, listenerId, reinterpret_cast<void *>(obj), exceptionId);
 }
 
 JNIEXPORT void JNICALL Java_google_play_TaskManager_onTaskSuccessNative(JNIEnv *env, jclass clazz, jint taskId, jint listenerId, jobject obj) {
-    cc::PlayTaskManager::getInstance()->onTaskSucess(taskId, listenerId, reinterpret_cast<void*>(obj));
+    cc::PlayTaskManager::getInstance()->onTaskSucess(taskId, listenerId, reinterpret_cast<void *>(obj));
 }
 
 JNIEXPORT jobject JNICALL Java_google_play_TaskManager_onContinueWithNative(JNIEnv *env, jclass clazz, jint taskId, jint listenerId, jint nextTaskId) {

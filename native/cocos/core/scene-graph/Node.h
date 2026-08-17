@@ -135,7 +135,7 @@ public:
 
     static void resetChangedFlags();
     static void clearNodeArray();
-    
+
     static void _incSkewCompCount(); // NOLINT
     static void _decSkewCompCount(); // NOLINT
 
@@ -601,14 +601,14 @@ public:
     void _setChildren(ccstd::vector<IntrusivePtr<Node>> &&children); // NOLINT
 
     inline se::Object *_getSharedArrayBufferObject() const { return _sharedMemoryActor.getSharedArrayBufferObject(); } // NOLINT
-    
+
     inline float _getLocalOpacity() const { return _localOpacity; } // NOLINT
-    
+
     inline float _getFinalOpacity() const { return _finalOpacity; } // NOLINT
-    inline void _setFinalOpacity(float v) { _finalOpacity = v; } // NOLINT
-    
+    inline void _setFinalOpacity(float v) { _finalOpacity = v; }    // NOLINT
+
     inline bool _isColorDirty() const { return _colorDirty == 0 ? false : true; } // NOLINT
-    inline void _setColorDirty(bool v) { _colorDirty = v ? 1 : 0; } // NOLINT
+    inline void _setColorDirty(bool v) { _colorDirty = v ? 1 : 0; }               // NOLINT
 
     bool onPreDestroy() override;
     bool onPreDestroyBase();
@@ -680,7 +680,7 @@ public:
     // For deserialization
     ccstd::string _id;
     Node *_parent{nullptr};
-    
+
 private:
     Scene *_scene{nullptr};
     IntrusivePtr<UserData> _userData;
@@ -701,28 +701,28 @@ private:
 
     // Shared memory with JS
     // NOTE: TypeArray created in node.jsb.ts _ctor should have the same memory layout
-    uint32_t _eventMask{0};                                             // Uint32: 0
-    uint32_t _layer{static_cast<uint32_t>(Layers::LayerList::DEFAULT)}; // Uint32: 1
+    uint32_t _eventMask{0};                                                                  // Uint32: 0
+    uint32_t _layer{static_cast<uint32_t>(Layers::LayerList::DEFAULT)};                      // Uint32: 1
     uint32_t _transformFlags{static_cast<uint32_t>(TransformBit::TRS | TransformBit::SKEW)}; // Uint32: 2
-    index_t _siblingIndex{0};                                           // Int32: 0
-    uint8_t _activeInHierarchy: 1;                                      // Uint8: 0:0
-    uint8_t _active: 1;                                                 // Uint8: 0:1
-    uint8_t _isStatic: 1;                                               // Uint8: 0:2
-    uint8_t _colorDirty: 1;                                             // Uint8: 0:3
-    uint8_t _boolBitPaddings: 4;                                        // Uint8: 0:4~7
-    uint8_t _skewType{static_cast<uint8_t>(SkewType::NONE)};            // Uint8: 1
-    uint8_t _u8Paddings[2];                                             // Uint8: 2, 3
-    float _skewX{.0F};                                                  // Float32: 0
-    float _skewY{.0F};                                                  // Float32: 1
-    float _localOpacity{1.F};                                           // Float32: 2
-    float _finalOpacity{1.F};                                           // Float32: 3
+    index_t _siblingIndex{0};                                                                // Int32: 0
+    uint8_t _activeInHierarchy : 1;                                                          // Uint8: 0:0
+    uint8_t _active : 1;                                                                     // Uint8: 0:1
+    uint8_t _isStatic : 1;                                                                   // Uint8: 0:2
+    uint8_t _colorDirty : 1;                                                                 // Uint8: 0:3
+    uint8_t _boolBitPaddings : 4;                                                            // Uint8: 0:4~7
+    uint8_t _skewType{static_cast<uint8_t>(SkewType::NONE)};                                 // Uint8: 1
+    uint8_t _u8Paddings[2];                                                                  // Uint8: 2, 3
+    float _skewX{.0F};                                                                       // Float32: 0
+    float _skewY{.0F};                                                                       // Float32: 1
+    float _localOpacity{1.F};                                                                // Float32: 2
+    float _finalOpacity{1.F};                                                                // Float32: 3
 
     /* set _hasChangedFlagsVersion to globalFlagChangeVersion when `_hasChangedFlags` updated.
      * `globalFlagChangeVersion == _hasChangedFlagsVersion` means that "_hasChangedFlags is dirty in current frametime".
      */
     uint32_t _hasChangedFlagsVersion{0};
     uint32_t _hasChangedFlags{0};
-    
+
 public:
     MobilityMode _mobility = MobilityMode::Static;
 

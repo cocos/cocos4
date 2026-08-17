@@ -121,7 +121,7 @@ public:
     };
 
     static void deferredDestroy();
-    
+
     explicit CCObject(ccstd::string name = "");
     ~CCObject() override;
 
@@ -232,6 +232,7 @@ protected:
 public:
     Flags _objFlags{Flags::ZERO};
     ccstd::string _name;
+
 protected:
     se::Object* _scriptObject{nullptr}; // weak reference
 };

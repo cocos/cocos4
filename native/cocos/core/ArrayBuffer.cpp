@@ -51,7 +51,7 @@ void ArrayBuffer::setJSArrayBuffer(se::Object *arrayBuffer) {
         _jsArrayBuffer->unroot();
         _jsArrayBuffer->decRef();
     }
-    
+
     _jsArrayBuffer = arrayBuffer;
     _jsArrayBuffer->incRef();
     _jsArrayBuffer->root();

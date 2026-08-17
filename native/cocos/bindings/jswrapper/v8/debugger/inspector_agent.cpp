@@ -391,11 +391,11 @@ public:
     explicit ChannelImpl(V8Inspector *inspector,
                          InspectorSessionDelegate *delegate)
     : delegate_(delegate) {
-#if V8_MAJOR_VERSION > 10 || (V8_MAJOR_VERSION == 10 && V8_MINOR_VERSION > 3)
+    #if V8_MAJOR_VERSION > 10 || (V8_MAJOR_VERSION == 10 && V8_MINOR_VERSION > 3)
         session_ = inspector->connect(1, this, StringView(), v8_inspector::V8Inspector::ClientTrustLevel::kFullyTrusted);
-#else
+    #else
         session_ = inspector->connect(1, this, StringView());
-#endif
+    #endif
     }
 
     virtual ~ChannelImpl() {}

@@ -20,8 +20,14 @@ if ($env:GITHUB_BASE_REF) {
     # Push
     $gitHubEvent = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
     Write-Host "GitHub event: $gitHubEvent"
-    git fetch origin $gitHubEvent.before --depth=1
-    $diffFiles = git diff --name-only --diff-filter=$diffFilter $gitHubEvent.before $env:GITHUB_SHA
+    $beforeSha = $gitHubEvent.before
+    # On tag creation or initial push, before is all zeros - skip diff in that case
+    if ($beforeSha -match '^0+$') {
+        Write-Host "No previous commit (tag creation or initial push). Skipping diff."
+        return
+    }
+    git fetch origin $beforeSha --depth=1
+    $diffFiles = git diff --name-only --diff-filter=$diffFilter $beforeSha $env:GITHUB_SHA
 }
 
 Write-Host "Diff files: $diffFiles"

@@ -872,7 +872,7 @@ static void textureStorage(GLES3Device *device, GLES3GPUTexture *gpuTexture) {
 
 static bool useRenderBuffer(const GLES3Device *device, Format format, TextureUsage usage) {
     return !device->isTextureExclusive(format) &&
-        hasAllFlags(TextureUsage::COLOR_ATTACHMENT | TextureUsage::DEPTH_STENCIL_ATTACHMENT, usage);
+           hasAllFlags(TextureUsage::COLOR_ATTACHMENT | TextureUsage::DEPTH_STENCIL_ATTACHMENT, usage);
 }
 
 void cmdFuncGLES3CreateTexture(GLES3Device *device, GLES3GPUTexture *gpuTexture) {
@@ -882,7 +882,7 @@ void cmdFuncGLES3CreateTexture(GLES3Device *device, GLES3GPUTexture *gpuTexture)
 
     bool supportRenderBufferMS = device->constantRegistry()->mMSRT > MSRTSupportLevel::NONE;
     gpuTexture->useRenderBuffer = useRenderBuffer(device, gpuTexture->format, gpuTexture->usage) &&
-        (gpuTexture->glSamples <= 1 || supportRenderBufferMS);
+                                  (gpuTexture->glSamples <= 1 || supportRenderBufferMS);
 
     if (gpuTexture->glSamples > 1) {
         // Allocate render buffer when binding a framebuffer if the MSRT extension is not present.
@@ -941,12 +941,12 @@ void cmdFuncGLES3ResizeTexture(GLES3Device *device, GLES3GPUTexture *gpuTexture)
         // immutable by default
         cmdFuncGLES3DestroyTexture(device, gpuTexture);
         cmdFuncGLES3CreateTexture(device, gpuTexture);
-    } else if (gpuTexture->size > 0){
+    } else if (gpuTexture->size > 0) {
         renderBufferStorage(device, gpuTexture);
     }
 }
 
-void cmdFuncGLES3CreateTextureView(GLES3Device */*device*/, GLES3GPUTextureView *gpuTextureView) {
+void cmdFuncGLES3CreateTextureView(GLES3Device * /*device*/, GLES3GPUTextureView *gpuTextureView) {
     gpuTextureView->glTarget = getTextureViewTarget(gpuTextureView);
 }
 
@@ -1396,7 +1396,7 @@ void cmdFuncGLES3CreateRenderPass(GLES3Device * /*device*/, GLES3GPURenderPass *
         std::vector<bool> visited(gpuRenderPass->colorAttachments.size() + hasDS);
         for (auto &input : sub.inputs) {
             visited[input] = true;
-            if(input == gpuRenderPass->colorAttachments.size()) {
+            if (input == gpuRenderPass->colorAttachments.size()) {
                 // ds input
                 continue;
             }
@@ -1425,7 +1425,6 @@ void cmdFuncGLES3CreateRenderPass(GLES3Device * /*device*/, GLES3GPURenderPass *
                 gpuRenderPass->resolves.emplace_back(resolve);
             }
         }
-
 
         if (sub.depthStencil != gfx::INVALID_BINDING) {
             gpuRenderPass->depthStencil = sub.depthStencil;
@@ -3107,8 +3106,8 @@ void GLES3GPUFramebufferObject::bindDepthStencilMultiSample(const GLES3GPUTextur
     bool hasDepth = info.hasDepth;
     bool hasStencil = info.hasStencil;
 
-    dsAttachment = hasDepth && hasStencil ? GL_DEPTH_STENCIL_ATTACHMENT :
-        hasDepth ? GL_DEPTH_ATTACHMENT : GL_STENCIL_ATTACHMENT;
+    dsAttachment = hasDepth && hasStencil ? GL_DEPTH_STENCIL_ATTACHMENT : hasDepth ? GL_DEPTH_ATTACHMENT
+                                                                                   : GL_STENCIL_ATTACHMENT;
 
     if (hasDepth) {
         auto att = isDefaultFb ? GL_DEPTH : GL_DEPTH_ATTACHMENT;

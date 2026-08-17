@@ -232,7 +232,7 @@ void EffectAsset::precompile() {
         if (programLib == nullptr) {
             ccstd::vector<MacroRecord> defines = EffectAsset::doCombine(
                 ccstd::vector<MacroRecord>(), combination, combination.begin());
-            for (auto &define: defines) {
+            for (auto &define : defines) {
                 ProgramLib::getInstance()->getGFXShader(root->getDevice(), shader.name, define,
                                                         root->getPipeline());
             }
