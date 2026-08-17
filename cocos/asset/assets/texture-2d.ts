@@ -325,20 +325,6 @@ export class Texture2D extends SimpleTexture {
     }
 
     /**
-     * @engineInternal
-     * @mangle
-     */
-    protected override _getImageAssetForCleanup (image: ImageAsset): ImageAsset | null {
-        if (this._mipmaps.includes(image)) {
-            return image;
-        }
-        if (!image._uuid) {
-            return null;
-        }
-        return this._mipmaps.find((source) => source && source._uuid === image._uuid) ?? null;
-    }
-
-    /**
      * @en Gets the description of the 2d texture.
      * @zh 返回此贴图的描述。
      * @returns @en The description. @zh 贴图的描述信息。

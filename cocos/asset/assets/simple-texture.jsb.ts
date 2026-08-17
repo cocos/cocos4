@@ -73,21 +73,13 @@ simpleTextureProto._onGFXTextureUpdated = function (gfxTexture) {
     this._gfxTexture = gfxTexture;
 };
 
-simpleTextureProto._getImageAssetForCleanup = function (image) {
-    return image;
-};
-
 simpleTextureProto._onAfterAssignImage = function (image) {
     if (macro.CLEANUP_IMAGE_CACHE) {
-        const cleanupImage = this._getImageAssetForCleanup(image);
-        if (!cleanupImage) {
-            return;
-        }
         const deps = dependUtil.getDeps(this._uuid);
-        const index = deps.indexOf(cleanupImage._uuid);
+        const index = deps.indexOf(image._uuid);
         if (index !== -1) {
             js.array.fastRemoveAt(deps, index);
-            cleanupImage.decRef();
+            image.decRef();
         }
     }
 };

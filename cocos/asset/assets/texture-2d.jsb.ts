@@ -111,16 +111,6 @@ texture2DProto._cleanupTextureSourceRefs = function () {
     this._pendingTextureSources.length = 0;
 };
 
-texture2DProto._getImageAssetForCleanup = function (image) {
-    if (this._mipmaps.includes(image)) {
-        return image;
-    }
-    if (!image._uuid) {
-        return null;
-    }
-    return this._mipmaps.find((source) => source && source._uuid === image._uuid) ?? null;
-};
-
 const oldInitDefault = texture2DProto.initDefault;
 texture2DProto.initDefault = function (uuid: string) {
     oldInitDefault.call(this, uuid);

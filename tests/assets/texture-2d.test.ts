@@ -1,24 +1,18 @@
-import { ImageAsset } from '../../cocos/asset/assets/image-asset';
-import { PixelFormat } from '../../cocos/asset/assets/asset-enum';
-import { Texture2D } from '../../cocos/asset/assets/texture-2d';
-import { TextureCube } from '../../cocos/asset/assets/texture-cube';
-import { dependMap } from '../../cocos/asset/asset-manager/depend-maps';
-import dependUtil from '../../cocos/asset/asset-manager/depend-util';
-import { setProperties } from '../../cocos/asset/asset-manager/utilities';
-import { macro } from '../../cocos/core';
-import { Details } from '../../cocos/serialization/deserialize';
+import { ImageAsset } from "../../cocos/asset/assets/image-asset";
+import { Texture2D } from "../../cocos/asset/assets/texture-2d";
+import { dependMap } from "../../cocos/asset/asset-manager/depend-maps";
+import dependUtil from "../../cocos/asset/asset-manager/depend-util";
+import { setProperties } from "../../cocos/asset/asset-manager/utilities";
+import { macro } from "../../cocos/core";
+import { Details } from "../../cocos/serialization/deserialize";
 
 const textureUuid = 'f41e5c8f-0e9a-4c38-bb1d-texture2d';
 
-function createImageAsset (uuid: string, compressed = false): ImageAsset {
-    const mipmapLevelDataSize = compressed ? [4, 4] : [];
+function createImageAsset (uuid: string): ImageAsset {
     const image = new ImageAsset({
-        _data: new Uint8Array(compressed ? 8 : 4),
-        _compressed: compressed,
-        width: compressed ? 4 : 1,
-        height: compressed ? 4 : 1,
-        format: compressed ? PixelFormat.RGBA_ASTC_4x4 : PixelFormat.RGBA8888,
-        mipmapLevelDataSize,
+        _data: new Uint8Array(4),
+        width: 1,
+        height: 1,
     });
     image._uuid = uuid;
     return image;
@@ -106,18 +100,6 @@ describe('Texture2D image dependency cleanup', () => {
         expect(dependUtil.getDeps(textureUuid)).toEqual([]);
     });
 
-    test('cleans the original compressed image instead of its derived mipmaps', () => {
-        macro.CLEANUP_IMAGE_CACHE = true;
-        const texture = new Texture2D();
-        const image = createImageAsset('e73f454d-bd2e-4344-b710-compressed', true);
-
-        setTextureProperties(texture, [image]);
-        texture.onLoaded();
-
-        expect(image.refCount).toBe(0);
-        expect(dependUtil.getDeps(textureUuid)).toEqual([]);
-    });
-
     test('balances repeated preload and mipmap edges for the same image', () => {
         macro.CLEANUP_IMAGE_CACHE = true;
         const texture = new Texture2D();
@@ -142,45 +124,5 @@ describe('Texture2D image dependency cleanup', () => {
 
         expect(image.refCount).toBe(2);
         expect(dependUtil.getDeps(textureUuid)).toEqual([image._uuid, image._uuid]);
-    });
-
-    test('keeps the edge when the uploaded image cannot be mapped to an original mipmap', () => {
-        macro.CLEANUP_IMAGE_CACHE = true;
-        class AssignableTexture2D extends Texture2D {
-            public assignImage (image: ImageAsset): void {
-                this._assignImage(image, 0);
-            }
-        }
-
-        const texture = new AssignableTexture2D();
-        const image = createImageAsset('72f2e3b9-e5f5-4fae-a488-unresolved');
-        texture._uuid = textureUuid;
-        image.addRef();
-        dependUtil._depends.add(textureUuid, { deps: [image._uuid] });
-
-        texture.assignImage(image);
-
-        expect(image.refCount).toBe(1);
-        expect(dependUtil.getDeps(textureUuid)).toEqual([image._uuid]);
-    });
-
-    test('keeps the default SimpleTexture cleanup behavior for TextureCube', () => {
-        macro.CLEANUP_IMAGE_CACHE = true;
-        class AssignableTextureCube extends TextureCube {
-            public assignImage (image: ImageAsset): void {
-                this._assignImage(image, 0, 0);
-            }
-        }
-
-        const texture = new AssignableTextureCube();
-        const image = createImageAsset('5ea44b6b-2352-4487-9598-cube');
-        texture._uuid = textureUuid;
-        image.addRef();
-        dependUtil._depends.add(textureUuid, { deps: [image._uuid] });
-
-        texture.assignImage(image);
-
-        expect(image.refCount).toBe(0);
-        expect(dependUtil.getDeps(textureUuid)).toEqual([]);
     });
 });
