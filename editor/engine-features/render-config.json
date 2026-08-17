@@ -397,7 +397,7 @@
                 "spine-3.8": {
                     "enginePlugin": true,
                     "cmakeConfig": "USE_SPINE_3_8",
-                    "default": true,
+                    "default": false,
                     "isNativeModule": true,
                     "label": "i18n:ENGINE.features.spine_38.label",
                     "description": "i18n:ENGINE.features.spine_38.description",
