@@ -489,6 +489,13 @@
             "description": "i18n:ENGINE.features.xr.description",
             "enginePlugin": false,
             "envCondition": "$NATIVE || $HTML5"
+        },
+        "webassembly": {
+            "default": true,
+            "required": true,
+            "label": "WebAssembly",
+            "description": "Export the engine's cross-platform WebAssembly loading interface as cc.wasm, so that extensions and game scripts can load their own .wasm files. 以 cc.wasm 导出引擎的跨平台 WebAssembly 加载接口，供扩展与游戏脚本加载自己的 .wasm 文件。",
+            "enginePlugin": true
         }
     },
     "categories": {
