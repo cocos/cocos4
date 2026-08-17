@@ -30,6 +30,9 @@ jobs:
         if [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
           echo "Get ref from workflow_dispatch"
           echo "ENGINE_REF=${{ github.event.inputs.target_tag }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" = 'pull_request' ]; then
+          echo "Get ref from pull_request"
+          echo "ENGINE_REF=${{ github.sha }}" >> $GITHUB_OUTPUT
         else
           echo "Get ref from push"
           echo "ENGINE_REF=${{ github.ref }}" >> $GITHUB_OUTPUT
