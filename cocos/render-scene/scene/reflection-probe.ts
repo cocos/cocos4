@@ -331,22 +331,7 @@ export class ReflectionProbe {
      */
     public renderPreviewPlanarReflection (sourceCamera: Camera): Camera {
         if (!this._previewCamera) {
-            const root = cclegacy.director.root;
-            const cameraNode = new Node(`${this.cameraNode.name} Preview Reflection`);
-            const previewCamera = root.createCamera();
-            previewCamera.initialize({
-                name: cameraNode.name,
-                node: cameraNode,
-                projection: CameraProjection.PERSPECTIVE,
-                window: root.mainWindow,
-                priority: 0,
-                cameraType: CameraType.DEFAULT,
-                trackingType: TrackingType.NO_TRACKING,
-            });
-            previewCamera.setViewportInOrientedSpace(new Rect(0, 0, 1, 1));
-            previewCamera.fovAxis = CameraFOVAxis.VERTICAL;
-            previewCamera.visibility = this._visibility;
-            this._previewCamera = previewCamera;
+            this._createCamera(new Node(`${this.cameraNode.name} Preview Reflection`), true);
         }
         const previewCamera = this._previewCamera!;
         this._syncCameraParams(sourceCamera, previewCamera);
@@ -463,36 +448,42 @@ export class ReflectionProbe {
         targetCamera.resize(camera.width, camera.height);
     }
 
-    private _createCamera (cameraNode: Node): Camera | null {
+    private _createCamera (cameraNode: Node, preview = false): Camera | null {
         const root = cclegacy.director.root;
-        if (!this._camera) {
-            this._camera = root.createCamera();
-            if (!this._camera) return null;
-            this._camera.initialize({
+        let camera = preview ? this._previewCamera : this._camera;
+        if (!camera) {
+            camera = root.createCamera();
+            if (!camera) return null;
+            camera.initialize({
                 name: cameraNode.name,
                 node: cameraNode,
                 projection: CameraProjection.PERSPECTIVE,
-                window: EDITOR ? root && root.mainWindow : root && root.tempWindow,
+                window: preview || EDITOR ? root.mainWindow : root.tempWindow,
                 priority: 0,
                 cameraType: CameraType.DEFAULT,
                 trackingType: TrackingType.NO_TRACKING,
             });
+            if (preview) {
+                this._previewCamera = camera;
+            } else {
+                this._camera = camera;
+            }
         }
-        this._camera.setViewportInOrientedSpace(new Rect(0, 0, 1, 1));
-        this._camera.fovAxis = CameraFOVAxis.VERTICAL;
-        this._camera.fov = toRadian(90);
-        this._camera.orthoHeight = 10;
-        this._camera.nearClip = 1;
-        this._camera.farClip = 1000;
-        this._camera.clearColor = this._backgroundColor;
-        this._camera.clearDepth = 1.0;
-        this._camera.clearStencil = 0.0;
-        this._camera.clearFlag = this._clearFlag;
-        this._camera.visibility = this._visibility;
-        this._camera.aperture = CameraAperture.F16_0;
-        this._camera.shutter = CameraShutter.D125;
-        this._camera.iso = CameraISO.ISO100;
-        return this._camera;
+        camera.setViewportInOrientedSpace(new Rect(0, 0, 1, 1));
+        camera.fovAxis = CameraFOVAxis.VERTICAL;
+        camera.fov = toRadian(90);
+        camera.orthoHeight = 10;
+        camera.nearClip = 1;
+        camera.farClip = 1000;
+        camera.clearColor = this._backgroundColor;
+        camera.clearDepth = 1.0;
+        camera.clearStencil = 0.0;
+        camera.clearFlag = this._clearFlag;
+        camera.visibility = this._visibility;
+        camera.aperture = CameraAperture.F16_0;
+        camera.shutter = CameraShutter.D125;
+        camera.iso = CameraISO.ISO100;
+        return camera;
     }
 
     private _resetCameraParams (): void {
