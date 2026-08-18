@@ -26,12 +26,11 @@ import { EDITOR, NODEJS, TEST } from 'internal:constants'
 import { ImageAsset } from './image-asset';
 import { SimpleTexture } from './simple-texture';
 import { TextureBase } from './texture-base.jsb';
-import { js, cclegacy, macro } from '../../core';
+import { js, cclegacy } from '../../core';
 import { TextureFilter, PixelFormat, WrapMode } from './asset-enum';
 import './simple-texture';
 import { patch_cc_Texture2D } from '../../native-binding/decorators';
 import type { Texture2D as JsbTexture2D } from './texture-2d';
-import dependUtil from '../asset-manager/depend-util';
 
 declare const jsb: any;
 const texture2DProto: any = jsb.Texture2D.prototype;
@@ -55,60 +54,6 @@ texture2DProto._ctor = function () {
     // issue: https://github.com/cocos/cocos-engine/issues/14644
     (SimpleTexture.prototype as any)._ctor.apply(this, arguments);
     this._mipmaps = [];
-    this._pendingTextureSources = [];
-};
-
-Object.defineProperty(texture2DProto, '_textureSource', {
-    configurable: true,
-    set (value) {
-        if (macro.CLEANUP_IMAGE_CACHE && value) {
-            this._pendingTextureSources.push(value);
-        }
-    },
-});
-
-texture2DProto._cleanupTextureSourceRefs = function () {
-    if (!macro.CLEANUP_IMAGE_CACHE || this._pendingTextureSources.length === 0) {
-        this._pendingTextureSources.length = 0;
-        return;
-    }
-
-    const availableSources = new Map();
-    const realDependencyCounts = new Map();
-    for (const source of this._mipmaps) {
-        if (!source) {
-            continue;
-        }
-        availableSources.set(source, (availableSources.get(source) ?? 0) + 1);
-        if (source._uuid) {
-            realDependencyCounts.set(source._uuid, (realDependencyCounts.get(source._uuid) ?? 0) + 1);
-        }
-    }
-
-    const deps = dependUtil.getDeps(this._uuid);
-    const dependencyCounts = new Map();
-    for (const uuid of deps) {
-        dependencyCounts.set(uuid, (dependencyCounts.get(uuid) ?? 0) + 1);
-    }
-
-    for (const source of this._pendingTextureSources) {
-        const availableCount = availableSources.get(source) ?? 0;
-        const uuid = source._uuid;
-        const dependencyCount = dependencyCounts.get(uuid) ?? 0;
-        const realDependencyCount = realDependencyCounts.get(uuid) ?? 0;
-        if (availableCount === 0 || !uuid || dependencyCount <= realDependencyCount) {
-            continue;
-        }
-
-        const index = deps.indexOf(uuid);
-        if (index !== -1) {
-            js.array.fastRemoveAt(deps, index);
-            source.decRef(false);
-            availableSources.set(source, availableCount - 1);
-            dependencyCounts.set(uuid, dependencyCount - 1);
-        }
-    }
-    this._pendingTextureSources.length = 0;
 };
 
 const oldInitDefault = texture2DProto.initDefault;
@@ -162,7 +107,6 @@ texture2DProto._deserialize = function (serializedData: any, handle: any) {
 const oldOnLoaded = texture2DProto.onLoaded;
 texture2DProto.onLoaded = function () {
     this.syncMipmapsForJS(this._mipmaps);
-    this._cleanupTextureSourceRefs();
     oldOnLoaded.call(this);
 };
 

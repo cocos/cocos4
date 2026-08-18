@@ -68,7 +68,7 @@ describe('Texture2D image dependency cleanup', () => {
         dependUtil.remove(textureUuid);
     });
 
-    test('keeps the image alive until both preload and mipmap dependencies are ready', () => {
+    test('releases every Texture2D dependency edge for the image after upload', () => {
         macro.CLEANUP_IMAGE_CACHE = true;
         const texture = new Texture2D();
         const image = createImageAsset('6d35c119-b763-4295-96e7-image');
@@ -94,7 +94,7 @@ describe('Texture2D image dependency cleanup', () => {
         texture.onLoaded();
 
         expect(decRefCounts).toEqual([
-            { autoRelease: false, refCount: 1 },
+            { autoRelease: true, refCount: 1 },
             { autoRelease: true, refCount: 0 },
         ]);
         expect(dependUtil.getDeps(textureUuid)).toEqual([]);
