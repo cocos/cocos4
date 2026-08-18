@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.28)
 
 set(APP_NAME "CocosGame" CACHE STRING "Project Name")
 option(ENABLE_SANDBOX "enable sandbox  entitlements.plist" ON)
