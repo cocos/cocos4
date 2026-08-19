@@ -97,7 +97,7 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
     if (iter != _instancesMap.end()) {
         for (size_t idx : iter->second) {
             auto &instance = _instances[idx];
-            if (instance.capacity >= MAX_CAPACITY) {
+            if (instance.drawInfo.instanceCount >= MAX_CAPACITY) {
                 continue;
             }
             _appendInstance(instance, attrs.buffer, shader, descriptorSet);
