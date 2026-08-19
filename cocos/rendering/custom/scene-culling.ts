@@ -229,6 +229,9 @@ function addRenderObject (
 ): void {
     const probeQueue = queue.probeQueue;
     if (isDrawProbe) {
+        if (!model.bakeToReflectionProbe) {
+            return;
+        }
         probeQueue.addToProbeQueue(model, phaseLayoutId);
     }
     const subModels = model.subModels;
@@ -476,6 +479,19 @@ export class SceneCulling {
 
             // Get or create render queue
             const renderQueueID = this.getOrCreateRenderQueue(renderQueueKey, sceneData.flags, sceneData.camera);
+
+            if (sceneData.flags & SceneFlags.REFLECTION_PROBE) {
+                const probeManager = cclegacy.internal.reflectionProbeManager;
+                if (probeManager) {
+                    const probes = probeManager.getProbes() as ReflectionProbe[];
+                    for (let i = 0; i < probes.length; i++) {
+                        if (probes[i].camera === sceneData.camera && probes[i].useFloatIntermediateRT()) {
+                            this.renderQueues[renderQueueID].probeQueue.useFloatOutput = true;
+                            break;
+                        }
+                    }
+                }
+            }
 
             // add render queue query
             const renderQueueQuery = this.cullingPools.renderQueueQueryRecycle.add();

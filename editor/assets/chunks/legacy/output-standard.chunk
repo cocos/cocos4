@@ -4,7 +4,9 @@
 #include <common/data/unpack>
 
 vec4 CCFragOutput (vec4 color) {
-  #if CC_USE_RGBE_OUTPUT
+  #if CC_USE_FLOAT_PROBE_OUTPUT
+    // Float probe RT: output linear HDR with alpha for transparency blending
+  #elif CC_USE_RGBE_OUTPUT
     color = packRGBE(color.rgb);
   #elif !CC_USE_FLOAT_OUTPUT
     #if CC_USE_HDR && CC_TONE_MAPPING_TYPE == TONE_MAPPING_ACES

@@ -203,6 +203,7 @@ export class DrawInstance {
 export const instancePool = new RecyclePool(() => new DrawInstance(), 8);
 
 const CC_USE_RGBE_OUTPUT = 'CC_USE_RGBE_OUTPUT';
+const CC_USE_FLOAT_PROBE_OUTPUT = 'CC_USE_FLOAT_PROBE_OUTPUT';
 function getLayoutId (passLayout: string, phaseLayout: string): number {
     const r = cclegacy.rendering;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -221,15 +222,18 @@ function getPassIndexFromLayout (subModel: SubModel, phaseLayoutId: number): num
 export class ProbeHelperQueue {
     probeMap: Array<SubModel> = new Array<SubModel>();
     defaultId: number = getLayoutId('default', 'default');
+    useFloatOutput = false;
 
     clear (): void {
         this.probeMap.length = 0;
+        this.useFloatOutput = false;
     }
 
     applyMacro (): void {
+        const macroName = this.useFloatOutput ? CC_USE_FLOAT_PROBE_OUTPUT : CC_USE_RGBE_OUTPUT;
         for (const subModel of this.probeMap) {
             let patches: IMacroPatch[] = [
-                { name: CC_USE_RGBE_OUTPUT, value: true },
+                { name: macroName, value: true },
             ];
             if (subModel.patches) {
                 patches = patches.concat(subModel.patches);
@@ -241,7 +245,7 @@ export class ProbeHelperQueue {
         for (const subModel of this.probeMap) {
             if (!subModel.patches) continue;
             const patches = subModel.patches.filter(
-                (patch) => patch.name !== CC_USE_RGBE_OUTPUT,
+                (patch) => patch.name !== CC_USE_RGBE_OUTPUT && patch.name !== CC_USE_FLOAT_PROBE_OUTPUT,
             );
             if (patches.length === 0) {
                 subModel.onMacroPatchesStateChanged(null);
@@ -255,10 +259,11 @@ export class ProbeHelperQueue {
         for (let j = 0; j < subModels.length; j++) {
             const subModel: SubModel = subModels[j];
 
-            //Filter transparent objects
-            const isTransparent = subModel.passes[0].blendState.targets[0].blend;
-            if (isTransparent) {
-                continue;
+            if (!this.useFloatOutput) {
+                const isTransparent = subModel.passes[0].blendState.targets[0].blend;
+                if (isTransparent) {
+                    continue;
+                }
             }
 
             let passIdx = getPassIndexFromLayout(subModel, probeLayoutId);
@@ -269,7 +274,7 @@ export class ProbeHelperQueue {
                 bUseReflectPass = false;
             }
             if (passIdx < 0) { continue; }
-            if (!bUseReflectPass) {
+            if (!bUseReflectPass || this.useFloatOutput) {
                 this.probeMap.push(subModel);
             }
         }

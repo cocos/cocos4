@@ -1,0 +1,70 @@
+// Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+
+CCEffect %{
+techniques:
+  - passes:
+      - vert: probe-rgbe-convert-vs
+        frag: probe-rgbe-convert-fs-custom
+        pass: copy-pass
+        depthStencilState:
+          depthTest: false
+          depthWrite: false
+        rasterizerState:
+          cullMode: none
+  - passes:
+      - vert: probe-rgbe-convert-vs
+        frag: probe-rgbe-convert-fs-legacy
+        pass: copy-pass
+        depthStencilState:
+          depthTest: false
+          depthWrite: false
+        rasterizerState:
+          cullMode: none
+
+}%
+
+CCProgram probe-rgbe-convert-vs %{
+precision highp float;
+
+#include <legacy/decode-standard>
+#include <common/common-define>
+out vec2 v_uv;
+
+void main() {
+  StandardVertInput In;
+  CCDecode(In);
+  gl_Position = In.position;
+  v_uv = a_texCoord;
+}
+}%
+
+CCProgram probe-rgbe-convert-fs-custom %{
+precision highp float;
+in vec2 v_uv;
+#include <common/data/unpack>
+
+#pragma rate outputResultMap pass
+uniform sampler2D outputResultMap;
+
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+  vec4 color = texture(outputResultMap, v_uv);
+  fragColor = packRGBE(color.rgb);
+}
+}%
+
+CCProgram probe-rgbe-convert-fs-legacy %{
+precision highp float;
+in vec2 v_uv;
+#include <common/data/unpack>
+
+uniform sampler2D probeInputTex;
+
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+  vec4 color = texture(probeInputTex, v_uv);
+  fragColor = packRGBE(color.rgb);
+}
+}%

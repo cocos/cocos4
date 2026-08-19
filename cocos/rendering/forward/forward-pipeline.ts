@@ -145,6 +145,12 @@ export class ForwardPipeline extends RenderPipeline {
 
         descriptorSet.update();
 
+        // Fullscreen quad for reflection probe RGBE convert pass
+        const inputAssemblerData = this._createQuadInputAssembler();
+        this._quadVBOffscreen = inputAssemblerData.quadVB;
+        this._quadIB = inputAssemblerData.quadIB;
+        this._quadIAOffscreen = inputAssemblerData.quadIA;
+
         return true;
     }
 

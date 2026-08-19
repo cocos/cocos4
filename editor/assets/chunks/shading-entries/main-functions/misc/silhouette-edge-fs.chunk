@@ -7,7 +7,9 @@ void main () {
   //#uniformStyle need sync here
 
   // Color output
-  #if CC_USE_RGBE_OUTPUT
+  #if CC_USE_FLOAT_PROBE_OUTPUT
+    // output linear HDR for float probe RT
+  #elif CC_USE_RGBE_OUTPUT
     color = packRGBE(color.rgb);
   #elif !CC_USE_FLOAT_OUTPUT
     color.rgb = LinearToSRGB(color.rgb);
