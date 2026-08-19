@@ -27,7 +27,6 @@
 #include "Define.h"
 #include "base/RefCounted.h"
 #include "base/std/container/unordered_map.h"
-#include "base/std/hash/hash.h"
 #include "scene/Model.h"
 #include "scene/Pass.h"
 
@@ -39,6 +38,8 @@ namespace pipeline {
 struct PSOInfo;
 
 struct CC_DLL InstancedItem {
+    static constexpr uint32_t INVALID_INDEX = 0xFFFFFFFF;
+
     uint32_t capacity = 0;
     gfx::Buffer *vb = nullptr;
     uint8_t *data = nullptr;
@@ -52,6 +53,11 @@ struct CC_DLL InstancedItem {
     uint32_t reflectionProbeType = 0;
     gfx::Texture *reflectionProbeBlendCubemap = nullptr;
     gfx::DrawInfo drawInfo;
+    // Index (into `InstancedBuffer::_instances`) of the next item sharing the same merge
+    // key, or `INVALID_INDEX` if this is the last one. Forms an intrusive singly-linked
+    // list per key, so `_instancesMap` only needs to store one head index per key instead
+    // of a `ccstd::vector<size_t>`, avoiding an extra container template instantiation.
+    uint32_t nextWithSameKey = INVALID_INDEX;
 };
 using InstancedItemList = ccstd::vector<InstancedItem>;
 using DynamicOffsetList = ccstd::vector<uint32_t>;
@@ -83,7 +89,7 @@ private:
         Uint8Array &buffer,
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet);
-    void createInstance(ccstd::hash_t key,
+    void createInstance(const ccstd::string &key,
         gfx::InputAssembler *sourceIA,
         const ccstd::vector<gfx::Attribute> &attributes,
         Uint8Array &buffer,
@@ -106,12 +112,11 @@ private:
 
     InstancedItemList _instances;
     DynamicOffsetList _dynamicOffsets;
-    // Maps a merge key to the indices (into `_instances`) of items sharing that key.
-    // Storing indices (not copies or references) keeps this in sync with `_instances`
-    // and remains valid across `_instances` reallocation, since indices don't dangle.
-    // The key is a combined hash (see `ccstd::hash_combine`) instead of a formatted
-    // string, avoiding per-merge string allocation/formatting overhead.
-    ccstd::unordered_map<ccstd::hash_t, ccstd::vector<size_t>> _instancesMap;
+    // Maps a merge key to the index (into `_instances`) of the head item with that key.
+    // Remaining items sharing the key are reached via `InstancedItem::nextWithSameKey`,
+    // so this map only needs `uint32_t` values instead of `ccstd::vector<size_t>`,
+    // avoiding an extra map-of-vectors template instantiation.
+    ccstd::unordered_map<ccstd::string, uint32_t> _instancesMap;
 };
 
 } // namespace pipeline

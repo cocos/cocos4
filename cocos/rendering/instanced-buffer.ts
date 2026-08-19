@@ -39,14 +39,6 @@ export function instancingCompareFn (l: InstancedBuffer, r: InstancedBuffer): nu
     return (ls.hash - rs.hash) ||  (ls.shaderId - rs.shaderId);
 }
 
-// Combines a running hash `seed` with `value` into a single 32-bit integer.
-// Mirrors the native `ccstd::hash_combine` formula so merge keys can be plain
-// numbers instead of formatted strings, avoiding per-merge string allocation.
-function hashCombine (seed: number, value: number): number {
-    // eslint-disable-next-line no-bitwise
-    return (seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2))) | 0;
-}
-
 export interface IInstancedItem {
     count: number;
     capacity: number;
@@ -74,7 +66,7 @@ export class InstancedBuffer {
     public sortRender: IRenderPass;
     private declare _passPool: RecyclePool<IRenderPass>;
     private declare _device: Device;
-    private readonly _instanceMap = new Map<number, IInstancedItem[]>();
+    private readonly _instanceMap = new Map<string, IInstancedItem[]>();
     constructor (pass: Pass) {
         this._device = pass.device;
         this.pass = pass;
@@ -118,13 +110,9 @@ export class InstancedBuffer {
         this.sortRender.shaderId = shader.typedID;
         this.sortRender.passIdx = passIdx;
 
-        let key = hashCombine(2, sourceIA.indexBuffer?.objectID ?? 0);
-        key = hashCombine(key, lightingMap.objectID);
-        key = hashCombine(key, useReflectionProbeType);
-        key = hashCombine(key, reflectionProbeCubemap.objectID);
-        key = hashCombine(key, reflectionProbePlanarMap.objectID);
-        key = hashCombine(key, ENABLE_PROBE_BLEND ? reflectionProbeBlendCubemap!.objectID : 0);
-        key = hashCombine(key, stride);
+        const key = `${sourceIA.indexBuffer?.objectID ?? 0}/${lightingMap.objectID}/${useReflectionProbeType}/`
+            + `${reflectionProbeCubemap.objectID}/${reflectionProbePlanarMap.objectID}/`
+            + `${ENABLE_PROBE_BLEND ? reflectionProbeBlendCubemap!.objectID : 0}/${stride}`;
         const mappedInstances = this._instanceMap.get(key);
         if (mappedInstances) {
             for (let i = 0; i < mappedInstances.length; ++i) {
@@ -167,7 +155,7 @@ export class InstancedBuffer {
     }
 
     private _createInstance (
-        key: number,
+        key: string,
         sourceIA: InputAssembler,
         instancedAttributes: Attribute[],
         instanceData: Uint8Array,
