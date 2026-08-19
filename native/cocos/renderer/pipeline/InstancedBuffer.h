@@ -78,11 +78,11 @@ public:
     inline const DynamicOffsetList &dynamicOffsets() const { return _dynamicOffsets; }
 
 private:
-    void _appendInstance(InstancedItem &instance,
+    void appendInstance(InstancedItem &instance,
         Uint8Array &buffer,
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet);
-    void _createInstance(const ccstd::string &key,
+    void createInstance(const ccstd::string &key,
         gfx::InputAssembler *sourceIA,
         const ccstd::vector<gfx::Attribute> &attributes,
         Uint8Array &buffer,
@@ -90,7 +90,7 @@ private:
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet,
         gfx::Texture *lightingMap,
-        const uint32_t reflectionProbeType,
+        uint32_t reflectionProbeType,
         gfx::Texture *reflectionProbeCubemap,
         gfx::Texture *reflectionProbePlanarMap,
         gfx::Texture *reflectionProbeBlendCubemap);

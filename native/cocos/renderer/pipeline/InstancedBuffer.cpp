@@ -100,12 +100,12 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
             if (instance.drawInfo.instanceCount >= MAX_CAPACITY) {
                 continue;
             }
-            _appendInstance(instance, attrs.buffer, shader, descriptorSet);
+            appendInstance(instance, attrs.buffer, shader, descriptorSet);
             return;
         }
     }
 
-    _createInstance(
+    createInstance(
         key,
         sourceIA,
         attrs.attributes,
@@ -121,7 +121,7 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
         );
 }
 
-void InstancedBuffer::_appendInstance(InstancedItem &instance,
+void InstancedBuffer::appendInstance(InstancedItem &instance,
                                       Uint8Array& buffer,
                                       gfx::Shader *shader,
                                       gfx::DescriptorSet *descriptorSet) {
@@ -145,7 +145,7 @@ void InstancedBuffer::_appendInstance(InstancedItem &instance,
     _hasPendingModels = true;
 }
 
-void InstancedBuffer::_createInstance(const ccstd::string &key,
+void InstancedBuffer::createInstance(const ccstd::string &key,
                                       gfx::InputAssembler *sourceIA,
                                       const ccstd::vector<gfx::Attribute> &attributes,
                                       Uint8Array &buffer,
@@ -153,7 +153,7 @@ void InstancedBuffer::_createInstance(const ccstd::string &key,
                                       gfx::Shader *shader,
                                       gfx::DescriptorSet *descriptorSet,
                                       gfx::Texture *lightingMap,
-                                      const uint32_t reflectionProbeType,
+                                      uint32_t reflectionProbeType,
                                       gfx::Texture *reflectionProbeCubemap,
                                       gfx::Texture *reflectionProbePlanarMap,
                                       gfx::Texture *reflectionProbeBlendCubemap) {
