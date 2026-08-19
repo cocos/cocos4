@@ -79,13 +79,13 @@ public:
 
 private:
     void _appendInstance(InstancedItem &instance,
-        Uint8Array buffer,
+        Uint8Array &buffer,
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet);
     void _createInstance(const ccstd::string &key,
         gfx::InputAssembler *sourceIA,
         const ccstd::vector<gfx::Attribute> &attributes,
-        Uint8Array buffer,
+        Uint8Array &buffer,
         uint32_t stride,
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet,

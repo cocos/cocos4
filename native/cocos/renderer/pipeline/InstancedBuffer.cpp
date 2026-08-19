@@ -121,7 +121,10 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
         );
 }
 
-void InstancedBuffer::_appendInstance(InstancedItem& instance, Uint8Array buffer, gfx::Shader* shader, gfx::DescriptorSet* descriptorSet) {
+void InstancedBuffer::_appendInstance(InstancedItem &instance,
+                                      Uint8Array& buffer,
+                                      gfx::Shader *shader,
+                                      gfx::DescriptorSet *descriptorSet) {
     if (instance.drawInfo.instanceCount >= instance.capacity) { // resize buffers
         instance.capacity = std::min(instance.capacity << 1, MAX_CAPACITY);
         const auto newSize = instance.stride * instance.capacity;
@@ -145,7 +148,7 @@ void InstancedBuffer::_appendInstance(InstancedItem& instance, Uint8Array buffer
 void InstancedBuffer::_createInstance(const ccstd::string &key,
                                       gfx::InputAssembler *sourceIA,
                                       const ccstd::vector<gfx::Attribute> &attributes,
-                                      Uint8Array buffer,
+                                      Uint8Array &buffer,
                                       uint32_t stride,
                                       gfx::Shader *shader,
                                       gfx::DescriptorSet *descriptorSet,
@@ -204,9 +207,10 @@ void InstancedBuffer::uploadBuffers(gfx::CommandBuffer *cmdBuff) const {
         // bytes from `instance.data` would read out of bounds and crash. Clamp to the smaller
         // of the two to avoid reading past the end of `instance.data`.
         const uint32_t dataCapacity = instance.capacity * instance.stride;
-        const uint32_t copySize = std::min(instance.vb->getSize(), dataCapacity);
-        CC_ASSERT(copySize == instance.vb->getSize());
-        cmdBuff->updateBuffer(instance.vb, instance.data, copySize);
+        const uint32_t validSize = instance.drawInfo.instanceCount * instance.stride;
+        CC_ASSERT(validSize <= instance.vb->getSize());
+        CC_ASSERT(validSize <= dataCapacity);
+        cmdBuff->updateBuffer(instance.vb, instance.data, validSize);
         instance.ia->setInstanceCount(instance.drawInfo.instanceCount);
     }
 }
