@@ -31,7 +31,6 @@
 #include "gfx-base/GFXDescriptorSet.h"
 #include "gfx-base/GFXDevice.h"
 #include "gfx-base/GFXInputAssembler.h"
-#include "base/StringUtil.h"
 
 namespace cc {
 namespace pipeline {
@@ -85,14 +84,17 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
     _sortRender.hash = hash;
     _sortRender.shaderID = shaderId;
     _sortRender.passIndex = passIdx;
-    const ccstd::string key = StringUtil::format("%u/%u/%u/%u/%u/%u/%u",
-                                                 sourceIA->getIndexBuffer() ? sourceIA->getIndexBuffer()->getObjectID() : 0,
-                                                 lightingMap ? lightingMap->getObjectID() : 0,
-                                                 reflectionProbeType,
-                                                 reflectionProbeCubemap ? reflectionProbeCubemap->getObjectID() : 0,
-                                                 reflectionProbePlanarMap ? reflectionProbePlanarMap->getObjectID() : 0,
-                                                 reflectionProbeBlendCubemap ? reflectionProbeBlendCubemap->getObjectID() : 0,
-                                                 stride);
+    const ccstd::hash_t key = [&]() {
+        ccstd::hash_t seed = 2;
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(sourceIA->getIndexBuffer()));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(lightingMap));
+        ccstd::hash_combine(seed, reflectionProbeType);
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbeCubemap));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbePlanarMap));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbeBlendCubemap));
+        ccstd::hash_combine(seed, stride);
+        return seed;
+    }();
     const auto iter = _instancesMap.find(key);
     if (iter != _instancesMap.end()) {
         for (size_t idx : iter->second) {
@@ -145,7 +147,7 @@ void InstancedBuffer::appendInstance(InstancedItem &instance,
     _hasPendingModels = true;
 }
 
-void InstancedBuffer::createInstance(const ccstd::string &key,
+void InstancedBuffer::createInstance(ccstd::hash_t key,
                                       gfx::InputAssembler *sourceIA,
                                       const ccstd::vector<gfx::Attribute> &attributes,
                                       Uint8Array &buffer,
