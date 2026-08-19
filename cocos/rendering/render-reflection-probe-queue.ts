@@ -84,14 +84,15 @@ export class RenderReflectionProbeQueue {
     public constructor (pipeline: PipelineRuntime) {
         this._pipeline = pipeline;
     }
-    public gatherRenderObjects (probe: ReflectionProbe, camera: Camera, cmdBuff: CommandBuffer): void {
+    public gatherRenderObjects (probe: ReflectionProbe, camera: Camera, cmdBuff: CommandBuffer, reflectionCamera?: Camera): void {
         this.clear();
         this._useFloatRT = probe.useFloatIntermediateRT();
         const scene = camera.scene!;
         const sceneData = this._pipeline.pipelineSceneData;
         const skybox = sceneData.skybox;
+        const probeCamera = reflectionCamera ?? probe.camera;
 
-        if (skybox.enabled && skybox.model && (probe.camera.clearFlag & SkyBoxFlagValue.VALUE)) {
+        if (skybox.enabled && skybox.model && (probeCamera.clearFlag & SkyBoxFlagValue.VALUE)) {
             this.add(skybox.model);
         }
 
@@ -111,7 +112,7 @@ export class RenderReflectionProbeQueue {
                     if (geometry.intersect.aabbWithAABB(model.worldBounds, probe.boundingBox!)) {
                         this.add(model);
                     }
-                } else if (geometry.intersect.aabbFrustum(model.worldBounds, probe.camera.frustum)) {
+                } else if (geometry.intersect.aabbFrustum(model.worldBounds, probeCamera.frustum)) {
                     this.add(model);
                 }
             }

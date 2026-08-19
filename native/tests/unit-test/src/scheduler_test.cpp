@@ -21,9 +21,9 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 ****************************************************************************/
-#include <vector>
 #include <chrono>
 #include <thread>
+#include <vector>
 
 #include "base/Scheduler.h"
 #include "utils.h"
@@ -32,35 +32,35 @@ using namespace cc;
 
 TEST(schedulerTest, performInCocosThreadOrder) {
     auto scheduler = std::make_shared<Scheduler>();
-    
+
     std::vector<int> orderResult;
-    
+
     for (int i = 0; i < 10; ++i) {
-        auto task = [&orderResult, i, scheduler](){
+        auto task = [&orderResult, i, scheduler]() {
             orderResult.emplace_back(i);
-            
+
             if (i == 5) {
-                scheduler->performFunctionInCocosThread([&orderResult](){
+                scheduler->performFunctionInCocosThread([&orderResult]() {
                     orderResult.emplace_back(10);
                 });
-                
-                scheduler->performFunctionInCocosThread([&orderResult](){
+
+                scheduler->performFunctionInCocosThread([&orderResult]() {
                     orderResult.emplace_back(11);
                 });
-                
-                scheduler->performFunctionInCocosThread([&orderResult](){
+
+                scheduler->performFunctionInCocosThread([&orderResult]() {
                     orderResult.emplace_back(12);
                 });
-                
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         };
         scheduler->performFunctionInCocosThread(task);
     }
-    
+
     scheduler->runFunctionsToBePerformedInCocosThread();
     scheduler->runFunctionsToBePerformedInCocosThread();
-    
+
     const std::vector<int> expectedResult{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
     EXPECT_EQ(orderResult, expectedResult);
 }

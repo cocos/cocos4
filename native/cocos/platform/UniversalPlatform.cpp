@@ -80,7 +80,6 @@ void UniversalPlatform::onDestroy() {
 }
 
 void UniversalPlatform::exit() {
-
 }
 
 } // namespace cc

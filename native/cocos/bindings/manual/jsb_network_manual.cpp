@@ -58,9 +58,9 @@ static bool js_network_Downloader_createDownloadTask(se::State &s) { // NOLINT(r
         ccstd::string arg1;
         ccstd::string identifier;
         ccstd::unordered_map<ccstd::string, ccstd::string> header;
-        
+
         std::shared_ptr<const cc::network::DownloadTask> result;
-        
+
         ok &= sevalue_to_native(args[0], &arg0);
         ok &= sevalue_to_native(args[1], &arg1);
         if (args[2].isString()) {
@@ -84,13 +84,13 @@ static bool js_network_Downloader_createDownloadTask(se::State &s) { // NOLINT(r
                          "js_network_Downloader_createDownloadTask : Error processing arguments");
         return true;
     }
-    
+
     if (argc == 4) {
         ccstd::string arg0;
         ccstd::string arg1;
         ccstd::unordered_map<ccstd::string, ccstd::string> arg2;
         ccstd::string arg3;
-        
+
         ok &= sevalue_to_native(args[0], &arg0);
         ok &= sevalue_to_native(args[1], &arg1);
         ok &= sevalue_to_native(args[2], &arg2);
@@ -310,7 +310,7 @@ bool register_all_network_manual(se::Object * /*obj*/) { // NOLINT(readability-i
     __jsb_cc_network_Downloader_proto->defineProperty("onError", nullptr, _SE(js_network_Downloader_setOnError_asSetter));
     __jsb_cc_network_Downloader_proto->defineFunction("createDownloadTask",
                                                       _SE(js_network_Downloader_createDownloadTask));
-    __jsb_cc_network_Downloader_proto->defineFunction("createDownloadFileTask",   // deprecated since v3.6, use createDownloadTask instead.
+    __jsb_cc_network_Downloader_proto->defineFunction("createDownloadFileTask", // deprecated since v3.6, use createDownloadTask instead.
                                                       _SE(js_network_Downloader_createDownloadTask));
     __jsb_cc_network_Downloader_proto->defineFunction("setOnTaskError",
                                                       _SE(js_network_Downloader_setOnTaskError)); // deprecated since v3.6

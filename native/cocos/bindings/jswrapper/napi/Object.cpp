@@ -35,7 +35,7 @@
 namespace se {
 std::unique_ptr<std::unordered_map<Object*, void*>> __objectMap; // Currently, the value `void*` is always nullptr
 
-Object::Object(): _objRef(this) {}
+Object::Object() : _objRef(this) {}
 Object::~Object() {
     if (!_destructInFinalizer && _cls != nullptr) {
         napi_remove_wrap(_env, _objRef.getValue(_env), nullptr);
@@ -738,18 +738,16 @@ void Object::clearPrivateData(bool clearMapping) {
     }
 }
 
-ObjectRef::ObjectRef(Object *parent)
+ObjectRef::ObjectRef(Object* parent)
 : _parent(parent) {
-
 }
 
 ObjectRef::~ObjectRef() {
     deleteRef();
 }
 
-
 napi_value ObjectRef::getValue(napi_env env) const {
-    napi_value  result;
+    napi_value result;
     napi_status status;
     NODE_API_CALL(status, env, napi_get_reference_value(env, _ref, &result));
     assert(status == napi_ok);
@@ -776,7 +774,7 @@ void ObjectRef::deleteRef() {
     if (!_ref) {
         return;
     }
-    if(!_parent->_destructInFinalizer) {
+    if (!_parent->_destructInFinalizer) {
         // Similar to jsvm, please read the comments inside jsvm.
         napi_reference_ref(_env, _ref, nullptr);
     }

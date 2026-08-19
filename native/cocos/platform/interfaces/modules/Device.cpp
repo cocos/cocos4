@@ -29,9 +29,9 @@
 #include "platform/interfaces/modules/IBattery.h"
 #include "platform/interfaces/modules/INetwork.h"
 #include "platform/interfaces/modules/IScreen.h"
-#include "platform/interfaces/modules/IVibrator.h"
 #include "platform/interfaces/modules/ISystemWindow.h"
 #include "platform/interfaces/modules/ISystemWindowManager.h"
+#include "platform/interfaces/modules/IVibrator.h"
 
 namespace cc {
 

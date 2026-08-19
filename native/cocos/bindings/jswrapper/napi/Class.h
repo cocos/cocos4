@@ -25,9 +25,9 @@
 
 #pragma once
 #include <string>
+#include "../Define.h"
 #include "CommonHeader.h"
 #include "Object.h"
-#include "../Define.h"
 #include "base/std/optional.h"
 
 namespace se {
@@ -36,27 +36,26 @@ public:
     static Class *create(const std::string &clsName, se::Object *parent, Object *parentProto, napi_callback ctor = nullptr);
     static Class *create(const std::initializer_list<const char *> &classPath, se::Object *parent, Object *parentProto, napi_callback ctor = nullptr);
 
-    void          defineFunction(const char* name, napi_callback func);
-    void          defineProperty(const char* name, napi_callback g, napi_callback s);
-    void          defineProperty(const std::initializer_list<const char *> &names, napi_callback g, napi_callback s);
+    void defineFunction(const char *name, napi_callback func);
+    void defineProperty(const char *name, napi_callback g, napi_callback s);
+    void defineProperty(const std::initializer_list<const char *> &names, napi_callback g, napi_callback s);
 
-    void          defineStaticFunction(const char* name, napi_callback func);
-    void          defineStaticProperty(const char* name, napi_callback g, napi_callback s);
-    bool          defineStaticProperty(const char *name, const Value &value, PropertyAttribute attribute = PropertyAttribute::NONE);
+    void defineStaticFunction(const char *name, napi_callback func);
+    void defineStaticProperty(const char *name, napi_callback g, napi_callback s);
+    bool defineStaticProperty(const char *name, const Value &value, PropertyAttribute attribute = PropertyAttribute::NONE);
 
-    static napi_value    _createJSObjectWithClass(Class *cls);
-    
-    void          defineFinalizeFunction(napi_finalize func);
+    static napi_value _createJSObjectWithClass(Class *cls);
+
+    void defineFinalizeFunction(napi_finalize func);
     napi_finalize _getFinalizeFunction() const;
-    
-    
-    Object *      getProto() const;
-    void          install();
-    napi_status   inherit(napi_env env, napi_value subclass, napi_value superclass);
-    napi_ref      _getCtorRef() const;
-    napi_value    _getCtorFunc() const;
-    const char *  getName() const { return _name.c_str(); }
-    static void   setExports(napi_value *expPtr) { _exports = expPtr; }
+
+    Object *getProto() const;
+    void install();
+    napi_status inherit(napi_env env, napi_value subclass, napi_value superclass);
+    napi_ref _getCtorRef() const;
+    napi_value _getCtorFunc() const;
+    const char *getName() const { return _name.c_str(); }
+    static void setExports(napi_value *expPtr) { _exports = expPtr; }
     static void cleanup();
     // Private API used in wrapper
     void _setCtor(Object *obj);                                                // NOLINT(readability-identifier-naming)
@@ -64,20 +63,20 @@ public:
 private:
     Class();
     ~Class();
-    bool              init(const std::string &clsName, Object *parent, Object *parentProto, napi_callback ctor = nullptr);
-    void              destroy();
+    bool init(const std::string &clsName, Object *parent, Object *parentProto, napi_callback ctor = nullptr);
+    void destroy();
     static napi_value _defaultCtor(napi_env env, napi_callback_info info);
 
 private:
-    ccstd::optional<Object *>             _ctor;
-    static napi_value *                   _exports;
-    std::string                           _name;
-    Object *                              _parent = nullptr;
-    Object *                              _proto = nullptr;
-    Object *                              _parentProto = nullptr;
-    napi_callback                         _ctorFunc = Class::_defaultCtor;
-    napi_ref                              _constructor = nullptr;
+    ccstd::optional<Object *> _ctor;
+    static napi_value *_exports;
+    std::string _name;
+    Object *_parent = nullptr;
+    Object *_proto = nullptr;
+    Object *_parentProto = nullptr;
+    napi_callback _ctorFunc = Class::_defaultCtor;
+    napi_ref _constructor = nullptr;
     std::vector<napi_property_descriptor> _properties;
-    napi_finalize                         _finalizeFunc = nullptr;
+    napi_finalize _finalizeFunc = nullptr;
 };
 }; // namespace se

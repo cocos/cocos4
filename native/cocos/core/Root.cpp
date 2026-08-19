@@ -47,8 +47,8 @@
 #include "renderer/pipeline/forward/ForwardPipeline.h"
 #include "scene/Camera.h"
 #include "scene/DirectionalLight.h"
-#include "scene/SpotLight.h"
 #include "scene/Skybox.h"
+#include "scene/SpotLight.h"
 
 namespace cc {
 
@@ -359,8 +359,7 @@ void Root::onGlobalPipelineStateChanged() {
         scene->onGlobalPipelineStateChanged();
     }
 
-    if (_pipelineRuntime->getPipelineSceneData()->getSkybox()->isEnabled())
-    {
+    if (_pipelineRuntime->getPipelineSceneData()->getSkybox()->isEnabled()) {
         _pipelineRuntime->getPipelineSceneData()->getSkybox()->getModel()->onGlobalPipelineStateChanged();
     }
 
@@ -569,7 +568,7 @@ void Root::doXRFrameMove(int32_t totalFrames) {
         bool isSceneUpdated = false;
         int viewCount = _xr->getXRConfig(xr::XRConfigKey::VIEW_COUNT).getInt();
         // compatible native pipeline
-        static bool isNativePipeline = dynamic_cast<cc::render::NativePipeline*>(_pipelineRuntime.get()) != nullptr;
+        static bool isNativePipeline = dynamic_cast<cc::render::NativePipeline *>(_pipelineRuntime.get()) != nullptr;
         bool forceUpdateSceneTwice = isNativePipeline ? true : _xr->getXRConfig(xr::XRConfigKey::EYE_RENDER_JS_CALLBACK).getBool();
         for (int xrEye = 0; xrEye < viewCount; xrEye++) {
             _xr->beginRenderEyeFrame(xrEye);

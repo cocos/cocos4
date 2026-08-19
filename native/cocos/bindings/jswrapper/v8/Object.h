@@ -708,7 +708,7 @@ private:
     ccstd::string _objectCreationStackFrame;
     #endif
 
-    static std::unordered_map<Object*, v8::Persistent<v8::Promise::Resolver>*> resolverMap;
+    static std::unordered_map<Object *, v8::Persistent<v8::Promise::Resolver> *> resolverMap;
 
     friend class ScriptEngine;
     friend class JSBPersistentHandleVisitor;

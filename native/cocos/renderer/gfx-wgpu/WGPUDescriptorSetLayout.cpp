@@ -138,15 +138,15 @@ void CCWGPUDescriptorSetLayout::updateSampledTextureLayout(uint8_t index, const 
 
     CC_ASSERT(texture);
 
-        WGPUTextureBindingLayout textureLayout{};
-        textureLayout.sampleType = sampletypeTraits(texture, plane); // textureSampleTypeTrait(texture->getFormat());
-        const CCWGPUTexture *ccTex = static_cast<const CCWGPUTexture *>(texture->isTextureView() ? texture->getViewInfo().texture : texture);
-        TextureType type = ccTex->getViewInfo().type;
-        textureLayout.viewDimension = toWGPUTextureViewDimension(type);
-        textureLayout.multisampled = ccTex->getInfo().samples != SampleCount::X1;
-        textureEntry.texture = textureLayout;
+    WGPUTextureBindingLayout textureLayout{};
+    textureLayout.sampleType = sampletypeTraits(texture, plane); // textureSampleTypeTrait(texture->getFormat());
+    const CCWGPUTexture *ccTex = static_cast<const CCWGPUTexture *>(texture->isTextureView() ? texture->getViewInfo().texture : texture);
+    TextureType type = ccTex->getViewInfo().type;
+    textureLayout.viewDimension = toWGPUTextureViewDimension(type);
+    textureLayout.multisampled = ccTex->getInfo().samples != SampleCount::X1;
+    textureEntry.texture = textureLayout;
     _gpuLayoutEntryObj->bindGroupLayoutEntries[textureEntry.binding] = textureEntry;
-    }
+}
 void CCWGPUDescriptorSetLayout::updateStorageTextureLayout(uint8_t index, const CCWGPUTexture *texture, uint32_t plane) {
     WGPUBindGroupLayoutEntry textureEntry{};
     textureEntry.binding = _bindings[index].binding;
@@ -214,7 +214,7 @@ void CCWGPUDescriptorSetLayout::prepare(ccstd::set<uint8_t> &bindingInUse, bool 
     ccstd::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries{};
     bindGroupLayoutEntries.reserve(_gpuLayoutEntryObj->bindGroupLayoutEntries.size());
     for (const auto &[bd, layoutEntry] : _gpuLayoutEntryObj->bindGroupLayoutEntries) {
-        if(checkInUse(static_cast<uint8_t>(bd), bindingInUse, layoutEntry.sampler.type != WGPUSamplerBindingType_Undefined)) {
+        if (checkInUse(static_cast<uint8_t>(bd), bindingInUse, layoutEntry.sampler.type != WGPUSamplerBindingType_Undefined)) {
             bindGroupLayoutEntries.emplace_back(layoutEntry);
         }
     }
@@ -232,7 +232,7 @@ void CCWGPUDescriptorSetLayout::prepare(ccstd::set<uint8_t> &bindingInUse, bool 
     } else {
         WGPUBindGroupLayoutDescriptor descriptor = {
             .nextInChain = nullptr,
-            .label = "",//std::to_string(_hash).c_str(),
+            .label = "", //std::to_string(_hash).c_str(),
             .entryCount = entries.size(),
             .entries = entries.data(),
         };

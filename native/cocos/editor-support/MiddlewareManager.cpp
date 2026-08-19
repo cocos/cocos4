@@ -57,8 +57,8 @@ MeshBuffer *MiddlewareManager::getMeshBuffer(int format) {
 void MiddlewareManager::updateOperateCache() {
     if (_operateCacheQueue.empty()) return;
 
-    ccstd::vector<IMiddleware*> seen;
-    ccstd::vector<std::pair<IMiddleware*, bool>> finalOperations;
+    ccstd::vector<IMiddleware *> seen;
+    ccstd::vector<std::pair<IMiddleware *, bool>> finalOperations;
     for (auto it = _operateCacheQueue.rbegin(); it != _operateCacheQueue.rend(); ++it) {
         if (std::find(seen.begin(), seen.end(), it->first) == seen.end()) {
             seen.push_back(it->first);
@@ -99,10 +99,10 @@ void MiddlewareManager::update(float dt) {
 }
 
 void MiddlewareManager::render(float dt) {
-    ccstd::vector<IMiddleware*> skipRenderList;
+    ccstd::vector<IMiddleware *> skipRenderList;
     if (!_operateCacheQueue.empty()) {
-        ccstd::vector<IMiddleware*> seen;
-        // Object._deferredDestroy is called after component update in Director.tick and before emitting BEFORE_DRAW event in which MiddlewareManager::render is invoked, 
+        ccstd::vector<IMiddleware *> seen;
+        // Object._deferredDestroy is called after component update in Director.tick and before emitting BEFORE_DRAW event in which MiddlewareManager::render is invoked,
         // so the native object may be released here.
         // We shouldn't execute editor->render(dt) if it's already removed in _operateCacheQueue.
         for (auto it = _operateCacheQueue.rbegin(); it != _operateCacheQueue.rend(); ++it) {

@@ -18,9 +18,9 @@
 
 #include <cstdint>
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
-#include <android/log.h>
-#include <sys/system_properties.h>
-#include <sys/types.h>
+    #include <android/log.h>
+    #include <sys/system_properties.h>
+    #include <sys/types.h>
 #endif
 
 #include "audio/android/AudioBufferProvider.h"
@@ -108,21 +108,20 @@ protected:
 
     int64_t calculateOutputPTS(int outputFrameIndex);
 
-
-    const int32_t mChannelCount;// NOLINT(readability-identifier-naming)
-    const int32_t mSampleRate;// NOLINT(readability-identifier-naming)
-    int32_t mInSampleRate;// NOLINT(readability-identifier-naming)
-    AudioBufferProvider::Buffer mBuffer;// NOLINT(readability-identifier-naming)
+    const int32_t mChannelCount;         // NOLINT(readability-identifier-naming)
+    const int32_t mSampleRate;           // NOLINT(readability-identifier-naming)
+    int32_t mInSampleRate;               // NOLINT(readability-identifier-naming)
+    AudioBufferProvider::Buffer mBuffer; // NOLINT(readability-identifier-naming)
     union {
-        int16_t mVolume[2];// NOLINT(readability-identifier-naming)
-        uint32_t mVolumeRL;// NOLINT(readability-identifier-naming)
+        int16_t mVolume[2]; // NOLINT(readability-identifier-naming)
+        uint32_t mVolumeRL; // NOLINT(readability-identifier-naming)
     };
-    int16_t mTargetVolume[2];// NOLINT(readability-identifier-naming)
-    size_t mInputIndex;// NOLINT(readability-identifier-naming)
-    int32_t mPhaseIncrement;// NOLINT(readability-identifier-naming)
-    uint32_t mPhaseFraction;// NOLINT(readability-identifier-naming)
-    uint64_t mLocalTimeFreq;// NOLINT(readability-identifier-naming)
-    int64_t mPTS;// NOLINT(readability-identifier-naming)
+    int16_t mTargetVolume[2]; // NOLINT(readability-identifier-naming)
+    size_t mInputIndex;       // NOLINT(readability-identifier-naming)
+    int32_t mPhaseIncrement;  // NOLINT(readability-identifier-naming)
+    uint32_t mPhaseFraction;  // NOLINT(readability-identifier-naming)
+    uint64_t mLocalTimeFreq;  // NOLINT(readability-identifier-naming)
+    int64_t mPTS;             // NOLINT(readability-identifier-naming)
 
     // returns the inFrameCount required to generate outFrameCount frames.
     //
@@ -155,7 +154,7 @@ protected:
         return (static_cast<size_t>(outFrameCount) * mInSampleRate + (mSampleRate - 1)) / mSampleRate;
     }
 
-    inline float clampFloatVol(float volume) {//NOLINT(readability-identifier-naming, readability-convert-member-functions-to-static)
+    inline float clampFloatVol(float volume) { //NOLINT(readability-identifier-naming, readability-convert-member-functions-to-static)
         float ret = 0.0F;
         if (volume > UNITY_GAIN_FLOAT) {
             ret = UNITY_GAIN_FLOAT;
@@ -166,7 +165,7 @@ protected:
     }
 
 private:
-    const src_quality mQuality;// NOLINT(readability-identifier-naming)
+    const src_quality mQuality; // NOLINT(readability-identifier-naming)
 
     // Return 'true' if the quality level is supported without explicit request
     static bool qualityIsSupported(src_quality quality);

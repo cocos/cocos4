@@ -39,8 +39,8 @@
     #include <sqlite3.h>
 #endif
 
-#include "base/Macros.h"
 #include "base/Log.h"
+#include "base/Macros.h"
 
 static int _initialized = 0;
 static sqlite3 *_db;

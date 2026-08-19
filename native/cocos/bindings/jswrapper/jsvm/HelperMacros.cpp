@@ -39,10 +39,10 @@ SE_HOT JSVM_Value jsbFunctionWrapper(JSVM_Env env, JSVM_CallbackInfo info, se_fu
     JSVM_Value args[15];
     NODE_API_CALL(status, env, OH_JSVM_GetCbInfo(env, info, &argc, args, &_this, NULL));
 
-    void* nativeThisObject = nullptr;
+    void *nativeThisObject = nullptr;
     status = OH_JSVM_Unwrap(env, _this, &nativeThisObject);
     se::internal::jsToSeArgs(argc, args, &seArgs);
-    se::State state(reinterpret_cast<se::Object*>(nativeThisObject), seArgs);
+    se::State state(reinterpret_cast<se::Object *>(nativeThisObject), seArgs);
     ret = func(state);
     if (!ret) {
         SE_LOGE("[ERROR] Failed to invoke %s, location: %s:%d\n", funcName, __FILE__, __LINE__);
@@ -110,9 +110,9 @@ SE_HOT JSVM_Value jsbGetterWrapper(JSVM_Env env, JSVM_CallbackInfo info, se_func
     JSVM_Status status;
     NODE_API_CALL(status, env,
                   OH_JSVM_GetCbInfo(env, info, nullptr, nullptr, &_this, nullptr));
-    void* obj = nullptr;
+    void *obj = nullptr;
     status = OH_JSVM_Unwrap(env, _this, &obj);
-    se::State state(reinterpret_cast<se::Object*>(obj));
+    se::State state(reinterpret_cast<se::Object *>(obj));
     bool ret = func(state);
     if (!ret) {
         SE_LOGE("[ERROR] Failed to invoke %s, location: %s:%d\n", funcName, __FILE__, __LINE__);
@@ -134,9 +134,9 @@ SE_HOT JSVM_Value jsbSetterWrapper(JSVM_Env env, JSVM_CallbackInfo info, se_func
     se::ValueArray args2;
     args2.reserve(10);
     args2.push_back(std::move(data));
-    void* nativeThisObject = nullptr;
+    void *nativeThisObject = nullptr;
     status = OH_JSVM_Unwrap(env, _this, &nativeThisObject);
-    se::State state(reinterpret_cast<se::Object*>(nativeThisObject), args2);
+    se::State state(reinterpret_cast<se::Object *>(nativeThisObject), args2);
     bool ret = func(state);
     if (!ret) {
         SE_LOGE("[ERROR] Failed to invoke %s, location: %s:%d\n", funcName, __FILE__, __LINE__);

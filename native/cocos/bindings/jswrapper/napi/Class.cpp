@@ -51,7 +51,7 @@ Class *Class::create(const std::string &clsName, se::Object *parent, Object *par
     return cls;
 }
 
-Class* Class::create(const std::initializer_list<const char *> &classPath, se::Object *parent, Object *parentProto, napi_callback ctor) {
+Class *Class::create(const std::initializer_list<const char *> &classPath, se::Object *parent, Object *parentProto, napi_callback ctor) {
     se::AutoHandleScope scope;
     se::Object *currentParent = parent;
     se::Value tmp;
@@ -64,7 +64,7 @@ Class* Class::create(const std::initializer_list<const char *> &classPath, se::O
 }
 
 bool Class::init(const std::string &clsName, Object *parent, Object *parentProto, napi_callback ctor) {
-    _name   = clsName;
+    _name = clsName;
     _parent = parent;
     if (_parent != nullptr)
         _parent->incRef();
@@ -86,7 +86,7 @@ napi_value Class::_defaultCtor(napi_env env, napi_callback_info info) {
     return _this;
 }
 
-void Class::defineProperty(const char* name, napi_callback g, napi_callback s) {
+void Class::defineProperty(const char *name, napi_callback g, napi_callback s) {
     _properties.push_back({name, nullptr, nullptr, g, s, 0, napi_default_jsproperty, 0});
 }
 
@@ -96,8 +96,8 @@ void Class::defineProperty(const std::initializer_list<const char *> &names, nap
     }
 }
 
-void Class::defineStaticProperty(const char* name, napi_callback g, napi_callback s) {
-    if(g != nullptr && s != nullptr) 
+void Class::defineStaticProperty(const char *name, napi_callback g, napi_callback s) {
+    if (g != nullptr && s != nullptr)
         _properties.push_back({name, nullptr, nullptr, g, s, 0, napi_static, 0});
 }
 
@@ -109,12 +109,12 @@ bool Class::defineStaticProperty(const char *name, const Value &v, PropertyAttri
     return true;
 }
 
-void Class::defineFunction(const char* name, napi_callback func) {
-	// When Napi defines a function, it needs to add the enum attribute, otherwise JS cannot traverse the function
+void Class::defineFunction(const char *name, napi_callback func) {
+    // When Napi defines a function, it needs to add the enum attribute, otherwise JS cannot traverse the function
     _properties.push_back({name, nullptr, func, nullptr, nullptr, nullptr, napi_default_jsproperty, nullptr});
 }
 
-void Class::defineStaticFunction(const char* name, napi_callback func) {
+void Class::defineStaticFunction(const char *name, napi_callback func) {
     _properties.push_back({name, nullptr, func, nullptr, nullptr, 0, napi_static, 0});
 }
 
@@ -128,7 +128,7 @@ napi_finalize Class::_getFinalizeFunction() const {
 }
 
 void Class::install() {
-    napi_value  cons;
+    napi_value cons;
     napi_status status;
     NODE_API_CALL(status, ScriptEngine::getEnv(), napi_define_class(ScriptEngine::getEnv(), _name.c_str(), -1, _ctorFunc, nullptr, _properties.size(), _properties.data(), &cons));
     if (_parentProto) {
@@ -172,7 +172,7 @@ napi_status Class::inherit(napi_env env, napi_value subclass, napi_value superPr
         return napi_ok;
     }
     argv[1] = superProto;
-    status  = napi_call_function(env, objectClass, setProto, 2, argv, &callbackResult);
+    status = napi_call_function(env, objectClass, setProto, 2, argv, &callbackResult);
     if (status != napi_ok) {
         LOGE("ace zbclog napi_call_function setProto 1 %{public}d", status);
         return napi_ok;
@@ -191,7 +191,7 @@ napi_value Class::_createJSObjectWithClass(Class *cls) {
         return nullptr;
     }
     se::ScriptEngine::getInstance()->_setNeedCallConstructor(false);
-    NODE_API_CALL(status, ScriptEngine::getEnv(), napi_new_instance( ScriptEngine::getEnv(), clsCtor, 0, nullptr, &obj));
+    NODE_API_CALL(status, ScriptEngine::getEnv(), napi_new_instance(ScriptEngine::getEnv(), clsCtor, 0, nullptr, &obj));
     se::ScriptEngine::getInstance()->_setNeedCallConstructor(true);
     return obj;
 }
@@ -207,7 +207,7 @@ napi_ref Class::_getCtorRef() const {
 
 napi_value Class::_getCtorFunc() const {
     assert(_constructor);
-    napi_value  result = nullptr;
+    napi_value result = nullptr;
     napi_status status;
     NODE_API_CALL(status, ScriptEngine::getEnv(), napi_get_reference_value(ScriptEngine::getEnv(), _constructor, &result));
     return result;

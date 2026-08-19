@@ -22,15 +22,14 @@ private:
 
 TempFloatArray tempFloatArray;
 
-bool js_b2World_SetContactListener(se::State& s)
-{
+bool js_b2World_SetContactListener(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
-    b2World *arg1 = (b2World *) NULL ;
-    JSB_b2ContactListener *arg2 = (JSB_b2ContactListener *) NULL ;
+    b2World *arg1 = (b2World *)NULL;
+    JSB_b2ContactListener *arg2 = (JSB_b2ContactListener *)NULL;
 
-    if(argc != 1) {
+    if (argc != 1) {
         SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 1);
         return false;
     }
@@ -41,20 +40,18 @@ bool js_b2World_SetContactListener(se::State& s)
     SE_PRECONDITION2(ok, false, "Error processing arguments");
     (arg1)->SetContactListener(arg2);
 
-
     return true;
 }
 SE_BIND_FUNC(js_b2World_SetContactListener)
 
-bool js_b2World_SetDebugDraw(se::State& s)
-{
+bool js_b2World_SetDebugDraw(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
-    b2World *arg1 = (b2World *) NULL ;
-    JSBB2Draw *arg2 = (JSBB2Draw *) NULL ;
+    b2World *arg1 = (b2World *)NULL;
+    JSBB2Draw *arg2 = (JSBB2Draw *)NULL;
 
-    if(argc != 1) {
+    if (argc != 1) {
         SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 1);
         return false;
     }
@@ -65,22 +62,20 @@ bool js_b2World_SetDebugDraw(se::State& s)
     SE_PRECONDITION2(ok, false, "Error processing arguments");
     (arg1)->SetDebugDraw(arg2);
 
-
     return true;
 }
 SE_BIND_FUNC(js_b2World_SetDebugDraw)
 
-bool js_b2World_QueryAABB(se::State& s)
-{
+bool js_b2World_QueryAABB(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
-    b2World *arg1 = (b2World *) NULL ;
-    JSBQueryCallback *arg2 = (JSBQueryCallback *) NULL ;
-    b2AABB *arg3 = 0 ;
-    b2AABB temp3 ;
+    b2World *arg1 = (b2World *)NULL;
+    JSBQueryCallback *arg2 = (JSBQueryCallback *)NULL;
+    b2AABB *arg3 = 0;
+    b2AABB temp3;
 
-    if(argc != 2) {
+    if (argc != 2) {
         SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 2);
         return false;
     }
@@ -94,26 +89,24 @@ bool js_b2World_QueryAABB(se::State& s)
     SE_PRECONDITION2(ok, false, "Error processing arguments");
     arg3 = &temp3;
 
-    ((b2World const *)arg1)->QueryAABB(arg2,(b2AABB const &)*arg3);
-
+    ((b2World const *)arg1)->QueryAABB(arg2, (b2AABB const &)*arg3);
 
     return true;
 }
 SE_BIND_FUNC(js_b2World_QueryAABB)
 
-bool js_b2World_RayCast(se::State& s)
-{
+bool js_b2World_RayCast(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
-    b2World *arg1 = (b2World *) NULL ;
-    JSBRayCastCallback *arg2 = (JSBRayCastCallback *) NULL ;
-    b2Vec2 *arg3 = 0 ;
-    b2Vec2 *arg4 = 0 ;
-    b2Vec2 temp3 ;
-    b2Vec2 temp4 ;
+    b2World *arg1 = (b2World *)NULL;
+    JSBRayCastCallback *arg2 = (JSBRayCastCallback *)NULL;
+    b2Vec2 *arg3 = 0;
+    b2Vec2 *arg4 = 0;
+    b2Vec2 temp3;
+    b2Vec2 temp4;
 
-    if(argc != 3) {
+    if (argc != 3) {
         SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 3);
         return false;
     }
@@ -127,26 +120,23 @@ bool js_b2World_RayCast(se::State& s)
     SE_PRECONDITION2(ok, false, "Error processing arguments");
     arg3 = &temp3;
 
-
     ok &= sevalue_to_native(args[2], &temp4, s.thisObject());
     SE_PRECONDITION2(ok, false, "Error processing arguments");
     arg4 = &temp4;
 
-    ((b2World const *)arg1)->RayCast(arg2,(b2Vec2 const &)*arg3,(b2Vec2 const &)*arg4);
-
+    ((b2World const *)arg1)->RayCast(arg2, (b2Vec2 const &)*arg3, (b2Vec2 const &)*arg4);
 
     return true;
 }
 SE_BIND_FUNC(js_b2World_RayCast)
 
-bool js_Contact_GetWorldManifold(se::State& s)
-{
+bool js_Contact_GetWorldManifold(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
-    b2Contact *arg1 = (b2Contact *) NULL ;
+    b2Contact *arg1 = (b2Contact *)NULL;
 
-    if(argc != 1) {
+    if (argc != 1) {
         SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, 1);
         return false;
     }
@@ -172,7 +162,7 @@ bool js_Contact_GetWorldManifold(se::State& s)
         se::Value points;
         worldManifoldObj->getProperty("points", &points);
         if (points.isObject() && points.toObject()->isArray()) {
-            auto* pointsObj = points.toObject();
+            auto *pointsObj = points.toObject();
             for (uint32_t i = 0; i < b2_maxManifoldPoints; ++i) {
                 se::Value e;
                 if (pointsObj->getArrayElement(i, &e) && e.isObject()) {
@@ -187,7 +177,7 @@ bool js_Contact_GetWorldManifold(se::State& s)
         se::Value separations;
         worldManifoldObj->getProperty("separations", &separations);
         if (separations.isObject() && separations.toObject()->isArray()) {
-            auto* separationsObj = separations.toObject();
+            auto *separationsObj = separations.toObject();
             for (uint32_t i = 0; i < b2_maxManifoldPoints; ++i) {
                 separationsObj->setArrayElement(i, se::Value(worldManifold.separations[i]));
             }
@@ -198,9 +188,9 @@ bool js_Contact_GetWorldManifold(se::State& s)
 }
 SE_BIND_FUNC(js_Contact_GetWorldManifold)
 
-bool js_b2PolygonShape_Set(se::State& s) {
+bool js_b2PolygonShape_Set(se::State &s) {
     CC_UNUSED bool ok = true;
-    const auto& args = s.args();
+    const auto &args = s.args();
     size_t argc = args.size();
     if (argc != 2) {
         return false;
@@ -359,7 +349,7 @@ bool js_ChainShape_m_vertices_get(se::State &s) {
 }
 SE_BIND_PROP_GET(js_ChainShape_m_vertices_get)
 
-} // namespace {
+} // namespace
 
 bool register_all_box2d_manual(se::Object *obj) { // NOLINT
     // Get the ns
@@ -390,12 +380,12 @@ bool register_all_box2d_manual(se::Object *obj) { // NOLINT
 
     __jsb_b2ContactImpulse_proto->defineProperty("normalImpulses", _SE(js_ContactImpulse_normalImpulses_get), nullptr);
     __jsb_b2ContactImpulse_proto->defineProperty("tangentImpulses", _SE(js_ContactImpulse_tangentImpulses_get), nullptr);
-    
+
     __jsb_b2PolygonShape_proto->defineProperty("m_vertices", _SE(js_PolygonShape_m_vertices_get), nullptr);
     __jsb_b2PolygonShape_proto->defineProperty("m_normals", _SE(js_PolygonShape_m_normals_get), nullptr);
-    
+
     __jsb_b2ChainShape_proto->defineProperty("m_vertices", _SE(js_ChainShape_m_vertices_get), nullptr);
-    
+
     nsObj->setProperty("maxFloat", se::Value(b2_maxFloat));
     nsObj->setProperty("epsilon", se::Value(b2_epsilon));
     nsObj->setProperty("pi", se::Value(b2_pi));

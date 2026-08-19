@@ -46,3 +46,11 @@ platforms/runtime/platforms/vivo-mini-game/ral.min.js
 @types/consts.d.ts
 
 __TS_ENGINE__/
+
+# pal 由 @cocos/engine-pal 在 postinstall 挂载(软链/复制)，不入库
+/pal
+
+# platforms 源码已抽到 @cocos/engine-platforms；其预打包 adapter 由 postinstall 的
+# spread-adapter.cjs 复制到 bin/adapter(/bin 已忽略)。platforms 源码不再入库。
+/platforms
+

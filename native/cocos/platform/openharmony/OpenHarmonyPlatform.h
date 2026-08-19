@@ -94,9 +94,9 @@ public:
     uv_async_t _messageSignal{};
     bool _timerInited{false};
     WorkerMessageQueue _messageQueue;
-    #if CC_USE_GAMEPAD
+#if CC_USE_GAMEPAD
     std::unique_ptr<OpenHarmonyGamePad> _gamePad;
-    #endif
+#endif
     // game started
     bool g_started{false};
     bool isMouseLeftActive{false};

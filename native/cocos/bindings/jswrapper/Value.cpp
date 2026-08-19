@@ -24,13 +24,13 @@
 ****************************************************************************/
 
 #include "Value.h"
+#include <cassert>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <sstream>
 #include <type_traits>
 #include "Object.h"
-#include <cassert>
 
 namespace se {
 

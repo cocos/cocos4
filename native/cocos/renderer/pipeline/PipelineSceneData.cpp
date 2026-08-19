@@ -35,11 +35,10 @@
 #include "scene/Model.h"
 #include "scene/Octree.h"
 #include "scene/Pass.h"
+#include "scene/PostSettings.h"
 #include "scene/Shadow.h"
 #include "scene/Skin.h"
 #include "scene/Skybox.h"
-#include "scene/Model.h"
-#include "scene/PostSettings.h"
 
 namespace cc {
 namespace pipeline {

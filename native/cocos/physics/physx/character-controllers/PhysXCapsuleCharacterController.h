@@ -33,7 +33,7 @@ class PhysXCapsuleCharacterController final : public PhysXCharacterController, p
 public:
     PhysXCapsuleCharacterController();
     ~PhysXCapsuleCharacterController() override = default;
-    
+
     // ICapsuleCharacterController
     void setRadius(float v) override;
     void setHeight(float v) override;

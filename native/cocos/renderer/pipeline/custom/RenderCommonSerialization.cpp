@@ -28,8 +28,8 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 // NOLINTBEGIN(misc-include-cleaner)
-#include "cocos/renderer/pipeline/custom/ArchiveTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonSerialization.h"
+#include "cocos/renderer/pipeline/custom/ArchiveTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonTypes.h"
 #include "cocos/renderer/pipeline/custom/details/SerializationUtils.h"
 

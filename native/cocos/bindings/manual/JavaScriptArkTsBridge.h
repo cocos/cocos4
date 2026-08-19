@@ -24,7 +24,7 @@
 #pragma once
 
 namespace se {
-    class Object;
+class Object;
 }
 
 bool register_javascript_arkTs_bridge(se::Object* obj);

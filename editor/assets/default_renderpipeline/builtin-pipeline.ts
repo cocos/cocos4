@@ -434,7 +434,8 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         // Reflection Probe
         cameraConfigs.enablePlanarReflectionProbe = cameraConfigs.isMainGameWindow
             || camera.cameraUsage === CameraUsage.SCENE_VIEW
-            || camera.cameraUsage === CameraUsage.GAME_VIEW;
+            || camera.cameraUsage === CameraUsage.GAME_VIEW
+            || camera.cameraUsage === CameraUsage.PREVIEW;
 
         // MSAA
         cameraConfigs.enableMSAA = cameraConfigs.settings.msaa.enabled
@@ -551,7 +552,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 ppl, camera, pplConfigs.mobileMaxSpotLightShadowMaps);
         }
 
-        this._tryAddReflectionProbePasses(ppl, cameraConfigs, id, mainLight, camera.scene);
+        this._tryAddReflectionProbePasses(ppl, cameraConfigs, id, mainLight, camera.scene, camera);
 
         if (cameraConfigs.remainingPasses > 0 || cameraConfigs.enableShadingScale) {
             context.colorName = cameraConfigs.enableShadingScale
@@ -630,6 +631,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         id: number,
         mainLight: renderer.scene.DirectionalLight | null,
         scene: renderer.RenderScene | null,
+        sourceCamera: renderer.scene.Camera,
     ): void {
         const reflectionProbeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager | undefined;
         if (!reflectionProbeManager) {
@@ -652,6 +654,10 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                     continue;
                 }
                 const useFloatRT = probe.useFloatIntermediateRT();
+                let reflectionCamera = probe.camera;
+                if (EDITOR && sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
+                    reflectionCamera = probe.renderPreviewPlanarReflection(sourceCamera);
+                }
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;
                 const depthStencilName = `PlanarProbeDS${probeID}`;
@@ -669,7 +675,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 // Rendering
                 const probePass = ppl.addRenderPass(width, height, 'default');
                 probePass.name = `PlanarReflectionProbe${probeID}`;
-                this._buildReflectionProbePass(probePass, cameraConfigs, id, probe.camera,
+                this._buildReflectionProbePass(probePass, cameraConfigs, id, reflectionCamera,
                     sceneColorName, depthStencilName, mainLight, scene, useFloatRT);
 
                 if (useFloatRT) {

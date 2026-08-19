@@ -48,12 +48,12 @@ uint32_t localSet = static_cast<uint32_t>(SetIndex::LOCAL);
 gfx::BindingMappingInfo bindingMappingInfo = {
     {GLOBAL_UBO_COUNT, 0, LOCAL_UBO_COUNT, 0},         // Uniform Buffer Counts
     {GLOBAL_SAMPLER_COUNT, 0, LOCAL_SAMPLER_COUNT, 0}, // Combined Sampler Texture Counts
-    {0, 0, 0, 0},                                  // Sampler Counts
-    {0, 0, 0, 0},                                  // Texture Counts
-    {0, 0, 0, 0},                                  // Storage Buffer Counts
-    {0, 0, LOCAL_STORAGE_IMAGE_COUNT, 0},             // Storage Image Counts
-    {0, 0, 0, 0},                                  // Subpass Input Counts
-    {0, 2, 1, 3},                                  // Set Order Indices
+    {0, 0, 0, 0},                                      // Sampler Counts
+    {0, 0, 0, 0},                                      // Texture Counts
+    {0, 0, 0, 0},                                      // Storage Buffer Counts
+    {0, 0, LOCAL_STORAGE_IMAGE_COUNT, 0},              // Storage Image Counts
+    {0, 0, 0, 0},                                      // Subpass Input Counts
+    {0, 2, 1, 3},                                      // Set Order Indices
 };
 
 DescriptorSetLayoutInfos globalDescriptorSetLayout;

@@ -70,6 +70,58 @@ export function approx (a: number, b: number, maxDiff?: number): boolean {
 }
 
 /**
+ * @en Tests whether or not the first argument is approximately greater than or equal to the second
+ * @zh 测试第一个参数是否近似大于或等于第二个参数
+ * @param a The first number to test
+ * @param b The second number to test
+ * @param maxDiff Maximum difference (default: EPSILON)
+ * @return True if a is approximately greater than or equal to b, false otherwise
+ */
+export function approxGE (a: number, b: number, maxDiff?: number): boolean {
+    maxDiff = maxDiff || EPSILON;
+    return a >= b - maxDiff;
+}
+
+/**
+ * @en Tests whether or not the first argument is approximately less than or equal to the second
+ * @zh 测试第一个参数是否近似小于或等于第二个参数
+ * @param a The first number to test
+ * @param b The second number to test
+ * @param maxDiff Maximum difference (default: EPSILON)
+ * @return True if a is approximately less than or equal to b, false otherwise
+ */
+export function approxLE (a: number, b: number, maxDiff?: number): boolean {
+    maxDiff = maxDiff || EPSILON;
+    return a <= b + maxDiff;
+}
+
+/**
+ * @en Tests whether or not the first argument is approximately greater than the second
+ * @zh 测试第一个参数是否近似大于第二个参数
+ * @param a The first number to test
+ * @param b The second number to test
+ * @param maxDiff Maximum difference (default: EPSILON)
+ * @return True if a is approximately greater than b, false otherwise
+ */
+export function approxGT (a: number, b: number, maxDiff?: number): boolean {
+    maxDiff = maxDiff || EPSILON;
+    return a > b + maxDiff;
+}
+
+/**
+ * @en Tests whether or not the first argument is approximately less than the second
+ * @zh 测试第一个参数是否近似小于第二个参数
+ * @param a The first number to test
+ * @param b The second number to test
+ * @param maxDiff Maximum difference (default: EPSILON)
+ * @return True if a is approximately less than b, false otherwise
+ */
+export function approxLT (a: number, b: number, maxDiff?: number): boolean {
+    maxDiff = maxDiff || EPSILON;
+    return a < b - maxDiff;
+}
+
+/**
  * @en Clamps a value between a minimum float and maximum float value.<br/>
  * @zh 返回最小浮点数和最大浮点数之间的一个数值。可以使用 clamp 函数将不断变化的数值限制在范围内。
  * @param val

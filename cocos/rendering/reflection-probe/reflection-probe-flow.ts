@@ -27,7 +27,7 @@ import { IRenderFlowInfo, RenderFlow } from '../render-flow';
 import { ReflectionProbeStage } from './reflection-probe-stage';
 import { RenderFlowTag } from '../pipeline-serialization';
 import { RenderPipeline } from '../render-pipeline';
-import { Camera } from '../../render-scene/scene/camera';
+import { Camera, CameraUsage } from '../../render-scene/scene/camera';
 import { ProbeType, ReflectionProbe } from '../../render-scene/scene/reflection-probe';
 import { cclegacy } from '../../core';
 
@@ -65,7 +65,13 @@ export class ReflectionProbeFlow extends RenderFlow {
         const probes = cclegacy.internal.reflectionProbeManager.getProbes() as ReflectionProbe[];
         for (let i = 0; i < probes.length; i++) {
             if (probes[i].needRender) {
-                if (EDITOR || probes[i].probeType === ProbeType.PLANAR) {
+                if (probes[i].probeType === ProbeType.PLANAR) {
+                    let reflectionCamera: Camera | undefined;
+                    if (EDITOR && camera.cameraUsage === CameraUsage.PREVIEW) {
+                        reflectionCamera = probes[i].renderPreviewPlanarReflection(camera);
+                    }
+                    this._renderStage(camera, probes[i], reflectionCamera);
+                } else if (EDITOR) {
                     this._renderStage(camera, probes[i]);
                 }
             }
@@ -75,7 +81,7 @@ export class ReflectionProbeFlow extends RenderFlow {
     public destroy (): void {
         super.destroy();
     }
-    private _renderStage (camera: Camera, probe: ReflectionProbe): void {
+    private _renderStage (camera: Camera, probe: ReflectionProbe, reflectionCamera?: Camera): void {
         const useFloatRT = probe.useFloatIntermediateRT() && probe.intermediateFramebuffers.length > 0;
         for (let i = 0; i < this._stages.length; i++) {
             const probeStage = this._stages[i] as ReflectionProbeStage;
@@ -84,7 +90,7 @@ export class ReflectionProbeFlow extends RenderFlow {
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, null);
                 const outputFb = probe.realtimePlanarTexture!.window!.framebuffer;
                 const fb = useFloatRT ? probe.intermediateFramebuffers[0] : outputFb;
-                probeStage.setUsageInfo(probe, fb, useFloatRT ? outputFb : null);
+                probeStage.setUsageInfo(probe, fb, useFloatRT ? outputFb : null, reflectionCamera);
                 probeStage.render(camera);
                 // Rebind the updated planar map for main camera rendering
                 cclegacy.internal.reflectionProbeManager.updatePlanarMap(probe, probe.realtimePlanarTexture!.getGFXTexture());

@@ -58,6 +58,7 @@ export class ReflectionProbeStage extends RenderStage {
     private _outputFrameBuffer: Framebuffer | null = null;
     private _renderArea = new Rect();
     private _probe: ReflectionProbe | null = null;
+    private _reflectionCamera: Camera | null = null;
     private _probeRenderQueue!: RenderReflectionProbeQueue;
     private _rgbeColor = new Vec3();
     private _convertMaterial: Material | null = null;
@@ -72,10 +73,16 @@ export class ReflectionProbeStage extends RenderStage {
      * @param probe
      * @param frameBuffer
      */
-    public setUsageInfo (probe: ReflectionProbe, frameBuffer: Framebuffer, outputFrameBuffer: Framebuffer | null = null): void {
+    public setUsageInfo (
+        probe: ReflectionProbe,
+        frameBuffer: Framebuffer,
+        outputFrameBuffer: Framebuffer | null = null,
+        reflectionCamera?: Camera,
+    ): void {
         this._probe = probe;
         this._frameBuffer = frameBuffer;
         this._outputFrameBuffer = outputFrameBuffer;
+        this._reflectionCamera = reflectionCamera ?? null;
     }
 
     public destroy (): void {
@@ -113,8 +120,9 @@ export class ReflectionProbeStage extends RenderStage {
     public render (camera: Camera): void {
         const pipeline = this._pipeline;
         const cmdBuff = pipeline.commandBuffers[0];
-        this._probeRenderQueue.gatherRenderObjects(this._probe!, camera, cmdBuff);
-        pipeline.pipelineUBO.updateCameraUBO(this._probe!.camera);
+        const probeCamera = this._reflectionCamera ?? this._probe!.camera;
+        this._probeRenderQueue.gatherRenderObjects(this._probe!, camera, cmdBuff, probeCamera);
+        pipeline.pipelineUBO.updateCameraUBO(probeCamera);
 
         this._renderArea.x = 0;
         this._renderArea.y = 0;
@@ -123,16 +131,16 @@ export class ReflectionProbeStage extends RenderStage {
 
         const renderPass = this._frameBuffer!.renderPass;
 
-        if (this._probe!.camera.clearFlag & ClearFlagBit.COLOR) {
+        if (probeCamera.clearFlag & ClearFlagBit.COLOR) {
             if (this._probe!.useFloatIntermediateRT()) {
-                colors[0].x = this._probe!.camera.clearColor.x;
-                colors[0].y = this._probe!.camera.clearColor.y;
-                colors[0].z = this._probe!.camera.clearColor.z;
-                colors[0].w = this._probe!.camera.clearColor.w;
+                colors[0].x = probeCamera.clearColor.x;
+                colors[0].y = probeCamera.clearColor.y;
+                colors[0].z = probeCamera.clearColor.z;
+                colors[0].w = probeCamera.clearColor.w;
             } else {
-                this._rgbeColor.x = this._probe!.camera.clearColor.x;
-                this._rgbeColor.y = this._probe!.camera.clearColor.y;
-                this._rgbeColor.z = this._probe!.camera.clearColor.z;
+                this._rgbeColor.x = probeCamera.clearColor.x;
+                this._rgbeColor.y = probeCamera.clearColor.y;
+                this._rgbeColor.z = probeCamera.clearColor.z;
                 const rgbe = packRGBE(this._rgbeColor);
                 colors[0].x = rgbe.x;
                 colors[0].y = rgbe.y;
@@ -146,8 +154,8 @@ export class ReflectionProbeStage extends RenderStage {
             this._frameBuffer!,
             this._renderArea,
             colors,
-            this._probe!.camera.clearDepth,
-            this._probe!.camera.clearStencil,
+            probeCamera.clearDepth,
+            probeCamera.clearStencil,
         );
         cmdBuff.bindDescriptorSet(SetIndex.GLOBAL, pipeline.descriptorSet);
 
