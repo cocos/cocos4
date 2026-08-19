@@ -44,6 +44,7 @@
 #include "details/GraphView.h"
 #include "details/GslUtils.h"
 #include "details/Range.h"
+#include "cocos/renderer/pipeline/helper/Utils.h"
 
 #if CC_USE_GEOMETRY_RENDERER
     #include "cocos/renderer/pipeline/GeometryRenderer.h"
@@ -329,6 +330,14 @@ void submitProfilerCommands(
     cmdBuff->bindDescriptorSet(static_cast<uint32_t>(pipeline::SetIndex::LOCAL), submodel->getDescriptorSet());
     cmdBuff->bindInputAssembler(ia);
     cmdBuff->draw(ia);
+}
+
+void renderNativeDebugRenderer(RenderGraphVisitorContext& ctx) {
+    auto* renderPass = ctx.currentPass;
+    auto* cmdBuff = ctx.cmdBuff;
+#if CC_USE_DEBUG_RENDERER
+    renderDebugRenderer(renderPass, cmdBuff, ctx.ppl->getPipelineSceneData(), cc::pipeline::profilerCamera);
+#endif
 }
 
 struct RenderGraphVisitor : boost::dfs_visitor<> {
@@ -794,6 +803,12 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             }
         }
 
+        if (blit.blitType == BlitType::DRAW_PROFILE) {
+            submitProfilerCommands(ctx, vertID);
+            renderNativeDebugRenderer(ctx);
+            return;
+        }
+
         tryBindPassDescriptorSet(vertID);
         tryBindQueueDescriptorSets(vertID);
 
@@ -803,9 +818,6 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
                 break;
             case BlitType::DRAW_2D:
                 draw2D(blit, vertID);
-                break;
-            case BlitType::DRAW_PROFILE:
-                submitProfilerCommands(ctx, vertID);
                 break;
             case BlitType::DRAW_3D:
                 draw3D(blit);
