@@ -198,6 +198,7 @@ export class SimpleTexture extends TextureBase {
             while (index !== -1) {
                 js.array.fastRemoveAt(deps, index);
                 image.decRef();
+                // The same UUID may occur more than once; find the next dependency edge.
                 index = deps.indexOf(image._uuid);
             }
         }
