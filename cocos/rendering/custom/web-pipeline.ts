@@ -258,9 +258,19 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
 
     addSceneOfCamera (camera: Camera, light: LightInfo, sceneFlags = SceneFlags.NONE, name = 'Camera'): void {
         const lightTarget = light.light;
-        this.addScene(camera, sceneFlags, lightTarget);
+        const scene = light.probe?.node?.scene?.renderScene || undefined;
+        this._addScene(camera, sceneFlags, lightTarget, scene, light);
     }
     addScene (camera: Camera, sceneFlags = SceneFlags.NONE, light: Light | undefined | null = null, scene: RenderScene | undefined = undefined): SceneBuilder {
+        return this._addScene(camera, sceneFlags, light, scene);
+    }
+    private _addScene (
+        camera: Camera,
+        sceneFlags: SceneFlags,
+        light: Light | undefined | null,
+        scene: RenderScene | undefined,
+        lightInfo: LightInfo | null = null,
+    ): SceneBuilder {
         const sceneData = renderGraphPool.createSceneData(
             scene || camera.scene,
             camera,
@@ -268,6 +278,9 @@ export class WebRenderQueueBuilder extends WebSetter implements RenderQueueBuild
             light && !(sceneFlags & SceneFlags.SHADOW_CASTER) ? CullingFlags.CAMERA_FRUSTUM | CullingFlags.LIGHT_BOUNDS : CullingFlags.CAMERA_FRUSTUM,
             light,
         );
+        if (lightInfo) {
+            sceneData.light.reset(lightInfo.light, lightInfo.level, lightInfo.culledByLight, lightInfo.probe);
+        }
         const renderData = renderGraphPool.createRenderData();
         const sceneId = this._renderGraph.addVertex<RenderGraphValue.Scene>(RenderGraphValue.Scene, sceneData, 'Scene', '', renderData, !DEBUG, this._vertID);
         if (!(sceneFlags & SceneFlags.NON_BUILTIN)) {
