@@ -44,7 +44,9 @@
 #include "details/GraphView.h"
 #include "details/GslUtils.h"
 #include "details/Range.h"
-
+#if CC_USE_DEBUG_RENDERER
+	#include "cocos/renderer/pipeline/helper/Utils.h"
+#endif
 #if CC_USE_GEOMETRY_RENDERER
     #include "cocos/renderer/pipeline/GeometryRenderer.h"
 #endif
@@ -793,7 +795,14 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
                 return;
             }
         }
-
+#if CC_USE_DEBUG_RENDERER
+        if (blit.blitType == BlitType::DRAW_PROFILE)
+        {
+            auto* renderPass = ctx.currentPass;
+            auto* cmdBuff = ctx.cmdBuff;
+            renderDebugRenderer(renderPass, cmdBuff, ctx.ppl->getPipelineSceneData(), cc::pipeline::profilerCamera);
+        }
+#endif
         tryBindPassDescriptorSet(vertID);
         tryBindQueueDescriptorSets(vertID);
 
