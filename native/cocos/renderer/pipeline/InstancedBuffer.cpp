@@ -31,7 +31,6 @@
 #include "gfx-base/GFXDescriptorSet.h"
 #include "gfx-base/GFXDevice.h"
 #include "gfx-base/GFXInputAssembler.h"
-#include "base/StringUtil.h"
 
 namespace cc {
 namespace pipeline {
@@ -85,24 +84,26 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
     _sortRender.hash = hash;
     _sortRender.shaderID = shaderId;
     _sortRender.passIndex = passIdx;
-    const ccstd::string key = StringUtil::format("%u/%u/%u/%u/%u/%u/%u",
-                                                 sourceIA->getIndexBuffer() ? sourceIA->getIndexBuffer()->getObjectID() : 0,
-                                                 lightingMap ? lightingMap->getObjectID() : 0,
-                                                 reflectionProbeType,
-                                                 reflectionProbeCubemap ? reflectionProbeCubemap->getObjectID() : 0,
-                                                 reflectionProbePlanarMap ? reflectionProbePlanarMap->getObjectID() : 0,
-                                                 reflectionProbeBlendCubemap ? reflectionProbeBlendCubemap->getObjectID() : 0,
-                                                 stride);
+    const ccstd::hash_t key = [&]() {
+        ccstd::hash_t seed = 2;
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(sourceIA->getIndexBuffer()));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(lightingMap));
+        ccstd::hash_combine(seed, reflectionProbeType);
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbeCubemap));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbePlanarMap));
+        ccstd::hash_combine(seed, gfx::GFXObject::getObjectID(reflectionProbeBlendCubemap));
+        ccstd::hash_combine(seed, stride);
+        return seed;
+    }();
     const auto iter = _instancesMap.find(key);
     if (iter != _instancesMap.end()) {
-        uint32_t idx = iter->second;
-        while (idx != InstancedItem::INVALID_INDEX) {
+        for (size_t idx : iter->second) {
             auto &instance = _instances[idx];
-            if (instance.drawInfo.instanceCount < MAX_CAPACITY) {
-                appendInstance(instance, attrs.buffer, shader, descriptorSet);
-                return;
+            if (instance.drawInfo.instanceCount >= MAX_CAPACITY) {
+                continue;
             }
-            idx = instance.nextWithSameKey;
+            appendInstance(instance, attrs.buffer, shader, descriptorSet);
+            return;
         }
     }
 
@@ -146,7 +147,7 @@ void InstancedBuffer::appendInstance(InstancedItem &instance,
     _hasPendingModels = true;
 }
 
-void InstancedBuffer::createInstance(const ccstd::string &key,
+void InstancedBuffer::createInstance(ccstd::hash_t key,
                                       gfx::InputAssembler *sourceIA,
                                       const ccstd::vector<gfx::Attribute> &attributes,
                                       Uint8Array &buffer,
@@ -193,10 +194,8 @@ void InstancedBuffer::createInstance(const ccstd::string &key,
                           reflectionProbeBlendCubemap,
                           ia->getDrawInfo()};
     item.drawInfo.instanceCount = 1;
-    const auto headIter = _instancesMap.find(key);
-    item.nextWithSameKey = headIter != _instancesMap.end() ? headIter->second : InstancedItem::INVALID_INDEX;
     _instances.emplace_back(item);
-    _instancesMap[key] = static_cast<uint32_t>(_instances.size() - 1);
+    _instancesMap[key].emplace_back(_instances.size() - 1);
     _hasPendingModels = true;
 }
 
