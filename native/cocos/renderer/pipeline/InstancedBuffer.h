@@ -27,7 +27,6 @@
 #include "Define.h"
 #include "base/RefCounted.h"
 #include "base/std/container/unordered_map.h"
-#include "base/std/hash/hash.h"
 #include "scene/Model.h"
 #include "scene/Pass.h"
 
@@ -83,7 +82,7 @@ private:
         Uint8Array &buffer,
         gfx::Shader *shader,
         gfx::DescriptorSet *descriptorSet);
-    void createInstance(ccstd::hash_t key,
+    void createInstance(const ccstd::string &key,
         gfx::InputAssembler *sourceIA,
         const ccstd::vector<gfx::Attribute> &attributes,
         Uint8Array &buffer,
@@ -109,9 +108,7 @@ private:
     // Maps a merge key to the indices (into `_instances`) of items sharing that key.
     // Storing indices (not copies or references) keeps this in sync with `_instances`
     // and remains valid across `_instances` reallocation, since indices don't dangle.
-    // The key is a combined hash (see `ccstd::hash_combine`) instead of a formatted
-    // string, avoiding per-merge string allocation/formatting overhead.
-    ccstd::unordered_map<ccstd::hash_t, ccstd::vector<size_t>> _instancesMap;
+    ccstd::unordered_map<ccstd::string, ccstd::vector<size_t>> _instancesMap;
 };
 
 } // namespace pipeline
