@@ -51,6 +51,10 @@
     #include "jsvm/SeApi.h"
 #endif
 
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    #include "hermes/SeApi.h"
+#endif
+
 #include "HandleObject.h"
 #include "Object.h"
 #include "State.h"
