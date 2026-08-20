@@ -29,16 +29,19 @@
 
 #include "base/Log.h"
 
-#define SCRIPT_ENGINE_NONE 0
-#define SCRIPT_ENGINE_SM   1
-#define SCRIPT_ENGINE_V8   2
-#define SCRIPT_ENGINE_NAPI 5
-#define SCRIPT_ENGINE_JSVM 6
+#define SCRIPT_ENGINE_NONE   0
+#define SCRIPT_ENGINE_SM     1
+#define SCRIPT_ENGINE_V8     2
+#define SCRIPT_ENGINE_NAPI   5
+#define SCRIPT_ENGINE_JSVM   6
+#define SCRIPT_ENGINE_HERMES 7
 
 #ifndef SCRIPT_ENGINE_TYPE
     #if CC_PLATFORM == CC_PLATFORM_OPENHARMONY
         #define SCRIPT_ENGINE_TYPE SCRIPT_ENGINE_NAPI
     #else
+        // Default: V8. Override with -DSCRIPT_ENGINE_TYPE=7 (HERMES) in CMake
+        // when running inside a React Native Hermes JSI context.
         #define SCRIPT_ENGINE_TYPE SCRIPT_ENGINE_V8
     #endif
 #endif
