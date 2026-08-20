@@ -78,14 +78,37 @@ public:
     inline const DynamicOffsetList &dynamicOffsets() const { return _dynamicOffsets; }
 
 private:
-    InstancedItemList _instances;
-    RenderPass _sortRender;
+    void appendInstance(InstancedItem &instance,
+        Uint8Array &buffer,
+        gfx::Shader *shader,
+        gfx::DescriptorSet *descriptorSet);
+    void createInstance(const ccstd::string &key,
+        gfx::InputAssembler *sourceIA,
+        const ccstd::vector<gfx::Attribute> &attributes,
+        Uint8Array &buffer,
+        uint32_t stride,
+        gfx::Shader *shader,
+        gfx::DescriptorSet *descriptorSet,
+        gfx::Texture *lightingMap,
+        uint32_t reflectionProbeType,
+        gfx::Texture *reflectionProbeCubemap,
+        gfx::Texture *reflectionProbePlanarMap,
+        gfx::Texture *reflectionProbeBlendCubemap);
+
     // weak reference
     const scene::Pass *_pass{nullptr};
-    bool _hasPendingModels{false};
-    DynamicOffsetList _dynamicOffsets;
-    // weak reference
     gfx::Device *_device{nullptr};
+
+    bool _hasPendingModels{false};
+
+    RenderPass _sortRender;
+
+    InstancedItemList _instances;
+    DynamicOffsetList _dynamicOffsets;
+    // Maps a merge key to the indices (into `_instances`) of items sharing that key.
+    // Storing indices (not copies or references) keeps this in sync with `_instances`
+    // and remains valid across `_instances` reallocation, since indices don't dangle.
+    ccstd::unordered_map<ccstd::string, ccstd::vector<size_t>> _instancesMap;
 };
 
 } // namespace pipeline

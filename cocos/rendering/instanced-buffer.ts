@@ -131,6 +131,11 @@ export class InstancedBuffer {
             stride,
             shader,
             descriptorSet,
+            lightingMap,
+            useReflectionProbeType,
+            reflectionProbeCubemap,
+            reflectionProbePlanarMap,
+            reflectionProbeBlendCubemap,
         );
     }
 
@@ -157,14 +162,20 @@ export class InstancedBuffer {
         stride: number,
         shader: Shader,
         descriptorSet: DescriptorSet,
+        lightingMap: Texture,
+        useReflectionProbeType: number,
+        reflectionProbeCubemap: Texture,
+        reflectionProbePlanarMap: Texture,
+        reflectionProbeBlendCubemap: Texture | null,
     ): void {
+        const newSize = stride * INITIAL_CAPACITY;
         const vb = this._device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
             MemoryUsageBit.HOST | MemoryUsageBit.DEVICE,
-            stride * INITIAL_CAPACITY,
+            newSize,
             stride,
         ));
-        const data = new Uint8Array(stride * INITIAL_CAPACITY);
+        const data = new Uint8Array(newSize);
         const vertexBuffers = sourceIA.vertexBuffers.slice();
         const attributes = sourceIA.attributes.slice();
         const indexBuffer = sourceIA.indexBuffer;
@@ -188,6 +199,11 @@ export class InstancedBuffer {
             stride,
             shader,
             descriptorSet,
+            lightingMap,
+            reflectionProbeCubemap,
+            reflectionProbePlanarMap,
+            useReflectionProbeType,
+            reflectionProbeBlendCubemap,
         } as IInstancedItem;
         this.instances.push(instance);
         let mappedInstances = this._instanceMap.get(key);
