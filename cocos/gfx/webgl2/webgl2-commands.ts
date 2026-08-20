@@ -2986,7 +2986,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
 
             if (!isCompressed) {
                 gl.texSubImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     offset.x,
                     offset.y,
@@ -3000,7 +3000,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
                 );
             } else if (gpuTexture.glInternalFmt !== WebGL2EXT.COMPRESSED_RGB_ETC1_WEBGL as number) {
                 gl.compressedTexSubImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     offset.x,
                     offset.y,
@@ -3013,7 +3013,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
                 );
             } else { // WEBGL_compressed_texture_etc1
                 gl.compressedTexImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     gpuTexture.glInternalFmt,
                     destWidth,
