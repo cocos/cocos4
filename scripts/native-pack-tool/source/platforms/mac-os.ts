@@ -51,15 +51,49 @@ export abstract class MacOSPackTool extends NativePackTool {
         return /Apple/.test(model) && process.platform === 'darwin';
     }
 
-    protected getXcodeMajorVerion(): number {
+    protected compareVersion(a: string, b: string): number {
+        const aParts = a.split('.').map((part) => Number.parseInt(part, 10) || 0);
+        const bParts = b.split('.').map((part) => Number.parseInt(part, 10) || 0);
+        const maxLength = Math.max(aParts.length, bParts.length);
+
+        for (let i = 0; i < maxLength; i++) {
+            const aValue = aParts[i] ?? 0;
+            const bValue = bParts[i] ?? 0;
+            if (aValue !== bValue) {
+                return aValue - bValue;
+            }
+        }
+
+        return 0;
+    }
+
+    protected getXcodeVersion(): string {
         try {
             const output = execSync('xcrun xcodebuild -version').toString('utf8');
-            return Number.parseInt(output.match(/Xcode\s(\d+)\.\d+/)![1]);
+            const match = output.match(/Xcode\s+(\d+(?:\.\d+)+)/);
+            return match?.[1] || '0.0';
+        } catch (e) {
+            console.error(e);
+            return '0.0';
+        }
+    }
+
+    protected getXcodeMajorVerion(): number {
+        try {
+            return Number.parseInt(this.getXcodeVersion().split('.')[0] || '0', 10);
         } catch (e) {
             console.error(e);
             // fallback to default Xcode version
             return 11;
         }
+    }
+
+    protected getIosSimulatorArch(): 'arm64' | 'x86_64' {
+        // Xcode 14.3+ no longer supports running iOS Simulator under Rosetta on Apple Silicon.
+        if (this.isAppleSilicon() && this.compareVersion(this.getXcodeVersion(), '14.3') >= 0) {
+            return 'arm64';
+        }
+        return 'x86_64';
     }
 
     async modifyXcodeProject() {
