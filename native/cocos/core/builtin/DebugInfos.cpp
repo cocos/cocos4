@@ -623,7 +623,7 @@ ccstd::unordered_map<uint32_t, ccstd::string> debugInfos = {
 { 16417, "'clearTrack' interface can not be invoked in cached mode." },
 { 16418, "Debug bones or slots is invalid in cached mode." },
 { 16419, "Spine version not supported." },
-{ 16420, "Start time must bigger than end time." },
+{ 16420, "End time must bigger than start time." },
 
 };
 }//namespace cc
