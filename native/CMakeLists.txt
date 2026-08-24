@@ -3584,6 +3584,8 @@ target_include_directories(${ENGINE_NAME}
         ${SWIG_OUTPUT_ROOT}
         ${SWIG_OUTPUT_ROOT}/cocos
         $<$<BOOL:USE_SE_V8>:${CWD}/cocos/bindings/jswrapper>
+        $<$<BOOL:${USE_SE_HERMES}>:${CWD}/cocos/bindings/jswrapper>
+        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
     PRIVATE
         ${CC_EXTERNAL_PRIVATE_INCLUDES}
 )
