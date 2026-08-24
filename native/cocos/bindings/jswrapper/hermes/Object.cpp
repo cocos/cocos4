@@ -18,6 +18,8 @@ namespace fj = facebook::jsi;
 
 namespace se {
 
+facebook::jsi::Runtime *Object::_rt = nullptr;
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -37,6 +39,11 @@ Object::~Object() {
         delete _privateObject;
         _privateObject = nullptr;
     }
+}
+
+ccstd::string Object::toString() const {
+    if (!_jsiObj || !_rt) return {};
+    return "{}";
 }
 
 // ---------------------------------------------------------------------------
@@ -97,10 +104,10 @@ Object *Object::_createJSObject(fj::Runtime &rt, fj::Object &&jsObj) {
     return obj;
 }
 
-fj::Object Object::_getJsiObject(fj::Runtime &rt) const {
+const fj::Object& Object::_getJsiObject(fj::Runtime &rt) const {
     assert(_jsiObj);
-    // Return a copy of the underlying JSI Object
-    return fj::Object::createFromHostObject(rt, *_jsiObj);
+    (void)rt;
+    return *_jsiObj;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,14 +250,26 @@ bool Object::setArrayElement(uint32_t index, const Value &data) {
 // ---------------------------------------------------------------------------
 // TypedArray / ArrayBuffer — forwarded to JS constructor calls
 // ---------------------------------------------------------------------------
-bool Object::isTypedArray() const { return false; } // TODO: check via instanceof
-TypedArrayType Object::getTypedArrayType() const { return TypedArrayType::NONE; }
+bool Object::isTypedArray() const { return false; }
+se::Object::TypedArrayType Object::getTypedArrayType() const { return se::Object::TypedArrayType::NONE; }
 bool Object::getTypedArrayData(uint8_t **, size_t *) const { return false; }
-bool Object::isArrayBuffer() const { return false; }
+bool Object::isArrayBuffer() const {
+    assert(_jsiObj && _rt);
+    return _jsiObj->isArrayBuffer(*_rt);
+}
 bool Object::getArrayBufferData(uint8_t **, size_t *) const { return false; }
-Object *Object::createTypedArray(TypedArrayType, void *, size_t) { return createPlainObject(); }
-Object *Object::createExternalArrayBuffer(void *, size_t, BufferContentsFreeFunc, void *) { return createPlainObject(); }
+Object *Object::createTypedArray(TypedArrayType, const void *, size_t) {
+    return createPlainObject();
+}
+Object *Object::createExternalArrayBuffer(void *, size_t, BufferContentsFreeFunc, void *) {
+    return createPlainObject();
+}
 Object *Object::getObjectWithPtr(void *) { return nullptr; }
+
+// --- Missing method for TypedArray support ---
+Object *Object::createTypedArrayWithBuffer(TypedArrayType, Object *, uint32_t, uint32_t) {
+    return createPlainObject();
+}
 
 // ---------------------------------------------------------------------------
 // Function
@@ -261,7 +280,7 @@ bool Object::isFunction() const {
     return _jsiObj->isFunction(*_rt);
 }
 
-bool Object::call(const ValueArray &args, Object *thisObject, Value *rval) {
+bool Object::call(const ValueArray &args, Object *thisObject, Value *rval /* = nullptr */) {
     assert(_jsiObj && _rt && isFunction());
     try {
         std::vector<fj::Value> jsArgs;
@@ -273,7 +292,7 @@ bool Object::call(const ValueArray &args, Object *thisObject, Value *rval) {
 
         auto result = _jsiObj->asFunction(*_rt).callWithThis(
             *_rt, thisVal.getObject(*_rt),
-            jsArgs.data(), jsArgs.size());
+            static_cast<const fj::Value*>(jsArgs.data()), jsArgs.size());
 
         if (rval) internal::jsToSeValue(*_rt, result, rval);
         return true;
@@ -331,8 +350,7 @@ void Object::unroot() { _rooted = false; }
 
 bool Object::strictEquals(Object *o) const {
     if (!o || !_jsiObj || !o->_jsiObj || !_rt) return false;
-    return fj::Value(*_rt, fj::Object(*_jsiObj))
-        .strictEquals(*_rt, fj::Value(*_rt, fj::Object(*o->_jsiObj)));
+    return fj::Value::strictEquals(*_rt, fj::Value(*_rt, *_jsiObj), fj::Value(*_rt, *o->_jsiObj));
 }
 
 } // namespace se

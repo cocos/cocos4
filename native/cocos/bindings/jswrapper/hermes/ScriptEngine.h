@@ -43,6 +43,7 @@ public:
 class ScriptEngine final {
 public:
     static ScriptEngine *getInstance();
+    void clearException();
     CC_DEPRECATED(3.6.0)
     static void destroyInstance();
 
@@ -110,6 +111,13 @@ public:
     bool          isInCleanup() const { return _isInCleanup; }
     bool          isValid() const { return _runtime != nullptr; }
     bool          isRunning() const { return _isRunning; }
+
+    // ---- Missing methods for engine integration ----
+    using ExceptionCallback = std::function<void(const char *, const char *, const char *)>; // location, message, stack
+    void setExceptionCallback(const ExceptionCallback &cb);
+    void setJSExceptionCallback(const ExceptionCallback &cb);
+    void handlePromiseExceptions();
+    void mainLoopUpdate();
 
     // --- Internal — accessible by Object / Class ---
     facebook::jsi::Runtime *_runtime{nullptr};

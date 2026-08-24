@@ -75,7 +75,9 @@ GLES3Device::~GLES3Device() {
 
 bool GLES3Device::doInit(const DeviceInfo & /*info*/) {
     _xr = CC_GET_XR_INTERFACE();
+#if CC_USE_XR
     if (_xr) _xr->preGFXDeviceInitialize(_api);
+#endif
     _gpuContext = ccnew GLES3GPUContext;
     _gpuStateCache = ccnew GLES3GPUStateCache;
     _gpuFramebufferHub = ccnew GLES3GPUFramebufferHub;
@@ -250,10 +252,12 @@ bool GLES3Device::doInit(const DeviceInfo & /*info*/) {
     CC_LOG_INFO("FRAMEBUFFER_FETCH: %s", fbfLevelStr.c_str());
     CC_LOG_INFO("MULTI_SAMPLE_RENDER_TO_TEXTURE: %s", msaaLevelStr.c_str());
 
+#if CC_USE_XR
     if (_xr) {
         _xr->initializeGLESData(pfnGLES3wLoadProc(), GLES3Device::getInstance()->context());
         _xr->postGFXDeviceInitialize(_api);
     }
+#endif
     return true;
 }
 
@@ -280,6 +284,7 @@ void GLES3Device::acquire(Swapchain *const *swapchains, uint32_t count) {
     if (_onAcquire) _onAcquire->execute();
 
     _swapchains.clear();
+#if CC_USE_XR
     if (_xr) {
         GLuint xrFramebuffer = 0;
 #if XR_OEM_HUAWEIVR
@@ -297,6 +302,7 @@ void GLES3Device::acquire(Swapchain *const *swapchains, uint32_t count) {
         }
         return;
     }
+#endif
 
     for (uint32_t i = 0; i < count; ++i) {
         _swapchains.push_back(static_cast<GLES3Swapchain *>(swapchains[i])->gpuSwapchain());
@@ -310,11 +316,16 @@ void GLES3Device::present() {
     _numInstances = queue->_numInstances;
     _numTriangles = queue->_numTriangles;
 
-    bool isGFXDeviceNeedsPresent = _xr ? _xr->isGFXDeviceNeedsPresent(_api) : true;
+    bool isGFXDeviceNeedsPresent = true;
+#if CC_USE_XR
+    if (_xr) isGFXDeviceNeedsPresent = _xr->isGFXDeviceNeedsPresent(_api);
+#endif
     for (auto *swapchain : _swapchains) {
         if (isGFXDeviceNeedsPresent) _gpuContext->present(swapchain);
     }
+#if CC_USE_XR
     if (_xr) _xr->postGFXDevicePresent(_api);
+#endif
 
     // Clear queue stats
     queue->_numDrawCalls = 0;
@@ -548,7 +559,9 @@ QueryPool *GLES3Device::createQueryPool() {
 
 Swapchain *GLES3Device::createSwapchain() {
     if (_xr) {
+#if CC_USE_XR
         _xr->createXRSwapchains();
+#endif
     }
     return ccnew GLES3Swapchain;
 }

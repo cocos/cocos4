@@ -1,9 +1,9 @@
-/****************************************************************************
+/****************************************************************************\
  Copyright (c) 2024 Xiamen Yaji Software Co., Ltd.
  Hermes JSI Backend — Class.h
  Maps se::Class prototype registration to jsi::Function constructors.
  SPDX-License-Identifier: MIT
-****************************************************************************/
+\****************************************************************************/
 
 #pragma once
 
@@ -19,6 +19,7 @@
     #include <string>
     #include <vector>
     #include <initializer_list>
+    #include <optional>
 
 namespace se {
 
@@ -68,13 +69,22 @@ public:
     bool install();
 
     Object *getProto() const { return _proto; }
-    const ccstd::string &getName() const { return _name; }
+    const char *getName() const { return _name.c_str(); }
 
-    static void cleanup();
+    // Private API used in wrapper
+    HermesFinalizeFunc _getFinalizeFunction() const;
+    void _setCtor(Object *obj);
+    inline const std::optional<Object *> &_getCtor() const { return _ctorObj; }
+    void setCreateProto(bool createProto);
 
 private:
     Class();
     ~Class();
+
+    bool init(const ccstd::string &clsName, Object *parent, Object *parentProto, GenericFunctionCallback ctor, void *data = nullptr);
+    void destroy();
+
+    static void cleanup();
 
     ccstd::string           _name;
     Object                 *_parent{nullptr};
@@ -83,6 +93,8 @@ private:
     GenericFunctionCallback _ctor{nullptr};
     void                   *_ctorData{nullptr};
     HermesFinalizeFunc      _finalizeFunc{nullptr};
+    std::optional<Object *> _ctorObj;
+    bool _createProto{true};
 
     struct FunctionEntry {
         ccstd::string         name;
@@ -103,6 +115,9 @@ private:
     std::vector<PropertyEntry> _staticProperties;
 
     static std::vector<Class *> _allClasses; // for cleanup
+
+    friend class ScriptEngine;
+    friend class Object;
 };
 
 } // namespace se

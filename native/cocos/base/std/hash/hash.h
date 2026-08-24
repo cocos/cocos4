@@ -83,6 +83,13 @@
 #   define CCSTD_HASH_CXX17 0
 #endif
 
+// Define BOOST_NO_CXX98_FUNCTION_BASE for C++17 and later (std::unary_function removed)
+#if CCSTD_HASH_CXX17
+#   if !defined(BOOST_NO_CXX98_FUNCTION_BASE)
+#       define BOOST_NO_CXX98_FUNCTION_BASE
+#   endif
+#endif
+
 #if CCSTD_HASH_CXX17 && defined(__has_include)
 #   if !defined(CCSTD_HASH_HAS_STRING_VIEW) && __has_include(<string_view>)
 #       define CCSTD_HASH_HAS_STRING_VIEW 1
