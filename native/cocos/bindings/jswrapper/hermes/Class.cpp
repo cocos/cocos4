@@ -205,6 +205,16 @@ void Class::cleanup() {
     _allClasses.clear();
 }
 
+// ---------------------------------------------------------------------------
+// Constructor registration (stub for Hermes port)
+// ---------------------------------------------------------------------------
+
+void Class::_setCtor(Object *obj) {
+    // STUB: JSB constructor registration is not yet ported to the Hermes
+    // backend. The Nitro/TypeGPU app path does not reach this; log if hit.
+    (void)obj;
+}
+
 } // namespace se
 
 #endif // SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES

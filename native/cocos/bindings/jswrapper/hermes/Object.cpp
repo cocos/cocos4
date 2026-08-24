@@ -353,6 +353,52 @@ bool Object::strictEquals(Object *o) const {
     return fj::Value::strictEquals(*_rt, fj::Value(*_rt, *_jsiObj), fj::Value(*_rt, *o->_jsiObj));
 }
 
+// ---------------------------------------------------------------------------
+// ArrayBuffer (stub for Hermes port)
+// ---------------------------------------------------------------------------
+
+se::Object *Object::createArrayBufferObject(const void *data, size_t byteLength) {
+    // STUB: manual JSB ArrayBuffer allocation is not yet ported to the Hermes
+    // backend. The Nitro/TypeGPU app path does not reach this; log if hit.
+    (void)data;
+    (void)byteLength;
+    return nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Additional se::Object methods — Hermes backend stubs (JSB-only paths not
+// reached by the Nitro/TypeGPU app). Mirrors the existing getTypedArrayData /
+// getArrayBufferData stubs already present in this file.
+// ---------------------------------------------------------------------------
+
+bool Object::getAllKeys(ccstd::vector<ccstd::string> *allKeys) const {
+    if (allKeys) {
+        allKeys->clear();
+    }
+    return false;
+}
+
+bool Object::getArrayLength(uint32_t *length) const {
+    if (length) {
+        *length = 0;
+    }
+    return false;
+}
+
+se::Object *Object::createExternalArrayBufferObject(void *contents, size_t byteLength,
+                                                     BufferContentsFreeFunc freeFunc, void *freeUserData) {
+    (void)contents;
+    (void)byteLength;
+    (void)freeFunc;
+    (void)freeUserData;
+    return nullptr;
+}
+
+se::Object *Object::createProxyTarget(Object *proxy) {
+    (void)proxy;
+    return nullptr;
+}
+
 } // namespace se
 
 #endif // SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
