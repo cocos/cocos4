@@ -3983,4 +3983,4 @@ Spine version not supported.
 
 ### 16420
 
-Start time must bigger than end time.
+End time must bigger than start time.
