@@ -96,4 +96,12 @@ constexpr inline T *SE_THIS_OBJECT(STATE &s) { // NOLINT
     return reinterpret_cast<T *>(s.nativeThisObject());
 }
 
+#define SAFE_INC_REF(obj) \
+    if (obj != nullptr) obj->incRef()
+#define SAFE_DEC_REF(obj)   \
+    if ((obj) != nullptr) { \
+        (obj)->decRef();    \
+        (obj) = nullptr;    \
+    }
+
 #endif // SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES

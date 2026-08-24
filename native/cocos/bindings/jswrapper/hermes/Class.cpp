@@ -168,7 +168,7 @@ bool Class::install() {
         });
 
     // Attach prototype to constructor
-    auto protoJsi = proto->_getJsiObject(*rt);
+    const auto& protoJsi = proto->_getJsiObject(*rt);
     ctorFn.setProperty(*rt, "prototype", protoJsi);
 
     // Install static members on constructor

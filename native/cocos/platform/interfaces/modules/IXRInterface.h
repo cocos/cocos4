@@ -113,13 +113,13 @@ public:
      * @zh GFX设备初始化前调用
      * @param gfxApi
      */
-    virtual void preGFXDeviceInitialize(gfx::API gfxApi) = 0;
+    virtual void preGFXDeviceInitialize(gfx::API /*gfxApi*/) {}
     /**
      * @en call after gfx device initialize
      * @zh GFX设备初始化后调用
      * @param gfxApi
      */
-    virtual void postGFXDeviceInitialize(gfx::API gfxApi) = 0;
+    virtual void postGFXDeviceInitialize(gfx::API /*gfxApi*/) {}
     /**
      * @en call when gfx device acquire
      * @zh GFX设备请求渲染
@@ -131,18 +131,18 @@ public:
      * @en call when gfx device present
      * @zh GFX设备是否需要展示操作
      */
-    virtual bool isGFXDeviceNeedsPresent(gfx::API gfxApi) = 0;
+    virtual bool isGFXDeviceNeedsPresent(gfx::API /*gfxApi*/) { return true; }
     /**
      * @en call after gfx device present
      * @zh GFX设备展示操作执行之后调用
      * @param gfxApi
      */
-    virtual void postGFXDevicePresent(gfx::API gfxApi) = 0;
+    virtual void postGFXDevicePresent(gfx::API /*gfxApi*/) {}
     /**
      * @en call when create gfx device's swapchain
      * @zh 创建GFX交换链时调用
      */
-    virtual void createXRSwapchains() = 0;
+    virtual void createXRSwapchains() {}
     /**
      * @en get xr swapchain list
      * @zh 获取XR交换链列表
@@ -215,20 +215,20 @@ public:
      * @param gles3wLoadFuncProc
      * @param gpuContext
      */
-    virtual void initializeGLESData(xr::PFNGLES3WLOADPROC gles3wLoadFuncProc, gfx::GLES3GPUContext *gpuContext) = 0;
+    virtual void initializeGLESData(xr::PFNGLES3WLOADPROC gles3wLoadFuncProc, gfx::GLES3GPUContext *gpuContext) {}
     /**
      * @en attach current texture id to fbo
      * @zh 绑定当前纹理到帧缓冲区
      */
-    virtual void attachGLESFramebufferTexture2D() = 0;
+    virtual void attachGLESFramebufferTexture2D() {}
+#endif
     /**
      * @en acquire EGLSurfaceType by engine swapchain's type id
      * @zh 根据引擎交换链获取对应需要创建的EGLSurface类型
      * @param typedID
      * @return
      */
-    virtual EGLSurfaceType acquireEGLSurfaceType(uint32_t typedID) = 0;
-#endif
+    virtual EGLSurfaceType acquireEGLSurfaceType(uint32_t /*typedID*/) { return EGLSurfaceType::NONE; }
     // gles3
 
     // stereo render loop

@@ -63,6 +63,7 @@ bool ScriptEngine::initWithRuntime(fj::Runtime *rt) {
         return false;
     }
     _runtime = rt;
+    Object::_rt = rt;
     CC_LOG_INFO("[ScriptEngine/Hermes] Runtime injected: %p", rt);
 
     // Invoke pre-init hooks
@@ -210,6 +211,25 @@ Object *ScriptEngine::getGlobalObject() const { return _globalObj; }
 
 void ScriptEngine::garbageCollect() {
     // Hermes runs GC automatically; no manual trigger in JSI
+}
+
+// ---- Missing methods for engine integration ----
+void ScriptEngine::handlePromiseExceptions() {
+    // Hermes handles promise rejections internally
+    // This is a no-op for JSI - React Native handles promise tracking
+}
+
+void ScriptEngine::mainLoopUpdate() {
+    // Called from Engine::tick() - no-op for JSI
+    // React Native handles the JS event loop
+}
+
+void ScriptEngine::setExceptionCallback(const ExceptionCallback & /*cb*/) {
+    // No-op for Hermes JSI - React Native handles exceptions
+}
+
+void ScriptEngine::setJSExceptionCallback(const ExceptionCallback & /*cb*/) {
+    // No-op for Hermes JSI - React Native handles exceptions
 }
 
 // ---------------------------------------------------------------------------

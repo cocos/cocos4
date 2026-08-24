@@ -42,7 +42,11 @@
     #else
         // Default: V8. Override with -DSCRIPT_ENGINE_TYPE=7 (HERMES) in CMake
         // when running inside a React Native Hermes JSI context.
-        #define SCRIPT_ENGINE_TYPE SCRIPT_ENGINE_V8
+        #if defined(USE_SE_HERMES) && USE_SE_HERMES == 1
+            #define SCRIPT_ENGINE_TYPE SCRIPT_ENGINE_HERMES
+        #else
+            #define SCRIPT_ENGINE_TYPE SCRIPT_ENGINE_V8
+        #endif
     #endif
 #endif
 
