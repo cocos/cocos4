@@ -27,14 +27,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Python3.8
+      - name: Use preinstalled Python
         run: |
-          sudo add-apt-repository ppa:deadsnakes/ppa
-          sudo apt update
-          sudo apt remove python
-          sudo apt install python3.8
           echo "python version: $(python --version)"
           echo "python path: $(which python)"
+          echo "python3 version: $(python3 --version)"
+          echo "python3 path: $(which python3)"
 
       - name: Install libffi7 which clang-tidy-11 depends on
         run: |
