@@ -1599,6 +1599,9 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/details/SerializationUtils.h
                  cocos/renderer/pipeline/custom/details/Set.h
                  cocos/renderer/pipeline/custom/details/Utility.h
+                 cocos/renderer/scene/RenderSceneInterfaceFwd.h
+                 cocos/renderer/scene/RenderSceneInterfaceTypes.cpp
+                 cocos/renderer/scene/RenderSceneInterfaceTypes.h
 )
 
 if (USE_GEOMETRY_RENDERER)
