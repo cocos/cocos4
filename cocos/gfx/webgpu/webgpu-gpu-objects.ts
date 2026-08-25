@@ -241,8 +241,8 @@ export interface IWebGPUGPUPipelineState {
     bs: BlendState;
     dynamicStates: DynamicStateFlagBit[];
     gpuRenderPass: IWebGPUGPURenderPass | null;
-    pipelineState: GPURenderPipelineDescriptor | undefined;
-    nativePipeline: GPUPipelineBase | undefined;
+    pipelineState: GPURenderPipelineDescriptor | GPUComputePipelineDescriptor | undefined;
+    nativePipeline: GPURenderPipeline | GPUComputePipeline | undefined;
 }
 
 export interface IWebGPUGPUDescriptor {

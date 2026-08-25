@@ -48,6 +48,7 @@ import {
     Device,
     deviceManager,
     DispatchInfo,
+    Feature,
     Format,
     Framebuffer,
     FramebufferInfo,
@@ -1965,10 +1966,12 @@ class PostRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor 
     computeSubpass (value: ComputeSubpass): void {
         // do nothing
     }
-    resolve (value: ResolvePass): void {
-        // do nothing
-    }
     compute (value: ComputePass): void {
+        if (!context.device.hasFeature(Feature.COMPUTE_SHADER)) return;
+        const cmdBuff = context.commandBuffer;
+        (cmdBuff as any).submitComputePass();
+    }
+    resolve (value: ResolvePass): void {
         // do nothing
     }
     copy (value: CopyPass): void {

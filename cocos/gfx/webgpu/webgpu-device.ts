@@ -560,6 +560,7 @@ export class WebGPUDevice extends Device {
         this._features[Feature.ELEMENT_INDEX_UINT] = true;
         this._features[Feature.INSTANCED_ARRAYS] = true;
         this._features[Feature.MULTIPLE_RENDER_TARGETS] = true;
+        this._features[Feature.COMPUTE_SHADER] = true;
         this.initFormatFeatures(features);
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));

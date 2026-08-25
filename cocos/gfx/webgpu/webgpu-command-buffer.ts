@@ -40,6 +40,7 @@ import {
     TextureBlit,
     DescriptorSetInfo,
     Format,
+    DispatchInfo,
 } from '../base/define';
 import { Framebuffer } from '../base/framebuffer';
 import { InputAssembler } from '../base/input-assembler';
@@ -179,6 +180,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     private _wgpuRenderPass!: WebGPURenderPass;
 
     private _renderPassFuncQueue: ((renPassEncoder: GPURenderPassEncoder) => void)[] = [];
+    private _computeFuncQueue: ((computePassEncoder: GPUComputePassEncoder) => void)[] = [];
 
     public initialize (info: CommandBufferInfo): boolean {
         this._type = info.type;
@@ -224,11 +226,13 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         this._numDrawCalls = 0;
         this._numInstances = 0;
         this._numTris = 0;
+        this._computeFuncQueue.length = 0;
     }
 
     public end (): void {
         this._isStateValid = false;
         this._isInRenderPass = false;
+        this._computeFuncQueue.length = 0;
     }
 
     public beginRenderPass (
@@ -655,11 +659,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         }
     }
 
-    protected bindStates (): void {
-        if (!this._curGPUPipelineState) {
-            return;
-        }
-        const gpuPipelineLayout = this._curGPUPipelineState.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
+    private _prepareDescriptorSets (): void {
         const wgpuPipLayout = (currPipelineState?.pipelineLayout as WebGPUPipelineLayout);
         const device = WebGPUDeviceManager.instance;
         for (let i = 0; i < groupSets.length; i++) {
@@ -675,6 +675,89 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 newDescSet.prepare(true);
             }
         }
+    }
+
+    public dispatch (info: DispatchInfo): void {
+        if (!this._curGPUPipelineState) {
+            return;
+        }
+        // Prepare descriptor sets (same logic as bindStates)
+        this._prepareDescriptorSets();
+
+        // Create compute pipeline
+        this._curWebGPUPipelineState!.prepare(null!);
+
+        const device = WebGPUDeviceManager.instance;
+        const computePipeline = this._curGPUPipelineState.nativePipeline as GPUComputePipeline;
+
+        // Build bind groups for compute pass
+        const currGPUDescSize = groupSets.length;
+        const wgpuBindGroups = new Array<GPUBindGroup>(currGPUDescSize);
+        const wgpuDynOffsets = new Array<number[]>(currGPUDescSize);
+        for (let i = 0; i < currGPUDescSize; i++) {
+            const currSetIdx = groupSets[i];
+            const descObj = descriptorSets[currSetIdx];
+            const curGpuDesc = descObj.gpuDescriptorSet;
+            wgpuBindGroups[currSetIdx] = curGpuDesc.bindGroup;
+            wgpuDynOffsets[currSetIdx] = [...this._curDynamicOffsets[currSetIdx]];
+            if (!descObj.dynamicOffsetCount) {
+                wgpuDynOffsets[currSetIdx] = [];
+            } else if (descObj && descObj.dynamicOffsetCount !== wgpuDynOffsets[currSetIdx].length) {
+                wgpuDynOffsets[currSetIdx].length = descObj.dynamicOffsetCount;
+                for (let j = 0; j < descObj.dynamicOffsetCount; j++) {
+                    const currOffset = wgpuDynOffsets[currSetIdx][j];
+                    if (!currOffset) {
+                        wgpuDynOffsets[currSetIdx][j] = 0;
+                    } else {
+                        const currBind = descObj.dynamicOffsets[j];
+                        const bindObj = descObj.gpuDescriptorSet.gpuDescriptors[currBind];
+                        if (bindObj && bindObj.gpuBuffer && currOffset > bindObj.gpuBuffer.gpuBuffer!.size) {
+                            wgpuDynOffsets[currSetIdx][j] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        const func = (passEncoder: GPUComputePassEncoder): void => {
+            passEncoder.setPipeline(computePipeline);
+            const gpuBindGroupSize = wgpuBindGroups.length;
+            for (let i = 0; i < gpuBindGroupSize; i++) {
+                let currBindGroup = wgpuBindGroups[i];
+                if (!currBindGroup) {
+                    currBindGroup = (device.defaultResource.descSet as WebGPUDescriptorSet).gpuDescriptorSet.bindGroup;
+                }
+                passEncoder.setBindGroup(i, currBindGroup, wgpuDynOffsets[i]);
+            }
+            passEncoder.dispatchWorkgroups(info.groupCountX, info.groupCountY, info.groupCountZ);
+        };
+        this._computeFuncQueue.push(func);
+        this._isStateValid = false;
+    }
+
+    public submitComputePass (): void {
+        if (this._computeFuncQueue.length === 0) {
+            return;
+        }
+        const device = WebGPUDeviceManager.instance;
+        const nativeDevice = device.nativeDevice!;
+        const cmdEncoder = nativeDevice.createCommandEncoder();
+        const computePassEncoder = cmdEncoder.beginComputePass();
+        this._computeFuncQueue.forEach((cb) => {
+            cb(computePassEncoder);
+        });
+        computePassEncoder.end();
+        nativeDevice.queue.submit([cmdEncoder.finish()]);
+        this._computeFuncQueue.length = 0;
+    }
+
+    protected bindStates (): void {
+        if (!this._curGPUPipelineState) {
+            return;
+        }
+        const gpuPipelineLayout = this._curGPUPipelineState.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
+        const device = WebGPUDeviceManager.instance;
+        this._prepareDescriptorSets();
         const gpuIA = this._curGPUInputAssembler!;
         // only 4x MSAA is supported
         gpuIA.samples = samples > 1 ? 4 : 1;
