@@ -52,6 +52,7 @@ class Particle {
     public pos = new Vec2(0, 0);
     public startPos = new Vec2(0, 0);
     public color = new Color(0, 0, 0, 255);
+    public curColor = { r: 0, g: 0, b: 0, a: 255 };
     public deltaColor = { r: 0, g: 0, b: 0, a: 255 };
     public size = 0;
     public deltaSize = 0;
@@ -81,6 +82,8 @@ const pool = new ParticlePool((par: Particle): void => {
     par.pos.set(Vec2.ZERO);
     par.startPos.set(Vec2.ZERO);
     par.color.set(0, 0, 0, 255);
+    par.curColor.r = par.curColor.g = par.curColor.b = 0;
+    par.curColor.a = 255;
     par.deltaColor.r = par.deltaColor.g = par.deltaColor.b = 0;
     par.deltaColor.a = 255;
     par.size = 0;
@@ -111,6 +114,7 @@ export class Simulator {
     private elapsed = 0;
     private emitCounter = 0;
     private _worldRotation = 0;
+    private _parentAlpha = 0.0;
     private declare sys: ParticleSystem2D;
 
     constructor (system) {
@@ -169,10 +173,10 @@ export class Simulator {
         const endColor = psys.endColor;
         const endColorVar = psys.endColorVar;
 
-        particle.color.r = sr = clamp(startColor.r + startColorVar.r * (random() - 0.5) * 2, 0, 255);
-        particle.color.g = sg = clamp(startColor.g + startColorVar.g * (random() - 0.5) * 2, 0, 255);
-        particle.color.b = sb = clamp(startColor.b + startColorVar.b * (random() - 0.5) * 2, 0, 255);
-        particle.color.a = sa = clamp(startColor.a + startColorVar.a * (random() - 0.5) * 2, 0, 255);
+        particle.curColor.r = sr = clamp(startColor.r + startColorVar.r * (random() - 0.5) * 2, 0, 255);
+        particle.curColor.g = sg = clamp(startColor.g + startColorVar.g * (random() - 0.5) * 2, 0, 255);
+        particle.curColor.b = sb = clamp(startColor.b + startColorVar.b * (random() - 0.5) * 2, 0, 255);
+        particle.curColor.a = sa = clamp(startColor.a + startColorVar.a * (random() - 0.5) * 2, 0, 255);
         particle.deltaColor.r = (clamp(endColor.r + endColorVar.r * (random() - 0.5) * 2, 0, 255) - sr) / timeToLive;
         particle.deltaColor.g = (clamp(endColor.g + endColorVar.g * (random() - 0.5) * 2, 0, 255) - sg) / timeToLive;
         particle.deltaColor.b = (clamp(endColor.b + endColorVar.b * (random() - 0.5) * 2, 0, 255) - sb) / timeToLive;
@@ -329,6 +333,14 @@ export class Simulator {
         Vec4.toArray(vbuf, _col, offset + 32);
     }
 
+    private _updateColor(): void {
+        const selfNode = this.sys.node;
+        const parentNode = selfNode.parent;
+        const uiProps = selfNode._uiProps;
+        const parentOpacity = parentNode ? parentNode._uiProps.opacity : 1.0;
+        this._parentAlpha = uiProps.localOpacity * parentOpacity;
+    }
+
     public step (dt: number): void {
         const assembler = this.sys.assembler as Particle2DAssembler;
         const psys = this.sys;
@@ -378,6 +390,8 @@ export class Simulator {
         if (particleCount > this.uvFilled) {
             this.updateUVs();
         }
+
+        this._updateColor();
 
         // Used to reduce memory allocation / creation within the loop
         let particleIdx = 0;
@@ -431,10 +445,15 @@ export class Simulator {
                 }
 
                 // color
-                particle.color.r += particle.deltaColor.r * dt;
-                particle.color.g += particle.deltaColor.g * dt;
-                particle.color.b += particle.deltaColor.b * dt;
-                particle.color.a += particle.deltaColor.a * dt;
+                particle.curColor.r += particle.deltaColor.r * dt;
+                particle.curColor.g += particle.deltaColor.g * dt;
+                particle.curColor.b += particle.deltaColor.b * dt;
+                particle.curColor.a += particle.deltaColor.a * dt;
+
+                particle.color.r = particle.curColor.r;
+                particle.color.g = particle.curColor.g;
+                particle.color.b = particle.curColor.b;
+                particle.color.a = particle.curColor.a * this._parentAlpha;
 
                 // size
                 particle.size += particle.deltaSize * dt;
