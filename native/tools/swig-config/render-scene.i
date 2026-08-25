@@ -2,7 +2,7 @@
 // target_namespace means the name exported to JS, could be same as which in other modules
 // native2d at the last means the suffix of binding function name, different modules should use unique name
 // Note: doesn't support number prefix
-%module(target_namespace="render") scene
+%module(target_namespace="render_scene") render_scene
 
 // Disable some swig warnings, find warning number reference here ( https://www.swig.org/Doc4.1/Warnings.html )
 #pragma SWIG nowarn=503,302,401,317,402
