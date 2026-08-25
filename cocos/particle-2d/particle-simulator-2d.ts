@@ -333,7 +333,7 @@ export class Simulator {
         Vec4.toArray(vbuf, _col, offset + 32);
     }
 
-    private _updateColor(): void {
+    private _updateColor (): void {
         const selfNode = this.sys.node;
         const parentNode = selfNode.parent;
         const uiProps = selfNode._uiProps;
