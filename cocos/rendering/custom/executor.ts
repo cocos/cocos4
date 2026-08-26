@@ -1917,20 +1917,21 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
         pass?.update();
         const shader = pass?.getShaderVariant();
 
-        if (pass !== null && shader !== null) {
+        if (pass && shader) {
             const psoInfo = new PipelineStateInfo(
                 shader,
-                pass?.pipelineLayout,
+                pass.pipelineLayout,
             );
             psoInfo.bindPoint = PipelineBindPoint.COMPUTE;
             pso = deviceManager.gfxDevice.createPipelineState(psoInfo);
         }
         const cmdBuff = context.commandBuffer;
-        if (pso) {
+        if (pso && pass) {
             cmdBuff.bindPipelineState(pso);
             const layoutStage = devicePass.renderLayout;
             const layoutDesc = layoutStage!.descriptorSet!;
             cmdBuff.bindDescriptorSet(SetIndex.GLOBAL, layoutDesc);
+            cmdBuff.bindDescriptorSet(SetIndex.MATERIAL, pass.descriptorSet);
         }
 
         const gx = value.threadGroupCountX;
