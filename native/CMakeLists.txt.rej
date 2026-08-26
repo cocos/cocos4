@@ -1,0 +1,102 @@
+diff a/native/CMakeLists.txt b/native/CMakeLists.txt	(rejected hunks)
+@@ -1,6 +1,6 @@
+-if(NOT USE_XR AND NOT USE_AR_MODULE)
+-    include(${CMAKE_CURRENT_LIST_DIR}/cmake/predefine.cmake)
+-endif()
++cmake_minimum_required(VERSION 3.22.1)
++
++include(${CMAKE_CURRENT_LIST_DIR}/cmake/predefine.cmake)
+ 
+ ################################# engine source code ##################################
+ set(CWD ${CMAKE_CURRENT_LIST_DIR})
+@@ -13,7 +13,24 @@ set(ENGINE_NAME cocos_engine)
+ ################################# options ############################################
+ # default fallback options
+ cc_set_if_undefined(CC_DEBUG_FORCE           OFF)
+-cc_set_if_undefined(USE_SE_V8                ON)
++cc_set_if_undefined(USE_SE_V8                OFF)
++cc_set_if_undefined(USE_SE_HERMES            ON)
++cc_set_if_undefined(USE_V8_DEBUGGER          OFF)
++
++# Dynamically locate React Native JSI headers for Hermes support
++if(USE_SE_HERMES)
++    execute_process(
++        COMMAND node -e "console.log(require('path').dirname(require.resolve('react-native/package.json')))"
++        OUTPUT_VARIABLE REACT_NATIVE_DIR
++        OUTPUT_STRIP_TRAILING_WHITESPACE
++    )
++    set(REACT_NATIVE_JSI_DIR "${REACT_NATIVE_DIR}/ReactCommon/jsi")
++    if(EXISTS "${REACT_NATIVE_JSI_DIR}")
++        message(STATUS "Found React Native JSI headers at: ${REACT_NATIVE_JSI_DIR}")
++    else()
++        message(FATAL_ERROR "Hermes JSI headers not found at: ${REACT_NATIVE_JSI_DIR}")
++    endif()
++endif()
+ cc_set_if_undefined(USE_SE_SM                OFF)
+ cc_set_if_undefined(USE_SE_NAPI              OFF)
+ cc_set_if_undefined(USE_SE_JSVM              OFF)
+@@ -3274,18 +3291,26 @@ if(USE_MODULES)
+     add_library(ccgeometry ${ccgeometry_SOURCE_LIST})
+ 
+     target_include_directories(ccmath PRIVATE
++        ${CWD}
+         ${CWD}/cocos
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_include_directories(ccgeometry PRIVATE
++        ${CWD}
+         ${CWD}/cocos
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_include_directories(ccunzip PRIVATE
++        ${CWD}
+         ${CWD}/external/sources/unzip
+         ${CWD}/external/sources
+         ${CWD}/cocos
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_include_directories(cclog PRIVATE
++        ${CWD}
+         ${CWD}/cocos
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_include_directories(ccfilesystem PRIVATE
+         ${CWD}
+@@ -3293,15 +3318,17 @@ if(USE_MODULES)
+         ${CWD}/external/sources
+     )
+     target_include_directories(ccutils PRIVATE
++        ${CWD}
+         ${CWD}/cocos
+         ${CWD}/external/sources
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_include_directories(ccbindings PRIVATE
++        ${CWD}
+         ${CWD}/cocos
+         ${CWD}/cocos/bindings/jswrapper
+         ${CWD}/cocos/editor-support # TODO: refactor include path
+-        ${CWD}
+-        ${CC_EXTERNAL_INCLUDES}
++        $<$<BOOL:${USE_SE_HERMES}>:${REACT_NATIVE_JSI_DIR}>
+     )
+     target_link_libraries(ccunzip PUBLIC
+         ${ZLIB}
+@@ -3368,6 +3395,9 @@ if(QNX)
+     list(APPEND COCOS_SOURCE_LIST ${ccqnx_SOURCE_LIST})
+ endif()
+ 
++# ── Extended module split ──────────────────────────────────────────────────
++include("${CMAKE_CURRENT_LIST_DIR}/CocosModuleSplit.cmake")
++
+ add_library(${ENGINE_NAME} ${COCOS_SOURCE_LIST})
+ 
+ if(CMAKE_GENERATOR STREQUAL "Xcode")
+@@ -3444,6 +3474,7 @@ function(cc_apply_definations target)
+         $<$<BOOL:${USE_SE_V8}>:SCRIPT_ENGINE_TYPE=2>
+         $<$<BOOL:${USE_SE_NAPI}>:SCRIPT_ENGINE_TYPE=5>
+         $<$<BOOL:${USE_SE_JSVM}>:SCRIPT_ENGINE_TYPE=6>
++        $<$<BOOL:${USE_SE_HERMES}>:SCRIPT_ENGINE_TYPE=7>
+         $<$<OR:$<CONFIG:Debug>,$<BOOL:${CC_DEBUG_FORCE}>>:CC_DEBUG=1>
+         $<IF:$<BOOL:${USE_ADPF}>,CC_USE_ADPF=1,CC_USE_ADPF=0>
+         $<IF:$<BOOL:${USE_GOOGLE_BILLING}>,CC_USE_GOOGLE_BILLING=1,CC_USE_GOOGLE_BILLING=0>

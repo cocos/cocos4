@@ -31,6 +31,10 @@
 #include "base/std/container/string.h"
 #include "base/std/container/vector.h"
 
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    #include <jsi/jsi.h>
+#endif
+
 namespace se {
 
 class Object;
@@ -473,6 +477,11 @@ public:
     uintptr_t asPtr() const {
         return static_cast<uintptr_t>(toUint64());
     }
+
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    facebook::jsi::Value toJsiValue(facebook::jsi::Runtime& rt) const;
+    void fromJsiValue(facebook::jsi::Runtime& rt, const facebook::jsi::Value& val);
+#endif
 
 private:
     explicit Value(Type type);
