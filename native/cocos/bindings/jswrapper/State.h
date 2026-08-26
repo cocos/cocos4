@@ -29,6 +29,10 @@
 #include "PrivateObject.h"
 #include "Value.h"
 
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    #include <jsi/jsi.h>
+#endif
+
 namespace se {
 
 class Object;
@@ -97,6 +101,28 @@ public:
         }
     }
 
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    State(facebook::jsi::Runtime* rt,
+          const facebook::jsi::Value* thisVal,
+          const facebook::jsi::Value* argv,
+          size_t argc) : _thisObject(nullptr), _args(nullptr), _argc(argc), _rt(rt) {
+        if (thisVal != nullptr) {
+            _seThisVal.fromJsiValue(*rt, *thisVal);
+            _thisObject = _seThisVal.toObject();
+        }
+        if (argv != nullptr && argc > 0) {
+            _seArgs.reserve(argc);
+            for (size_t i = 0; i < argc; ++i) {
+                se::Value val;
+                val.fromJsiValue(*rt, argv[i]);
+                _seArgs.push_back(std::move(val));
+            }
+            _args = &_seArgs;
+            if (_thisObject != nullptr) _thisObject->incRef();
+        }
+    }
+#endif
+
     // Disable copy/move constructor, copy/move assigment
     State(const State &) = delete;
     State(State &&) noexcept = delete;
@@ -107,5 +133,12 @@ private:
     Object *_thisObject{nullptr};     // weak ref
     const ValueArray *_args{nullptr}; // weak ref
     Value _retVal;                    // weak ref
+
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+    size_t _argc{0};
+    facebook::jsi::Runtime* _rt{nullptr};
+    se::Value _seThisVal;
+    mutable ccstd::vector<se::Value> _seArgs;
+#endif
 };
 } // namespace se

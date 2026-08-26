@@ -573,4 +573,65 @@ double Value::toNumber() const {
     return toDouble();
 }
 
+#if SCRIPT_ENGINE_TYPE == SCRIPT_ENGINE_HERMES
+facebook::jsi::Value Value::toJsiValue(facebook::jsi::Runtime& rt) const {
+    switch (_type) {
+        case Type::Undefined:
+            return facebook::jsi::Value::undefined();
+        case Type::Null:
+            return facebook::jsi::Value::null();
+        case Type::Boolean:
+            return facebook::jsi::Value(_u._boolean);
+        case Type::Number:
+            return facebook::jsi::Value(rt, _u._number);
+        case Type::String:
+            return facebook::jsi::Value(rt, facebook::jsi::String::createFromUtf8(rt, *_u._string));
+        case Type::BigInt:
+            return facebook::jsi::Value(rt, static_cast<int64_t>(_u._bigint));
+        case Type::Object:
+            if (_u._object != nullptr) {
+                void* data = _u._object->getPrivateData();
+                if (data != nullptr) {
+                    return facebook::jsi::Value(rt, reinterpret_cast<facebook::jsi::Object*>(data));
+                }
+            }
+            return facebook::jsi::Value::null();
+        default:
+            return facebook::jsi::Value::undefined();
+    }
+}
+
+void Value::fromJsiValue(facebook::jsi::Runtime& rt, const facebook::jsi::Value& val) {
+    reset(Type::Undefined);
+    if (val.isUndefined()) {
+        return;
+    }
+    if (val.isNull()) {
+        setNull();
+        return;
+    }
+    if (val.isBool()) {
+        setBoolean(val.getBool());
+        return;
+    }
+    if (val.isNumber()) {
+        setNumber(val.getNumber());
+        return;
+    }
+    if (val.isString()) {
+        setString(val.getString(rt).utf8(rt));
+        return;
+    }
+    if (val.isObject()) {
+        void* data = val.getObject(rt).getHostObject<jsi::Object>(rt);
+        if (data != nullptr) {
+            setObject(reinterpret_cast<se::Object*>(data));
+        } else {
+            setObject(nullptr);
+        }
+        return;
+    }
+}
+#endif
+
 } // namespace se
