@@ -57,9 +57,7 @@ import {
     InputAssemblerInfo,
     LoadOp,
     MemoryUsageBit,
-    PipelineBindPoint,
     PipelineState,
-    PipelineStateInfo,
     Rect,
     RenderPass,
     RenderPassInfo,
@@ -1918,12 +1916,7 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
         const shader = pass?.getShaderVariant();
 
         if (pass && shader) {
-            const psoInfo = new PipelineStateInfo(
-                shader,
-                pass.pipelineLayout,
-            );
-            psoInfo.bindPoint = PipelineBindPoint.COMPUTE;
-            pso = deviceManager.gfxDevice.createPipelineState(psoInfo);
+            pso = PipelineStateManager.getOrCreateComputePipelineState(deviceManager.gfxDevice, pass, shader);
         }
         const cmdBuff = context.commandBuffer;
         if (pso && pass) {
