@@ -590,10 +590,8 @@ facebook::jsi::Value Value::toJsiValue(facebook::jsi::Runtime& rt) const {
             return facebook::jsi::Value(rt, static_cast<int64_t>(_u._bigint));
         case Type::Object:
             if (_u._object != nullptr) {
-                void* data = _u._object->getPrivateData();
-                if (data != nullptr) {
-                    return facebook::jsi::Value(rt, reinterpret_cast<facebook::jsi::Object*>(data));
-                }
+                const facebook::jsi::Object& jsObj = _u._object->toJsiObject(rt);
+                return facebook::jsi::Value(rt, jsObj);
             }
             return facebook::jsi::Value::null();
         default:
@@ -623,12 +621,9 @@ void Value::fromJsiValue(facebook::jsi::Runtime& rt, const facebook::jsi::Value&
         return;
     }
     if (val.isObject()) {
-        void* data = val.getObject(rt).getHostObject<jsi::Object>(rt);
-        if (data != nullptr) {
-            setObject(reinterpret_cast<se::Object*>(data));
-        } else {
-            setObject(nullptr);
-        }
+        facebook::jsi::Object jsObj = val.getObject(rt);
+        se::Object* obj = se::Object::createFromJsiObject(rt, std::move(jsObj));
+        setObject(obj);
         return;
     }
 }
