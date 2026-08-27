@@ -172,6 +172,10 @@ public:
     // --- Identity ---
     bool strictEquals(Object *o) const;
 
+    // --- JSI interop (used by se::Value Hermes shims) ---
+    static Object *createFromJsiObject(facebook::jsi::Runtime &rt, facebook::jsi::Object &&jsObj);
+    const facebook::jsi::Object& toJsiObject(facebook::jsi::Runtime &rt) const;
+
     // --- Internal (used by ScriptEngine / Class, not public JSB API) ---
     static Object *_createJSObject(facebook::jsi::Runtime &rt, facebook::jsi::Object &&jsObj);
     const facebook::jsi::Object& _getJsiObject(facebook::jsi::Runtime &rt) const;

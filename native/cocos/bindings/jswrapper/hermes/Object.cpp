@@ -110,6 +110,14 @@ const fj::Object& Object::_getJsiObject(fj::Runtime &rt) const {
     return *_jsiObj;
 }
 
+Object *Object::createFromJsiObject(fj::Runtime &rt, fj::Object &&jsObj) {
+    return Object::_createJSObject(rt, std::move(jsObj));
+}
+
+const fj::Object& Object::toJsiObject(fj::Runtime &rt) const {
+    return Object::_getJsiObject(rt);
+}
+
 // ---------------------------------------------------------------------------
 // Promise (stub — Hermes supports Promise natively via JS eval)
 // ---------------------------------------------------------------------------
