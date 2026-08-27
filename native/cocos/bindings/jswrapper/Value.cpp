@@ -587,7 +587,7 @@ facebook::jsi::Value Value::toJsiValue(facebook::jsi::Runtime& rt) const {
         case Type::String:
             return facebook::jsi::Value(rt, facebook::jsi::String::createFromUtf8(rt, *_u._string));
         case Type::BigInt:
-            return facebook::jsi::Value(rt, static_cast<int64_t>(_u._bigint));
+            return facebook::jsi::Value(rt, static_cast<double>(_u._bigint));
         case Type::Object:
             if (_u._object != nullptr) {
                 const facebook::jsi::Object& jsObj = _u._object->toJsiObject(rt);

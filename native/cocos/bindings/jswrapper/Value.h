@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "config.h"
 #include <string_view>
 #include "HandleObject.h"
 #include "base/Macros.h"
