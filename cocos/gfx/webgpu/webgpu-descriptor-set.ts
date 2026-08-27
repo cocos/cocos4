@@ -227,7 +227,12 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     }
 
     public prepare (force: boolean = false): void {
-        const breakUpdate = !this._isResourceChange() && !force;
+        const gpuDescriptorSet = this._gpuDescriptorSet;
+        if (!gpuDescriptorSet) {
+            return;
+        }
+        // Rebuild when forced, when the bind group has never been built, or when resources changed.
+        const breakUpdate = gpuDescriptorSet.bindGroup && !this._isResourceChange() && !force;
         if (breakUpdate) return;
         this._isDirty = true;
         this._applyBindGroup();

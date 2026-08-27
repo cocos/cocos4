@@ -1909,6 +1909,7 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
         renderScene.preRecord();
     }
     dispatch (value: Dispatch): void {
+        if (!context.device.hasFeature(Feature.COMPUTE_SHADER)) return;
         let pso: PipelineState | null = null;
         const devicePass = this.currPass as DeviceComputePass;
         const pass = value.material?.passes[value.passID];
@@ -1919,7 +1920,7 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
             pso = PipelineStateManager.getOrCreateComputePipelineState(deviceManager.gfxDevice, pass, shader);
         }
         const cmdBuff = context.commandBuffer;
-        if (pso && pass) {
+        if (pso) {
             cmdBuff.bindPipelineState(pso);
             const layoutStage = devicePass.renderLayout;
             const layoutDesc = layoutStage!.descriptorSet!;
