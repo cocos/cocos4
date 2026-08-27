@@ -666,7 +666,12 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             const currSetIdx = groupSets[i];
             const currDesc = descriptorSets[currSetIdx];
             if (currDesc && currDesc.gpuDescriptorSet) {
-                currDesc.prepare();
+                // Ensure an uninitialized descriptor set gets a bind group matching the pipeline layout.
+                if (!currDesc.gpuDescriptorSet.bindGroup) {
+                    currDesc.prepare(true);
+                } else {
+                    currDesc.prepare();
+                }
             } else {
                 const currLayout = wgpuPipLayout.setLayouts[currSetIdx];
                 const currLayoutInfo = new DescriptorSetInfo(currLayout);
