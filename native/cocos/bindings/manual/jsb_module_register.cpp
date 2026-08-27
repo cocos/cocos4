@@ -161,6 +161,7 @@ bool jsb_register_all_modules() {
 #endif // (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS || CC_PLATFORM == CC_PLATFORM_ANDROID || CC_PLATFORM == CC_PLATFORM_OHOS)
     });
 
+#if !defined(USE_SE_HERMES)
     se->addRegisterCallback(jsb_register_global_variables);
     se->addRegisterCallback(register_all_engine);
     se->addRegisterCallback(register_all_cocos_manual);
@@ -223,6 +224,7 @@ bool jsb_register_all_modules() {
 #if CC_USE_GOOGLE_BILLING
     se->addRegisterCallback(register_all_billing);
 #endif
+#endif // !defined(USE_SE_HERMES)
 
 #if CC_USE_GOOGLE_PLAY_GAMES
     se->addRegisterCallback(register_all_play);

@@ -15,6 +15,7 @@
     #include "../Value.h"
     #include "Base.h"
     #include <jsi/jsi.h>
+    #include <chrono>
     #include <functional>
     #include <mutex>
     #include <string>
@@ -111,6 +112,7 @@ public:
     bool          isInCleanup() const { return _isInCleanup; }
     bool          isValid() const { return _runtime != nullptr; }
     bool          isRunning() const { return _isRunning; }
+    const std::chrono::steady_clock::time_point &getStartTime() const { return _startTime; }
 
     // ---- Missing methods for engine integration ----
     using ExceptionCallback = std::function<void(const char *, const char *, const char *)>; // location, message, stack
@@ -129,6 +131,7 @@ private:
     bool                    _isRunning{false};
     bool                    _isInCleanup{false};
     bool                    _isGC{false};
+    std::chrono::steady_clock::time_point _startTime{std::chrono::steady_clock::now()};
     FileOperationDelegate   _fileDelegate;
     std::mutex              _mutex;
 

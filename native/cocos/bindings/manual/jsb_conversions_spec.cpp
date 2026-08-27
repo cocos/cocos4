@@ -69,12 +69,26 @@
     }
 
 template <typename A, typename T, typename F>
-typename std::enable_if<std::is_member_function_pointer<F>::value, bool>::type
+typename std::enable_if<std::is_member_function_pointer<F>::value && !std::is_pointer<A>::value, bool>::type
 set_member_field(se::Object *obj, T *to, const ccstd::string &property, F f, se::Value &tmp) { // NOLINT
     bool ok = obj->getProperty(property.data(), &tmp, true);
     SE_PRECONDITION2(ok, false, "Property '%s' is not set", property.data());
 
     A m;
+    ok = sevalue_to_native(tmp, &m, obj);
+    SE_PRECONDITION2(ok, false, "Convert property '%s' failed", property.data());
+    (to->*f)(m);
+    return true;
+}
+
+// Pointer-aware specialization for non-copyable types (e.g., TextureCube)
+template <typename A, typename T, typename F>
+typename std::enable_if<std::is_member_function_pointer<F>::value && std::is_pointer<A>::value, bool>::type
+set_member_field(se::Object *obj, T *to, const ccstd::string &property, F f, se::Value &tmp) { // NOLINT
+    bool ok = obj->getProperty(property.data(), &tmp, true);
+    SE_PRECONDITION2(ok, false, "Property '%s' is not set", property.data());
+
+    typename std::remove_pointer<A>::type* m = nullptr;
     ok = sevalue_to_native(tmp, &m, obj);
     SE_PRECONDITION2(ok, false, "Convert property '%s' failed", property.data());
     (to->*f)(m);

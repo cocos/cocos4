@@ -299,6 +299,26 @@ inline bool sevalue_to_native(const se::Value &from, const se::Object **to, se::
     return true;
 }
 
+template <typename T>
+inline typename std::enable_if<std::is_class<T>::value && !std::is_pointer<T>::value, bool>::type
+sevalue_to_native(const se::Value &from, T **to, se::Object * /*unused*/) { // NOLINT(readability-identifier-naming)
+    CC_ASSERT_NOT_NULL(to);
+    if (from.isObject()) {
+        auto *obj = from.toObject();
+        if (obj) {
+            auto *privateObj = obj->getPrivateObject();
+            if (privateObj) {
+                *to = privateObj->get<T>();
+                return true;
+            }
+            *to = static_cast<T*>(obj->getPrivateData());
+            return true;
+        }
+    }
+    SE_LOGE("Cannot convert JS object to %s*\n", typeid(T).name());
+    return false;
+}
+
 bool sevalue_to_native(const se::Value &from, cc::Vec4 *to, se::Object * /*unused*/); // NOLINT(readability-identifier-naming)
 
 bool sevalue_to_native(const se::Value &from, cc::Mat3 *to, se::Object * /*unused*/); // NOLINT(readability-identifier-naming)
