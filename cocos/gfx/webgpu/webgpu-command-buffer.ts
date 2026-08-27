@@ -224,6 +224,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         this._curStencilWriteMask = null;
         this._curStencilCompareMask = null;
         this._numDrawCalls = 0;
+        this._numDispatches = 0;
         this._numInstances = 0;
         this._numTris = 0;
         this._computeFuncQueue.length = 0;
@@ -654,6 +655,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             this.cmdPackage.cmds.concat(cmdPackage.cmds.array);
 
             this._numDrawCalls += WebGPUCmdBuff._numDrawCalls;
+            this._numDispatches += WebGPUCmdBuff._numDispatches;
             this._numInstances += WebGPUCmdBuff._numInstances;
             this._numTris += WebGPUCmdBuff._numTris;
         }
@@ -737,6 +739,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             passEncoder.dispatchWorkgroups(info.groupCountX, info.groupCountY, info.groupCountZ);
         };
         this._computeFuncQueue.push(func);
+        ++this._numDispatches;
         this._isStateValid = false;
     }
 

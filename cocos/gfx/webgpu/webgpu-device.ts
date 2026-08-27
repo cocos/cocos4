@@ -685,6 +685,7 @@ export class WebGPUDevice extends Device {
     public present (): void {
         const queue = (this._queue as unknown as WebGPUQueue);
         this._numDrawCalls = queue.numDrawCalls;
+        this._numDispatches = queue.numDispatches;
         this._numInstances = queue.numInstances;
         this._numTris = queue.numTris;
         queue.clear();
