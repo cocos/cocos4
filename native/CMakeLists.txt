@@ -3079,6 +3079,22 @@ if(USE_SE_JSVM)
 
 endif()
 
+if(USE_SE_HERMES)
+    cocos_source_files(MODULE ccbindings
+        cocos/bindings/jswrapper/hermes/Base.h
+        cocos/bindings/jswrapper/hermes/Class.cpp
+        cocos/bindings/jswrapper/hermes/Class.h
+        cocos/bindings/jswrapper/hermes/HelperMacros.h
+        cocos/bindings/jswrapper/hermes/Object.cpp
+        cocos/bindings/jswrapper/hermes/Object.h
+        cocos/bindings/jswrapper/hermes/ScriptEngine.cpp
+        cocos/bindings/jswrapper/hermes/ScriptEngine.h
+        cocos/bindings/jswrapper/hermes/SeApi.h
+        cocos/bindings/jswrapper/hermes/Utils.cpp
+        cocos/bindings/jswrapper/hermes/Utils.h
+    )
+endif()
+
 cocos_source_files(MODULE ccbindings
                  cocos/bindings/jswrapper/config.h
                  cocos/bindings/jswrapper/config.cpp
