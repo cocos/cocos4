@@ -79,21 +79,21 @@ public:
 
 private:
     void appendInstance(InstancedItem &instance,
-        Uint8Array &buffer,
-        gfx::Shader *shader,
-        gfx::DescriptorSet *descriptorSet);
+                        Uint8Array &buffer,
+                        gfx::Shader *shader,
+                        gfx::DescriptorSet *descriptorSet);
     void createInstance(const ccstd::string &key,
-        gfx::InputAssembler *sourceIA,
-        const ccstd::vector<gfx::Attribute> &attributes,
-        Uint8Array &buffer,
-        uint32_t stride,
-        gfx::Shader *shader,
-        gfx::DescriptorSet *descriptorSet,
-        gfx::Texture *lightingMap,
-        uint32_t reflectionProbeType,
-        gfx::Texture *reflectionProbeCubemap,
-        gfx::Texture *reflectionProbePlanarMap,
-        gfx::Texture *reflectionProbeBlendCubemap);
+                        gfx::InputAssembler *sourceIA,
+                        const ccstd::vector<gfx::Attribute> &attributes,
+                        Uint8Array &buffer,
+                        uint32_t stride,
+                        gfx::Shader *shader,
+                        gfx::DescriptorSet *descriptorSet,
+                        gfx::Texture *lightingMap,
+                        uint32_t reflectionProbeType,
+                        gfx::Texture *reflectionProbeCubemap,
+                        gfx::Texture *reflectionProbePlanarMap,
+                        gfx::Texture *reflectionProbeBlendCubemap);
 
     // weak reference
     const scene::Pass *_pass{nullptr};

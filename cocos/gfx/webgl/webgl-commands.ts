@@ -2702,7 +2702,7 @@ export function WebGLCmdFuncCopyBuffersToTexture (
             offset.x =  regionTexOffset.x === 0 ? 0 : alignTo(regionTexOffset.x, blockSizeWidth);
             offset.y =  regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             stride.width = regionBuffStride > 0 ?  regionBuffStride : extent.width;
             stride.height = region.buffTexHeight > 0 ? region.buffTexHeight : extent.height;
@@ -2773,7 +2773,7 @@ export function WebGLCmdFuncCopyBuffersToTexture (
             offset.x =  regionTexOffset.x === 0 ? 0 : alignTo(regionTexOffset.x, blockSizeWidth);
             offset.y =  regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             stride.width = region.buffStride > 0 ?  region.buffStride : extent.width;
             stride.height = region.buffTexHeight > 0 ? region.buffTexHeight : extent.height;

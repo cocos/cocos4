@@ -24,14 +24,14 @@
 
 #include <algorithm>
 
-#include "InstancedBuffer.h"
 #include "Define.h"
+#include "InstancedBuffer.h"
+#include "base/StringUtil.h"
 #include "gfx-base/GFXBuffer.h"
 #include "gfx-base/GFXCommandBuffer.h"
 #include "gfx-base/GFXDescriptorSet.h"
 #include "gfx-base/GFXDevice.h"
 #include "gfx-base/GFXInputAssembler.h"
-#include "base/StringUtil.h"
 
 namespace cc {
 namespace pipeline {
@@ -71,8 +71,8 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
     auto *reflectionProbeCubemap = descriptorSet->getTexture(REFLECTIONPROBECUBEMAP::BINDING);
     auto *reflectionProbePlanarMap = descriptorSet->getTexture(REFLECTIONPROBEPLANARMAP::BINDING);
     auto *reflectionProbeBlendCubemap = ENABLE_PROBE_BLEND
-                                                    ? descriptorSet->getTexture(REFLECTIONPROBEBLENDCUBEMAP::BINDING)
-                                                    : nullptr;
+                                            ? descriptorSet->getTexture(REFLECTIONPROBEBLENDCUBEMAP::BINDING)
+                                            : nullptr;
     const uint32_t reflectionProbeType = subModel->getReflectionProbeType();
     auto *shader = shaderImplant;
     if (!shader) {
@@ -117,14 +117,13 @@ void InstancedBuffer::merge(scene::SubModel *subModel, uint32_t passIdx, gfx::Sh
         reflectionProbeType,
         reflectionProbeCubemap,
         reflectionProbePlanarMap,
-        reflectionProbeBlendCubemap
-        );
+        reflectionProbeBlendCubemap);
 }
 
 void InstancedBuffer::appendInstance(InstancedItem &instance,
-                                      Uint8Array& buffer,
-                                      gfx::Shader *shader,
-                                      gfx::DescriptorSet *descriptorSet) {
+                                     Uint8Array &buffer,
+                                     gfx::Shader *shader,
+                                     gfx::DescriptorSet *descriptorSet) {
     if (instance.drawInfo.instanceCount >= instance.capacity) { // resize buffers
         instance.capacity = std::min(instance.capacity << 1, MAX_CAPACITY);
         const auto newSize = instance.stride * instance.capacity;
@@ -146,17 +145,17 @@ void InstancedBuffer::appendInstance(InstancedItem &instance,
 }
 
 void InstancedBuffer::createInstance(const ccstd::string &key,
-                                      gfx::InputAssembler *sourceIA,
-                                      const ccstd::vector<gfx::Attribute> &attributes,
-                                      Uint8Array &buffer,
-                                      uint32_t stride,
-                                      gfx::Shader *shader,
-                                      gfx::DescriptorSet *descriptorSet,
-                                      gfx::Texture *lightingMap,
-                                      uint32_t reflectionProbeType,
-                                      gfx::Texture *reflectionProbeCubemap,
-                                      gfx::Texture *reflectionProbePlanarMap,
-                                      gfx::Texture *reflectionProbeBlendCubemap) {
+                                     gfx::InputAssembler *sourceIA,
+                                     const ccstd::vector<gfx::Attribute> &attributes,
+                                     Uint8Array &buffer,
+                                     uint32_t stride,
+                                     gfx::Shader *shader,
+                                     gfx::DescriptorSet *descriptorSet,
+                                     gfx::Texture *lightingMap,
+                                     uint32_t reflectionProbeType,
+                                     gfx::Texture *reflectionProbeCubemap,
+                                     gfx::Texture *reflectionProbePlanarMap,
+                                     gfx::Texture *reflectionProbeBlendCubemap) {
     const auto newSize = stride * INITIAL_CAPACITY;
     auto *vb = _device->createBuffer({
         gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
