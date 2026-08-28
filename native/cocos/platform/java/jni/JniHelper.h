@@ -72,6 +72,7 @@ public:
     using LocalRefMapType = ccstd::unordered_map<JNIEnv *, ccstd::vector<jobject>>;
 
     static JavaVM *getJavaVM();
+    static inline void setJavaVM(JavaVM *vm) { sJavaVM = vm; }
     static JNIEnv *getEnv();
     static jobject getActivity();
     static void setActivity(jobject activity);
@@ -380,8 +381,10 @@ public:
             LocalRefMapType localRefs;
             auto *jret = static_cast<jstring>(t.env->CallStaticObjectMethod(t.classID, t.methodID, convert(&localRefs, &t, xs)...));
             CLEAR_EXCEPTON(t.env);
-            ret = cc::JniHelper::jstring2string(jret);
-            ccDeleteLocalRef(t.env, jret);
+            if (jret != nullptr) {
+                ret = cc::JniHelper::jstring2string(jret);
+                ccDeleteLocalRef(t.env, jret);
+            }
 #ifndef __OHOS__
             ccDeleteLocalRef(t.env, t.classID);
 #endif

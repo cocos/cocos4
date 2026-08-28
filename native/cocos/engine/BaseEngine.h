@@ -56,6 +56,9 @@ public:
     template <class T>
     T *getInterface() const {
         BasePlatform *platform = BasePlatform::getPlatform();
+        if (!platform) {
+            return nullptr;
+        }
         return platform->getInterface<T>();
     }
     /**

@@ -51,7 +51,9 @@ void UniversalPlatform::runInPlatformThread(const ThreadCallback& task) {
 
 void UniversalPlatform::runTask() {
     if (_mainTask) {
-        _mainTask();
+        auto task = std::move(_mainTask);
+        _mainTask = nullptr;
+        task();
     }
 }
 

@@ -85,24 +85,37 @@ jclass _getClassID(const char *className) { // NOLINT
 #endif
 
     JNIEnv *env = cc::JniHelper::getEnv();
-
-    jstring jstrClassName = env->NewStringUTF(className);
-
-    auto *klassObj = static_cast<jclass>(env->CallObjectMethod(cc::JniHelper::classloader,
-                                                               cc::JniHelper::loadclassMethodMethodId,
-                                                               jstrClassName));
-
-    if (nullptr == klassObj || env->ExceptionCheck()) {
-        LOGE("Classloader failed to find class of %s", className);
-        if (env->ExceptionCheck()) {
-            env->ExceptionDescribe();
-        }
-        env->ExceptionClear();
-        klassObj = nullptr;
+    if (nullptr == env) {
+        return nullptr;
     }
 
-    ccDeleteLocalRef(env, jstrClassName);
-    //    LOGE("1. delete 0x%p", jstrClassName);
+    jclass klassObj = nullptr;
+    if (cc::JniHelper::classloader != nullptr && cc::JniHelper::loadclassMethodMethodId != nullptr) {
+        jstring jstrClassName = env->NewStringUTF(className);
+        klassObj = static_cast<jclass>(env->CallObjectMethod(cc::JniHelper::classloader,
+                                                              cc::JniHelper::loadclassMethodMethodId,
+                                                              jstrClassName));
+        if (nullptr == klassObj || env->ExceptionCheck()) {
+            LOGE("Classloader failed to find class of %s", className);
+            if (env->ExceptionCheck()) {
+                env->ExceptionDescribe();
+            }
+            env->ExceptionClear();
+            klassObj = nullptr;
+        }
+        ccDeleteLocalRef(env, jstrClassName);
+    } else {
+        std::string slashClassName = className;
+        std::replace(slashClassName.begin(), slashClassName.end(), '.', '/');
+        klassObj = env->FindClass(slashClassName.c_str());
+        if (nullptr == klassObj || env->ExceptionCheck()) {
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
+            klassObj = nullptr;
+        }
+    }
+
 #if CC_CACHE_CLASS_ID
     if (klassObj) {
         _cachedJClasses.emplace(className, klassObj);
@@ -127,6 +140,10 @@ JavaVM *JniHelper::getJavaVM() {
     pthread_t thisthread = pthread_self();
     LOGD("JniHelper::getJavaVM(), pthread_self() = %ld", thisthread);
     return JniHelper::sJavaVM;
+}
+
+void JniHelper::setJavaVM(JavaVM *vm) {
+    JniHelper::sJavaVM = vm;
 }
 
 void JniHelper::init(JNIEnv *env, jobject context) {

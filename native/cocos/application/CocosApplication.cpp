@@ -58,7 +58,8 @@ int CocosApplication::init() {
     }
     unregisterAllEngineEvents();
 
-    _systemWindow = CC_GET_MAIN_SYSTEM_WINDOW();
+    auto *wm = _engine ? _engine->getInterface<ISystemWindowManager>() : nullptr;
+    _systemWindow = wm ? wm->getWindow(cc::ISystemWindow::mainWindowId) : nullptr;
 
     _engineEvents = _engine->on<BaseEngine::EngineStatusChange>([this](BaseEngine * /*emitter*/, BaseEngine::EngineStatus status) {
         switch (status) {

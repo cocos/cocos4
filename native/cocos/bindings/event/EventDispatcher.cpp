@@ -386,27 +386,33 @@ void EventDispatcher::dispatchControllerChangeEvent(const ControllerChangeEvent 
 }
 
 void EventDispatcher::dispatchTickEvent(float /*dt*/) {
-    if (!se::ScriptEngine::getInstance()->isValid()) {
+    auto *se = se::ScriptEngine::getInstance();
+    if (!se || !se->isValid()) {
         return;
     }
 
     se::AutoHandleScope scope;
     if (tickVal.isUndefined()) {
-        se::ScriptEngine::getInstance()->getGlobalObject()->getProperty("gameTick", &tickVal);
+        auto *globalObj = se->getGlobalObject();
+        if (globalObj) {
+            globalObj->getProperty("gameTick", &tickVal);
+        }
     }
 
     static std::chrono::steady_clock::time_point prevTime;
     prevTime = std::chrono::steady_clock::now();
 
-    int64_t milliSeconds = std::chrono::duration_cast<std::chrono::milliseconds>(prevTime - se::ScriptEngine::getInstance()->getStartTime()).count();
+    int64_t milliSeconds = std::chrono::duration_cast<std::chrono::milliseconds>(prevTime - se->getStartTime()).count();
     tickArgsValArr[0].setDouble(static_cast<double>(milliSeconds));
 
-    if (!tickVal.isUndefined()) {
+    if (tickVal.isObject() && tickVal.toObject() != nullptr) {
         tickVal.toObject()->call(tickArgsValArr, nullptr);
     }
 }
-// NOLINTNEXTLINE
 void EventDispatcher::dispatchResizeEvent(int width, int height, uint32_t windowId) {
+    if (!se::ScriptEngine::getInstance()->isValid() || __jsbObj == nullptr) {
+        return;
+    }
     se::AutoHandleScope scope;
     if (!jsResizeEventObj) {
         jsResizeEventObj = se::Object::createPlainObject();
@@ -471,7 +477,7 @@ void EventDispatcher::dispatchPointerlockChangeEvent(bool value) {
 }
 
 void EventDispatcher::doDispatchJsEvent(const char *jsFunctionName, const std::vector<se::Value> &args) {
-    if (!se::ScriptEngine::getInstance()->isValid()) {
+    if (!se::ScriptEngine::getInstance()->isValid() || __jsbObj == nullptr) {
         return;
     }
 

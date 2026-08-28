@@ -109,9 +109,11 @@ public:
     std::enable_if_t<std::is_base_of<OSInterface, T>::value, T *>
     getInterface() const {
         for (const auto &it : _osInterfaces) {
-            T *intf = dynamic_cast<T *>(it.get());
-            if (intf) {
-                return intf;
+            if (it) {
+                T *intf = dynamic_cast<T *>(it.get());
+                if (intf) {
+                    return intf;
+                }
             }
         }
         return nullptr;
@@ -121,9 +123,11 @@ public:
     std::enable_if_t<std::is_base_of<OSInterface, T>::value, T *>
     getInterface() {
         for (const auto &it : _osInterfaces) {
-            T *intf = dynamic_cast<T *>(it.get());
-            if (intf) {
-                return intf;
+            if (it) {
+                T *intf = dynamic_cast<T *>(it.get());
+                if (intf) {
+                    return intf;
+                }
             }
         }
         return nullptr;

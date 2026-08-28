@@ -57,6 +57,12 @@ public:
      */
     ApplicationPtr getCurrentApp() const;
     /**
+     * @brief Set the current application.
+     */
+    void setCurrentApp(ApplicationPtr app) {
+        _currentApp = app;
+    }
+    /**
      * @brief Get the current application, make sure it is not empty.
      *        Used to get the engine.
      */
@@ -71,12 +77,12 @@ private:
 #define CC_APPLICATION_MANAGER()        cc::ApplicationManager::getInstance()
 #define CC_CURRENT_APPLICATION()        CC_APPLICATION_MANAGER()->getCurrentApp()
 #define CC_CURRENT_APPLICATION_SAFE()   CC_APPLICATION_MANAGER()->getCurrentAppSafe()
-#define CC_CURRENT_ENGINE()             CC_CURRENT_APPLICATION_SAFE()->getEngine()
-#define CC_GET_PLATFORM_INTERFACE(intf) CC_CURRENT_ENGINE()->getInterface<intf>()
-#define CC_GET_SYSTEM_WINDOW(id)        CC_GET_PLATFORM_INTERFACE(cc::ISystemWindowManager)->getWindow(id)
+#define CC_CURRENT_ENGINE()             (CC_CURRENT_APPLICATION_SAFE() ? CC_CURRENT_APPLICATION_SAFE()->getEngine() : nullptr)
+#define CC_GET_PLATFORM_INTERFACE(intf) (CC_CURRENT_ENGINE() ? CC_CURRENT_ENGINE()->getInterface<intf>() : (cc::BasePlatform::getPlatform() ? cc::BasePlatform::getPlatform()->getInterface<intf>() : nullptr))
+#define CC_GET_SYSTEM_WINDOW(id)        (CC_GET_PLATFORM_INTERFACE(cc::ISystemWindowManager) ? CC_GET_PLATFORM_INTERFACE(cc::ISystemWindowManager)->getWindow(id) : nullptr)
 #define CC_GET_MAIN_SYSTEM_WINDOW()     CC_GET_SYSTEM_WINDOW(cc::ISystemWindow::mainWindowId) // Assuming the 1st created window is the main system window for now!
 
-#define CC_GET_XR_INTERFACE() BasePlatform::getPlatform()->getInterface<IXRInterface>()
+#define CC_GET_XR_INTERFACE() (cc::BasePlatform::getPlatform() ? cc::BasePlatform::getPlatform()->getInterface<IXRInterface>() : nullptr)
 
 /**
  * @brief Called at the user-defined main entry

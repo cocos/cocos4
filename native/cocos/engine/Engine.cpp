@@ -76,9 +76,14 @@ bool setCanvasCallback(se::Object *global) {
     const se::AutoHandleScope scope;
     se::ScriptEngine *se = se::ScriptEngine::getInstance();
     auto *window = CC_GET_MAIN_SYSTEM_WINDOW();
-    auto handler = window->getWindowHandle();
-    auto viewSize = window->getViewSize();
-    auto dpr = cc::BasePlatform::getPlatform()->getInterface<cc::IScreen>()->getDevicePixelRatio();
+    auto handler = window ? window->getWindowHandle() : 0;
+    auto viewSize = window ? window->getViewSize() : cc::ISystemWindow::Size{0, 0};
+    auto *platform = cc::BasePlatform::getPlatform();
+    auto *screen = platform ? platform->getInterface<cc::IScreen>() : nullptr;
+    auto dpr = screen ? screen->getDevicePixelRatio() : 1.0F;
+    if (dpr <= 0.0F) {
+        dpr = 1.0F;
+    }
 
     se::Value jsbVal;
     const bool ok = global->getProperty("jsb", &jsbVal);
