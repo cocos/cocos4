@@ -1251,16 +1251,21 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
         const auto stride = bundle.view.stride;
         const auto vertexByteLength = getTypedArrayLength(vertices) * getTypedArrayBytesPerElement(vertices);
 
-        // Debug-only defensive check: the element type of `vertices` must physically match the GPU
-        // format declared for this attribute (e.g. a Uint16Array for RGBA16UI). If they don't match,
-        // the vertex count derived from byteLength()/stride would silently be wrong (historically
-        // "a_joints becomes 2x vertices"). In debug builds we assert to surface the issue early.
-        CC_ASSERTF(getTypedArrayBytesPerElement(vertices) * formatInfo.count == formatInfo.size,
-                   "Custom attribute '%s': the element byte size of the supplied TypedArray (%u) "
-                   "times its component count (%u) does not match the byte size (%u) of the declared "
-                   "GPU format. Supply a TypedArray whose element type matches the target format "
-                   "(e.g. Uint16Array for RGBA16UI) instead of converting through Float32Array.",
-                   attribute.name.c_str(), getTypedArrayBytesPerElement(vertices), formatInfo.count, formatInfo.size);
+        // Defensive check: the element type of `vertices` must physically match the GPU format
+        // declared for this attribute (e.g. a Uint16Array for RGBA16UI), otherwise the vertex
+        // count derived from byteLength()/stride would silently be wrong (see the historical
+        // "a_joints becomes 2x vertices" bug this replaces). Fail fast with a clear diagnostic
+        // instead of memcpy-ing misinterpreted data.
+        // NOTE: keep the asserted condition in a short-named bool (rather than inlining the full
+        // expression) because CC_ASSERTF stringifies the condition via #cond into a fixed 256-byte
+        // buffer together with the message below; a long inlined expression can overflow that
+        // buffer and trip -Werror=format-truncation on some toolchains (e.g. Android NDK clang).
+        const auto elementBytes = getTypedArrayBytesPerElement(vertices);
+        const bool formatMatches = elementBytes * formatInfo.count == formatInfo.size;
+        CC_ASSERTF(formatMatches,
+                   "Attribute '%s': element size %u * count %u != format size %u. Use a "
+                   "TypedArray matching the GPU format (e.g. Uint16Array for RGBA16UI).",
+                   attribute.name.c_str(), elementBytes, formatInfo.count, formatInfo.size);
 
         const auto vertexCount = vertexByteLength / stride;
         const auto updateSize = vertexByteLength;
