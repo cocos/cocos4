@@ -1251,11 +1251,10 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
         const auto stride = bundle.view.stride;
         const auto vertexByteLength = getTypedArrayLength(vertices) * getTypedArrayBytesPerElement(vertices);
 
-        // Defensive check: the element type of `vertices` must physically match the GPU format
-        // declared for this attribute (e.g. a Uint16Array for RGBA16UI), otherwise the vertex
-        // count derived from byteLength()/stride would silently be wrong (see the historical
-        // "a_joints becomes 2x vertices" bug this replaces). Fail fast with a clear diagnostic
-        // instead of memcpy-ing misinterpreted data.
+        // Debug-only defensive check: the element type of `vertices` must physically match the GPU
+        // format declared for this attribute (e.g. a Uint16Array for RGBA16UI). If they don't match,
+        // the vertex count derived from byteLength()/stride would silently be wrong (historically
+        // "a_joints becomes 2x vertices"). In debug builds we assert to surface the issue early.
         CC_ASSERTF(getTypedArrayBytesPerElement(vertices) * formatInfo.count == formatInfo.size,
                    "Custom attribute '%s': the element byte size of the supplied TypedArray (%u) "
                    "times its component count (%u) does not match the byte size (%u) of the declared "
