@@ -296,7 +296,7 @@ export class Line extends ModelRenderer {
         }
     }
 
-    public setColor(color: Color): void {
+    public setColor (color: Color): void {
         if (this._color) {
             this._color.color.set(color);
             if (this._models[0]) {
