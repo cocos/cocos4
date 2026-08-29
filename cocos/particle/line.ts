@@ -25,7 +25,7 @@
 import { ccclass, help, executeInEditMode, menu, tooltip, displayOrder, type, serializable,
     range, visible, override, displayName } from 'cc.decorator';
 import { Material, Texture2D } from '../asset/assets';
-import { Vec3, cclegacy, Vec4, Vec2, CCBoolean } from '../core';
+import { Vec3, cclegacy, Vec4, Vec2, CCBoolean, Color } from '../core';
 import { LineModel } from './models/line-model';
 import { builtinResMgr } from '../asset/asset-manager';
 import CurveRange from './animator/curve-range';
@@ -292,6 +292,16 @@ export class Line extends ModelRenderer {
             const lineModel = this._models[0];
             if (lineModel.scene) {
                 lineModel.scene.removeModel(lineModel);
+            }
+        }
+    }
+
+    public setColor(color: Color): void {
+        if (this._color) {
+            this._color.color.set(color);
+            if (this._models[0]) {
+                const lineModel = this._models[0] as LineModel;
+                lineModel.addLineVertexData(this._positions, this._width, this._color);
             }
         }
     }
