@@ -391,6 +391,12 @@ void EventDispatcher::dispatchTickEvent(float /*dt*/) {
         return;
     }
 
+#if (defined(SCRIPT_ENGINE_TYPE) && (SCRIPT_ENGINE_TYPE == 7 || SCRIPT_ENGINE_TYPE == 5)) || defined(USE_SE_HERMES)
+    // Hermes JSI runtime is thread-affine to the React Native JS thread.
+    // Ticking is driven by requestAnimationFrame / JS loop.
+    return;
+#endif
+
     se::AutoHandleScope scope;
     if (tickVal.isUndefined()) {
         auto *globalObj = se->getGlobalObject();

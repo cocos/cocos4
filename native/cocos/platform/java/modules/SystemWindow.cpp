@@ -54,44 +54,23 @@ void SystemWindow::setCursorEnabled(bool value) {
 }
 
 void SystemWindow::setWindowHandle(void *handle) {
-#if (CC_PLATFORM == CC_PLATFORM_ANDROID)
-    //The getWindowHandle interface may have been called earlier, causing _handleMutex to be occupied all the time.
-    bool lockSuccess = _handleMutex.try_lock();
+    std::lock_guard lock(_handleMutex);
     _windowHandle = handle;
-    if (!lockSuccess) {
-        _windowHandlePromise.set_value();
-    }
-    if (lockSuccess) {
-        _handleMutex.unlock();
-    }
-#else
-    _windowHandle = handle;
-#endif
 }
 
 uintptr_t SystemWindow::getWindowHandle() const {
-#if (CC_PLATFORM == CC_PLATFORM_ANDROID)
     std::lock_guard lock(const_cast<std::mutex &>(_handleMutex));
-    if (!_windowHandle) {
-        auto &future = const_cast<std::promise<void> &>(_windowHandlePromise);
-        future.get_future().get();
-    }
-    CC_ASSERT(_windowHandle);
     return reinterpret_cast<uintptr_t>(_windowHandle);
-#else
-    return reinterpret_cast<uintptr_t>(
-        JNI_NATIVE_GLUE()->getWindowHandle());
-#endif
 }
 
 SystemWindow::Size SystemWindow::getViewSize() const {
 #if (CC_PLATFORM == CC_PLATFORM_ANDROID)
+    std::lock_guard lock(const_cast<std::mutex &>(_handleMutex));
     if (_windowHandle) {
         auto *nativeWindow = static_cast<ANativeWindow *>(_windowHandle);
         return Size{static_cast<float>(ANativeWindow_getWidth(nativeWindow)),
                     static_cast<float>(ANativeWindow_getHeight(nativeWindow))};
     }
-    // windowHandle may be nullptr when the surfaceView is destroyed.
     return Size{static_cast<float>(0), static_cast<float>(0)};
 #else
     return Size{static_cast<float>(JNI_NATIVE_GLUE()->getWidth()),
@@ -110,19 +89,16 @@ void SystemWindow::closeWindow() {
 bool SystemWindow::createWindow(const char *title, int x, int y, int w, int h, int flags) {
     CC_UNUSED_PARAM(title);
     CC_UNUSED_PARAM(flags);
-#if (CC_PLATFORM == CC_PLATFORM_ANDROID)
-    cc::JniHelper::callObjectVoidMethod(cc::JniHelper::getActivity(), JCLS_COCOSACTIVITY, "createSurface", x, y, w, h, static_cast<jint>(_windowId));
-#endif
+    CC_UNUSED_PARAM(x);
+    CC_UNUSED_PARAM(y);
+    CC_UNUSED_PARAM(w);
+    CC_UNUSED_PARAM(h);
+    // In React Native embedding, surfaces are supplied externally by TextureView
     return true;
 }
 
 bool SystemWindow::createWindow(const char *title, int w, int h, int flags) {
-    CC_UNUSED_PARAM(title);
-    CC_UNUSED_PARAM(flags);
-#if (CC_PLATFORM == CC_PLATFORM_ANDROID)
-    cc::JniHelper::callObjectVoidMethod(cc::JniHelper::getActivity(), JCLS_COCOSACTIVITY, "createSurface", 0, 0, w, h, static_cast<jint>(_windowId));
-#endif
-    return true;
+    return createWindow(title, 0, 0, w, h, flags);
 }
 
 } // namespace cc

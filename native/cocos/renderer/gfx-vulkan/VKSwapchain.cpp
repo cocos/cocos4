@@ -42,6 +42,17 @@
     #include "swappy/swappy_common.h"
 #endif
 
+#if defined(__ANDROID__)
+#include <android/log.h>
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "UniCocosEngine", __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "UniCocosEngine", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "UniCocosEngine", __VA_ARGS__)
+#else
+#define LOGI(...) CC_LOG_INFO(__VA_ARGS__)
+#define LOGW(...) CC_LOG_WARNING(__VA_ARGS__)
+#define LOGE(...) CC_LOG_ERROR(__VA_ARGS__)
+#endif
+
 namespace cc {
 namespace gfx {
 
@@ -451,14 +462,21 @@ void CCVKSwapchain::doDestroySurface() {
 
 void CCVKSwapchain::doCreateSurface(void *windowHandle) { // NOLINT
     if (!_gpuSwapchain || _gpuSwapchain->vkSurface != VK_NULL_HANDLE) return;
+    if (windowHandle != nullptr) {
+        _windowHandle = windowHandle;
+    }
+    LOGI("🌋 [VKSwapchain] doCreateSurface: windowHandle=%p, _windowId=%u", _windowHandle, _windowId);
     createVkSurface();
 #if CC_PLATFORM == CC_PLATFORM_ANDROID
     auto *window = CC_GET_SYSTEM_WINDOW(_windowId);
-    auto viewSize = window->getViewSize();
+    auto viewSize = window ? window->getViewSize() : cc::ISystemWindow::Size{1080, 935};
+    LOGI("🌋 [VKSwapchain] checkSwapchainStatus: (%f x %f)", viewSize.width, viewSize.height);
     checkSwapchainStatus(viewSize.width, viewSize.height);
 #else
     checkSwapchainStatus();
 #endif
+    LOGI("✅ [VKSwapchain] doCreateSurface completed (vkSurface=%p, vkSwapchain=%p)",
+         _gpuSwapchain->vkSurface, _gpuSwapchain->vkSwapchain);
 }
 
 void CCVKSwapchain::createVkSurface() {

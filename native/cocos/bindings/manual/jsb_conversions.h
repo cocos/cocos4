@@ -709,20 +709,20 @@ sevalue_to_native(const se::Value &from, cc::TypedArrayTemp<T> *to, se::Object *
     return true;
 }
 
+#if SCRIPT_ENGINE_TYPE != 7 && !defined(USE_SE_HERMES)
 ////////////////// pointer types
 
 template <typename T>
 typename std::enable_if_t<!std::is_pointer<T>::value && is_jsb_object_v<T>, bool>
 sevalue_to_native(const se::Value &from, T **to, se::Object * /*ctx*/) { // NOLINT(readability-identifier-naming)
     if (from.isNullOrUndefined()) {
-        // const ccstd::string stack = se::ScriptEngine::getInstance()->getCurrentStackTrace();
-        // SE_LOGE("[ERROR] sevalue_to_native jsval is null/undefined: %s\nstack: %s", typeid(T).name(), stack.c_str());
         *to = nullptr;
         return true;
     }
     *to = static_cast<T *>(from.toObject()->getPrivateData());
     return true;
 }
+#endif
 
 // duplicate extern to resolve the circular reference jsb_cocos_auto.h
 // see jsb_cocos_auto.h

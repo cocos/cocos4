@@ -73,7 +73,7 @@ public:
     ~Root();
 
     // @minggo IRootInfo seems is not use, and how to return Promise?
-    void initialize(gfx::Swapchain *swapchain);
+    void initialize(gfx::Swapchain *swapchain = nullptr);
     void destroy();
 
     /**
@@ -208,7 +208,7 @@ public:
      */
     void setTempWindow(scene::RenderWindow *window) { _tempWindow = window; }
 
-    inline scene::RenderWindow *getTempWindow() const { return _tempWindow.get(); }
+    inline scene::RenderWindow *getTempWindow() const { return _tempWindow ? _tempWindow.get() : _mainRenderWindow.get(); }
 
     /**
      * @zh

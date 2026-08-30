@@ -72,7 +72,7 @@ public:
     using LocalRefMapType = ccstd::unordered_map<JNIEnv *, ccstd::vector<jobject>>;
 
     static JavaVM *getJavaVM();
-    static inline void setJavaVM(JavaVM *vm) { sJavaVM = vm; }
+    static void setJavaVM(JavaVM *vm);
     static JNIEnv *getEnv();
     static jobject getActivity();
     static void setActivity(jobject activity);

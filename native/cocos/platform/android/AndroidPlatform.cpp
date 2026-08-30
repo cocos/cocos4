@@ -786,40 +786,54 @@ int AndroidPlatform::init() {
         JniHelper::getEnv();
         xr->initialize(JniHelper::getJavaVM(), getActivity());
     }
-    cc::FileUtilsAndroid::setAssetManager(_app->activity->assetManager);
-    _inputProxy = ccnew GameInputProxy(this);
-    _inputProxy->registerAppEventCallback([this](int32_t cmd) {
-        IXRInterface *xr = CC_GET_XR_INTERFACE();
-        if (xr) {
-            xr->handleAppCommand(cmd);
+    if (_app != nullptr) {
+        if (_app->activity != nullptr && _app->activity->assetManager != nullptr) {
+            cc::FileUtilsAndroid::setAssetManager(_app->activity->assetManager);
         }
+        _inputProxy = ccnew GameInputProxy(this);
+        _inputProxy->registerAppEventCallback([this](int32_t cmd) {
+            IXRInterface *xr = CC_GET_XR_INTERFACE();
+            if (xr) {
+                xr->handleAppCommand(cmd);
+            }
 
-        if (APP_CMD_START == cmd || APP_CMD_INIT_WINDOW == cmd) {
-            if (_inputProxy->isAnimating()) {
-                _isLowFrequencyLoopEnabled = false;
-                _loopTimeOut = 0;
+            if (APP_CMD_START == cmd || APP_CMD_INIT_WINDOW == cmd) {
+                if (_inputProxy->isAnimating()) {
+                    _isLowFrequencyLoopEnabled = false;
+                    _loopTimeOut = 0;
+                }
+            } else if (APP_CMD_STOP == cmd) {
+                _lowFrequencyTimer.reset();
+                _loopTimeOut = LOW_FREQUENCY_TIME_INTERVAL;
+                _isLowFrequencyLoopEnabled = true;
+                if (xr && !xr->getXRConfig(xr::XRConfigKey::INSTANCE_CREATED).getBool()) {
+                    // xr will sleep,  -1 we will block forever waiting for events.
+                    _loopTimeOut = -1;
+                    _isLowFrequencyLoopEnabled = false;
+                }
             }
-        } else if (APP_CMD_STOP == cmd) {
-            _lowFrequencyTimer.reset();
-            _loopTimeOut = LOW_FREQUENCY_TIME_INTERVAL;
-            _isLowFrequencyLoopEnabled = true;
-            if (xr && !xr->getXRConfig(xr::XRConfigKey::INSTANCE_CREATED).getBool()) {
-                // xr will sleep,  -1 we will block forever waiting for events.
-                _loopTimeOut = -1;
-                _isLowFrequencyLoopEnabled = false;
-            }
-        }
-    });
-    _app->userData = _inputProxy;
-    _app->onAppCmd = handleCmdProxy;
+        });
+        _app->userData = _inputProxy;
+        _app->onAppCmd = handleCmdProxy;
+    }
 
     registerInterface(std::make_shared<Accelerometer>());
     registerInterface(std::make_shared<Battery>());
     registerInterface(std::make_shared<Network>());
     registerInterface(std::make_shared<Screen>());
     registerInterface(std::make_shared<System>());
-    registerInterface(std::make_shared<SystemWindowManager>());
+    auto windowMgr = std::make_shared<SystemWindowManager>();
+    registerInterface(windowMgr);
     registerInterface(std::make_shared<Vibrator>());
+
+    // Ensure default system window exists for ISystemWindow::mainWindowId
+    if (!windowMgr->getWindow(ISystemWindow::mainWindowId)) {
+        ISystemWindowInfo info;
+        info.title = "Cocos";
+        info.width = 1080;
+        info.height = 1920;
+        windowMgr->createWindow(info);
+    }
 
     return 0;
 }
@@ -836,7 +850,10 @@ cc::ISystemWindow *AndroidPlatform::createNativeWindow(uint32_t windowId, void *
 }
 
 int AndroidPlatform::getSdkVersion() const {
-    return AConfiguration_getSdkVersion(_app->config);
+    if (_app != nullptr && _app->config != nullptr) {
+        return AConfiguration_getSdkVersion(_app->config);
+    }
+    return android_get_device_api_level();
 }
 
 int32_t AndroidPlatform::run(int /*argc*/, const char ** /*argv*/) {
@@ -850,8 +867,21 @@ void AndroidPlatform::exit() {
 
 int32_t AndroidPlatform::loop() {
     IXRInterface *xr = CC_GET_XR_INTERFACE();
+    CC_LOG_INFO("🚀 [AndroidPlatform::loop] Enter platform event loop (app=%p, _loopTimeOut=%d)", _app, _loopTimeOut);
+    static int loopIteration = 0;
+
     while (true) {
-        struct android_poll_source *source;
+        struct android_poll_source *source = nullptr;
+
+        bool hasNativeWin = false;
+        auto *windowMgr = getInterface<ISystemWindowManager>();
+        if (windowMgr) {
+            auto *win = windowMgr->getWindow(ISystemWindow::mainWindowId);
+            if (win && win->getWindowHandle() != 0) {
+                hasNativeWin = true;
+                _loopTimeOut = 0;
+            }
+        }
 
         // suspend thread while _loopTimeOut set to -1
         while (ALooper_pollOnce(_loopTimeOut, nullptr, nullptr,
@@ -868,14 +898,26 @@ int32_t AndroidPlatform::loop() {
         }
         // Exit the game loop when the Activity is destroyed
         if (_app->destroyRequested) {
+            CC_LOG_INFO("🛑 [AndroidPlatform::loop] Activity destroyRequested");
             break;
         }
         if (xr && !xr->platformLoopStart()) continue;
         _inputProxy->handleInput();
-        if (_inputProxy->isAnimating() && (xr ? xr->getXRConfig(xr::XRConfigKey::SESSION_RUNNING).getBool() : true)) {
+
+        bool animating = _inputProxy->isAnimating() || hasNativeWin;
+        if (animating && (xr ? xr->getXRConfig(xr::XRConfigKey::SESSION_RUNNING).getBool() : true)) {
+            if (++loopIteration <= 10 || loopIteration % 120 == 0) {
+                CC_LOG_INFO("⚡ [AndroidPlatform::loop] Running task #%d (animating=true, hasNativeWin=%d)", loopIteration, (int)hasNativeWin);
+            }
             runTask();
-            if (_inputProxy->isActive()) {
+            if (_inputProxy->isActive() || hasNativeWin) {
                 flushTasksOnGameThreadAtForegroundJNI();
+            }
+        } else {
+            static int idleCount = 0;
+            if (++idleCount % 120 == 0) {
+                CC_LOG_WARNING("⚠️ [AndroidPlatform::loop] Idle: isAnimating=%d, hasNativeWin=%d, _loopTimeOut=%d",
+                               (int)_inputProxy->isAnimating(), (int)hasNativeWin, _loopTimeOut);
             }
         }
         flushTasksOnGameThreadJNI();
@@ -899,8 +941,11 @@ void AndroidPlatform::pollEvent() {
     //
 }
 
-void *AndroidPlatform::getActivity() { // Dangerous
-    return _app->activity->javaGameActivity;
+void *AndroidPlatform::getActivity() {
+    if (_app != nullptr && _app->activity != nullptr) {
+        return _app->activity->javaGameActivity;
+    }
+    return JniHelper::getActivity();
 }
 
 void *AndroidPlatform::getEnv() {

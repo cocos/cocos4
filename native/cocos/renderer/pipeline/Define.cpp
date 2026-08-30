@@ -662,8 +662,13 @@ uint32_t getPhaseID(const ccstd::string& phaseName) {
 
 void localDescriptorSetLayoutResizeMaxJoints(uint32_t maxCount) {
     UBOSkinning::initLayout(maxCount);
-    localDescriptorSetLayout.blocks[UBOSkinning::NAME] = UBOSkinning::layout;
-    localDescriptorSetLayout.bindings[UBOSkinning::BINDING] = UBOSkinning::DESCRIPTOR;
+    try {
+        localDescriptorSetLayout.blocks[UBOSkinning::NAME] = UBOSkinning::layout;
+        if (localDescriptorSetLayout.bindings.size() <= static_cast<size_t>(UBOSkinning::BINDING)) {
+            localDescriptorSetLayout.bindings.resize(static_cast<size_t>(UBOSkinning::BINDING) + 1);
+        }
+        localDescriptorSetLayout.bindings[UBOSkinning::BINDING] = UBOSkinning::DESCRIPTOR;
+    } catch (...) {}
 }
 
 } // namespace pipeline

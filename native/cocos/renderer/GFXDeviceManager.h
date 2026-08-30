@@ -156,9 +156,11 @@ private:
 #endif
 
         if (!device->initialize(info)) {
+            CC_LOG_ERROR("Device initialization failed: %s", typeid(DeviceCtor).name());
             CC_SAFE_DELETE(device);
             return false;
         }
+        CC_LOG_INFO("Device created and initialized: %s", typeid(DeviceCtor).name());
         *pDevice = device;
 
         return true;

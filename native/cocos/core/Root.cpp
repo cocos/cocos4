@@ -50,6 +50,17 @@
 #include "scene/Skybox.h"
 #include "scene/SpotLight.h"
 
+#if defined(__ANDROID__)
+    #include <android/log.h>
+    #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "UniCocosEngine", __VA_ARGS__)
+    #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "UniCocosEngine", __VA_ARGS__)
+    #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "UniCocosEngine", __VA_ARGS__)
+#else
+    #define LOGI(...) CC_LOG_INFO(__VA_ARGS__)
+    #define LOGW(...) CC_LOG_WARNING(__VA_ARGS__)
+    #define LOGE(...) CC_LOG_ERROR(__VA_ARGS__)
+#endif
+
 namespace cc {
 
 namespace {
@@ -77,25 +88,45 @@ Root::~Root() {
 
 void Root::initialize(gfx::Swapchain * /*swapchain*/) {
     auto *windowMgr = CC_GET_PLATFORM_INTERFACE(ISystemWindowManager);
+    if (!windowMgr) {
+        LOGE("❌ [Root::initialize] windowMgr is NULL!");
+        return;
+    }
     const auto &windows = windowMgr->getWindows();
+    LOGI("🔍 [Root::initialize] Discovered %zu system windows", windows.size());
+
     for (const auto &pair : windows) {
         auto *window = pair.second.get();
+        auto handle = reinterpret_cast<void *>(window->getWindowHandle());
+        LOGI("🪟 [Root::initialize] Creating RenderWindow for windowId=%u, handle=%p",
+             window->getWindowId(), handle);
         scene::RenderWindow *renderWindow = createRenderWindowFromSystemWindow(window);
         if (!_mainRenderWindow && (window->getWindowId() == ISystemWindow::mainWindowId)) {
             _mainRenderWindow = renderWindow;
+            LOGI("⭐ [Root::initialize] _mainRenderWindow set to renderWindow=%p (windowId=%u)", static_cast<void*>(_mainRenderWindow.get()), window->getWindowId());
+        }
+        if (renderWindow != nullptr && handle != nullptr) {
+            LOGI("🔌 [Root::initialize] Handle exists at init, invoking onNativeWindowResume immediately");
+            renderWindow->onNativeWindowResume(window->getWindowId());
         }
     }
+    LOGI("✅ [Root::initialize] Created %zu RenderWindows, _mainRenderWindow=%p", _renderWindows.size(), static_cast<void*>(_mainRenderWindow.get()));
     _curRenderWindow = _mainRenderWindow;
+    _tempWindow = _mainRenderWindow;
     _xr = CC_GET_XR_INTERFACE();
     addWindowEventListener();
     // TODO(minggo):
     // return Promise.resolve(builtinResMgr.initBuiltinRes(this._device));
-    const uint32_t usedUBOVectorCount = (pipeline::UBOGlobal::COUNT + pipeline::UBOCamera::COUNT + pipeline::UBOShadow::COUNT + pipeline::UBOLocal::COUNT + pipeline::UBOWorldBound::COUNT) / 4;
-    uint32_t maxJoints = (_device->getCapabilities().maxVertexUniformVectors - usedUBOVectorCount) / 3;
-    maxJoints = maxJoints < 256 ? maxJoints : 256;
-    pipeline::localDescriptorSetLayoutResizeMaxJoints(maxJoints);
+    try {
+        const uint32_t usedUBOVectorCount = (pipeline::UBOGlobal::COUNT + pipeline::UBOCamera::COUNT + pipeline::UBOShadow::COUNT + pipeline::UBOLocal::COUNT + pipeline::UBOWorldBound::COUNT) / 4;
+        uint32_t maxJoints = (_device ? (_device->getCapabilities().maxVertexUniformVectors - usedUBOVectorCount) / 3 : 256);
+        maxJoints = maxJoints < 256 ? maxJoints : 256;
+        pipeline::localDescriptorSetLayoutResizeMaxJoints(maxJoints);
 
-    _debugView = std::make_unique<pipeline::DebugView>();
+        _debugView = std::make_unique<pipeline::DebugView>();
+    } catch (...) {
+        LOGE("⚠️ [Root::initialize] Exception during post-window descriptor initialization");
+    }
 }
 
 render::Pipeline *Root::getCustomPipeline() const {
@@ -104,12 +135,15 @@ render::Pipeline *Root::getCustomPipeline() const {
 
 scene::RenderWindow *Root::createRenderWindowFromSystemWindow(ISystemWindow *window) {
     if (!window) {
+        LOGE("❌ [Root::createRenderWindowFromSystemWindow] window is NULL");
         return nullptr;
     }
 
     uint32_t windowId = window->getWindowId();
     auto handle = window->getWindowHandle();
     const auto &size = window->getViewSize();
+    LOGI("🪟 [Root::createRenderWindowFromSystemWindow] windowId=%u, handle=%p, size=%.0fx%.0f",
+         windowId, reinterpret_cast<void*>(handle), size.width, size.height);
 
     gfx::SwapchainInfo info;
     info.width = static_cast<uint32_t>(size.width);
@@ -138,13 +172,17 @@ scene::RenderWindow *Root::createRenderWindowFromSystemWindow(ISystemWindow *win
     windowInfo.renderPassInfo = renderPassInfo;
     windowInfo.swapchain = swapchain;
 
-    return createWindow(windowInfo);
+    scene::RenderWindow *renderWindow = createWindow(windowInfo);
+    LOGI("✅ [Root::createRenderWindowFromSystemWindow] windowId=%u => renderWindow=%p", windowId, renderWindow);
+    return renderWindow;
 }
 
 cc::scene::RenderWindow *Root::createRenderWindowFromSystemWindow(uint32_t windowId) {
     if (windowId == 0) {
+        LOGE("❌ [Root::createRenderWindowFromSystemWindow] windowId is 0");
         return nullptr;
     }
+    LOGI("🔍 [Root::createRenderWindowFromSystemWindow] Looking up ISystemWindow for windowId=%u", windowId);
     return createRenderWindowFromSystemWindow(CC_GET_SYSTEM_WINDOW(windowId));
 }
 
@@ -478,6 +516,8 @@ scene::RenderWindow *Root::createWindow(scene::IRenderWindowInfo &info) {
 
     window->initialize(_device, info);
     _renderWindows.emplace_back(window);
+    LOGI("📦 [Root::createWindow] Created RenderWindow id=%u, title=%s, totalRenderWindows=%zu",
+         window->getRenderWindowId(), info.title->c_str(), _renderWindows.size());
     return window;
 }
 
@@ -656,14 +696,49 @@ void Root::doXRFrameMove(int32_t totalFrames) {
 
 void Root::addWindowEventListener() {
     _windowDestroyListener.bind([this](uint32_t windowId) -> void {
+        LOGI("🛑 [Root] WindowDestroy event received for windowId=%u (renderWindows=%zu)",
+             windowId, _renderWindows.size());
         for (const auto &window : _renderWindows) {
             window->onNativeWindowDestroy(windowId);
         }
     });
 
     _windowRecreatedListener.bind([this](uint32_t windowId) -> void {
+        LOGI("🔌 [Root] WindowRecreated event received for windowId=%u (renderWindows=%zu)",
+             windowId, _renderWindows.size());
+        scene::RenderWindow *targetWindow = nullptr;
         for (const auto &window : _renderWindows) {
-            window->onNativeWindowResume(windowId);
+            if (window->getSwapchain() && window->getSwapchain()->getWindowId() == windowId) {
+                targetWindow = window;
+                break;
+            }
+        }
+        if (targetWindow != nullptr) {
+            LOGI("🔌 [Root] Resuming existing RenderWindow=%p for windowId=%u", targetWindow, windowId);
+            targetWindow->onNativeWindowResume(windowId);
+        } else {
+            LOGI("🆕 [Root] No RenderWindow found for windowId=%u, creating one", windowId);
+            auto *windowMgr = CC_GET_PLATFORM_INTERFACE(ISystemWindowManager);
+            if (windowMgr) {
+                auto *sysWin = windowMgr->getWindow(windowId);
+                if (sysWin) {
+                    scene::RenderWindow *newWindow = createRenderWindowFromSystemWindow(sysWin);
+                    if (newWindow) {
+                        LOGI("🔌 [Root] Invoking onNativeWindowResume on newly created RenderWindow=%p for windowId=%u", newWindow, windowId);
+                        newWindow->onNativeWindowResume(windowId);
+                        if (!_mainRenderWindow) {
+                            _mainRenderWindow = newWindow;
+                            _curRenderWindow = _mainRenderWindow;
+                            _tempWindow = _mainRenderWindow;
+                            LOGI("⭐ [Root] _mainRenderWindow/_curRenderWindow/_tempWindow set to renderWindow=%p (windowId=%u)", static_cast<void*>(_mainRenderWindow.get()), windowId);
+                        }
+                    }
+                } else {
+                    LOGE("❌ [Root] Cannot create RenderWindow: ISystemWindow not found for windowId=%u", windowId);
+                }
+            } else {
+                LOGE("❌ [Root] Cannot create RenderWindow: ISystemWindowManager is null");
+            }
         }
     });
 }

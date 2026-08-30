@@ -114,6 +114,12 @@ PFNGLES3WLOADPROC pfnGles3wLoad = nullptr;
 bool gles3wOpen() {
     libegl = dlopen("libEGL.so", RTLD_LAZY | RTLD_GLOBAL);
     libgles = dlopen("libGLESv3.so", RTLD_LAZY | RTLD_GLOBAL);
+    if (!libgles) {
+        libgles = dlopen("libGLESv2.so", RTLD_LAZY | RTLD_GLOBAL);
+    }
+    if (!libegl || !libgles) {
+        CC_LOG_ERROR("gles3wOpen failed: libegl=%p, libgles=%p (error: %s)", libegl, libgles, dlerror());
+    }
     return (libegl && libgles);
 }
 
@@ -137,7 +143,11 @@ void *gles3wLoad(const char *proc) {
     if (eglGetProcAddress) res = reinterpret_cast<void *>(eglGetProcAddress(proc));
 
     #if CC_PLATFORM != CC_PLATFORM_OPENHARMONY
-    auto sdkVersion = cc::BasePlatform::getPlatform()->getSdkVersion();
+    static int sdkVersion = -1;
+    if (sdkVersion < 0) {
+        auto *platform = cc::BasePlatform::getPlatform();
+        sdkVersion = platform ? platform->getSdkVersion() : 30;
+    }
     if (sdkVersion <= 23) {
         if (!res) res = dlsym(libgles, proc);
     } else {

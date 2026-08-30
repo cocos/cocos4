@@ -34,6 +34,16 @@
 #include "scene/Camera.h"
 
 #include <atomic>
+#if defined(__ANDROID__)
+#include <android/log.h>
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "UniCocosEngine", __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "UniCocosEngine", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "UniCocosEngine", __VA_ARGS__)
+#else
+#define LOGI(...) CC_LOG_INFO(__VA_ARGS__)
+#define LOGW(...) CC_LOG_WARNING(__VA_ARGS__)
+#define LOGE(...) CC_LOG_ERROR(__VA_ARGS__)
+#endif
 
 namespace cc {
 namespace scene {
@@ -167,19 +177,33 @@ void RenderWindow::extractRenderCameras(ccstd::vector<Camera *> &cameras) {
 }
 
 void RenderWindow::onNativeWindowDestroy(uint32_t windowId) {
+    LOGI("🛑 [RenderWindow] onNativeWindowDestroy: windowId=%u, _swapchain=%p", windowId, _swapchain);
     if (_swapchain != nullptr && _swapchain->getWindowId() == windowId) {
         _swapchain->destroySurface();
     }
 }
 
 void RenderWindow::onNativeWindowResume(uint32_t windowId) {
-    if (_swapchain == nullptr || _swapchain->getWindowId() != windowId) {
+    LOGI("🖼️ [RenderWindow] onNativeWindowResume: windowId=%u, _swapchain=%p, swapchainWindowId=%u", windowId, _swapchain, _swapchain ? _swapchain->getWindowId() : 0);
+    if (_swapchain == nullptr) {
+        LOGW("⚠️ [RenderWindow] onNativeWindowResume: _swapchain is null");
         return;
     }
     auto *windowMgr = BasePlatform::getPlatform()->getInterface<ISystemWindowManager>();
-    auto *hWnd = reinterpret_cast<void *>(windowMgr->getWindow(windowId)->getWindowHandle());
+    if (!windowMgr) {
+        LOGE("❌ [RenderWindow] onNativeWindowResume: ISystemWindowManager is null");
+        return;
+    }
+    auto *sysWin = windowMgr->getWindow(windowId);
+    if (!sysWin) {
+        LOGE("❌ [RenderWindow] onNativeWindowResume: getWindow(%u) returned null", windowId);
+        return;
+    }
+    auto *hWnd = reinterpret_cast<void *>(sysWin->getWindowHandle());
+    LOGI("🖼️ [RenderWindow] onNativeWindowResume: invoking createSurface(hWnd=%p)", hWnd);
     _swapchain->createSurface(hWnd);
     generateFrameBuffer();
+    LOGI("✅ [RenderWindow] onNativeWindowResume: generateFrameBuffer completed");
 }
 
 void RenderWindow::generateFrameBuffer() {
@@ -190,6 +214,7 @@ void RenderWindow::generateFrameBuffer() {
 }
 
 void RenderWindow::attachCamera(Camera *camera) {
+    LOGI("📷 [RenderWindow] attachCamera: camera=%p (priority=%d)", camera, camera ? camera->getPriority() : 0);
     for (Camera *cam : _cameras) {
         if (cam == camera) return;
     }

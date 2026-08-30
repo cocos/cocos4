@@ -106,6 +106,7 @@ void GLES3Swapchain::doInit(const SwapchainInfo &info) {
     #endif
 #endif
 
+    CC_LOG_INFO("🖼️ [GLES3Swapchain] doInit: window=%p, size=%dx%d, context=%p", window, width, height, context);
     EGLSurfaceType surfaceType = _xr ? _xr->acquireEGLSurfaceType(getTypedID()) : EGLSurfaceType::WINDOW;
     if (surfaceType == EGLSurfaceType::PBUFFER) {
         EGLint pbufferAttribs[]{
@@ -114,8 +115,14 @@ void GLES3Swapchain::doInit(const SwapchainInfo &info) {
             EGL_NONE};
         EGL_CHECK(_gpuSwapchain->eglSurface = eglCreatePbufferSurface(context->eglDisplay, context->eglConfig, pbufferAttribs));
     } else if (surfaceType == EGLSurfaceType::WINDOW) {
-        EGL_CHECK(_gpuSwapchain->eglSurface = eglCreateWindowSurface(context->eglDisplay, context->eglConfig, window, nullptr));
-        if (_gpuSwapchain->eglSurface == EGL_NO_SURFACE) {
+        if (window != nullptr) {
+            EGL_CHECK(_gpuSwapchain->eglSurface = eglCreateWindowSurface(context->eglDisplay, context->eglConfig, window, nullptr));
+        } else {
+            CC_LOG_WARNING("⚠️ [GLES3Swapchain] doInit called with NULL windowHandle, deferring window surface creation.");
+            _gpuSwapchain->eglSurface = EGL_NO_SURFACE;
+        }
+        CC_LOG_INFO("🖼️ [GLES3Swapchain] doInit eglCreateWindowSurface result: eglSurface=%p", _gpuSwapchain->eglSurface);
+        if (_gpuSwapchain->eglSurface == EGL_NO_SURFACE && window != nullptr) {
             CC_LOG_ERROR("Create window surface failed.");
             return;
         }
@@ -217,6 +224,8 @@ void GLES3Swapchain::doCreateSurface(void *windowHandle) {
     NativeLayerHandle(window, SET_FORMAT, nFmt);
 #endif
 
+    CC_LOG_INFO("🖼️ [GLES3Swapchain] doCreateSurface: windowHandle=%p, currentEglSurface=%p, size=%dx%d", windowHandle, _gpuSwapchain->eglSurface, width, height);
+
     if (_gpuSwapchain->eglSurface == EGL_NO_SURFACE) {
         IXRInterface *xr = CC_GET_XR_INTERFACE();
         EGLSurfaceType surfaceType = xr ? xr->acquireEGLSurfaceType(getTypedID()) : EGLSurfaceType::WINDOW;
@@ -230,13 +239,15 @@ void GLES3Swapchain::doCreateSurface(void *windowHandle) {
             EGL_CHECK(_gpuSwapchain->eglSurface = eglCreateWindowSurface(context->eglDisplay, context->eglConfig, window, nullptr));
 
             if (_gpuSwapchain->eglSurface == EGL_NO_SURFACE) {
-                CC_LOG_ERROR("Recreate window surface failed.");
+                CC_LOG_ERROR("❌ [GLES3Swapchain] Recreate window surface failed.");
                 return;
             }
+            CC_LOG_INFO("✅ [GLES3Swapchain] Recreated window surface successfully: eglSurface=%p", _gpuSwapchain->eglSurface);
         }
     }
 
     context->makeCurrent(_gpuSwapchain, _gpuSwapchain);
+    CC_LOG_INFO("✅ [GLES3Swapchain] Context made current on swapchain.");
 }
 
 } // namespace gfx
