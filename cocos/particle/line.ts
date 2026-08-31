@@ -296,9 +296,8 @@ export class Line extends ModelRenderer {
         }
     }
 
-    public setColor (color: Color): void {
+    public updateColor (): void {
         if (this._color) {
-            this._color.color.set(color);
             if (this._models[0]) {
                 const lineModel = this._models[0] as LineModel;
                 lineModel.addLineVertexData(this._positions, this._width, this._color);
