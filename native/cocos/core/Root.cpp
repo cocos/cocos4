@@ -436,7 +436,7 @@ void Root::frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames) {
         window->extractRenderCameras(_cameraList);
     }
 
-    if (_pipelineRuntime != nullptr && !_cameraList.empty()) {
+    if (!_cameraList.empty()) {
         _device->acquire(_swapchains);
 
         // NOTE: c++ doesn't have a Director, so totalFrames need to be set from JS
@@ -457,7 +457,7 @@ void Root::frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames) {
 }
 
 void Root::frameMoveEnd() {
-    if (_pipelineRuntime != nullptr && !_cameraList.empty()) {
+    if (!_cameraList.empty()) {
         emit<BeforeCommit>();
         std::stable_sort(_cameraList.begin(), _cameraList.end(), [](const auto *a, const auto *b) {
             return a->getPriority() < b->getPriority();
@@ -476,7 +476,9 @@ void Root::frameMoveEnd() {
     #endif
 
         emit<BeforeRender>();
-        _pipelineRuntime->render(_cameraList);
+        if (_pipelineRuntime != nullptr) {
+            _pipelineRuntime->render(_cameraList);
+        }
         emit<AfterRender>();
 #endif
         _device->present();
