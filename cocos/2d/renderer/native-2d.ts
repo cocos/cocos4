@@ -57,6 +57,9 @@ export declare class NativeRenderDrawInfo {
     get subNode(): Node;
     set subNode(node: Node);
 
+    get meshBuffer(): any;
+    set meshBuffer(meshBuffer: any);
+
     changeMeshBuffer();
     setRender2dBufferToNative(data: TypedArray);
     syncSharedBufferToNative(data: TypedArray);

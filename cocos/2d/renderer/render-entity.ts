@@ -83,6 +83,8 @@ export class RenderEntity {
     protected _enabled = false;
     protected _useLocal = false;
     protected _maskMode = MaskMode.NONE;
+    protected _fillColorType: RenderEntityFillColorType = RenderEntityFillColorType.COLOR;
+    protected _priority = 0;
 
     protected declare _uint32SharedBuffer: Uint32Array;
     protected declare _uint8SharedBuffer: Uint8Array;
@@ -97,8 +99,35 @@ export class RenderEntity {
         return this._dynamicDrawInfoArr;
     }
 
+    // Uniform draw-info access used by WebBatcherCore (mirrors native getRenderDrawInfosSize /
+    // getRenderDrawInfoAt). On Web every entity type stores its draw infos in _dynamicDrawInfoArr
+    // (native's static/dynamic union is a native-memory optimization irrelevant to TS).
+    getRenderDrawInfosSize (): number {
+        return this._dynamicDrawInfoArr.length;
+    }
+
+    getRenderDrawInfoAt (index: number): RenderDrawInfo {
+        return this._dynamicDrawInfoArr[index];
+    }
+
+    get fillColorType (): RenderEntityFillColorType {
+        return this._fillColorType;
+    }
+
+    get priority (): number {
+        return this._priority;
+    }
+
     get renderEntityType (): RenderEntityType {
         return this._renderEntityType;
+    }
+
+    get useLocal (): boolean {
+        return this._useLocal;
+    }
+
+    get renderTransform (): Node | null {
+        return this._renderTransform;
     }
     // set renderEntityType (val:RenderEntityType) {
     //     this._renderEntityType = val;
@@ -107,6 +136,8 @@ export class RenderEntity {
     setPriority (val: number): void {
         if (JSB) {
             this._uint32SharedBuffer[RenderEntityUInt32SharedBufferView.priority] = val;
+        } else {
+            this._priority = val;
         }
     }
 
@@ -115,12 +146,13 @@ export class RenderEntity {
         return this._color;
     }
     set color (val: Color) {
-        this._color = val;
         if (JSB) {
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.colorR] = val.r;
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.colorG] = val.g;
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.colorB] = val.b;
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.colorA] = val.a;
+        } else {
+            this._color = val;
         }
     }
 
@@ -143,24 +175,26 @@ export class RenderEntity {
     }
 
     set enabled (val: boolean) {
-        this._enabled = val;
         if (JSB) {
             if (val) {
                 this._boolSharedBuffer[0] |= (1 << RenderEntityBoolSharedBufferViewBitIndex.enabled);
             } else {
                 this._boolSharedBuffer[0] &= ~(1 << RenderEntityBoolSharedBufferViewBitIndex.enabled);
             }
+        } else {
+            this._enabled = val;
         }
     }
 
     setUseLocal (useLocal: boolean): void {
-        this._useLocal = useLocal;
         if (JSB) {
             if (useLocal) {
                 this._boolSharedBuffer[0] |= (1 << RenderEntityBoolSharedBufferViewBitIndex.useLocal);
             } else {
                 this._boolSharedBuffer[0] &= ~(1 << RenderEntityBoolSharedBufferViewBitIndex.useLocal);
             }
+        } else {
+            this._useLocal = useLocal;
         }
     }
 
@@ -175,24 +209,23 @@ export class RenderEntity {
     }
 
     public addDynamicRenderDrawInfo (renderDrawInfo: RenderDrawInfo | null): void {
+        if (!renderDrawInfo) return;
+        this._dynamicDrawInfoArr.push(renderDrawInfo);
         if (JSB) {
-            if (renderDrawInfo) {
-                this._dynamicDrawInfoArr.push(renderDrawInfo);
-                this._nativeObj.addDynamicRenderDrawInfo(renderDrawInfo.nativeObj);
-            }
+            this._nativeObj.addDynamicRenderDrawInfo(renderDrawInfo.nativeObj);
         }
     }
 
     public removeDynamicRenderDrawInfo (): void {
+        this._dynamicDrawInfoArr.pop();
         if (JSB) {
-            this._dynamicDrawInfoArr.pop();
             this._nativeObj.removeDynamicRenderDrawInfo();
         }
     }
 
     public clearDynamicRenderDrawInfos (): void {
+        this._dynamicDrawInfoArr.length = 0;
         if (JSB) {
-            this._dynamicDrawInfoArr.length = 0;
             this._nativeObj.clearDynamicRenderDrawInfos();
         }
     }
@@ -200,6 +233,9 @@ export class RenderEntity {
     public clearStaticRenderDrawInfos (): void {
         if (JSB) {
             this._nativeObj.clearStaticRenderDrawInfos();
+        } else {
+            // Web: static draw infos share _dynamicDrawInfoArr (see getStaticRenderDrawInfo).
+            this._dynamicDrawInfoArr.length = 0;
         }
     }
 
@@ -214,15 +250,16 @@ export class RenderEntity {
     }
 
     public setDynamicRenderDrawInfo (renderDrawInfo: RenderDrawInfo | null, index: number): void {
-        if (JSB) {
-            if (renderDrawInfo) {
-                if (this._dynamicDrawInfoArr.length < index + 1) {
-                    this._dynamicDrawInfoArr.push(renderDrawInfo);
-                    this._nativeObj.addDynamicRenderDrawInfo(renderDrawInfo.nativeObj);
-                } else {
-                    this._dynamicDrawInfoArr[index] = renderDrawInfo;
-                    this._nativeObj.setDynamicRenderDrawInfo(renderDrawInfo.nativeObj, index);
-                }
+        if (!renderDrawInfo) return;
+        if (this._dynamicDrawInfoArr.length < index + 1) {
+            this._dynamicDrawInfoArr.push(renderDrawInfo);
+            if (JSB) {
+                this._nativeObj.addDynamicRenderDrawInfo(renderDrawInfo.nativeObj);
+            }
+        } else {
+            this._dynamicDrawInfoArr[index] = renderDrawInfo;
+            if (JSB) {
+                this._nativeObj.setDynamicRenderDrawInfo(renderDrawInfo.nativeObj, index);
             }
         }
     }
@@ -230,13 +267,16 @@ export class RenderEntity {
     public setMaskMode (mode: MaskMode): void {
         if (JSB) {
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.maskMode] = mode;
+        } else {
+            this._maskMode = mode;
         }
-        this._maskMode = mode;
     }
 
     public setFillColorType (fillColorType: RenderEntityFillColorType): void {
         if (JSB) {
             this._uint8SharedBuffer[RenderEntityUInt8SharedBufferView.fillColorType] = fillColorType;
+        } else {
+            this._fillColorType = fillColorType;
         }
     }
 
@@ -246,7 +286,12 @@ export class RenderEntity {
             const drawInfo = new RenderDrawInfo(nativeDrawInfo);
             return drawInfo;
         }
-        return null;
+        // Web: static draw infos live in the same _dynamicDrawInfoArr the batcher iterates, so the
+        // walk sees them uniformly via getRenderDrawInfoAt. Called once per RenderData at init, not
+        // per frame, so plain allocation here is fine.
+        const drawInfo = new RenderDrawInfo();
+        this._dynamicDrawInfoArr.push(drawInfo);
+        return drawInfo;
     }
 
     setNode (node: Node | null): void {

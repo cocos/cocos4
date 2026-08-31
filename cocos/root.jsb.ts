@@ -62,7 +62,7 @@ rootProto._createBatcher2D = function () {
             this.destroy();
             return;
         }
-        this._batcher._nativeObj = this.getBatcher2D();
+        this._batcher.nativeObj = this.getBatcher2D();
     }
 }
 

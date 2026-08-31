@@ -24,10 +24,9 @@
 */
 
 import { ccclass, executeInEditMode, serializable, playOnFocus, menu, help, editable, type } from 'cc.decorator';
-import { EDITOR_NOT_IN_PREVIEW, JSB } from 'internal:constants';
+import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
 import { UIRenderer } from '../2d/framework';
 import { Texture2D } from '../asset/assets/texture-2d';
-import type { IBatcher } from '../2d/renderer/i-batcher';
 import { Vec2 } from '../core';
 import type { RenderData } from '../2d/renderer/render-data';
 import { RenderEntityFillColorType } from '../2d/renderer/render-entity';
@@ -197,9 +196,10 @@ export class MotionStreak extends UIRenderer {
             if (this._assembler && this._assembler.createData) {
                 this._renderData = this._assembler.createData(this) as RenderData;
                 this._renderData.material = this.material;
-                if (JSB) {
-                    this._renderData.renderDrawInfo.setVertexPositionInWorld(true);
-                }
+                // Positions are baked in world space by the assembler, so the batcher must not
+                // re-transform them (native reads this flag in fillVertexBuffers; WebBatcherCore
+                // reads drawInfo.isVertexPositionInWorld in _fillBuffers).
+                this._renderData.renderDrawInfo.setVertexPositionInWorld(true);
                 this._updateColor();
             }
         }
@@ -236,10 +236,4 @@ export class MotionStreak extends UIRenderer {
         }
     }
 
-    /**
-     * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
-     */
-    public _render (render: IBatcher): void {
-        render.commitComp(this, this._renderData, this._texture, this._assembler, null);
-    }
 }

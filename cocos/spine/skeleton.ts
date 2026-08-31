@@ -31,13 +31,13 @@ import { CCObjectFlags, Color, RecyclePool, js, math } from '../core';
 import { SkeletonData } from './skeleton-data';
 import type { Graphics } from '../2d/components/graphics';
 import { UIRenderer } from '../2d/framework/ui-renderer';
-import { Batcher2D } from '../2d/renderer/batcher-2d';
 import { BlendFactor, BlendOp } from '../gfx';
 import { MaterialInstance } from '../render-scene';
 import { assetManager, builtinResMgr } from '../asset/asset-manager';
 import { legacyCC } from '../core/global-exports';
 import { SkeletonSystem } from './skeleton-system';
 import { RenderEntity, RenderEntityType } from '../2d/renderer/render-entity';
+import { RenderDrawInfo, RenderDrawInfoType } from '../2d/renderer/render-draw-info';
 import { AttachUtil } from './attach-util';
 import spine from './lib/spine-core';
 import { VertexEffectDelegate } from './vertex-effect-delegate';
@@ -260,6 +260,7 @@ export class Skeleton extends UIRenderer {
         indexOffset: 0,
         indexCount: 0,
     }), 1);
+    protected _drawInfoList: RenderDrawInfo[] = [];
     protected _materialCache: { [key: string]: MaterialInstance } = {} as any;
     public paused = false;
     protected _enumSkins: EnumType = Enum({});
@@ -551,6 +552,7 @@ export class Skeleton extends UIRenderer {
     set enableBatch (value) {
         if (value !== this._enableBatch) {
             this._enableBatch = value;
+            this._renderEntity.setUseLocal(!value);
             this._updateBatch();
         }
     }
@@ -1183,25 +1185,50 @@ export class Skeleton extends UIRenderer {
         }
     }
 
-    protected _render (batcher: Batcher2D): void {
+    /**
+     * @engineInternal
+     */
+    public _populateMiddlewareDrawInfos (): void {
+        const rd = this.renderData;
+        if (!rd || this._drawList.length === 0) return;
+
+        const chunk = rd.chunk;
+        const accessor = chunk.vertexAccessor;
+        const meshBuffer = rd.getMeshBuffer()!;
+
+        // Capture origin before appendIndices advances meshBuffer.indexOffset
+        const origin = meshBuffer.indexOffset;
+
+        // Copy index data from rd.indices into meshBuffer.iData
         let indicesCount = 0;
-        if (this.renderData && this._drawList.length > 0) {
-            const rd = this.renderData;
-            const chunk = rd.chunk;
-            const accessor = chunk.vertexAccessor;
-            const meshBuffer = rd.getMeshBuffer()!;
-            const origin = meshBuffer.indexOffset;
-            // Fill index buffer
-            for (let i = 0; i < this._drawList.length; i++) {
-                const dc = this._drawList.data[i];
-                if (dc.texture) {
-                    batcher.commitMiddleware(this, meshBuffer, origin + dc.indexOffset, dc.indexCount, dc.texture, dc.material!, this._enableBatch);
-                }
-                indicesCount += dc.indexCount;
+        for (let i = 0; i < this._drawList.length; i++) {
+            indicesCount += this._drawList.data[i].indexCount;
+        }
+        const subIndices = rd.indices!.subarray(0, indicesCount);
+        accessor.appendIndices(chunk.bufferId, subIndices);
+        meshBuffer.setDirty();
+
+        // Build MIDDLEWARE drawInfos from _drawList
+        const entity = this.renderEntity;
+        entity.clearDynamicRenderDrawInfos();
+        let idx = 0;
+        for (let i = 0; i < this._drawList.length; i++) {
+            const dc = this._drawList.data[i];
+            if (!dc.texture) continue;
+
+            if (!this._drawInfoList[idx]) {
+                this._drawInfoList[idx] = new RenderDrawInfo();
             }
-            const subIndices = rd.indices!.subarray(0, indicesCount);
-            accessor.appendIndices(chunk.bufferId, subIndices);
-            accessor.getMeshBuffer(chunk.bufferId).setDirty();
+            const drawInfo = this._drawInfoList[idx];
+            drawInfo.setDrawInfoType(RenderDrawInfoType.MIDDLEWARE);
+            drawInfo.setMaterial(dc.material!);
+            drawInfo.setTexture(dc.texture.getGFXTexture());
+            drawInfo.setSampler(dc.texture.getGFXSampler());
+            drawInfo.setMeshBuffer(meshBuffer);
+            drawInfo.setIndexOffset(origin + dc.indexOffset);
+            drawInfo.setIBCount(dc.indexCount);
+            entity.setDynamicRenderDrawInfo(drawInfo, idx);
+            idx++;
         }
     }
 

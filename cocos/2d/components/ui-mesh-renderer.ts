@@ -35,7 +35,7 @@ import { uiRendererManager } from '../framework/ui-renderer-manager';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
 import { MeshRenderData, RenderData } from '../renderer/render-data';
 import { assert, cclegacy, warnID } from '../../core';
-import { RenderDrawInfoType } from '../renderer/render-draw-info';
+import { RenderDrawInfo, RenderDrawInfoType } from '../renderer/render-draw-info';
 import type { UIRenderer } from '../framework/ui-renderer';
 
 /**
@@ -124,39 +124,6 @@ export class UIMeshRenderer extends Component {
     }
 
     /**
-     * @en Render data submission procedure, it update and assemble the render data to 2D data buffers before all children submission process.
-     * Usually called each frame when the ui flow assemble all render data to geometry buffers.
-     * Don't call it unless you know what you are doing.
-     * @zh 渲染数据组装程序，这个方法会在所有子节点数据组装之前更新并组装当前组件的渲染数据到 UI 的顶点数据缓冲区中。
-     * 一般在 UI 渲染流程中调用，用于组装所有的渲染数据到顶点数据缓冲区。
-     * 注意：不要手动调用该函数，除非你理解整个流程。
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     */
-    public _render (render: IBatcher): boolean {
-        if (this._modelComponent) {
-            const models = this._modelComponent._collectModels();
-            this._modelComponent._detachFromScene();
-            for (let i = 0; i < models.length; i++) {
-                if (models[i].enabled) {
-                    render.commitModel(this, models[i], this._modelComponent.material);
-                }
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     */
-    public fillBuffers (render: IBatcher): void {
-        if (this.enabled) {
-            this._render(render);
-        }
-    }
-
-    /**
      * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
      */
     // Native updateAssembler
@@ -177,8 +144,41 @@ export class UIMeshRenderer extends Component {
                 }
                 this._UIModelNativeProxy.attachDrawInfo();
             }
+        } else {
+            // Web: mirror the JSB path but populate TS MODEL draw infos WebBatcherCore reads (there is
+            // no native proxy). Runs every frame (see update()) so the detach-from-scene keeps pace
+            // with the 3D MeshRenderer re-attaching. WebBatcherCore.handleModelDraw does updateTransform/
+            // updateUBOs + per-subModel batch.
+            const entity = this.renderEntity;
+            entity.enabled = this._canRender();
+            entity.clearDynamicRenderDrawInfos();
+            if (this._modelComponent) {
+                const models = this._modelComponent._collectModels();
+                this._modelComponent._detachFromScene();
+                let idx = 0;
+                for (let i = 0; i < models.length; i++) {
+                    if (models[i].enabled) {
+                        let drawInfo = this._modelDrawInfos[idx];
+                        if (!drawInfo) {
+                            drawInfo = new RenderDrawInfo();
+                            this._modelDrawInfos[idx] = drawInfo;
+                        }
+                        drawInfo.setDrawInfoType(RenderDrawInfoType.MODEL);
+                        drawInfo.setModel(models[i]);
+                        // Per-model material instance, mirroring the JSB _uploadRenderData path
+                        // (getMaterialInstance(index)); a single shared material is wrong when
+                        // models map to distinct material slots.
+                        drawInfo.setMaterial(this._modelComponent.getMaterialInstance(i)!);
+                        entity.addDynamicRenderDrawInfo(drawInfo);
+                        idx++;
+                    }
+                }
+            }
         }
     }
+
+    // Web-only: cached MODEL draw infos (one per enabled model) reused across frames.
+    private _modelDrawInfos: RenderDrawInfo[] = [];
 
     private _uploadRenderData (index: number): void {
         if (JSB) {
@@ -210,10 +210,10 @@ export class UIMeshRenderer extends Component {
     }
 
     public update (): void {
-        if (JSB) {
-            if (this._modelComponent) {
-                this._markForUpdateRenderData();
-            }
+        if (this._modelComponent) {
+            // Both platforms: keep the per-frame collect + detach-from-scene + draw-info populate
+            // running (the sibling 3D MeshRenderer re-attaches its model to the 3D scene each frame).
+            this._markForUpdateRenderData();
         }
         this._fitUIRenderQueue();
     }
