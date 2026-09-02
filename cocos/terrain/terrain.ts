@@ -1819,7 +1819,7 @@ export class Terrain extends Component {
             return null;
         }
 
-        return this._layerList[id] ?? null;
+        return this._layerList[id] || null;
     }
 
     /**
