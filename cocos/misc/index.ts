@@ -24,7 +24,7 @@
 
 import './intersect';
 
-export { runWorkerTask, createWorker, isWorkerSupported } from './worker';
+export { runWorkerTask, createWorker, isWorkerSupported, getOptimalWorkerCount } from './worker';
 export type { WorkerTask, WorkerRunOptions } from './worker';
 export { WorkerPool } from './worker-pool';
 export type { WorkerPoolOptions } from './worker-pool';

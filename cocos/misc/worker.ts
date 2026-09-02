@@ -124,6 +124,42 @@ export function isWorkerSupported (): boolean {
 
 /**
  * @en
+ * Suggest a sensible worker count for CPU-bound (compute-heavy) tasks.
+ *
+ * It returns `hardwareConcurrency - 1` (clamped to at least `1`), deliberately leaving one logical
+ * core for the main thread (rendering + game logic). This is a *starting point*, not a universal answer:
+ * I/O-bound tasks can benefit from more workers, and tiny per-frame tasks are often better off with `1`.
+ *
+ * On platforms without Web Worker support (or without `navigator.hardwareConcurrency`), it returns `1`.
+ *
+ * @zh
+ * 为 CPU 密集型（重计算）任务推荐一个合理的 Worker 数量。
+ *
+ * 它返回 `hardwareConcurrency - 1`（至少为 `1`），刻意给主线程（渲染 + 游戏逻辑）留一个逻辑核。
+ * 这是一个*起点*，不是普适答案：I/O 型任务可以开更多 Worker，而每帧的小任务往往用 `1` 个更合适。
+ *
+ * 在不支持 Web Worker（或没有 `navigator.hardwareConcurrency`）的平台上，返回 `1`。
+ *
+ * @example
+ * ```ts
+ * const pool = new WorkerPool(myPureFn, {
+ *     maxWorkers: getOptimalWorkerCount(),
+ * });
+ * ```
+ */
+export function getOptimalWorkerCount (): number {
+    if (!isWorkerSupported()) {
+        return 1;
+    }
+    // eslint-disable-next-line no-restricted-globals
+    const hc = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency)
+        ? navigator.hardwareConcurrency
+        : 1;
+    return Math.max(1, Math.floor(hc) - 1);
+}
+
+/**
+ * @en
  * Create a dedicated Web Worker from a serialized function, and wire its message protocol.
  * Used internally by [[runWorkerTask]] and [[WorkerPool]].
  * @zh
@@ -132,6 +168,9 @@ export function isWorkerSupported (): boolean {
  * @internal
  */
 export function createWorker (fn: WorkerTask): Worker {
+    if (typeof fn !== 'function') {
+        throw new TypeError('WorkerTask must be a self-contained function');
+    }
     if (!isWorkerSupported()) {
         throw new Error('Web Worker is not supported in the current environment');
     }
@@ -273,7 +312,18 @@ export function runWorkerTask<TResult = unknown> (
             }, timeout);
         }
 
-        worker.postMessage({ id, args: args || [] }, (options && options.transfer) || []);
+        try {
+            worker.postMessage({ id, args: args || [] }, (options && options.transfer) || []);
+        } catch (err) {
+            // postMessage can throw synchronously (e.g. DataCloneError for a non-cloneable arg,
+            // or a transfer list containing a non-transferable / already-detached buffer).
+            // Settle the promise and tear the worker down so it never leaks.
+            if (!settled) {
+                settled = true;
+            }
+            cleanup();
+            reject(err);
+        }
     });
 }
 
@@ -281,3 +331,4 @@ export function runWorkerTask<TResult = unknown> (
 legacyCC.runWorkerTask = runWorkerTask;
 legacyCC.createWorker = createWorker;
 legacyCC.isWorkerSupported = isWorkerSupported;
+legacyCC.getOptimalWorkerCount = getOptimalWorkerCount;

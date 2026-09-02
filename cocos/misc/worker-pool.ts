@@ -62,6 +62,10 @@ export interface WorkerPoolOptions {
  * On platforms without Web Worker support, every task simply runs synchronously on the main thread,
  * so the pool is a transparent no-op wrapper.
  *
+ * For *CPU-bound* workloads, pass [[getOptimalWorkerCount]] as `maxWorkers` to parallelize across the
+ * available cores (leaving one core for the main thread). Note that `maxWorkers` only matters when you
+ * submit several independent tasks concurrently — a single queued task always uses exactly one worker.
+ *
  * @zh
  * 绑定到单个自包含任务函数的 Web Worker 池。
  *
@@ -71,13 +75,17 @@ export interface WorkerPoolOptions {
  *
  * 在不支持 Web Worker 的平台上，每个任务直接在主线程同步执行，因此池是一个透明的空包装。
  *
+ * 对于 *CPU 密集型*负载，可将 [[getOptimalWorkerCount]] 作为 `maxWorkers` 传入，跨可用核心并行
+ * （给主线程留一个核心）。注意：只有当你*同时*提交多个独立任务时 `maxWorkers` 才起作用——
+ * 单个排队任务始终只用一个 Worker。
+ *
  * @example
  * ```ts
  * const pool = new WorkerPool((n: number) => {
  *     let acc = 0;
  *     for (let i = 0; i < n; i++) acc += Math.sqrt(i);
  *     return acc;
- * }, { maxWorkers: 2, idleReleaseAfter: 1000 });
+ * }, { maxWorkers: getOptimalWorkerCount(), idleReleaseAfter: 1000 });
  *
  * const result = await pool.run(1_000_000);
  * // ...
@@ -94,9 +102,17 @@ export class WorkerPool {
     private _taskId = 0;
 
     constructor (fn: WorkerTask, options?: WorkerPoolOptions) {
+        if (typeof fn !== 'function') {
+            throw new TypeError('WorkerPool requires a self-contained task function');
+        }
         this._fn = fn;
-        this._maxWorkers = Math.max(1, (options && options.maxWorkers) || 1);
-        this._idleReleaseAfter = (options && options.idleReleaseAfter) || 1000;
+        const rawMax = options ? options.maxWorkers : undefined;
+        const max = (typeof rawMax === 'number' && Number.isFinite(rawMax)) ? Math.floor(rawMax) : 1;
+        this._maxWorkers = Math.max(1, max);
+        // Use `??` so an explicit `0` (meaning "never release idle workers") is preserved.
+        this._idleReleaseAfter = (options && options.idleReleaseAfter !== undefined)
+            ? options.idleReleaseAfter
+            : 1000;
     }
 
     /**
@@ -112,6 +128,10 @@ export class WorkerPool {
      */
     public run<TResult = unknown> (args?: unknown[], transfer?: Transferable[]): Promise<TResult> {
         return new Promise<TResult>((resolve, reject) => {
+            if (this._released) {
+                reject(new Error('WorkerPool has been terminated'));
+                return;
+            }
             this._queue.push({
                 args: args || [],
                 transfer: transfer || [],
@@ -205,6 +225,8 @@ export class WorkerPool {
         }
         this._workers.splice(idx, 1);
         worker.dispose();
+        // A worker was freed up (idle-release or failure): re-drain so queued tasks don't stall.
+        this._drain();
     }
 }
 
@@ -231,8 +253,10 @@ class PooledWorker {
     private readonly _idleReleaseAfter: number;
     private readonly _onIdle: (worker: PooledWorker) => void;
     private _current: PoolTask | null = null;
+    private _currentId = -1;
     private _idleTimer: ReturnType<typeof setTimeout> | null = null;
     private _disposed = false;
+    private _failed = false;
 
     constructor (
         worker: Worker | null,
@@ -250,6 +274,7 @@ class PooledWorker {
                 this._onMessage(e.data);
             };
             worker.onerror = (e: ErrorEvent): void => {
+                this._failed = true;
                 this._settle(null, new Error(e.message || 'Worker error'));
             };
         }
@@ -257,6 +282,7 @@ class PooledWorker {
 
     public execute (id: number, task: PoolTask): void {
         this._current = task;
+        this._currentId = id;
         if (!this._worker) {
             // Inline synchronous fallback (non-Worker platforms). This blocks the main thread,
             // which is the unavoidable behavior when no worker is available.
@@ -290,12 +316,17 @@ class PooledWorker {
         if (this._current) {
             this._current.reject(new Error('Worker has been disposed'));
             this._current = null;
+            this._currentId = -1;
         }
         this.onComplete = null;
     }
 
     private _onMessage (reply: IWorkerReply): void {
         if (!this._current) {
+            return;
+        }
+        // Guard against a stale/late reply from a previous task on the same worker.
+        if (reply.id !== this._currentId) {
             return;
         }
         if (reply.ok) {
@@ -311,11 +342,21 @@ class PooledWorker {
             return;
         }
         this._current = null;
+        this._currentId = -1;
 
         if (error) {
             task.reject(error);
         } else {
             task.resolve(value);
+        }
+
+        // A worker that reported an uncaught error is not trustworthy for reuse: dispose it so the
+        // pool spawns a fresh one instead of replaying the same failure on every task.
+        if (this._failed) {
+            this.onComplete = null;
+            this.busy = false;
+            this._onIdle(this);
+            return;
         }
 
         // Mark idle (kicking off the idle-release timer) and notify the pool to drain the queue.
