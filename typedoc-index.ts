@@ -22,6 +22,7 @@ export * from './exports/physics-2d-framework';
 export * from './exports/physics-framework';
 export * from './exports/primitive';
 export * from './exports/profiler';
+export * from './exports/render-scene';
 export * from './exports/rich-text';
 export * from './exports/skeletal-animation';
 export * from './exports/sorting';
