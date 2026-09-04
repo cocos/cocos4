@@ -1920,7 +1920,7 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
             pso = PipelineStateManager.getOrCreateComputePipelineState(deviceManager.gfxDevice, pass, shader);
         }
         const cmdBuff = context.commandBuffer;
-        if (pso) {
+        if (pso && pass) {
             cmdBuff.bindPipelineState(pso);
             const layoutStage = devicePass.renderLayout;
             const layoutDesc = layoutStage!.descriptorSet!;

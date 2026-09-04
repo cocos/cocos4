@@ -775,7 +775,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             passEncoder.setPipeline(wgpuPipeline);
         };
         this._renderPassFuncQueue.push(pplFunc);
-        if (this._curGPUPipelineState.pipelineState?.depthStencil) {
+        const pipelineDesc = this._curGPUPipelineState.pipelineState;
+        if (pipelineDesc && 'depthStencil' in pipelineDesc && pipelineDesc.depthStencil) {
             const stencilRef = this._curGPUPipelineState.stencilRef;
             const stencilRefFunc = (passEncoder: GPURenderPassEncoder): void => {
                 passEncoder.setStencilReference(stencilRef);
