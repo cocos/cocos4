@@ -24,6 +24,11 @@
 
 import './intersect';
 
+export { runWorkerTask, createWorker, isWorkerSupported, getOptimalWorkerCount } from './worker';
+export type { WorkerTask, WorkerRunOptions } from './worker';
+export { WorkerPool } from './worker-pool';
+export type { WorkerPoolOptions } from './worker-pool';
+
 export { Camera } from './camera-component';
 export { ModelRenderer } from './model-renderer';
 export { Renderer } from './renderer';
