@@ -22,13 +22,15 @@
  THE SOFTWARE.
 */
 
-import { Shader, RenderPass, InputAssembler, Device, PipelineState, InputState, PipelineStateInfo } from '../gfx';
+import { Shader, RenderPass, InputAssembler, Device, PipelineState, InputState, PipelineStateInfo, PipelineBindPoint } from '../gfx';
 import { Pass } from '../render-scene/core/pass';
 
 export class PipelineStateManager {
     private constructor () {}
 
     private static _PSOHashMap: Map<number, PipelineState> = new Map<number, PipelineState>();
+
+    private static _computePSOHashMap: Map<number, PipelineState> = new Map<number, PipelineState>();
 
     // pass is only needed on TS.
     static getOrCreatePipelineState (device: Device, pass: Pass, shader: Shader, renderPass: RenderPass, ia: InputAssembler): PipelineState {
@@ -55,6 +57,35 @@ export class PipelineStateManager {
             );
             pso = device.createPipelineState(psoInfo);
             this._PSOHashMap.set(newHash, pso);
+        }
+
+        return pso;
+    }
+
+    /**
+     * @en Get or create a compute pipeline state.
+     * A compute pipeline only depends on the shader variant and the pipeline layout,
+     * both carried by the pass, so the cache key is `pass.hash ^ shader.typedID`,
+     * mirroring the graphics-side hash mechanism without renderPass/inputState factors.
+     * @zh 获取或创建计算管线状态。
+     * 计算管线仅依赖于着色器变体与管线布局（均由 pass 携带），
+     * 因此缓存键为 `pass.hash ^ shader.typedID`，与图形侧哈希机制一致但不包含 renderPass/顶点布局因子。
+     */
+    static getOrCreateComputePipelineState (device: Device, pass: Pass, shader: Shader): PipelineState {
+        const hash1 = pass.hash;
+        const hash2 = shader.typedID;
+
+        const newHash = hash1 ^ hash2;
+        let pso = this._computePSOHashMap.get(newHash);
+        if (!pso) {
+            const pipelineLayout = pass.pipelineLayout;
+            const psoInfo = new PipelineStateInfo(
+                shader,
+                pipelineLayout,
+            );
+            psoInfo.bindPoint = PipelineBindPoint.COMPUTE;
+            pso = device.createPipelineState(psoInfo);
+            this._computePSOHashMap.set(newHash, pso);
         }
 
         return pso;

@@ -29,6 +29,7 @@ import { QueueInfo } from '../base/define';
 
 export class WebGPUQueue extends Queue {
     public numDrawCalls = 0;
+    public numDispatches = 0;
     public numInstances = 0;
     public numTris = 0;
 
@@ -51,6 +52,7 @@ export class WebGPUQueue extends Queue {
             for (let i = 0; i < cmdBuffSize; i++) {
                 const cmdBuff = cmdBuffs[i] as WebGPUCommandBuffer;
                 this.numDrawCalls += cmdBuff.numDrawCalls;
+                this.numDispatches += cmdBuff.numDispatches;
                 this.numInstances += cmdBuff.numInstances;
                 this.numTris += cmdBuff.numTris;
             }
@@ -59,6 +61,7 @@ export class WebGPUQueue extends Queue {
 
     public clear (): void {
         this.numDrawCalls = 0;
+        this.numDispatches = 0;
         this.numInstances = 0;
         this.numTris = 0;
     }

@@ -231,7 +231,21 @@ class PassVisitor implements RenderGraphVisitor {
     compute (value: ComputePass): void {
         this._currPass = value;
         const rg = context.renderGraph;
+        if (rg.getValid(this.passID)) {
+            // Avoid revisiting a valid pass and recursive dependency cycles.
+            return;
+        }
         rg.setValid(this.passID, true);
+        // Trace READ dependencies only; WRITE dependencies are produced by this pass.
+        const resourceGraph = this.context.resourceGraph;
+        for (const [computeName, cViews] of value.computeViews) {
+            if (!cViews.length || cViews[0].accessType !== AccessType.READ) continue;
+            const vertID = resourceGraph.find(computeName);
+            if (vertID !== 0xFFFFFFFF) {
+                this._resVisitor.resID = vertID;
+                resourceGraph.visitVertex(this._resVisitor, vertID);
+            }
+        }
     }
     resolve (value: ResolvePass): void {
         // noop

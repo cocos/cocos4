@@ -170,9 +170,17 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                     if (descType & (DescriptorType.DYNAMIC_STORAGE_BUFFER | DescriptorType.DYNAMIC_UNIFORM_BUFFER)) {
                         this._dynamicOffsets.push(bindIdx);
                     }
-                } else if (descType & DESCRIPTOR_SAMPLER_TYPE) {
-                    if ((descType & DescriptorType.SAMPLER) !== DescriptorType.SAMPLER) {
-                        // texture
+                } else if (descType & (DESCRIPTOR_SAMPLER_TYPE | DescriptorType.STORAGE_IMAGE)) {
+                    const isStorageImage = (descType & DescriptorType.STORAGE_IMAGE) === DescriptorType.STORAGE_IMAGE;
+                    if (isStorageImage) {
+                        // storage texture (compute read/write): bind the texture view, no sampler
+                        let currTex = this._textures[i] as WebGPUTexture;
+                        if (!currTex || (currTex.hasChange && !currTex.gpuTexture)) {
+                            currTex = device.defaultResource.texture;
+                        }
+                        this._bindTextureEntry(binding, currTex);
+                    } else if ((descType & DescriptorType.SAMPLER) !== DescriptorType.SAMPLER) {
+                        // sampled texture
                         let currTex = this._textures[i] as WebGPUTexture;
                         // null or destroyed?
                         if (!currTex || (currTex.hasChange && !currTex.gpuTexture)) {
@@ -185,9 +193,9 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         this._bindTextureEntry(binding, currTex);
                     }
 
-                    if (!((descType & DescriptorType.STORAGE_IMAGE) === DescriptorType.STORAGE_IMAGE
-                        || (descType & DescriptorType.INPUT_ATTACHMENT) === DescriptorType.INPUT_ATTACHMENT
-                        || (descType & DescriptorType.TEXTURE) === DescriptorType.TEXTURE)) {
+                    if (!isStorageImage
+                        && !((descType & DescriptorType.INPUT_ATTACHMENT) === DescriptorType.INPUT_ATTACHMENT
+                            || (descType & DescriptorType.TEXTURE) === DescriptorType.TEXTURE)) {
                         // sampler
                         const currSampler = (this._samplers[i] || device.defaultResource.sampler) as WebGPUSampler;
                         this._bindSamplerEntry(binding, currSampler);
@@ -219,7 +227,12 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     }
 
     public prepare (force: boolean = false): void {
-        const breakUpdate = !this._isResourceChange() && !force;
+        const gpuDescriptorSet = this._gpuDescriptorSet;
+        if (!gpuDescriptorSet) {
+            return;
+        }
+        // Rebuild when forced, when the bind group has never been built, or when resources changed.
+        const breakUpdate = gpuDescriptorSet.bindGroup && !this._isResourceChange() && !force;
         if (breakUpdate) return;
         this._isDirty = true;
         this._applyBindGroup();

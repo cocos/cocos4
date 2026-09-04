@@ -35,6 +35,7 @@ import {
     TextureUsageBit,
     ShaderStageFlags,
     DescriptorType,
+    MemoryAccessBit,
     Color, Rect, Viewport, BufferTextureCopy,
     SamplerInfo,
     FormatSize,
@@ -1423,11 +1424,15 @@ export function createBindGroupLayoutEntry (currBind: DescriptorSetLayoutBinding
 
     case DescriptorType.STORAGE_BUFFER:
     case DescriptorType.DYNAMIC_STORAGE_BUFFER:
-        entry.buffer = {
-            type: 'storage',
-            hasDynamicOffset: type === DescriptorType.DYNAMIC_STORAGE_BUFFER,
-            minBindingSize: undefined,
-        };
+        {
+            const readOnly = (currBind.access & MemoryAccessBit.READ_ONLY) !== 0
+                && (currBind.access & MemoryAccessBit.WRITE_ONLY) === 0;
+            entry.buffer = {
+                type: readOnly ? 'read-only-storage' : 'storage',
+                hasDynamicOffset: type === DescriptorType.DYNAMIC_STORAGE_BUFFER,
+                minBindingSize: undefined,
+            };
+        }
         break;
 
     case DescriptorType.SAMPLER_TEXTURE:

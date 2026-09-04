@@ -26,7 +26,7 @@ import { PipelineState, PipelineStateInfo } from '../base/pipeline-state';
 import { IWebGPUGPUInputAssembler, IWebGPUGPUPipelineState } from './webgpu-gpu-objects';
 import { WebGPURenderPass } from './webgpu-render-pass';
 import { WebGPUShader } from './webgpu-shader';
-import { BlendOp, CullMode, DynamicStateFlagBit, Format, FormatInfos, PrimitiveMode, ShaderStageFlagBit } from '../base/define';
+import { BlendOp, CullMode, DynamicStateFlagBit, Format, FormatInfos, PipelineBindPoint, PrimitiveMode, ShaderStageFlagBit } from '../base/define';
 import { WebGPUPipelineLayout } from './webgpu-pipeline-layout';
 import {
     GFXFormatToWGPUFormat,
@@ -81,124 +81,155 @@ export class WebGPUPipelineState extends PipelineState {
             }
         }
 
-        // colorstates
-        const colorAttachments = this._renderPass.colorAttachments;
-        const colorDescs: GPUColorTargetState[] = [];
-        const colAttachmentSize = colorAttachments.length;
-        const pipelineLayoutObj = info.pipelineLayout as WebGPUPipelineLayout;
-        for (let i = 0; i < colAttachmentSize; i++) {
-            const colDesc: GPUColorTargetState = {
-                format: GFXFormatToWGPUFormat(colorAttachments[i].format),
-                writeMask: WebGPUBlendMask(this._bs.targets[i].blendColorMask),
-            };
-            if (this._bs.targets[i].blend) {
-                colDesc.blend = {
-                    color: {
-                        dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDst],
-                        operation: WebGPUBlendOps[this._bs.targets[i].blendEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendEq],
-                        srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrc],
-                    },
-                    alpha: {
-                        dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
-                        operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendAlphaEq],
-                        srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrcAlpha],
-                    },
-                };
-            }
-            colorDescs.push(colDesc);
-        }
-
-        let vertexStage: GPUProgrammableStage;
-        let fragmentStage: GPUProgrammableStage;
-        const shaderStages = (this._shader as WebGPUShader).gpuShader.gpuStages;
-        const stageSize = shaderStages.length;
-        for (let i = 0; i < stageSize; i++) {
-            if (shaderStages[i].type === ShaderStageFlagBit.VERTEX) { vertexStage = shaderStages[i].gpuShader!; }
-            if (shaderStages[i].type === ShaderStageFlagBit.FRAGMENT) { fragmentStage = shaderStages[i].gpuShader!; }
-        }
-
         const gpuShader = info.shader as WebGPUShader;
+        const pipelineLayoutObj = info.pipelineLayout as WebGPUPipelineLayout;
+        const shaderStages = gpuShader.gpuShader.gpuStages;
 
-        const shaderAttrs = gpuShader.attributes;
-        const attrsSize = shaderAttrs.length;
-        for (let i = 0; i < attrsSize; i++) {
-            this._locations.set(shaderAttrs[i].name, shaderAttrs[i].location);
-        }
-        const stripTopology = (info.primitive === PrimitiveMode.LINE_STRIP || info.primitive === PrimitiveMode.TRIANGLE_STRIP);
-        const renderPplDesc: GPURenderPipelineDescriptor = {
-            layout: pipelineLayoutObj.gpuPipelineLayout!.nativePipelineLayout,
-            vertex: {
-                module: vertexStage!.module,
-                entryPoint: 'main',
-                buffers: [],
-            },
-            primitive: {
-                topology: WebPUPrimitives[info.primitive],
-                frontFace: this._rs.isFrontFaceCCW ? 'ccw' : 'cw',
-                cullMode: this._rs.cullMode === CullMode.NONE ? 'none' : (this._rs.cullMode === CullMode.FRONT) ? 'front' : 'back',
-            },
-
-            fragment: {
-                module: fragmentStage!.module,
-                entryPoint: 'main',
-                targets: colorDescs,
-            },
-        };
-        if (stripTopology) renderPplDesc.primitive!.stripIndexFormat = 'uint16';
-
-        // depthstencil states
-        let stencilRef = 0;
-        if (this._renderPass.depthStencilAttachment?.format !== Format.UNKNOWN) {
-            const dssDesc = {} as GPUDepthStencilState;
-            dssDesc.format = GFXFormatToWGPUFormat(this._renderPass.depthStencilAttachment!.format);
-            dssDesc.depthWriteEnabled = this._dss.depthWrite;
-            dssDesc.depthCompare = this._dss.depthTest ? WebGPUCompereFunc[this._dss.depthFunc] : 'always';
-            let stencilReadMask = 0;
-            let stencilWriteMask = 0;
-
-            if (this._dss.stencilTestFront) {
-                dssDesc.stencilFront = {
-                    compare: WebGPUCompereFunc[this._dss.stencilFuncFront],
-                    depthFailOp: WebGPUStencilOp[this._dss.stencilZFailOpFront],
-                    passOp: WebGPUStencilOp[this._dss.stencilPassOpFront],
-                    failOp: WebGPUStencilOp[this._dss.stencilFailOpFront],
-                };
-                stencilReadMask |= this._dss.stencilReadMaskFront;
-                stencilWriteMask |= this._dss.stencilWriteMaskFront;
-                stencilRef |= this._dss.stencilRefFront;
+        if (info.bindPoint === PipelineBindPoint.COMPUTE) {
+            // ---- Compute Pipeline ----
+            let computeStage: GPUProgrammableStage | undefined;
+            const stageSize = shaderStages.length;
+            for (let i = 0; i < stageSize; i++) {
+                if (shaderStages[i].type === ShaderStageFlagBit.COMPUTE) {
+                    computeStage = shaderStages[i].gpuShader!;
+                }
             }
-            if (this._dss.stencilTestBack) {
-                dssDesc.stencilBack = {
-                    compare: WebGPUCompereFunc[this._dss.stencilFuncBack],
-                    depthFailOp: WebGPUStencilOp[this._dss.stencilZFailOpBack],
-                    passOp: WebGPUStencilOp[this._dss.stencilPassOpBack],
-                    failOp: WebGPUStencilOp[this._dss.stencilFailOpBack],
-                };
-                stencilReadMask |= this._dss.stencilReadMaskBack;
-                stencilWriteMask |= this._dss.stencilWriteMaskBack;
-                stencilRef |= this._dss.stencilRefBack;
-            }
-            dssDesc.stencilReadMask = stencilReadMask;
-            dssDesc.stencilWriteMask = stencilWriteMask;
-            dssDesc.depthBias = this._rs.depthBias;
-            dssDesc.depthBiasSlopeScale = this._rs.depthBiasSlop;
-            dssDesc.depthBiasClamp = this._rs.depthBiasClamp;
-            renderPplDesc.depthStencil = dssDesc;
-        }
 
-        this._gpuPipelineState = {
-            gpuPrimitive: WebPUPrimitives[info.primitive],
-            gpuShader: gpuShader.gpuShader,
-            gpuPipelineLayout: pipelineLayoutObj.gpuPipelineLayout,
-            rs: info.rasterizerState,
-            dss: info.depthStencilState,
-            stencilRef,
-            bs: info.blendState,
-            gpuRenderPass: (info.renderPass as WebGPURenderPass).gpuRenderPass,
-            dynamicStates,
-            pipelineState: renderPplDesc,
-            nativePipeline: undefined,
-        };
+            const computeDesc: GPUComputePipelineDescriptor = {
+                layout: pipelineLayoutObj.gpuPipelineLayout!.nativePipelineLayout,
+                compute: computeStage!,
+            };
+
+            this._gpuPipelineState = {
+                gpuPrimitive: 'triangle-list' as GPUPrimitiveTopology,
+                gpuShader: gpuShader.gpuShader,
+                gpuPipelineLayout: pipelineLayoutObj.gpuPipelineLayout,
+                rs: info.rasterizerState,
+                dss: info.depthStencilState,
+                stencilRef: 0,
+                bs: info.blendState,
+                gpuRenderPass: null,
+                dynamicStates,
+                pipelineState: computeDesc,
+                nativePipeline: undefined,
+            };
+        } else {
+            // ---- Render Pipeline ----
+            // colorstates
+            const colorAttachments = this._renderPass.colorAttachments;
+            const colorDescs: GPUColorTargetState[] = [];
+            const colAttachmentSize = colorAttachments.length;
+            for (let i = 0; i < colAttachmentSize; i++) {
+                const colDesc: GPUColorTargetState = {
+                    format: GFXFormatToWGPUFormat(colorAttachments[i].format),
+                    writeMask: WebGPUBlendMask(this._bs.targets[i].blendColorMask),
+                };
+                if (this._bs.targets[i].blend) {
+                    colDesc.blend = {
+                        color: {
+                            dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDst],
+                            operation: WebGPUBlendOps[this._bs.targets[i].blendEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendEq],
+                            srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrc],
+                        },
+                        alpha: {
+                            dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
+                            operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendAlphaEq],
+                            srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrcAlpha],
+                        },
+                    };
+                }
+                colorDescs.push(colDesc);
+            }
+
+            let vertexStage: GPUProgrammableStage;
+            let fragmentStage: GPUProgrammableStage;
+            const stageSize = shaderStages.length;
+            for (let i = 0; i < stageSize; i++) {
+                if (shaderStages[i].type === ShaderStageFlagBit.VERTEX) { vertexStage = shaderStages[i].gpuShader!; }
+                if (shaderStages[i].type === ShaderStageFlagBit.FRAGMENT) { fragmentStage = shaderStages[i].gpuShader!; }
+            }
+
+            const shaderAttrs = gpuShader.attributes;
+            const attrsSize = shaderAttrs.length;
+            for (let i = 0; i < attrsSize; i++) {
+                this._locations.set(shaderAttrs[i].name, shaderAttrs[i].location);
+            }
+            const stripTopology = (info.primitive === PrimitiveMode.LINE_STRIP || info.primitive === PrimitiveMode.TRIANGLE_STRIP);
+            const renderPplDesc: GPURenderPipelineDescriptor = {
+                layout: pipelineLayoutObj.gpuPipelineLayout!.nativePipelineLayout,
+                vertex: {
+                    module: vertexStage!.module,
+                    entryPoint: 'main',
+                    buffers: [],
+                },
+                primitive: {
+                    topology: WebPUPrimitives[info.primitive],
+                    frontFace: this._rs.isFrontFaceCCW ? 'ccw' : 'cw',
+                    cullMode: this._rs.cullMode === CullMode.NONE ? 'none' : (this._rs.cullMode === CullMode.FRONT) ? 'front' : 'back',
+                },
+
+                fragment: {
+                    module: fragmentStage!.module,
+                    entryPoint: 'main',
+                    targets: colorDescs,
+                },
+            };
+            if (stripTopology) renderPplDesc.primitive!.stripIndexFormat = 'uint16';
+
+            // depthstencil states
+            let stencilRef = 0;
+            if (this._renderPass.depthStencilAttachment?.format !== Format.UNKNOWN) {
+                const dssDesc = {} as GPUDepthStencilState;
+                dssDesc.format = GFXFormatToWGPUFormat(this._renderPass.depthStencilAttachment!.format);
+                dssDesc.depthWriteEnabled = this._dss.depthWrite;
+                dssDesc.depthCompare = this._dss.depthTest ? WebGPUCompereFunc[this._dss.depthFunc] : 'always';
+                let stencilReadMask = 0;
+                let stencilWriteMask = 0;
+
+                if (this._dss.stencilTestFront) {
+                    dssDesc.stencilFront = {
+                        compare: WebGPUCompereFunc[this._dss.stencilFuncFront],
+                        depthFailOp: WebGPUStencilOp[this._dss.stencilZFailOpFront],
+                        passOp: WebGPUStencilOp[this._dss.stencilPassOpFront],
+                        failOp: WebGPUStencilOp[this._dss.stencilFailOpFront],
+                    };
+                    stencilReadMask |= this._dss.stencilReadMaskFront;
+                    stencilWriteMask |= this._dss.stencilWriteMaskFront;
+                    stencilRef |= this._dss.stencilRefFront;
+                }
+                if (this._dss.stencilTestBack) {
+                    dssDesc.stencilBack = {
+                        compare: WebGPUCompereFunc[this._dss.stencilFuncBack],
+                        depthFailOp: WebGPUStencilOp[this._dss.stencilZFailOpBack],
+                        passOp: WebGPUStencilOp[this._dss.stencilPassOpBack],
+                        failOp: WebGPUStencilOp[this._dss.stencilFailOpBack],
+                    };
+                    stencilReadMask |= this._dss.stencilReadMaskBack;
+                    stencilWriteMask |= this._dss.stencilWriteMaskBack;
+                    stencilRef |= this._dss.stencilRefBack;
+                }
+                dssDesc.stencilReadMask = stencilReadMask;
+                dssDesc.stencilWriteMask = stencilWriteMask;
+                dssDesc.depthBias = this._rs.depthBias;
+                dssDesc.depthBiasSlopeScale = this._rs.depthBiasSlop;
+                dssDesc.depthBiasClamp = this._rs.depthBiasClamp;
+                renderPplDesc.depthStencil = dssDesc;
+            }
+
+            this._gpuPipelineState = {
+                gpuPrimitive: WebPUPrimitives[info.primitive],
+                gpuShader: gpuShader.gpuShader,
+                gpuPipelineLayout: pipelineLayoutObj.gpuPipelineLayout,
+                rs: info.rasterizerState,
+                dss: info.depthStencilState,
+                stencilRef,
+                bs: info.blendState,
+                gpuRenderPass: (info.renderPass as WebGPURenderPass).gpuRenderPass,
+                dynamicStates,
+                pipelineState: renderPplDesc,
+                nativePipeline: undefined,
+            };
+        }
     }
 
     protected _getShaderLocation (name: string): number | undefined {
@@ -215,9 +246,22 @@ export class WebGPUPipelineState extends PipelineState {
         if (this._gpuPipelineState!.nativePipeline && !forceUpdate) {
             return;
         }
+        const webgpuDevice = (WebGPUDeviceManager.instance);
+        const nativeDevice = webgpuDevice.nativeDevice;
+
+        const pipelineState = this._gpuPipelineState!.pipelineState!;
+        // Compute pipeline: no vertex attributes, no multisample
+        if ('compute' in pipelineState) {
+            const nativePipeline = nativeDevice?.createComputePipeline(
+                pipelineState as GPUComputePipelineDescriptor,
+            );
+            this._gpuPipelineState!.nativePipeline = nativePipeline;
+            return;
+        }
+
+        // Render pipeline
         const gpuShader = this.shader;
         const shaderAttrs = gpuShader.attributes;
-        const pipelineState = this._gpuPipelineState!.pipelineState!;
         const vertexAttrs: GPUVertexBufferLayout[] = [];
         const emptyPushAttr: string[] = [];
         const streamCount = ia.gpuVertexBuffers.length;
@@ -270,11 +314,11 @@ export class WebGPUPipelineState extends PipelineState {
             }
         }
 
-        pipelineState.vertex.buffers = vertexAttrs;
-        pipelineState.multisample = { count: ia.samples };
-        const webgpuDevice = (WebGPUDeviceManager.instance);
-        const nativeDevice = webgpuDevice.nativeDevice;
-        const nativePipeline = nativeDevice?.createRenderPipeline(pipelineState);
+        (pipelineState as GPURenderPipelineDescriptor).vertex.buffers = vertexAttrs;
+        (pipelineState as GPURenderPipelineDescriptor).multisample = { count: ia.samples };
+        const nativePipeline = nativeDevice?.createRenderPipeline(
+            pipelineState as GPURenderPipelineDescriptor,
+        );
         this._gpuPipelineState!.nativePipeline = nativePipeline;
     }
 
