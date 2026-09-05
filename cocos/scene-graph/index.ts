@@ -37,6 +37,7 @@ export * from './node-event';
 export * from './scene-globals';
 export { EventHandler } from './component-event-handler';
 export { Component } from './component';
+export * from './component-coroutine';
 export * from './deprecated';
 export { default as NodeActivator } from './node-activator';
 export { Prefab } from './prefab';
