@@ -32,7 +32,7 @@ import { Vec2, toRadian, Vec3, Quat, IVec2Like, TWO_PI, HALF_PI, warn } from '..
 import { PHYSICS_2D_PTM_RATIO, ERigidBody2DType } from '../framework/physics-types';
 
 import { Node } from '../../scene-graph/node';
-import { Collider2D } from '../framework';
+import { Collider2D, Joint2D } from '../framework';
 import { B2Shape2D } from './shapes/shape-2d';
 import { B2Joint } from './joints/joint-2d';
 
@@ -95,6 +95,7 @@ export class B2RigidBody2D implements IRigidBody2D {
             for (let i = 0; i < colliders.length; i++) {
                 colliders[i].apply();
             }
+            Joint2D._applyScale(this.rigidBody);
         }
         if (type & Node.TransformBit.POSITION) {
             this.syncPositionToPhysics(true);

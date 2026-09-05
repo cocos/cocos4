@@ -26,7 +26,10 @@ import { B2, B2ObjectType, addImplPtrReference, addImplPtrReferenceWASM, getImpl
 import { IJoint2D } from '../../spec/i-physics-joint';
 import { Joint2D, PhysicsSystem2D, RigidBody2D } from '../../framework';
 import { B2PhysicsWorld } from '../physics-world';
-import { warn } from '../../../core';
+import { Vec2, warn } from '../../../core';
+
+const tempAnchorA = new Vec2();
+const tempAnchorB = new Vec2();
 
 /** @mangle */
 export class B2Joint implements IJoint2D {
@@ -125,6 +128,14 @@ export class B2Joint implements IJoint2D {
 
     _createJointDef (): B2.JointDef | null {
         return null;
+    }
+
+    protected _getAnchorA (): Vec2 {
+        return this._jointComp!._getAnchorA(tempAnchorA);
+    }
+
+    protected _getAnchorB (): Vec2 {
+        return this._jointComp!._getAnchorB(tempAnchorB);
     }
 
     isValid (): Joint2D | null {
