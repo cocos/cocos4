@@ -560,6 +560,7 @@ export class WebGPUDevice extends Device {
         this._features[Feature.ELEMENT_INDEX_UINT] = true;
         this._features[Feature.INSTANCED_ARRAYS] = true;
         this._features[Feature.MULTIPLE_RENDER_TARGETS] = true;
+        this._features[Feature.COMPUTE_SHADER] = true;
         this.initFormatFeatures(features);
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
@@ -684,6 +685,7 @@ export class WebGPUDevice extends Device {
     public present (): void {
         const queue = (this._queue as unknown as WebGPUQueue);
         this._numDrawCalls = queue.numDrawCalls;
+        this._numDispatches = queue.numDispatches;
         this._numInstances = queue.numInstances;
         this._numTris = queue.numTris;
         queue.clear();

@@ -128,6 +128,14 @@ export abstract class Device {
     }
 
     /**
+     * @en Number of compute dispatches currently recorded.
+     * @zh 计算调度（dispatch）次数。
+     */
+    get numDispatches (): number {
+        return this._numDispatches;
+    }
+
+    /**
      * @en Total memory size currently allocated.
      * @zh 内存状态。
      */
@@ -167,6 +175,8 @@ export abstract class Device {
     protected _cmdBuff: CommandBuffer | null = null;
     /** @mangle */
     protected _numDrawCalls = 0;
+    /** @mangle */
+    protected _numDispatches = 0;
     /** @mangle */
     protected _numInstances = 0;
     /** @mangle */

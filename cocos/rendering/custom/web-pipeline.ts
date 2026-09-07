@@ -864,7 +864,11 @@ export class WebComputePassBuilder extends WebSetter implements ComputePassBuild
         this._renderGraph.setName(this._vertID, name);
     }
     addTexture (name: string, slotName: string, sampler: Sampler | null = null): void {
-        throw new Error('Method not implemented.');
+        this._addComputeResource(name, AccessType.READ, slotName);
+        if (sampler) {
+            const descriptorID = this._lg.attributeIndex.get(slotName)!;
+            this._data.samplers.set(descriptorID, sampler);
+        }
     }
     addStorageBuffer (name: string, accessType: AccessType, slotName: string): void {
         this._addComputeResource(name, accessType, slotName);

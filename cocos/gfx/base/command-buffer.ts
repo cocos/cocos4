@@ -88,12 +88,22 @@ export abstract class CommandBuffer extends GFXObject {
         return this._numTris;
     }
 
+    /**
+     * @en Number of compute dispatches currently recorded.
+     * @zh 计算调度（dispatch）次数。
+     */
+    get numDispatches (): number {
+        return this._numDispatches;
+    }
+
     /** @mangle */
     protected _queue: Queue | null = null;
     /** @mangle */
     protected _type: CommandBufferType = CommandBufferType.PRIMARY;
     /** @mangle */
     protected _numDrawCalls = 0;
+    /** @mangle */
+    protected _numDispatches = 0;
     /** @mangle */
     protected _numInstances = 0;
     /** @mangle */
