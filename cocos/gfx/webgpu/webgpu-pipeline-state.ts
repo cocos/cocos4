@@ -133,7 +133,8 @@ export class WebGPUPipelineState extends PipelineState {
                         },
                         alpha: {
                             dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
-                            operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendAlphaEq],
+                            operation: WebGPUBlendOps[
+                                this._bs.targets[i].blendAlphaEq === BlendOp.MAX ? BlendOp.ADD : this._bs.targets[i].blendAlphaEq],
                             srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrcAlpha],
                         },
                     };
@@ -253,7 +254,7 @@ export class WebGPUPipelineState extends PipelineState {
         // Compute pipeline: no vertex attributes, no multisample
         if ('compute' in pipelineState) {
             const nativePipeline = nativeDevice?.createComputePipeline(
-                pipelineState as GPUComputePipelineDescriptor,
+                pipelineState,
             );
             this._gpuPipelineState!.nativePipeline = nativePipeline;
             return;
@@ -314,11 +315,9 @@ export class WebGPUPipelineState extends PipelineState {
             }
         }
 
-        (pipelineState as GPURenderPipelineDescriptor).vertex.buffers = vertexAttrs;
-        (pipelineState as GPURenderPipelineDescriptor).multisample = { count: ia.samples };
-        const nativePipeline = nativeDevice?.createRenderPipeline(
-            pipelineState as GPURenderPipelineDescriptor,
-        );
+        pipelineState.vertex.buffers = vertexAttrs;
+        pipelineState.multisample = { count: ia.samples };
+        const nativePipeline = nativeDevice?.createRenderPipeline(pipelineState);
         this._gpuPipelineState!.nativePipeline = nativePipeline;
     }
 
