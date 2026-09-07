@@ -185,6 +185,29 @@ function createWorkerFromFunction (fn: WorkerTask): Worker {
         // applies it to the transferred args and posts the result (or error) back.
         `'use strict';`,
         `const __fn = (${fn.toString()});`,
+        // Recursively collect ArrayBuffers from the return value so they are MOVED
+        // (zero-copy) back to the main thread instead of being structured-cloned.
+        // For large TypedArray results (e.g. terrain vertex data) this avoids copying
+        // hundreds of MB on every task.
+        `function __collectTransfers (v, out) {`,
+        `    if (v == null) { return; }`,
+        `    if (v instanceof ArrayBuffer) {`,
+        `        if (out.indexOf(v) < 0) { out.push(v); }`,
+        `        return;`,
+        `    }`,
+        `    if (ArrayBuffer.isView(v)) {`,
+        `        const b = v.buffer;`,
+        `        if (out.indexOf(b) < 0) { out.push(b); }`,
+        `        return;`,
+        `    }`,
+        `    if (Array.isArray(v)) {`,
+        `        for (let i = 0; i < v.length; i++) { __collectTransfers(v[i], out); }`,
+        `        return;`,
+        `    }`,
+        `    if (typeof v === 'object') {`,
+        `        for (const k in v) { __collectTransfers(v[k], out); }`,
+        `    }`,
+        `}`,
         `self.onmessage = function (e) {`,
         `    const msg = e.data || {};`,
         `    let reply;`,
@@ -194,9 +217,12 @@ function createWorkerFromFunction (fn: WorkerTask): Worker {
         `        reply = { id: msg.id, ok: false, error: (err && (err.message || err.stack)) || String(err) };`,
         `    }`,
         `    try {`,
-        `        self.postMessage(reply);`,
+        `        const transfer = [];`,
+        `        __collectTransfers(reply.value, transfer);`,
+        `        self.postMessage(reply, transfer);`,
         `    } catch (err2) {`,
-        // The result may not be structured-cloneable (e.g. it captured a function or a cyclic object).
+        // The result may not be structured-cloneable (e.g. it captured a function or a cyclic object),
+        // or it may contain a buffer that cannot be transferred (e.g. SharedArrayBuffer).
         `        try {`,
         `            self.postMessage({ id: msg.id, ok: false, error: 'Worker result is not serializable: ' + (err2 && err2.message) });`,
         `        } catch (e3) { /* ignore */ }`,
