@@ -1099,6 +1099,10 @@ module.exports = link(mixin({
             label: "后处理模块（已废弃）",
             description: "此选项用于兼容旧项目(Custom管线)，新项目请使用 Builtin 自带的后处理流程。",
         },
+        render_scene: {
+            label: "新渲染场景",
+            description: "新的面向数据的渲染场景。",
+        },
         legacy_pipeline: {
             label: "原渲染管线",
             description: "原有的渲染管线，在后续的版本中会被移除。",
