@@ -26,6 +26,24 @@ import { PrimitiveMode, Attribute } from '../gfx';
 
 /**
  * @en
+ * The set of concrete TypedArray types accepted for a dynamic mesh's custom attribute values.
+ * Unlike the standard attributes (positions/normals/uvs/tangents/colors), which are always
+ * float-based, a custom attribute's physical GPU format (`attr.format`) can be any integer or
+ * float format (e.g. RGBA16UI for joint indices). Accepting any concrete TypedArray lets callers
+ * supply data whose element type already matches the target GPU format (fast copy path),
+ * avoiding an unnecessary and potentially lossy "integer -> float -> integer" round trip.
+ * Float32Array remains valid for FLOAT-typed formats (backward compatible).
+ * @zh
+ * 动态网格定制属性 values 字段接受的具体 TypedArray 类型集合。与始终为 float 的标准属性
+ * （positions/normals/uvs/tangents/colors）不同，定制属性的物理 GPU 格式（`attr.format`）可以是
+ * 任意整型或浮点格式（例如 RGBA16UI 用于骨骼关节索引）。接受任意具体 TypedArray 类型，使调用者可以
+ * 直接传入与目标 GPU 格式匹配的原生类型数组（快速拷贝路径），避免不必要甚至有损的
+ * “整数 -> 浮点 -> 整数”往返转换。Float32Array 对于 FLOAT 类型格式依然有效（向后兼容）。
+ */
+export type DynamicAttributeValues = Float32Array | Float64Array | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array;
+
+/**
+ * @en
  * The definition of the parameter for building a primitive geometry.
  * @zh
  * 几何体参数选项。
@@ -239,7 +257,7 @@ export interface IDynamicGeometry {
      */
     customAttributes?: {
         attr: Attribute,
-        values: Float32Array,
+        values: DynamicAttributeValues,
     }[];
 
     /**
