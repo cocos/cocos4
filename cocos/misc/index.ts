@@ -24,6 +24,20 @@
 
 import './intersect';
 
+export {
+    runWorkerTask, createWorker, isWorkerSupported, isSupportStandardWorker,
+    checkWorkerScript, getWorkerConcurrencyLimit, getOptimalWorkerCount,
+} from './worker';
+export type {
+    WorkerTask, WorkerRunOptions, IWorker, IWorkerScriptStatus,
+} from './worker';
+export { WorkerPool } from './worker-pool';
+export type { WorkerPoolOptions } from './worker-pool';
+export type {
+    IWorkerBackend, IWorkerDiagnosis, IWorkerCapabilities, WorkerBackendKind,
+} from './worker-backend';
+export { getWorkerCapabilities } from './worker-backend';
+
 export { Camera } from './camera-component';
 export { ModelRenderer } from './model-renderer';
 export { Renderer } from './renderer';
