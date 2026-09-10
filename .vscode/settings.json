@@ -10,6 +10,7 @@
         "bin": true
     },
     "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.experimental.useTsgo": false,
     "typescript.tsdk": "node_modules/typescript/lib",
     "eslint.validate": [
         "javascript",
