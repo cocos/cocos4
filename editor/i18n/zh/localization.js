@@ -422,7 +422,9 @@ module.exports = link(mixin({
     scrollview: {
         content: '包含可滚动展示内容的节点引用',
         horizontal: '是否开启水平滚动',
+        horizontalContentAlign: '当内容宽度不大于视图时使用的水平对齐方式',
         vertical: '是否开启垂直滚动',
+        verticalContentAlign: '当内容高度不大于视图时使用的垂直对齐方式',
         inertia: '是否开启滚动惯性',
         brake: '开启惯性后，在用户停止触摸后滚动多快停止，0 表示永不停止，1 表示立刻停止',
         elastic: '是否允许滚动内容超过边界，并在停止触摸后回弹',
