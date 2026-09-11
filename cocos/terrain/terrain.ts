@@ -1537,6 +1537,7 @@ export class Terrain extends Component {
      * @zh 获得地形信息
      */
     @type(TerrainInfo)
+    @visible(false)
     public get info (): TerrainInfo {
         const ti = new TerrainInfo();
         ti.tileSize = this.tileSize;
