@@ -26,7 +26,7 @@ import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
 import { Vec2, _decorator, tooltip, serializable } from '../../../../core';
 import { RigidBody2D } from '../rigid-body-2d';
 import { IJoint2D } from '../../../spec/i-physics-joint';
-import { EJoint2DType } from '../../physics-types';
+import { EJoint2DType, PHYSICS_2D_PTM_RATIO } from '../../physics-types';
 import { createJoint } from '../../physics-selector';
 import { Component } from '../../../../scene-graph';
 
@@ -34,6 +34,14 @@ const { ccclass, type } = _decorator;
 
 @ccclass('cc.Joint2D')
 export class Joint2D extends Component {
+    /**
+     * @en
+     * All registered 2D joints.
+     * @zh
+     * 所有已注册的 2D 关节。
+     */
+    static readonly joints: Joint2D[] = [];
+
     /**
      * @en
      * The position of Joint2D in the attached rigid body's local space.
@@ -77,6 +85,42 @@ export class Joint2D extends Component {
 
     /**
      * @en
+     * Gets the attached body's anchor after node scale is applied, in Box2D local units.
+     * @zh
+     * 获取自身刚体锚点。返回值已经按节点世界缩放换算，并转换为 Box2D 使用的物理单位。
+     * @param out @en Optional output vector. A new Vec2 is created when it is not provided. @zh 可选，输出向量。未传入时会创建新的 Vec2。
+     * @returns @en The scaled local anchor in Box2D units. @zh 已缩放并转换为物理单位的本地锚点。
+     * @engineInternal
+     * @mangle
+     */
+    _getAnchorA (out: Vec2 = new Vec2()): Vec2 {
+        const scale = this.node.worldScale;
+        out.x = this.anchor.x * scale.x / PHYSICS_2D_PTM_RATIO;
+        out.y = this.anchor.y * scale.y / PHYSICS_2D_PTM_RATIO;
+        return out;
+    }
+
+    /**
+     * @en
+     * Gets the connected body's anchor after node scale is applied, in Box2D local units.
+     * @zh
+     * 获取连接刚体锚点。连接刚体为空时保持世界原点静态刚体语义，不应用节点缩放；返回值会转换为 Box2D 物理单位。
+     * @param out @en Optional output vector. A new Vec2 is created when it is not provided. @zh 可选，输出向量。未传入时会创建新的 Vec2。
+     * @returns @en The scaled connected local anchor in Box2D units. @zh 已缩放并转换为物理单位的连接锚点。
+     * @engineInternal
+     * @mangle
+     */
+    _getAnchorB (out: Vec2 = new Vec2()): Vec2 {
+        const body = this.connectedBody;
+        const node = body && body.isValid ? body.node : null;
+        const scale = node ? node.worldScale : null;
+        out.x = this.connectedAnchor.x * (scale ? scale.x : 1) / PHYSICS_2D_PTM_RATIO;
+        out.y = this.connectedAnchor.y * (scale ? scale.y : 1) / PHYSICS_2D_PTM_RATIO;
+        return out;
+    }
+
+    /**
+     * @en
      * the Joint2D attached rigid-body.
      * @zh
      * 关节所绑定的刚体组件。
@@ -100,12 +144,36 @@ export class Joint2D extends Component {
      */
     TYPE = EJoint2DType.None;
 
+    /**
+     * @en
+     * Rebuilds all joints whose anchors may be affected by the rigid body's scale.
+     * @zh
+     * 重建所有会受指定刚体缩放影响的关节。
+     * @param body @en The scaled rigid body. @zh 发生缩放变化的刚体。
+     * @engineInternal
+     * @mangle
+     */
+    static _applyScale (body: RigidBody2D): void {
+        const joints = Joint2D.joints;
+        for (let i = 0; i < joints.length; i++) {
+            const joint = joints[i];
+            if (!joint.isValid || (joint.connectedBody && !joint.connectedBody.isValid)) {
+                continue;
+            }
+            const selfBody = joint._body || joint.getComponent(RigidBody2D);
+            if (selfBody === body || joint.connectedBody === body) {
+                joint.apply();
+            }
+        }
+    }
+
     protected override onLoad (): void {
         if (!EDITOR_NOT_IN_PREVIEW) {
             this._joint = createJoint(this.TYPE);
             this._joint.initialize(this);
 
             this._body = this.getComponent(RigidBody2D);
+            Joint2D.joints.push(this);
         }
     }
 
@@ -128,6 +196,10 @@ export class Joint2D extends Component {
     }
 
     protected override onDestroy (): void {
+        const i = Joint2D.joints.indexOf(this);
+        if (i >= 0) {
+            Joint2D.joints.splice(i, 1);
+        }
         if (this._joint && this._joint.onDestroy) {
             this._joint.onDestroy();
         }

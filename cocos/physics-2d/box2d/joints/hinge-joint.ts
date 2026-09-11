@@ -26,7 +26,6 @@ import b2 from '@cocos/box2d';
 import { IHingeJoint } from '../../spec/i-physics-joint';
 import { HingeJoint2D } from '../../framework';
 import { b2Joint } from './joint-2d';
-import { PHYSICS_2D_PTM_RATIO } from '../../framework/physics-types';
 import { toRadian } from '../../../core';
 
 /** @mangle */
@@ -69,8 +68,10 @@ export class b2HingeJoint extends b2Joint implements IHingeJoint {
     _createJointDef (): any {
         const comp = this._jointComp as HingeJoint2D;
         const def = new b2.RevoluteJointDef();
-        def.localAnchorA.Set(comp.anchor.x / PHYSICS_2D_PTM_RATIO, comp.anchor.y / PHYSICS_2D_PTM_RATIO);
-        def.localAnchorB.Set(comp.connectedAnchor.x / PHYSICS_2D_PTM_RATIO, comp.connectedAnchor.y / PHYSICS_2D_PTM_RATIO);
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA.Set(anchorA.x, anchorA.y);
+        def.localAnchorB.Set(anchorB.x, anchorB.y);
 
         def.enableMotor = comp.enableMotor;
         def.maxMotorTorque = comp.maxMotorTorque;
