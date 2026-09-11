@@ -522,8 +522,13 @@ export class ParticleSystem2D extends UIRenderer {
     }
 
     public set preview (val: boolean) {
-        if (val) { this._startPreview(); } else { this._stopPreview(); }
-        this._preview = val;
+        if (val) {
+            this._preview = true;
+            this._startPreview();
+        } else {
+            this._stopPreview();
+            this._preview = false;
+        }
     }
 
     /**
