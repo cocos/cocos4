@@ -78,9 +78,15 @@ async function bundleRuntimeAdapter () {
     const platforms = getPlatformsFromPath(platformsPath);
     console.log(green(`\nBundling runtime platform adapters, including: ${platforms}`));
     for (const platform of platforms) {
+        const engineEntry = normalizePath(ps.join(engineRoot, `platforms/runtime/platforms/${platform}/engine/index.js`));
+        // Some platform dirs may be incomplete in a checkout (missing engine files);
+        // skip them instead of crashing the adapter build.
+        if (!fs.existsSync(engineEntry)) {
+            console.log(`skip platform: ${platform} (missing ${engineEntry})`);
+            continue;
+        }
         console.log(`handle platform: ${green(platform)}`);
         // bundle engine-adapter.js
-        const engineEntry = normalizePath(ps.join(engineRoot, `platforms/runtime/platforms/${platform}/engine/index.js`));
         const engineOutput = normalizePath(ps.join(engineRoot, `bin/adapter/runtime/${platform}/engine-adapter.js`));
         await bundle(engineEntry, engineOutput, true);
     }
