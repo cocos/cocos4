@@ -698,15 +698,15 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             ctx.cmdBuff, ctx.currentPass, ctx.subpassIndex, sceneData.flags);
 
 #if CC_USE_GEOMETRY_RENDERER
-    const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, sceneID);
-    if (!renderData.custom.empty()) {
-        const auto& commands = ctx.ppl->custom.renderCommands;
-        auto iter = commands.find(renderData.custom);
-        if (iter != commands.end()) {
-            ctx.customContext.currentRenderPass = ctx.currentPass;
-            iter->second->beginRenderCommand(ctx.customContext, sceneID);
+        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, sceneID);
+        if (!renderData.custom.empty()) {
+            const auto& commands = ctx.ppl->custom.renderCommands;
+            auto iter = commands.find(renderData.custom);
+            if (iter != commands.end()) {
+                ctx.customContext.currentRenderPass = ctx.currentPass;
+                iter->second->beginRenderCommand(ctx.customContext, sceneID);
+            }
         }
-    }
 #endif
 
         if (any(sceneData.flags & SceneFlags::REFLECTION_PROBE)) {
