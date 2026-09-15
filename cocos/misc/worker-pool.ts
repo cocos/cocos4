@@ -23,8 +23,26 @@
 */
 
 import { isWorkerSupported, WorkerTask, createWorker, IWorker, getOptimalWorkerCount } from './worker';
-import { getWorkerBackend, resetWorkerBackendCache } from './worker-backend';
+import { getWorkerBackend, getWorkerCapabilities, resetWorkerBackendCache } from './worker-backend';
 import { legacyCC } from '../core/global-exports';
+import { warn } from '../core/platform/debug';
+
+/**
+ * @en
+ * Infrastructure failures (a worker that never replies / times out, errors out, fails to spawn, or
+ * speaks a malformed protocol) tolerated before a script-mode pool gives up on the real worker and
+ * degrades to single-threaded execution via `options.fallback`. Kept at 1: each of these signals
+ * means the worker backend is not functioning for this script, so retrying on a real worker would
+ * only fail again — and on the seven single-worker mini-game platforms a retry would also re-occupy
+ * the one worker slot. A task-level computation error (the worker replies `{ ok: false }`) is NOT an
+ * infrastructure failure and never counts toward this.
+ * @zh
+ * 脚本模式的池在放弃真 Worker、降级为 `options.fallback` 单线程执行之前，所能容忍的**基础设施失败**
+ * 次数（Worker 永不回复 / 超时、报错、创建失败、或回发非法协议）。取 1：上述任一信号都意味着该脚本的
+ * Worker 后端不可用，再用真 Worker 重试只会再次失败——而且在 7 个单 Worker 小游戏平台上重试还会重新
+ * 占掉那唯一的槽位。任务级计算错误（Worker 回发 `{ ok: false }`）**不算**基础设施失败，不计入此数。
+ */
+const DEGRADE_AFTER_FAILURES = 1;
 
 /**
  * @en Options for [[WorkerPool]].
@@ -199,6 +217,23 @@ export class WorkerPool {
     private _queue: PoolTask[] = [];
     private _released = false;
     private _taskId = 0;
+    /**
+     * @en Consecutive infrastructure failures on the real worker backend. Reset by [[WorkerPool.recheck]].
+     * Reaching [[DEGRADE_AFTER_FAILURES]] triggers degradation to single-threaded sync execution.
+     * @zh 真 Worker 后端上累计的基础设施失败次数。[[WorkerPool.recheck]] 会重置；达到
+     * [[DEGRADE_AFTER_FAILURES]] 即触发降级为单线程同步执行。
+     */
+    private _infraFailures = 0;
+    /** @en Whether this pool has degraded to single-threaded sync execution. @zh 本池是否已降级为单线程同步执行。 */
+    private _degraded = false;
+    /** @en Guards against spamming the degradation warning (warn at most once per pool). @zh 防止重复刷降级警告（每池至多警告一次）。 */
+    private _degradeWarned = false;
+    /**
+     * @en Guards the CONSTRUCTION-time degradation warning (at most once per pool, even across
+     * [[WorkerPool.recheck]] re-resolutions). @zh 防止重复刷**构造期**降级警告（每池至多一次，即便
+     * [[WorkerPool.recheck]] 反复重解析）。
+     */
+    private _constructionWarned = false;
 
     /**
      * @en
@@ -346,6 +381,7 @@ export class WorkerPool {
                 this._backend = 'sync';
                 this._backendReason = '';
                 this._maxWorkers = 1;
+                this._warnConstructionDegrade(platform.kind, status.reason);
             } else {
                 // Nothing usable and no fallback provided: run() will reject with this precise reason.
                 this._backend = 'none';
@@ -355,6 +391,7 @@ export class WorkerPool {
                     + 'to run single-threaded on the main thread, or fix the packaging '
                     + '(see docs/worker/README.md).';
                 this._maxWorkers = 0;
+                this._warnConstructionDegrade(platform.kind, status.reason);
             }
         } else if (isWorkerSupported()) {
             // Function mode (mode 1) on a Worker-capable platform (Web): real workers.
@@ -414,6 +451,11 @@ export class WorkerPool {
         if (this._released) {
             return this._backend;
         }
+        // Give the real worker backend another chance: a subpackage may have finished downloading or
+        // the base library may have hot-updated since we degraded. Reset the failure budget so the
+        // fresh probe starts clean. (_degradeWarned stays sticky to avoid log spam across rechecks.)
+        this._infraFailures = 0;
+        this._degraded = false;
         // Drop the cached platform probe so the next read reflects the current environment.
         resetWorkerBackendCache();
         this._resolveBackend();
@@ -538,14 +580,13 @@ export class WorkerPool {
                 try {
                     worker = this._spawnWorker();
                 } catch (err) {
-                    // Script-mode worker creation can throw synchronously (e.g. the WeChat path is not
+                    // Script-mode worker creation can throw synchronously (e.g. the path is not
                     // packaged into the `workers` directory, or a subpackage has not been downloaded).
-                    // There is no synchronous fallback for script mode, so fail this task and keep
-                    // draining the rest of the queue.
+                    // Treat it as an infrastructure failure: degrade so we stop respawning a broken
+                    // backend, and re-run this task via the fallback when one exists (otherwise reject
+                    // it). Keep draining either way so the remaining tasks are not left hanging.
                     const failed = this._queue.shift();
-                    if (failed) {
-                        failed.reject(err as Error);
-                    }
+                    this._onInfraFailure(failed || null, err as Error);
                     continue;
                 }
                 if (worker) {
@@ -591,7 +632,12 @@ export class WorkerPool {
             worker = createWorker(this._fn!);
         }
         // A null `worker` leaves PooledWorker in inline mode → it runs `fn` synchronously.
-        return new PooledWorker(worker, fn, this._idleReleaseAfter, this._onWorkerIdle.bind(this), this._timeout);
+        const pooled = new PooledWorker(worker, fn, this._idleReleaseAfter, this._onWorkerIdle.bind(this), this._timeout);
+        // Route infrastructure failures (timeout / onError / malformed reply) on a REAL worker back to
+        // the pool so it can count them and degrade to single-threaded execution instead of hanging.
+        // An inline executor never triggers it, so the callback simply stays unused there.
+        pooled.onInfraFailure = (t: PoolTask, err: Error): void => this._onInfraFailure(t, err);
+        return pooled;
     }
 
     private _dispatch (worker: PooledWorker, task: PoolTask): void {
@@ -621,6 +667,139 @@ export class WorkerPool {
         // A worker was freed up (idle-release or failure): re-drain so queued tasks don't stall.
         this._drain();
     }
+
+    /**
+     * @internal
+     * Splice out and dispose every IDLE real (non-inline) worker WITHOUT re-draining. Used when
+     * degrading to the `'sync'` backend so a leftover real worker cannot pick up the next task —
+     * `_findIdleWorker` would otherwise hand it to a backend we have just decided is broken. Busy real
+     * workers are left running: never destroy in-flight work; they are released by their own idle
+     * timer once they finish. (Mirrors `_retireInlineWorkers`, which does the opposite on upgrade.)
+     */
+    private _retireIdleRealWorkers (): void {
+        for (let i = this._workers.length - 1; i >= 0; i--) {
+            const w = this._workers[i];
+            if (!w.isInline && !w.busy) {
+                this._workers.splice(i, 1);
+                w.dispose();
+            }
+        }
+    }
+
+    /**
+     * @internal
+     * Handle an INFRASTRUCTURE failure on a real worker: it timed out, errored, failed to spawn, or
+     * spoke a malformed protocol. These all mean the worker backend is not functioning for this
+     * script — unlike a task-level `{ ok: false }` reply (a genuine computation error), which is
+     * rejected directly and never reaches here.
+     *
+     * Script mode: count the failure and, once [[DEGRADE_AFTER_FAILURES]] is reached, degrade the
+     * WHOLE pool so no further task hangs on the broken backend. With `options.fallback` we switch to
+     * the `'sync'` backend (one inline executor on the main thread) and re-run the failed task through
+     * it, so the caller still gets a result instead of a rejection — the graceful "warn + run
+     * single-threaded" path the engine promises. Without a fallback there is no single-thread path to
+     * degrade to, so we keep the existing evict-and-respawn recovery and reject the task, but warn
+     * loudly so the developer learns the worker is broken and how to fix it.
+     *
+     * Function mode is deliberately EXCLUDED from degradation: its inline path is the SAME `_fn` that
+     * may have just deadlocked inside the worker, so running it on the main thread could move the hang
+     * onto the render thread. There we keep the existing recovery — reject the task, evict, respawn.
+     *
+     * @param task The in-flight task that failed, or `null` when the failure carries no task.
+     * @param error The infrastructure error.
+     */
+    private _onInfraFailure (task: PoolTask | null, error: Error): void {
+        if (!this._script) {
+            // Function mode: no safe single-thread path (see above). Reject and let _settle evict +
+            // respawn a fresh worker, exactly as before the circuit breaker existed.
+            if (task) {
+                task.reject(error);
+            }
+            return;
+        }
+
+        this._infraFailures++;
+        if (!this._degraded && this._infraFailures >= DEGRADE_AFTER_FAILURES) {
+            this._degraded = true;
+            if (this._fallback) {
+                // Graceful degradation: every future task runs on the main thread via the fallback.
+                this._backend = 'sync';
+                this._backendReason = '';
+                this._maxWorkers = 1;
+                // Drop idle real workers so the next dispatch goes to an inline executor, not a
+                // leftover worker on the backend we just gave up on.
+                this._retireIdleRealWorkers();
+            }
+            this._warnDegrade(error);
+        }
+
+        if (!task) {
+            return;
+        }
+        if (this._backend === 'sync' && this._fallback) {
+            // Re-run the failed task on the main thread. Front of the queue preserves ordering; the
+            // eviction-driven re-drain (runtime failure) or the _drain loop (spawn failure) dispatches
+            // it through an inline executor running the fallback.
+            this._queue.unshift(task);
+        } else {
+            task.reject(error);
+        }
+    }
+
+    /**
+     * @internal
+     * Emit the one-time RUNTIME-degradation warning. `_degradeWarned` is sticky for the pool's
+     * lifetime so repeated failures — or a `recheck()` that re-degrades — never spam the log.
+     */
+    private _warnDegrade (error: Error): void {
+        if (this._degradeWarned) {
+            return;
+        }
+        this._degradeWarned = true;
+        const script = this._script || '(function)';
+        if (this._fallback) {
+            warn(`WorkerPool degraded to single-threaded execution for "${script}": the worker backend `
+                + `stopped functioning (${error.message}). Remaining and future tasks now run on the main `
+                + `thread via options.fallback, so nothing hangs. If this is a mini-game build, verify the `
+                + `worker script is packaged into the workers directory declared in game.json (WeChat) / `
+                + `manifest.json (quick game) / app.json, that its subpackage has been downloaded, and that `
+                + `options.timeout is set so a non-replying worker is detected. See docs/worker/README.md.`);
+        } else {
+            warn(`WorkerPool's worker backend is failing for "${script}" (${error.message}) and no `
+                + `options.fallback was provided, so tasks are rejected instead of running single-threaded. `
+                + `Provide options.fallback to degrade gracefully, and set options.timeout so a `
+                + `non-replying worker is detected. If this is a mini-game build, verify the script is `
+                + `packaged into the declared workers directory. See docs/worker/README.md.`);
+        }
+    }
+
+    /**
+     * @internal
+     * Warn at CONSTRUCTION time when a worker was genuinely expected but the script is not usable, so
+     * the pool silently fell back to sync (or none). "Genuinely expected" means a mini-game platform
+     * that DOES expose `createWorker` — i.e. a packaging / base-library / subpackage mistake worth
+     * fixing. Stay silent on native (`kind === 'none'`, where single-threaded script mode is the
+     * documented norm) and on mini-game platforms with no worker API at all (e.g. Taobao, where
+     * single-threaded is simply how the platform works — not a mistake). Sticky via
+     * `_constructionWarned` so repeated `recheck()` calls do not spam.
+     */
+    private _warnConstructionDegrade (kind: string, reason: string): void {
+        // `available` (concurrencyLimit > 0) is true for a mini-game backend exactly when it exposes
+        // createWorker, so this fires only on a real packaging / base-library / subpackage mistake —
+        // never on Taobao (no worker API) or native (kind 'none').
+        if (kind !== 'minigame' || !getWorkerCapabilities().available || this._constructionWarned) {
+            return;
+        }
+        this._constructionWarned = true;
+        const script = this._script || '(function)';
+        const outcome = this._fallback
+            ? 'running single-threaded on the main thread via options.fallback'
+            : 'REJECTING tasks (no options.fallback provided)';
+        warn(`WorkerPool could not use a worker for "${script}" and is ${outcome}. Reason: ${reason}. `
+            + `On a mini-game build, verify the script is packaged into the workers directory declared in `
+            + `game.json (WeChat) / manifest.json (quick game) / app.json, and that its subpackage has been `
+            + `downloaded. See docs/worker/README.md.`);
+    }
 }
 
 /**
@@ -640,6 +819,16 @@ interface PoolTask {
 class PooledWorker {
     public busy = false;
     public onComplete: (() => void) | null = null;
+    /**
+     * @internal
+     * Set by the pool: called when an INFRASTRUCTURE failure occurs while a task is in flight — the
+     * worker timed out, errored, or spoke a malformed protocol. The pool counts these and (in script
+     * mode) degrades to single-threaded execution so nothing hangs. Deliberately distinct from a
+     * task-level `{ ok: false }` reply (a genuine computation error), which is rejected directly and
+     * never routed here. Only real workers ever trigger it; an inline executor cannot suffer an
+     * infrastructure failure (a throwing `fallback`/`_fn` is a task-level error).
+     */
+    public onInfraFailure: ((task: PoolTask, error: Error) => void) | null = null;
 
     /**
      * @en
@@ -831,7 +1020,18 @@ class PooledWorker {
         this.cancelTimeoutTimer();
 
         if (error) {
-            task.reject(error);
+            if (this._failed && this.onInfraFailure) {
+                // Infrastructure failure (timeout / onError / malformed reply): the worker backend
+                // itself is not functioning. Hand the task to the pool, which counts the failure,
+                // degrades script-mode pools to single-threaded execution once the threshold is hit,
+                // and either re-runs this task via the fallback or rejects it.
+                this.onInfraFailure(task, error);
+            } else {
+                // Task-level failure (the worker replied { ok: false }, or an inline fallback/_fn
+                // threw): a genuine computation error, not a broken backend. Reject directly and keep
+                // trusting the worker.
+                task.reject(error);
+            }
         } else {
             task.resolve(value);
         }
