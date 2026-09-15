@@ -25,11 +25,11 @@
 import './intersect';
 
 export {
-    createWorker, isWorkerSupported, isSupportStandardWorker,
+    runWorkerTask, createWorker, isWorkerSupported, isSupportStandardWorker,
     checkWorkerScript, getWorkerConcurrencyLimit, getOptimalWorkerCount,
 } from './worker';
 export type {
-    WorkerTask, IWorker, IWorkerScriptStatus,
+    WorkerTask, WorkerRunOptions, IWorker, IWorkerScriptStatus,
 } from './worker';
 export { WorkerPool } from './worker-pool';
 export type { WorkerPoolOptions } from './worker-pool';

@@ -89,7 +89,7 @@ import { minigame } from 'pal/minigame';
  * - On a mini-game platform it wraps the object returned by `minigame.createWorker(path)`
  *   (i.e. `wx` / `tt` / `my` / `swan` / `qg` / `ral` `.createWorker`).
  *
- * Both modes ([[WorkerPool]] for pure functions, and [[createWorker]]`(path)`
+ * Both modes ([[runWorkerTask]] / [[WorkerPool]] for pure functions, and [[createWorker]]`(path)`
  * for a self-written worker script) hand back an `IWorker`, so callers never touch the raw
  * platform object and the same code runs everywhere.
  * @zh
@@ -100,7 +100,7 @@ import { minigame } from 'pal/minigame';
  * - 小游戏平台上包装 `minigame.createWorker(path)` 返回的对象
  *   （即 `wx` / `tt` / `my` / `swan` / `qg` / `ral` 的 `.createWorker`）。
  *
- * 两种模式（纯函数用 [[WorkerPool]]，自写脚本用 [[createWorker]]`(path)`）
+ * 两种模式（纯函数用 [[runWorkerTask]] / [[WorkerPool]]，自写脚本用 [[createWorker]]`(path)`）
  * 都返回 `IWorker`，调用方无需接触平台原始对象，同一套代码处处可跑。
  */
 export interface IWorker {
@@ -263,30 +263,71 @@ export interface IWorkerBackend {
 }
 
 /**
- * @en
- * Wraps a raw platform worker (a native Web `Worker`, or the object returned by
- * `minigame.createWorker(path)`) into the [[IWorker]] shape. Per-platform differences are absorbed
- * here, so nothing above this class knows which platform it runs on:
- * - message/error hooks: mini-game objects use `onMessage(cb)` / `onError(cb)` (the latter optional —
- *   Huawei quick game does not document it), Web uses `onmessage` / `onerror`; detected at call time.
- * - `onProcessKilled` is WeChat-only (iOS experimental worker reclamation) and is routed into the
- *   error listener, so a killed process surfaces as a task failure and the pool can respawn.
- * - the transfer list is passed ONLY when `supportsTransfer` (Web, WeChat V2); elsewhere the payload
- *   is structured-cloned and passing the list may throw.
- * @zh
- * 把平台原始 worker（Web 原生 `Worker` 或 `minigame.createWorker(path)` 返回对象）包装成 [[IWorker]]。
- * 平台差异在这一层被吸收：消息/错误钩子按存在性分发（小游戏 `onMessage/onError`，Web `onmessage/onerror`）；
- * 微信独有的 `onProcessKilled` 路由进错误监听；transfer 列表仅在 `supportsTransfer` 时传递。
+ * @en Wraps a native Web `Worker` into the [[IWorker]] shape.
+ * @zh 把原生 Web `Worker` 包装成 [[IWorker]] 形状。
  * @internal
  */
-export class WorkerAdapter implements IWorker {
+export class WebWorkerAdapter implements IWorker {
+    private _w: Worker;
+
+    constructor (w: Worker) {
+        this._w = w;
+    }
+
+    public postMessage (message: any, transfer?: Transferable[]): void {
+        if (transfer && transfer.length) {
+            this._w.postMessage(message, transfer);
+        } else {
+            this._w.postMessage(message);
+        }
+    }
+
+    public onMessage (listener: (res: any) => void): void {
+        this._w.onmessage = (e): void => { listener(e.data); };
+    }
+
+    public onError (listener: (err: any) => void): void {
+        this._w.onerror = listener;
+    }
+
+    public terminate (): void {
+        this._w.terminate();
+    }
+}
+
+/**
+ * @en
+ * Wraps the object returned by `minigame.createWorker(path)` into the [[IWorker]] shape.
+ *
+ * This is where the per-platform differences are absorbed, so nothing above this class needs to know
+ * which platform it is on:
+ * - `onError` is optional — Huawei quick game does not document it. Guarded, not assumed.
+ * - `onProcessKilled` is WeChat-only (iOS experimental worker reclamation) and is routed into the
+ *   error listener, so a killed process surfaces as a task failure and the pool can respawn.
+ * - The transfer list is passed ONLY when the backend reports `supportsTransfer`. Elsewhere the data
+ *   is structured-cloned, and passing a transfer list may throw.
+ * @zh
+ * 把 `minigame.createWorker(path)` 返回的对象包装成 [[IWorker]] 形状。
+ *
+ * 平台差异在这一层被吸收，因此该类之上的任何代码都不需要知道自己跑在哪个平台：
+ * - `onError` 是可选的——华为快游戏未文档化该接口。做了存在性保护，而非假定存在。
+ * - `onProcessKilled` 是微信独有（iOS 实验性 Worker 被系统回收），会被路由进错误监听，
+ *   因此进程被杀会表现为任务失败，池可以据此重建。
+ * - transfer 列表**仅**在后端自报 `supportsTransfer` 时才传。其余平台走结构化克隆，传 transfer 可能抛错。
+ * @internal
+ */
+export class MinigameWorkerAdapter implements IWorker {
+    private _w: any;
+    private readonly _supportsTransfer: boolean;
     private _errListener: ((err: any) => void) | null = null;
 
-    constructor (private _w: any, private _supportsTransfer: boolean) {
+    constructor (mgWorker: any, supportsTransfer: boolean) {
+        this._w = mgWorker;
+        this._supportsTransfer = supportsTransfer;
         // WeChat iOS experimental worker: the system can reclaim the worker process at any time.
         // Route it to the error listener so the in-flight task fails loudly instead of hanging.
-        if (typeof _w.onProcessKilled === 'function') {
-            _w.onProcessKilled((err: any): void => {
+        if (typeof this._w.onProcessKilled === 'function') {
+            this._w.onProcessKilled((err: any): void => {
                 if (this._errListener) {
                     this._errListener(err || { message: 'Worker process was killed by the system' });
                 }
@@ -295,6 +336,8 @@ export class WorkerAdapter implements IWorker {
     }
 
     public postMessage (message: any, transfer?: Transferable[]): void {
+        // Only WeChat V2 honors a transfer list. On every other mini-game platform the payload is
+        // structured-cloned, and passing the list may throw — so omit it.
         if (transfer && transfer.length && this._supportsTransfer) {
             this._w.postMessage(message, transfer);
         } else {
@@ -303,19 +346,13 @@ export class WorkerAdapter implements IWorker {
     }
 
     public onMessage (listener: (res: any) => void): void {
-        if (typeof this._w.onMessage === 'function') {
-            this._w.onMessage(listener);
-        } else {
-            this._w.onmessage = (e: any): void => { listener(e.data); };
-        }
+        this._w.onMessage(listener);
     }
 
     public onError (listener: (err: any) => void): void {
         this._errListener = listener;
         if (typeof this._w.onError === 'function') {
             this._w.onError(listener);
-        } else {
-            this._w.onerror = listener;
         }
     }
 
@@ -336,11 +373,12 @@ class WebWorkerBackend implements IWorkerBackend {
     // Genuinely requires a cross-origin-isolated context; feature-detect rather than assume.
     public readonly supportsSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
     public readonly supportsFunctionWorker = true;
-    public readonly capabilityReason = 'global Worker available - concurrency bounded only by device cores';
+    public readonly capabilityReason = 'a standard global Worker constructor is available, so any '
+        + 'number of workers may run concurrently (bounded only by the device\'s cores)';
 
     public createScriptWorker (path: string): IWorker {
         // eslint-disable-next-line no-restricted-globals
-        return new WorkerAdapter(new Worker(path), true);
+        return new WebWorkerAdapter(new Worker(path));
     }
 
     public diagnose (path: string): IWorkerDiagnosis {
@@ -393,17 +431,20 @@ class MinigameWorkerBackend implements IWorkerBackend {
             // Taobao, or a mini-game base library too old for workers. Report 0 rather than 1 so
             // callers see "no thread available" instead of being told they can offload.
             this.concurrencyLimit = 0;
-            this.capabilityReason = 'this mini-game platform exposes no createWorker API, so no separate thread is available';
+            this.capabilityReason = 'this mini-game platform exposes no createWorker API and offers no '
+                + 'Web Worker fallback, so no separate thread is available';
         } else if (this.isWeChatStandardWorker) {
             this.concurrencyLimit = Infinity;
-            this.capabilityReason = 'WeChat standard (V2) worker enabled - multiple workers and transfer lists supported';
+            this.capabilityReason = 'the WeChat standard (V2) worker is enabled, so multiple workers may '
+                + 'run concurrently and transfer lists are honored';
         } else {
             // V1 and every other platform allow exactly one. This is a platform rule, not a
             // misconfiguration — the reason string must say so, or callers will hunt for a bug
             // in their own maxWorkers setting.
             this.concurrencyLimit = 1;
-            this.capabilityReason = 'platform rule: exactly ONE worker at a time - tasks move off the '
-                + 'main thread but cannot run in parallel (not a configuration problem)';
+            this.capabilityReason = 'this platform permits exactly ONE worker at a time, so tasks can be '
+                + 'moved off the main thread but cannot be computed in parallel. This is a platform '
+                + 'limit, not a configuration problem';
         }
     }
 
@@ -416,10 +457,11 @@ class MinigameWorkerBackend implements IWorkerBackend {
         // creation fails on Huawei quick game — so the result must be null-checked.
         const created = (minigame as any).createWorker(path);
         if (!created) {
-            throw new Error(`createWorker("${path}") returned no worker - script missing from the `
-                + 'packaged workers dir, or its subpackage is not downloaded (docs/worker/README.md)');
+            throw new Error(`createWorker("${path}") returned no worker instance. The script may be `
+                + 'missing from the packaged workers directory, or its subpackage has not been '
+                + 'downloaded yet (see docs/worker/README.md).');
         }
-        return new WorkerAdapter(created, this.supportsTransfer);
+        return new MinigameWorkerAdapter(created, this.supportsTransfer);
     }
 
     public diagnose (path: string): IWorkerDiagnosis {
@@ -432,8 +474,10 @@ class MinigameWorkerBackend implements IWorkerBackend {
             return {
                 ready: false,
                 version: 0,
-                reason: 'no createWorker API on this platform (Taobao, or a base library older than the '
-                    + 'one introducing createWorker) and no Web Worker fallback',
+                reason: 'this mini-game platform exposes no createWorker API and offers no Web Worker '
+                    + 'fallback, so it cannot run tasks on a separate thread. Either the platform has no '
+                    + 'worker support at all (Taobao mini-game), or its base library is older than the '
+                    + 'version that introduced createWorker',
             };
         }
         if (typeof path !== 'string' || !path) {
@@ -484,9 +528,10 @@ class MinigameWorkerBackend implements IWorkerBackend {
                 return {
                     ready: false,
                     version: 0,
-                    reason: `worker script "${path}" failed to load (createWorker ${probe.error}) - put it `
-                        + 'in the workers dir declared in game.json/manifest.json/app.json and download '
-                        + 'its subpackage first',
+                    reason: `worker script "${path}" could not be loaded (createWorker ${probe.error}) — `
+                        + 'make sure it is placed inside the workers directory declared in game.json '
+                        + '(WeChat) / manifest.json (quick game) / app.json, and that its subpackage '
+                        + 'has been downloaded first if it lives in one',
                 };
             }
         }
@@ -546,20 +591,16 @@ class NoneWorkerBackend implements IWorkerBackend {
     public readonly supportsTransfer = false;
     public readonly supportsSharedArrayBuffer = false;
     public readonly supportsFunctionWorker = false;
-    public readonly capabilityReason = 'no createWorker and no global Worker - expected on native '
-        + 'platforms (JS runs inside an embedded engine with no browser host API)';
+    public readonly capabilityReason = 'neither a platform createWorker nor a global Worker constructor '
+        + 'is available, so no separate thread exists. This is expected on native platforms (JavaScript '
+        + 'runs inside an embedded engine with no browser host API)';
 
     public createScriptWorker (path: string): IWorker {
-        throw new Error(`No worker support in this environment (cannot create "${path}")`);
+        throw new Error(`Worker is not supported in the current environment (cannot create "${path}")`);
     }
 
     public diagnose (_path: string): IWorkerDiagnosis {
-        // Name both routes that were probed, so the developer knows there is nothing left to enable.
-        return {
-            ready: false,
-            version: 0,
-            reason: 'no worker backend on this platform (no createWorker and no global Worker)',
-        };
+        return { ready: false, version: 0, reason: 'no worker backend is available on this platform' };
     }
 }
 
