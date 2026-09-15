@@ -9,11 +9,14 @@
   ],
   "subMetas": {
     "6c48a": {
+      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "e049bea9-db6b-463b-8502-61bf426357a1@6c48a",
-      "displayName": "bottom",
-      "id": "6c48a",
-      "name": "texture",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {},
       "userData": {
         "wrapModeS": "repeat",
         "wrapModeT": "repeat",
@@ -26,12 +29,9 @@
         "imageUuidOrDatabaseUri": "e049bea9-db6b-463b-8502-61bf426357a1",
         "visible": false
       },
-      "ver": "1.0.22",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {}
+      "displayName": "bottom",
+      "id": "6c48a",
+      "name": "texture"
     }
   },
   "userData": {

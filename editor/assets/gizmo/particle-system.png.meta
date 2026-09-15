@@ -9,11 +9,14 @@
   ],
   "subMetas": {
     "6c48a": {
+      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "55052bc6-9909-43c1-b2fc-8818060fb069@6c48a",
-      "displayName": "particle-system",
-      "id": "6c48a",
-      "name": "texture",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {},
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -26,12 +29,9 @@
         "imageUuidOrDatabaseUri": "55052bc6-9909-43c1-b2fc-8818060fb069",
         "visible": false
       },
-      "ver": "1.0.22",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {}
+      "displayName": "particle-system",
+      "id": "6c48a",
+      "name": "texture"
     }
   },
   "userData": {

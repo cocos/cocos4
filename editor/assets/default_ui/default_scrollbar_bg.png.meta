@@ -9,11 +9,14 @@
   ],
   "subMetas": {
     "6c48a": {
+      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "28765e2f-040a-4c65-8e8c-f9d0bb79d863@6c48a",
-      "displayName": "default_scrollbar_bg",
-      "id": "6c48a",
-      "name": "texture",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {},
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -26,19 +29,19 @@
         "imageUuidOrDatabaseUri": "28765e2f-040a-4c65-8e8c-f9d0bb79d863",
         "visible": false
       },
-      "ver": "1.0.22",
+      "displayName": "default_scrollbar_bg",
+      "id": "6c48a",
+      "name": "texture"
+    },
+    "f9941": {
+      "ver": "1.0.12",
+      "importer": "sprite-frame",
+      "uuid": "28765e2f-040a-4c65-8e8c-f9d0bb79d863@f9941",
       "imported": true,
       "files": [
         ".json"
       ],
-      "subMetas": {}
-    },
-    "f9941": {
-      "importer": "sprite-frame",
-      "uuid": "28765e2f-040a-4c65-8e8c-f9d0bb79d863@f9941",
-      "displayName": "default_scrollbar_bg",
-      "id": "f9941",
-      "name": "spriteFrame",
+      "subMetas": {},
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -126,12 +129,9 @@
         "pivotY": 0.5,
         "meshType": 0
       },
-      "ver": "1.0.12",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {}
+      "displayName": "default_scrollbar_bg",
+      "id": "f9941",
+      "name": "spriteFrame"
     }
   },
   "userData": {

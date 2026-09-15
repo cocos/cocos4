@@ -9,11 +9,14 @@
   ],
   "subMetas": {
     "6c48a": {
+      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "c78f78a5-3553-4d1f-ad3b-177fe55af68b@6c48a",
-      "displayName": "sphere-light",
-      "id": "6c48a",
-      "name": "texture",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {},
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -26,12 +29,9 @@
         "imageUuidOrDatabaseUri": "c78f78a5-3553-4d1f-ad3b-177fe55af68b",
         "visible": false
       },
-      "ver": "1.0.22",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {}
+      "displayName": "sphere-light",
+      "id": "6c48a",
+      "name": "texture"
     }
   },
   "userData": {
