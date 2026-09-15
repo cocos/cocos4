@@ -9,14 +9,11 @@
   ],
   "subMetas": {
     "6c48a": {
-      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "bd373594-df84-486d-a34a-19d09ddaa973@6c48a",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {},
+      "displayName": "camera",
+      "id": "6c48a",
+      "name": "texture",
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -29,9 +26,12 @@
         "imageUuidOrDatabaseUri": "bd373594-df84-486d-a34a-19d09ddaa973",
         "visible": false
       },
-      "displayName": "camera",
-      "id": "6c48a",
-      "name": "texture"
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
     }
   },
   "userData": {

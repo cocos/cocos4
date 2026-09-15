@@ -9,14 +9,11 @@
   ],
   "subMetas": {
     "6c48a": {
-      "ver": "1.0.22",
       "importer": "texture",
       "uuid": "57520716-48c8-4a19-8acf-41c9f8777fb0@6c48a",
-      "imported": true,
-      "files": [
-        ".json"
-      ],
-      "subMetas": {},
+      "displayName": "default_sprite",
+      "id": "6c48a",
+      "name": "texture",
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -29,19 +26,19 @@
         "imageUuidOrDatabaseUri": "57520716-48c8-4a19-8acf-41c9f8777fb0",
         "visible": false
       },
-      "displayName": "default_sprite",
-      "id": "6c48a",
-      "name": "texture"
-    },
-    "f9941": {
-      "ver": "1.0.12",
-      "importer": "sprite-frame",
-      "uuid": "57520716-48c8-4a19-8acf-41c9f8777fb0@f9941",
+      "ver": "1.0.22",
       "imported": true,
       "files": [
         ".json"
       ],
-      "subMetas": {},
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "57520716-48c8-4a19-8acf-41c9f8777fb0@f9941",
+      "displayName": "default_sprite",
+      "id": "f9941",
+      "name": "spriteFrame",
       "userData": {
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
@@ -129,9 +126,12 @@
         "pivotY": 0.5,
         "meshType": 0
       },
-      "displayName": "default_sprite",
-      "id": "f9941",
-      "name": "spriteFrame"
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
     }
   },
   "userData": {

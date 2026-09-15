@@ -24,7 +24,6 @@
 
 import { isWorkerSupported, WorkerTask, createWorker, IWorker, getOptimalWorkerCount } from './worker';
 import { getWorkerBackend, getWorkerCapabilities, resetWorkerBackendCache } from './worker-backend';
-import { legacyCC } from '../core/global-exports';
 import { warn } from '../core/platform/debug';
 
 /**
@@ -385,11 +384,8 @@ export class WorkerPool {
             } else {
                 // Nothing usable and no fallback provided: run() will reject with this precise reason.
                 this._backend = 'none';
-                this._backendReason = `No worker backend available for "${this._script}". `
-                    + `Platform worker: ${status.reason}. No global Worker either. `
-                    + 'Provide options.fallback (a synchronous task function computing the same result) '
-                    + 'to run single-threaded on the main thread, or fix the packaging '
-                    + '(see docs/worker/README.md).';
+                this._backendReason = `No worker backend for "${this._script}" (${status.reason}). `
+                    + 'Provide options.fallback to run single-threaded, or fix packaging (docs/worker/README.md).';
                 this._maxWorkers = 0;
                 this._warnConstructionDegrade(platform.kind, status.reason);
             }
@@ -758,18 +754,12 @@ export class WorkerPool {
         this._degradeWarned = true;
         const script = this._script || '(function)';
         if (this._fallback) {
-            warn(`WorkerPool degraded to single-threaded execution for "${script}": the worker backend `
-                + `stopped functioning (${error.message}). Remaining and future tasks now run on the main `
-                + `thread via options.fallback, so nothing hangs. If this is a mini-game build, verify the `
-                + `worker script is packaged into the workers directory declared in game.json (WeChat) / `
-                + `manifest.json (quick game) / app.json, that its subpackage has been downloaded, and that `
-                + `options.timeout is set so a non-replying worker is detected. See docs/worker/README.md.`);
-        } else {
-            warn(`WorkerPool's worker backend is failing for "${script}" (${error.message}) and no `
-                + `options.fallback was provided, so tasks are rejected instead of running single-threaded. `
-                + `Provide options.fallback to degrade gracefully, and set options.timeout so a `
-                + `non-replying worker is detected. If this is a mini-game build, verify the script is `
+            warn(`WorkerPool degraded to single-threaded for "${script}": worker backend failed (${error.message}). `
+                + `Tasks now run on the main thread via options.fallback. On mini-game builds, verify the script is `
                 + `packaged into the declared workers directory. See docs/worker/README.md.`);
+        } else {
+            warn(`WorkerPool's worker backend is failing for "${script}" (${error.message}) with no options.fallback, `
+                + `so tasks are rejected. Provide options.fallback to degrade gracefully. See docs/worker/README.md.`);
         }
     }
 
@@ -796,9 +786,7 @@ export class WorkerPool {
             ? 'running single-threaded on the main thread via options.fallback'
             : 'REJECTING tasks (no options.fallback provided)';
         warn(`WorkerPool could not use a worker for "${script}" and is ${outcome}. Reason: ${reason}. `
-            + `On a mini-game build, verify the script is packaged into the workers directory declared in `
-            + `game.json (WeChat) / manifest.json (quick game) / app.json, and that its subpackage has been `
-            + `downloaded. See docs/worker/README.md.`);
+            + `On mini-game builds, verify the script is packaged into the declared workers directory. See docs/worker/README.md.`);
     }
 }
 
@@ -945,9 +933,8 @@ class PooledWorker {
                 return;
             }
             this._failed = true;
-            this._settle(null, new Error(`Worker task timed out after ${this._timeout}ms — the worker never `
-                + 'replied (deadlock, infinite loop, or a script that does not follow the engine protocol). '
-                + 'The worker has been discarded; see docs/worker/README.md'));
+            this._settle(null, new Error(`Worker task timed out after ${this._timeout}ms — the worker never replied `
+                + '(deadlock, infinite loop, or non-protocol script). Worker discarded; see docs/worker/README.md'));
         }, this._timeout);
     }
 
@@ -994,9 +981,8 @@ class PooledWorker {
             || typeof reply.id !== 'number'
             || typeof reply.ok !== 'boolean') {
             this._failed = true;
-            this._settle(null, new Error('Worker script sent a malformed reply — it must implement the engine '
-                + 'protocol: receive { id, args } and post back { id, ok, value } or { id, ok: false, error } '
-                + '(see docs/worker/cc-worker-template.js)'));
+            this._settle(null, new Error('Worker script sent a malformed reply — it must implement the engine protocol: '
+                + 'receive { id, args }, post back { id, ok, value } or { id, ok: false, error } (docs/worker/cc-worker-template.js)'));
             return;
         }
         // Guard against a stale/late reply from a previous task on the same worker.
@@ -1087,6 +1073,3 @@ interface IWorkerReply {
     value?: unknown;
     error?: string;
 }
-
-// Register the pool on the `cc` namespace so developers can call `new cc.WorkerPool(...)`.
-legacyCC.WorkerPool = WorkerPool;

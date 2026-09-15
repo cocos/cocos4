@@ -888,7 +888,10 @@
             "pal/input/minigame/gamepad-input.js",
             "pal/input/minigame/handheld-input.js",
             "pal/input/minigame/handle-input.js",
-            "pal/input/minigame/hmd-input.js"
+            "pal/input/minigame/hmd-input.js",
+            "cocos/misc/worker.ts",
+            "cocos/misc/worker-backend.ts",
+            "cocos/misc/worker-pool.ts"
         ]
     }
 }
