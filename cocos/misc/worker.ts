@@ -336,10 +336,22 @@ function workerBootstrap (__fn: (...args: any[]) => any): void {
     // SharedArrayBuffer is deliberately NOT transferable: listing it in the transfer array makes
     // postMessage throw, and the tier-2 retry then drops zero-copy for EVERY genuine ArrayBuffer in
     // the same reply. A SAB is shared by reference through structured clone, so it needs no entry.
+
+    // `OffscreenCanvas` is resolved off the global object instead of being named directly.
+    // TypeScript only added `declare var OffscreenCanvas` to lib.dom.d.ts in 4.9, while
+    // @types/webGPU.d.ts contributes a bare `interface OffscreenCanvas`. Under an older compiler
+    // (the API-docs toolchain pins TypeScript 4.6) the identifier therefore has a *type* meaning
+    // but no *value* meaning, and `typeof OffscreenCanvas` / `instanceof OffscreenCanvas` fail
+    // with TS2693. The indirection is also closer to runtime reality: a platform may ship the
+    // type without exposing the constructor. Reaching for the global object here — rather than
+    // going through `pal/` like the rest of the engine — is forced: this function is serialized
+    // with toString() and re-evaluated in a fresh worker scope, so it cannot import anything.
+    const globalScope: any = typeof globalThis !== 'undefined' ? globalThis : undefined;
+    const OffscreenCanvasCtor = globalScope ? globalScope.OffscreenCanvas : undefined;
     const isTransferable = (v: any): boolean => (typeof ArrayBuffer !== 'undefined' && v instanceof ArrayBuffer)
         || (typeof MessagePort !== 'undefined' && v instanceof MessagePort)
         || (typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap)
-        || (typeof OffscreenCanvas !== 'undefined' && v instanceof OffscreenCanvas);
+        || (!!OffscreenCanvasCtor && v instanceof OffscreenCanvasCtor);
     // Recursively collect transferables from the result so big buffers MOVE (zero-copy) back to the
     // main thread. Each rule fixes a real defect: seen-set (cycles), Object.keys (own props only,
     // matching structured clone), depth cap 32 (stack safety). Collecting is an OPTIMISATION: any
