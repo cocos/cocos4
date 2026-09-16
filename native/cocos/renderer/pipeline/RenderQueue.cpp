@@ -25,6 +25,9 @@
 #include "RenderQueue.h"
 
 #include <utility>
+#include <cmath>
+#include <limits>
+#include "base/Utils.h"
 #include "PipelineSceneData.h"
 #include "PipelineStateManager.h"
 #include "RenderPipeline.h"
@@ -37,6 +40,31 @@
 
 namespace cc {
 namespace pipeline {
+
+namespace {
+
+/**
+* The mapping below assumes IEEE 754 binary32 floats (32-bit). Every platform
+* Cocos targets satisfies this; the asserts make the assumption loud if not.
+*/
+static_assert(sizeof(float) == sizeof(uint32_t), "float must be 32-bit");
+static_assert(std::numeric_limits<float>::is_iec559, "float must be IEEE 754");
+
+/**
+* Map a float to a uint32 whose unsigned-integer ordering matches the float's
+* numeric ordering (the classic radix-sort "flip"):
+*   * non-negative: flip the sign bit
+*   * negative:      complement all bits
+* This maps [-inf, -0.0] to [0, 2^31) and [+0.0, +inf] to [2^31, 2^32), so the
+* unsigned comparison orders floats correctly. NaN is excluded by the caller.
+*/
+inline uint32_t floatToSortableUint(float value) {
+    constexpr uint32_t signBit = 0x80000000U;
+    const auto bits = utils::numext::bit_cast<uint32_t>(value);
+    return (bits & signBit) ? ~bits : (bits ^ signBit);
+}
+
+} // namespace
 
 RenderQueue::RenderQueue(RenderPipeline *pipeline, RenderQueueCreateInfo desc, bool useOcclusionQuery)
 : _pipeline(pipeline), _passDesc(std::move(desc)), _useOcclusionQuery(useOcclusionQuery) {
@@ -60,7 +88,27 @@ bool RenderQueue::insertRenderPass(const RenderObject &renderObj, uint32_t subMo
     auto shaderId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(subModel->getShader(passIdx)));
     const auto hash = (0 << 30) | (passPriority << 16) | (modelPriority << 8) | passIdx;
     const auto priority = renderObj.model->getPriority();
-    RenderPass renderPass = {priority, hash, renderObj.depth, shaderId, passIdx, subModel};
+    RenderPass renderPass{};
+    renderPass.priority = priority;
+    renderPass.hash = hash;
+    renderPass.depth = renderObj.depth;
+    renderPass.shaderID = shaderId;
+    renderPass.passIndex = passIdx;
+    renderPass.subModel = subModel;
+
+    /**
+    * Pack the sort keys once here so the comparator only compares uint64 keys.
+    * secondaryKey: depthKey << 32 | shaderID (transparent inverts depth for back-to-front).
+    */
+    CC_ASSERT(!std::isnan(renderObj.depth));
+    const uint32_t depthKey = floatToSortableUint(renderObj.depth);
+    if (isTransparent) {
+        renderPass.primaryKey = (static_cast<uint64_t>(priority) << 32) | hash;
+        renderPass.secondaryKey = (static_cast<uint64_t>(~depthKey) << 32) | shaderId;
+    } else {
+        renderPass.primaryKey = hash;
+        renderPass.secondaryKey = (static_cast<uint64_t>(depthKey) << 32) | shaderId;
+    }
     _queue.emplace_back(renderPass);
 
     return true;

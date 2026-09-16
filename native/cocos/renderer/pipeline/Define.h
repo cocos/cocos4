@@ -73,6 +73,15 @@ struct CC_DLL RenderPass {
     uint32_t hash = 0;
     float depth = 0.0F;
     uint32_t shaderID = 0;
+    /**
+    * Packed sort keys, computed once in RenderQueue::insertRenderPass so the
+    * comparator degenerates to a single uint64 compare.
+    *   opaque:      primaryKey = hash,                  secondaryKey = depthKey << 32 | shaderID
+    *   transparent: primaryKey = priority << 32 | hash, secondaryKey = ~depthKey << 32 | shaderID
+    * depthKey is the order-preserving uint32 mapping of depth.
+    */
+    uint64_t primaryKey = 0;
+    uint64_t secondaryKey = 0;
     uint32_t passIndex = 0;
     const scene::SubModel *subModel = nullptr;
 };
@@ -175,35 +184,17 @@ using RenderQueueDescList = ccstd::vector<IntrusivePtr<RenderQueueDesc>>;
 uint32_t getPhaseID(const ccstd::string &phase);
 
 inline bool opaqueCompareFn(const RenderPass &a, const RenderPass &b) {
-    if (a.hash != b.hash) {
-        return a.hash < b.hash;
+    if (a.primaryKey != b.primaryKey) {
+        return a.primaryKey < b.primaryKey;
     }
-
-    CC_ASSERT(!std::isnan(a.depth) && !std::isnan(b.depth));
-
-    if (a.depth != b.depth) {
-        return a.depth < b.depth;
-    }
-
-    return a.shaderID < b.shaderID;
+    return a.secondaryKey < b.secondaryKey;
 }
 
 inline bool transparentCompareFn(const RenderPass &a, const RenderPass &b) {
-    if (a.priority != b.priority) {
-        return a.priority < b.priority;
+    if (a.primaryKey != b.primaryKey) {
+        return a.primaryKey < b.primaryKey;
     }
-
-    if (a.hash != b.hash) {
-        return a.hash < b.hash;
-    }
-
-    CC_ASSERT(!std::isnan(a.depth) && !std::isnan(b.depth));
-
-    if (a.depth != b.depth) {
-        return b.depth < a.depth;
-    }
-
-    return a.shaderID < b.shaderID;
+    return a.secondaryKey < b.secondaryKey;
 }
 
 inline uint32_t convertPhase(const ccstd::vector<ccstd::string> &stages) {
