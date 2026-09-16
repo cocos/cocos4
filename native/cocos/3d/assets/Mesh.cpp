@@ -27,6 +27,7 @@
 #include "3d/assets/Skeleton.h"
 #include "3d/misc/BufferBlob.h"
 #include "3d/misc/CreateMesh.h"
+#include "base/TemplateUtils.h"
 #include "base/std/hash/hash.h"
 #include "core/DataView.h"
 #include "core/assets/RenderingSubMesh.h"
@@ -1190,6 +1191,15 @@ const gfx::FormatInfo *Mesh::readAttributeFormat(index_t primitiveIndex, const c
     return result;
 }
 
+namespace {
+// Wrap a standard (always-float) dynamic geometry channel into a `TypedArray` view without
+// copying, so it can share the same handling path as `customAttributes` below, whose element
+// type may be any concrete TypedArray alternative (not necessarily float).
+TypedArray wrapAsTypedArray(const Float32Array &arr) {
+    return arr;
+}
+} // namespace
+
 void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometry) {
     if (!_struct.dynamic.has_value()) {
         return;
@@ -1199,30 +1209,30 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
         return;
     }
 
-    ccstd::vector<const Float32Array *> buffers;
+    ccstd::vector<TypedArray> buffers;
     if (!geometry.positions.empty()) {
-        buffers.push_back(&geometry.positions);
+        buffers.push_back(wrapAsTypedArray(geometry.positions));
     }
 
     if (geometry.normals.has_value() && !geometry.normals.value().empty()) {
-        buffers.push_back(&geometry.normals.value());
+        buffers.push_back(wrapAsTypedArray(geometry.normals.value()));
     }
 
     if (geometry.uvs.has_value() && !geometry.uvs.value().empty()) {
-        buffers.push_back(&geometry.uvs.value());
+        buffers.push_back(wrapAsTypedArray(geometry.uvs.value()));
     }
 
     if (geometry.tangents.has_value() && !geometry.tangents.value().empty()) {
-        buffers.push_back(&geometry.tangents.value());
+        buffers.push_back(wrapAsTypedArray(geometry.tangents.value()));
     }
 
     if (geometry.colors.has_value() && !geometry.colors.value().empty()) {
-        buffers.push_back(&geometry.colors.value());
+        buffers.push_back(wrapAsTypedArray(geometry.colors.value()));
     }
 
     if (geometry.customAttributes.has_value()) {
         for (const auto &ca : geometry.customAttributes.value()) {
-            buffers.push_back(&ca.values);
+            buffers.push_back(ca.values);
         }
     }
 
@@ -1234,19 +1244,44 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
 
     // update _data & buffer
     for (auto index = 0U; index < buffers.size(); index++) {
-        const auto &vertices = *buffers[index];
+        const auto &vertices = buffers[index];
         auto &bundle = _struct.vertexBundles[primitive.vertexBundelIndices[index]];
+        const auto &attribute = bundle.attributes[0];
+        const auto &formatInfo = gfx::GFX_FORMAT_INFOS[static_cast<uint32_t>(attribute.format)];
         const auto stride = bundle.view.stride;
-        const auto vertexCount = vertices.byteLength() / stride;
-        const auto updateSize = vertices.byteLength();
+        const auto vertexByteLength = getTypedArrayLength(vertices) * getTypedArrayBytesPerElement(vertices);
+
+        // Defensive check: the element type of `vertices` must physically match the GPU format
+        // declared for this attribute (e.g. a Uint16Array for RGBA16UI), otherwise the vertex
+        // count derived from byteLength()/stride would silently be wrong (see the historical
+        // "a_joints becomes 2x vertices" bug this replaces). Fail fast with a clear diagnostic
+        // instead of memcpy-ing misinterpreted data.
+        // NOTE: keep the asserted condition in a short-named bool (rather than inlining the full
+        // expression) because CC_ASSERTF stringifies the condition via #cond into a fixed 256-byte
+        // buffer together with the message below; a long inlined expression can overflow that
+        // buffer and trip -Werror=format-truncation on some toolchains (e.g. Android NDK clang).
+        const auto elementBytes = getTypedArrayBytesPerElement(vertices);
+        const bool formatMatches = elementBytes * formatInfo.count == formatInfo.size;
+        CC_ASSERTF(formatMatches,
+                   "Attribute '%s': element size %u * count %u != format size %u. Use a "
+                   "TypedArray matching the GPU format (e.g. Uint16Array for RGBA16UI).",
+                   attribute.name.c_str(), elementBytes, formatInfo.count, formatInfo.size);
+
+        const auto vertexCount = vertexByteLength / stride;
+        const auto updateSize = vertexByteLength;
         auto *dstBuffer = _data.buffer()->getData() + bundle.view.offset;
-        const auto *srcBuffer = vertices.buffer()->getData() + vertices.byteOffset();
         auto *vertexBuffer = subMesh->getVertexBuffers()[index];
         CC_ASSERT_LE(vertexCount, info.maxSubMeshVertices);
 
         if (updateSize > 0U) {
-            std::memcpy(dstBuffer, srcBuffer, updateSize);
-            vertexBuffer->update(srcBuffer, updateSize);
+            ccstd::visit(overloaded{
+                             [&](const auto &typedArray) {
+                                 const auto *srcBuffer = typedArray.buffer()->getData() + typedArray.byteOffset();
+                                 std::memcpy(dstBuffer, srcBuffer, updateSize);
+                                 vertexBuffer->update(srcBuffer, updateSize);
+                             },
+                             [](const ccstd::monostate & /*unused*/) {}},
+                         vertices);
         }
 
         bundle.view.count = vertexCount;
