@@ -30,10 +30,9 @@
 #include <tuple>
 #include <typeinfo>
 #include <utility>
-
 #include <unordered_map>
 #include <vector>
-
+#include <cstdint>
 #include "plugins/bus/BusTypes.h"
 
 namespace cc {
