@@ -22,6 +22,7 @@
  THE SOFTWARE.
 */
 
+import { JSB } from 'internal:constants';
 import { IAssembler } from '../../2d/renderer/base';
 
 import { StaticVBAccessor } from '../../2d/renderer/static-vb-accessor';
@@ -126,6 +127,9 @@ class Simple implements IAssembler {
         const skeleton = comp._skeleton;
         if (skeleton && comp.node.active && comp.skeletonData?.isValid) {
             updateComponentRenderData(comp);
+        }
+        if (!JSB) {
+            comp._populateMiddlewareDrawInfos();
         }
     }
 }

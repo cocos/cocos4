@@ -22,7 +22,6 @@
  THE SOFTWARE.
 */
 
-import { JSB } from 'internal:constants';
 import { Mat4, Size, Vec3 } from '../../core/math';
 import type { IAssembler } from '../../2d/renderer/base';
 import type { IBatcher } from '../../2d/renderer/i-batcher';
@@ -78,10 +77,7 @@ class Simple implements IAssembler {
     }
 
     createData (layer: TiledLayer): BaseRenderData {
-        if (JSB) {
-            this.ensureAccessor();
-        }
-
+        this.ensureAccessor();
         return null as unknown as BaseRenderData;
     }
 
@@ -154,9 +150,7 @@ class Simple implements IAssembler {
             comp.setCullingDirty(false);
             comp.setUserNodeDirty(false);
         }
-        if (JSB) {
-            comp.prepareDrawData();
-        }
+        comp.prepareDrawData();
     }
 
     updateColor (tiled: TiledLayer): void {
@@ -310,12 +304,8 @@ function packRenderData (): void {
     const vbCount = 4 * _fillCount;
     const ibCount = 6 * _fillCount;
     const tiledData = _curLayer.requestTiledRenderData();
-    if (JSB) {
-        tiledData.renderData = RenderData.add(vfmtPosUvColor, _accessor);
-        tiledData.renderData.drawInfoType = RenderDrawInfoType.MIDDLEWARE;
-    } else {
-        tiledData.renderData = RenderData.add(vfmtPosUvColor);
-    }
+    tiledData.renderData = RenderData.add(vfmtPosUvColor, _accessor);
+    tiledData.renderData.drawInfoType = RenderDrawInfoType.MIDDLEWARE;
     tiledData.texture = _curTexture;
     const rd = tiledData.renderData;
     rd.resize(vbCount, ibCount);
