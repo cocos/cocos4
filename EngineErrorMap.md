@@ -3639,7 +3639,7 @@ This device does not support WebGL.
 
 ### 16334
 
-A Class already exists with the same %s : %s. %s
+Could not register class ID '%s' for '%s' since the ID has been registered for '%s'.
 
 ### 16335
 
