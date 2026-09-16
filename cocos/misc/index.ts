@@ -24,19 +24,11 @@
 
 import './intersect';
 
-export {
-    runWorkerTask, createWorker, isWorkerSupported, isSupportStandardWorker,
-    checkWorkerScript, getWorkerConcurrencyLimit, getOptimalWorkerCount,
-} from './worker';
-export type {
-    WorkerTask, WorkerRunOptions, IWorker, IWorkerScriptStatus,
-} from './worker';
-export { WorkerPool } from './worker-pool';
-export type { WorkerPoolOptions } from './worker-pool';
-export type {
-    IWorkerBackend, IWorkerDiagnosis, IWorkerCapabilities, WorkerBackendKind,
-} from './worker-backend';
-export { getWorkerCapabilities } from './worker-backend';
+// NOTE: the worker subsystem (`./worker`, `./worker-pool`, `./worker-backend`) is deliberately
+// NOT re-exported here. `cocos/misc` is part of the always-on `base` feature, so anything exported
+// from this file ships in every build's main bundle. The worker subsystem is exposed through the
+// optional `worker` feature instead (see `exports/worker.ts` and `features.worker` in cc.config.json),
+// so projects that never touch `WorkerPool` pay zero bytes for it.
 
 export { Camera } from './camera-component';
 export { ModelRenderer } from './model-renderer';

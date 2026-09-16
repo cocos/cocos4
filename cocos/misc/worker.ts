@@ -22,12 +22,11 @@
  THE SOFTWARE.
 */
 
-import { legacyCC } from '../core/global-exports';
 import {
     getWorkerBackend,
     getWebWorkerCtor,
     getWorkerCapabilities,
-    WebWorkerAdapter,
+    WorkerAdapter,
 } from './worker-backend';
 import type { IWorker } from './worker-backend';
 
@@ -74,44 +73,6 @@ export type { IWorker };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WorkerTask<TArgs extends any[] = any[], TResult = unknown> = (...args: TArgs) => TResult;
 
-/**
- * @en Options for running a task in a Web Worker.
- * @zh 在 Web Worker 中运行任务的选项。
- */
-export interface WorkerRunOptions {
-    /**
-     * @en
-     * Transferable objects (e.g. `ArrayBuffer`, `MessagePort`) to be transferred (zero-copy) to the worker.
-     * Transferred buffers are neutered (detached) on the main thread.
-     * @zh
-     * 要零拷贝转移到 Worker 的可转移对象（如 `ArrayBuffer`、`MessagePort`）。
-     * 被转移的缓冲区在主线程会被置空（detach）。
-     */
-    transfer?: Transferable[];
-    /**
-     * @en
-     * Timeout in milliseconds. When exceeded, the task rejects with an error and the worker is terminated.
-     * Set to 0 (default) to disable the timeout.
-     * @zh
-     * 超时时间（毫秒）。超过后任务以错误结束并终止 Worker。设为 0（默认）表示不超时。
-     */
-    timeout?: number;
-}
-
-/**
- * @en Result envelope exchanged between the main thread and the worker.
- * @zh 主线程与 Worker 之间交换的结果信封。
- * @internal
- */
-interface IWorkerReply {
-    id: number;
-    ok: boolean;
-    value?: unknown;
-    error?: string;
-}
-
-let _taskId = 0;
-
 let _workerSupport: boolean | undefined;
 
 /**
@@ -119,8 +80,8 @@ let _workerSupport: boolean | undefined;
  * Detect whether the current environment supports spawning a Web Worker from a serialized function
  * (i.e. `Worker` constructor + `Blob` + `URL.createObjectURL` are all available).
  *
- * This is the capability required by **mode 1** (pure-function workers used by [[runWorkerTask]] /
- * [[WorkerPool]]). Native platforms run JavaScript inside an embedded engine (V8 / JavaScriptCore)
+ * This is the capability required by **mode 1** (pure-function workers used by [[WorkerPool]]).
+ * Native platforms run JavaScript inside an embedded engine (V8 / JavaScriptCore)
  * without the browser host API, and mini-game platforms forbid runtime code evaluation and have no
  * `Blob` (they use `createWorker` with a packaged script path instead), so both report `false` here
  * and mode 1 falls back to running synchronously on the main thread. Use [[createWorker]]`(path)`
@@ -134,7 +95,7 @@ let _workerSupport: boolean | undefined;
  * 检测当前环境是否支持从序列化函数创建 Web Worker
  * （即 `Worker` 构造器 + `Blob` + `URL.createObjectURL` 三者齐全）。
  *
- * 这是**模式一**（[[runWorkerTask]] / [[WorkerPool]] 使用的纯函数 Worker）所需的能力。
+ * 这是**模式一**（[[WorkerPool]] 使用的纯函数 Worker）所需的能力。
  * 原生平台在嵌入式 JS 引擎（V8 / JavaScriptCore）中运行、没有浏览器宿主 API；小游戏平台禁止运行时代码求值
  * 且没有 `Blob`（它们用 `createWorker` + 打包脚本路径），因此两者这里都返回 `false`，
  * 模式一自动降级为主线程同步执行。小游戏平台上若要真正的 Worker，请用 [[createWorker]]`(path)`（模式二）。
@@ -365,14 +326,84 @@ export function getWorkerConcurrencyLimit (): number {
 }
 
 /**
+ * The worker bootstrap, kept as a REAL function on purpose: `Function.prototype.toString()` yields
+ * its compiled source — minified in release builds — which is what gets injected into the Blob
+ * worker. A hand-written source string would ship un-minified text (~1.3 KB) and could drift from
+ * the implementation; this way the payload is exactly as small as the build makes it.
+ * The function must stay SELF-CONTAINED (only globals inside): it runs in a fresh worker scope.
+ */
+function workerBootstrap (__fn: (...args: any[]) => any): void {
+    // SharedArrayBuffer is deliberately NOT transferable: listing it in the transfer array makes
+    // postMessage throw, and the tier-2 retry then drops zero-copy for EVERY genuine ArrayBuffer in
+    // the same reply. A SAB is shared by reference through structured clone, so it needs no entry.
+    const isTransferable = (v: any): boolean => (typeof ArrayBuffer !== 'undefined' && v instanceof ArrayBuffer)
+        || (typeof MessagePort !== 'undefined' && v instanceof MessagePort)
+        || (typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap)
+        || (typeof OffscreenCanvas !== 'undefined' && v instanceof OffscreenCanvas);
+    // Recursively collect transferables from the result so big buffers MOVE (zero-copy) back to the
+    // main thread. Each rule fixes a real defect: seen-set (cycles), Object.keys (own props only,
+    // matching structured clone), depth cap 32 (stack safety). Collecting is an OPTIMISATION: any
+    // throw downgrades to a plain structured clone, never a task failure.
+    const collect = (v: any, out: Set<any>, seen: Set<any>, depth: number): void => {
+        if (v == null || depth > 32 || seen.has(v)) { return; }
+        if (isTransferable(v)) { out.add(v); return; }
+        if (ArrayBuffer.isView(v)) { if (v.buffer) { out.add(v.buffer); } return; }
+        if (typeof v !== 'object') { return; }
+        seen.add(v);
+        if (Array.isArray(v)) {
+            for (let i = 0; i < v.length; i++) { collect(v[i], out, seen, depth + 1); }
+            return;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const keys = Object.keys(v);
+        for (let i = 0; i < keys.length; i++) { collect(v[keys[i]], out, seen, depth + 1); }
+    };
+    // eslint-disable-next-line no-restricted-globals
+    self.onmessage = (e: MessageEvent): void => {
+        const msg = e.data || {};
+        let reply: any;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            reply = { id: msg.id, ok: true, value: __fn.apply(null, msg.args || []) };
+        } catch (err: any) {
+            reply = { id: msg.id, ok: false, error: (err && (err.message || err.stack)) || String(err) };
+        }
+        let transfer: Transferable[] | undefined;
+        try {
+            const set = new Set<any>();
+            collect(reply.value, set, new Set<any>(), 0);
+            transfer = Array.from(set);
+        } catch (eCollect) {
+            transfer = undefined;
+        }
+        try {
+            // eslint-disable-next-line no-restricted-globals
+            (self as any).postMessage(reply, transfer);
+        } catch (err2) {
+            // Three-tier degradation: the transfer list alone can fail postMessage (e.g. an already
+            // detached buffer) while the payload clones fine — retry once without it first.
+            try {
+                // eslint-disable-next-line no-restricted-globals
+                (self as any).postMessage(reply);
+            } catch (err3: any) {
+                try {
+                    // eslint-disable-next-line no-restricted-globals
+                    (self as any).postMessage({ id: msg.id, ok: false, error: `Worker result is not serializable: ${err3 && err3.message}` });
+                } catch (e4) { /* ignore */ }
+            }
+        }
+    };
+}
+
+/**
  * @en
  * Create a dedicated Web Worker from a serialized function (**mode 1**), and wire its message protocol.
  * Returns `null` where function-workers are unsupported (mini-game platforms / native), so callers
- * fall back to synchronous execution. Used internally by [[runWorkerTask]] and [[WorkerPool]].
+ * fall back to synchronous execution. Used internally by [[WorkerPool]].
  * @zh
  * 从序列化函数创建专用 Web Worker（**模式一**）并接好消息协议。
  * 在不支持函数式 Worker 的平台（全部小游戏平台 / 原生）返回 `null`，调用方据此降级为同步执行。
- * 供 [[runWorkerTask]] 和 [[WorkerPool]] 内部使用。
+ * 供 [[WorkerPool]] 内部使用。
  * @internal
  */
 function createWorkerFromFunction (fn: WorkerTask): IWorker | null {
@@ -390,82 +421,8 @@ function createWorkerFromFunction (fn: WorkerTask): IWorker | null {
         // Defensive: support said yes but the constructor vanished → run synchronously.
         return null;
     }
-    const source = [
-        // The serialized function is injected verbatim, then the worker simply
-        // applies it to the transferred args and posts the result (or error) back.
-        `'use strict';`,
-        `const __fn = (${fn.toString()});`,
-        // Recursively collect ArrayBuffers from the return value so they are MOVED (zero-copy) back
-        // to the main thread instead of being structured-cloned. For large TypedArray results (e.g.
-        // terrain vertex data) this avoids copying hundreds of MB on every task.
-        //
-        // Four hard-won rules, each one fixing a real defect:
-        //  1. `seen` Set — the previous version recursed forever on cyclic objects and threw
-        //     RangeError. Structured clone handles cycles natively, so blowing up there was a pure
-        //     regression: it turned a working case into a crash.
-        //  2. `Object.keys` instead of `for...in` — `for...in` walks the prototype chain, so a buffer
-        //     inherited from a prototype got transferred. That detaches it WITHOUT it ever appearing
-        //     in the cloned reply (structured clone only copies own enumerable properties) — silent,
-        //     unlogged data loss. `Object.keys` matches structured clone's own-property semantics.
-        //  3. Depth cap (32) — deeply nested graphs recursed the collector off the stack. Past the cap
-        //     we simply stop looking: we lose the zero-copy optimisation for that buffer, never correctness.
-        //  4. Set dedupe — `out.indexOf` was O(n) per buffer, making wide results O(n^2).
-        `const __MAX_TRANSFER_DEPTH = 32;`,
-        `function __collectTransfers (v, out, seen, depth) {`,
-        `    if (v == null || depth > __MAX_TRANSFER_DEPTH) { return; }`,
-        `    if (v instanceof ArrayBuffer) { out.add(v); return; }`,
-        `    if (ArrayBuffer.isView(v)) { if (v.buffer) { out.add(v.buffer); } return; }`,
-        `    if (typeof v !== 'object') { return; }`,
-        `    if (seen.has(v)) { return; }`,
-        `    seen.add(v);`,
-        `    if (Array.isArray(v)) {`,
-        `        for (let i = 0; i < v.length; i++) { __collectTransfers(v[i], out, seen, depth + 1); }`,
-        `        return;`,
-        `    }`,
-        `    const keys = Object.keys(v);`,
-        `    for (let i = 0; i < keys.length; i++) {`,
-        `        __collectTransfers(v[keys[i]], out, seen, depth + 1);`,
-        `    }`,
-        `}`,
-        `self.onmessage = function (e) {`,
-        `    const msg = e.data || {};`,
-        `    let reply;`,
-        `    try {`,
-        `        reply = { id: msg.id, ok: true, value: __fn.apply(null, msg.args || []) };`,
-        `    } catch (err) {`,
-        `        reply = { id: msg.id, ok: false, error: (err && (err.message || err.stack)) || String(err) };`,
-        `    }`,
-        // Collecting the transfer list is an OPTIMISATION, so it must never be able to fail the task.
-        // Any throw here (hostile object with a throwing getter, exotic types, ...) downgrades to a
-        // plain structured clone: slower, but correct.
-        `    let transfer;`,
-        `    try {`,
-        `        const set = new Set();`,
-        `        __collectTransfers(reply.value, set, new Set(), 0);`,
-        `        transfer = Array.from(set);`,
-        `    } catch (eCollect) {`,
-        `        transfer = undefined;`,
-        `    }`,
-        `    try {`,
-        `        self.postMessage(reply, transfer);`,
-        `    } catch (err2) {`,
-        // Three-tier degradation. The second tier matters: postMessage can fail purely because of the
-        // transfer list (a SharedArrayBuffer cannot be transferred, or the platform supports no
-        // transfer at all) while the payload itself clones fine. Retry once WITHOUT the transfer list
-        // before declaring the result unserializable.
-        // Caveat: if the first attempt detached some buffers before throwing, the retry clones them as
-        // zero-length. Degraded data still beats a hard task failure, and the alternative (no retry)
-        // loses the entire result.
-        `        try {`,
-        `            self.postMessage(reply);`,
-        `        } catch (err3) {`,
-        `            try {`,
-        `                self.postMessage({ id: msg.id, ok: false, error: 'Worker result is not serializable: ' + (err3 && err3.message) });`,
-        `            } catch (e4) { /* ignore */ }`,
-        `        }`,
-        `    }`,
-        `};`,
-    ].join('\n');
+    // Inject the bootstrap's compiled source plus the task function; see workerBootstrap above.
+    const source = `'use strict';(${workerBootstrap.toString()})(${fn.toString()});`;
 
     // eslint-disable-next-line no-restricted-globals
     const blob = new Blob([source], { type: 'text/javascript' });
@@ -473,7 +430,7 @@ function createWorkerFromFunction (fn: WorkerTask): IWorker | null {
     const worker = new WorkerCtor(url);
     // The blob URL can be revoked immediately; the worker has already loaded its source synchronously.
     URL.revokeObjectURL(url);
-    return new WebWorkerAdapter(worker);
+    return new WorkerAdapter(worker, true);
 }
 
 /**
@@ -523,11 +480,10 @@ function createWorkerFromPath (path: string): IWorker {
         // eslint-disable-next-line no-restricted-globals
         if (typeof Worker !== 'undefined') {
             // eslint-disable-next-line no-restricted-globals
-            return new WebWorkerAdapter(new Worker(path));
+            return new WorkerAdapter(new Worker(path), true);
         }
-        throw new Error(`Worker is not available for "${path}": ${status.reason}. `
-            + 'No global Worker fallback either — fix the packaging (see docs/worker/README.md) '
-            + 'or provide a synchronous fallback (WorkerPool options.fallback).');
+        throw new Error(`No worker for "${path}": ${status.reason}; no global Worker fallback either. `
+            + 'Fix packaging (docs/worker/README.md) or pass WorkerPool options.fallback.');
     }
     if (backend.kind === 'web') {
         return backend.createScriptWorker(path);
@@ -545,8 +501,8 @@ function createWorkerFromPath (path: string): IWorker {
  *   Xiaomi). Works on all of them.
  * - `createWorker(fn: WorkerTask)` → **mode 1**: a worker built from a self-contained function
  *   (**Web only**). On mini-game platforms and native this throws, because they forbid rebuilding a
- *   function from source — use [[runWorkerTask]] or [[WorkerPool]] instead, which automatically fall
- *   back to synchronous execution there.
+ *   function from source — use [[WorkerPool]] instead, which automatically falls back to
+ *   synchronous execution there.
  *
  * Both return an [[IWorker]] (`postMessage` / `onMessage` / `onError` / `terminate`). Check
  * [[getWorkerCapabilities]] first if you need to know whether the platform has a worker at all
@@ -558,8 +514,8 @@ function createWorkerFromPath (path: string): IWorker {
  *   每个有 Worker 的小游戏平台用 `minigame.createWorker(path)`（微信 / 抖音 / 支付宝 / 百度 / 华为 /
  *   OPPO / vivo / 小米），两端都可用。
  * - `createWorker(fn: WorkerTask)` → **模式一**：从自包含函数构建 Worker（**仅 Web**）。
- *   小游戏平台与原生下会抛错，因为它们禁止用源码重建函数——请改用 [[runWorkerTask]] 或
- *   [[WorkerPool]]，它们在这些平台会自动降级为同步执行。
+ *   小游戏平台与原生下会抛错，因为它们禁止用源码重建函数——请改用 [[WorkerPool]]，
+ *   它在这些平台会自动降级为同步执行。
  *
  * 两者都返回 [[IWorker]]（`postMessage` / `onMessage` / `onError` / `terminate`）。若需要先知道平台
  * 到底有没有 Worker（淘宝小游戏与原生没有），请先查 [[getWorkerCapabilities]]。
@@ -579,157 +535,10 @@ export function createWorker (pathOrFn: string | WorkerTask): IWorker {
     if (typeof pathOrFn === 'function') {
         const w = createWorkerFromFunction(pathOrFn);
         if (!w) {
-            throw new Error('Function-based worker (mode 1) is not supported on this platform; '
-                + 'use runWorkerTask/WorkerPool for an automatic synchronous fallback, '
-                + 'or createWorker(path) with a packaged worker script (mode 2).');
+            throw new Error('Function workers (mode 1) need Web; use WorkerPool for an '
+                + 'automatic sync fallback, or createWorker(path) (mode 2).');
         }
         return w;
     }
     return createWorkerFromPath(pathOrFn);
 }
-
-/**
- * @en
- * Run a pure, self-contained function inside a dedicated Web Worker and resolve with its return value.
- *
- * On platforms without function-worker support (native, every mini-game platform, Node.js server
- * mode), it automatically falls back to running the function synchronously on the main thread — the
- * promise still resolves, so callers can use the exact same code on every platform. (For a real worker
- * on a mini-game platform, use [[createWorker]]`(path)` with your own packaged worker script.)
- *
- * @zh
- * 在专用的 Web Worker 中运行一个纯函数，并用其返回值 resolve。
- *
- * 在不支持函数式 Worker 的平台（原生、全部小游戏平台、Node.js 服务端模式）上，会自动降级为在主线程同步执行——
- * promise 依然会 resolve，因此调用方在所有平台上都可以使用同一套代码。
- * （小游戏平台上若要真正的 Worker，请用 [[createWorker]]`(path)` 配合自己打包的 Worker 脚本。）
- *
- * @param fn The self-contained task function. 自包含的任务函数。
- * @param args Arguments passed to `fn`. 传给 `fn` 的参数。
- * @param options See [[WorkerRunOptions]]. 运行选项。
- * @returns A promise resolving to the function's return value. resolve 为函数返回值的 promise。
- *
- * @example
- * ```ts
- * const sum = await runWorkerTask((a: number, b: number) => a + b, [1, 2]);
- * ```
- */
-// Unlike WorkerPool.run — whose `args` arrive later, through a queue, as an unrelated `unknown[]` —
-// here `fn` and `args` are passed side by side in ONE call, so the type system genuinely CAN relate
-// them. Inferring `TArgs` from `fn` therefore buys real safety: `runWorkerTask((a: number) => a, ['x'])`
-// is correctly rejected. It also makes the concrete spelling above compile, which the previous
-// `WorkerTask<unknown[], TResult>` parameter did not (contravariance rejects `(a: number) => number`).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function runWorkerTask<TArgs extends any[], TResult = unknown> (
-    fn: (...args: TArgs) => TResult,
-    args?: TArgs,
-    options?: WorkerRunOptions,
-): Promise<TResult> {
-    // Normalise once. Spreading `args || []` directly yields the union `never[] | TArgs`, which is not
-    // assignable to `TArgs`; and the cast is honest here — invoking a task that declares parameters with
-    // no arguments is a caller error, surfaced at runtime exactly as the old `unknown[]` version did.
-    const callArgs = args ?? ([] as unknown as TArgs);
-
-    if (!isWorkerSupported()) {
-        // Fallback: run synchronously on the main thread, keeping the promise contract intact.
-        return new Promise<TResult>((resolve, reject) => {
-            try {
-                resolve(fn(...callArgs));
-            } catch (err) {
-                reject(err);
-            }
-        });
-    }
-
-    return new Promise<TResult>((resolve, reject) => {
-        let worker: IWorker | null;
-        try {
-            worker = createWorkerFromFunction(fn as WorkerTask);
-        } catch (err) {
-            reject(err);
-            return;
-        }
-        if (!worker) {
-            // Defensive: the support flag said yes but the factory returned null → run synchronously.
-            try {
-                resolve(fn(...callArgs));
-            } catch (err) {
-                reject(err);
-            }
-            return;
-        }
-
-        const id = ++_taskId;
-        let settled = false;
-        let timer: ReturnType<typeof setTimeout> | null = null;
-
-        const cleanup = (): void => {
-            if (timer !== null) {
-                clearTimeout(timer);
-                timer = null;
-            }
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            worker!.terminate();
-        };
-
-        worker.onMessage((msg: IWorkerReply): void => {
-            if (settled) {
-                return;
-            }
-            if (!msg || msg.id !== id) {
-                return;
-            }
-            settled = true;
-            cleanup();
-            if (msg.ok) {
-                resolve(msg.value as TResult);
-            } else {
-                reject(new Error(msg.error || 'Worker task failed'));
-            }
-        });
-
-        worker.onError((e: any): void => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            cleanup();
-            reject(new Error(e && e.message ? String(e.message) : 'Worker error'));
-        });
-
-        const timeout = options && options.timeout;
-        if (timeout && timeout > 0) {
-            timer = setTimeout(() => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                cleanup();
-                reject(new Error(`Worker task timed out after ${timeout}ms`));
-            }, timeout);
-        }
-
-        try {
-            worker.postMessage({ id, args: args || [] }, (options && options.transfer) || []);
-        } catch (err) {
-            // postMessage can throw synchronously (e.g. DataCloneError for a non-cloneable arg,
-            // or a transfer list containing a non-transferable / already-detached buffer).
-            // Settle the promise and tear the worker down so it never leaks.
-            if (!settled) {
-                settled = true;
-            }
-            cleanup();
-            reject(err);
-        }
-    });
-}
-
-// Register the utilities on the `cc` namespace so developers can call `cc.runWorkerTask(...)` / `cc.createWorker(...)` / etc.
-legacyCC.runWorkerTask = runWorkerTask;
-legacyCC.createWorker = createWorker;
-legacyCC.isWorkerSupported = isWorkerSupported;
-legacyCC.isSupportStandardWorker = isSupportStandardWorker;
-legacyCC.checkWorkerScript = checkWorkerScript;
-legacyCC.getWorkerCapabilities = getWorkerCapabilities;
-legacyCC.getOptimalWorkerCount = getOptimalWorkerCount;
-legacyCC.getWorkerConcurrencyLimit = getWorkerConcurrencyLimit;
