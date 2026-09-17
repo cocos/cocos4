@@ -300,6 +300,9 @@
             "overrideConstants": {
                 "CULL_MESHOPT": false
             }
+        },
+        "worker": {
+            "modules": ["worker"]
         }
     },
     "moduleOverrides": [{

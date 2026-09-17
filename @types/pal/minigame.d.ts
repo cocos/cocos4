@@ -37,6 +37,38 @@ declare module 'pal/minigame' {
         getSharedCanvas(): any;
         getOpenDataContext(): any;
 
+        // worker
+        /**
+         * Create a worker thread from a packaged script path.
+         *
+         * IMPORTANT — this is optional and genuinely absent on some platforms:
+         * - Present: WeChat (`wx.createWorker`), ByteDance (`tt.createWorker`), Alipay
+         *   (`my.createWorker`), Baidu (`swan.createWorker`, base library 1.6.1+), and the
+         *   quick-game family (`qg.createWorker` on Xiaomi / Huawei 1117+ / OPPO / vivo).
+         *   Each `pal/minigame/*.js` adapter starts with `cloneObject(minigame, <platformGlobal>)`,
+         *   and `cloneObject` copies functions with `.bind(origin)` — so `createWorker` arrives on
+         *   `minigame` for free, already bound to the right global. No per-platform adapter code
+         *   is needed, and `pal/` itself must not be edited (it is regenerated from the
+         *   `@cocos/engine-pal` package on postinstall).
+         * - Absent: Taobao mini-game has NO worker API at all (its API surface has no Worker
+         *   category), and no `Worker` / `Blob` / `URL.createObjectURL` either — there is no way to
+         *   get a real thread there. Callers must degrade to synchronous execution.
+         *
+         * Returns `undefined` (rather than throwing) when creation fails on Huawei quick game, so
+         * the result MUST be null-checked.
+         *
+         * Every platform caps concurrency at ONE worker except WeChat V2 (standard worker).
+         * Script paths must be relative (no leading "/") and end with ".js", and the file must be
+         * packaged under the workers directory declared in game.json / manifest.json / app.json.
+         */
+        createWorker?: (scriptPath: string, options?: MinigameWorkerOptions) => MinigameWorker | undefined;
+        /**
+         * Platform environment info. On WeChat this carries `isSupportStandardWorker`, which gates
+         * the V2 standard worker (grey release; NOT supported in the WeChat devtools). Absent on
+         * platforms whose global has no `env`.
+         */
+        env?: MinigameEnv;
+
         // file system
         getFileSystemManager(): FileSystemManager;
         loadSubpackage? (option: LoadSubpackageOption): LoadSubpackageTask;
@@ -131,6 +163,56 @@ declare module 'pal/minigame' {
 
     interface ByteDanceAPI {
         getAudioContext?: () => AudioContext;
+    }
+
+    /**
+     * Options accepted by `minigame.createWorker`. Only WeChat defines any; other platforms ignore
+     * the second argument. Kept loose on purpose — the platform surface differs and grows.
+     */
+    export interface MinigameWorkerOptions {
+        /**
+         * WeChat only, base library 2.13.0+. Uses the "experimental" worker implementation, which
+         * speeds up JS execution several times over on iOS. Requires pairing with
+         * `onProcessKilled`, because the system may reclaim the worker process at any time.
+         */
+        useExperimentalWorker?: boolean;
+        [key: string]: any;
+    }
+
+    /**
+     * Platform environment info exposed as `minigame.env`.
+     */
+    export interface MinigameEnv {
+        /**
+         * WeChat only. `true` when the runtime supports the V2 standard worker: multiple concurrent
+         * workers, `SharedArrayBuffer`, transfer lists in `postMessage`, `OffscreenCanvas`. Requires
+         * WeChat client >= 8.0.66 (Android) and base library >= 3.16.1, is in grey release, and is
+         * NOT supported in the WeChat devtools — so it must be checked at runtime, never assumed.
+         */
+        isSupportStandardWorker?: boolean;
+        [key: string]: any;
+    }
+
+    /**
+     * The worker handle returned by `minigame.createWorker`. The API shape is remarkably consistent
+     * across WeChat / ByteDance / Alipay / Baidu / quick-game: all use `postMessage` + `onMessage`,
+     * and all expose the worker-side global as `worker` (NOT `self`).
+     *
+     * Differences that the engine's backend layer must absorb:
+     * - `onError` is missing on some platforms (Huawei quick game documents only
+     *   create/postMessage/onMessage/terminate) — guard before calling.
+     * - `onProcessKilled` is WeChat-only (iOS experimental worker reclamation).
+     * - The transfer list (second `postMessage` argument) is honored ONLY by WeChat V2. Huawei quick
+     *   game documents data transfer as structured clone with no transferable objects; passing a
+     *   transfer list elsewhere may throw, so omit it unless the platform supports it.
+     */
+    export interface MinigameWorker {
+        postMessage(message: any, transfer?: any[]): void;
+        onMessage(listener: (res: any) => void): void;
+        onError?: (listener: (err: any) => void) => void;
+        terminate(): void;
+        /** WeChat only: fired when the system reclaims the worker process. */
+        onProcessKilled?: (listener: (err: any) => void) => void;
     }
 
     export type AccelerometerIntervalMode = 'game' | 'ui' | 'normal';
