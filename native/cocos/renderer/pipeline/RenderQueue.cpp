@@ -24,12 +24,12 @@
 
 #include "RenderQueue.h"
 
-#include <utility>
 #include <cmath>
-#include "base/Utils.h"
+#include <utility>
 #include "PipelineSceneData.h"
 #include "PipelineStateManager.h"
 #include "RenderPipeline.h"
+#include "base/Utils.h"
 #include "gfx-base/GFXCommandBuffer.h"
 #include "gfx-base/GFXDevice.h"
 #include "gfx-base/GFXShader.h"
