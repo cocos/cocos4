@@ -815,7 +815,6 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         }
     }
     void begin(const Dispatch& dispatch, RenderGraph::vertex_descriptor vertID) const {
-        std::ignore = vertID;
         auto& programLib = *ctx.programLib;
         CC_EXPECTS(dispatch.material);
         CC_EXPECTS(dispatch.material->getPasses());
@@ -830,6 +829,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         //        auto* perInstanceSet = ctx.perInstanceDescriptorSets.at(vertID);
         // execution
         ctx.cmdBuff->bindPipelineState(pso);
+        // PerPass DescriptorSet (Global)
+        tryBindPassDescriptorSet(vertID);
+        // PerPhase DescriptorSet
+        tryBindQueueDescriptorSets(vertID);
         ctx.cmdBuff->bindDescriptorSet(
             static_cast<uint32_t>(pipeline::SetIndex::MATERIAL), pass.getDescriptorSet());
         //        ctx.cmdBuff->bindDescriptorSet(
