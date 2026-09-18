@@ -109,22 +109,21 @@ class Tiled implements IAssembler {
         }
         // update data property
         renderData.resize(row * col * 4, row * col * 6);
-        // update index here
+        // update index + uv here. On Web, WebBatcherCore._fillBuffers reads indices from
+        // renderData.indices and only writes position/color (not UV), so both the index
+        // generation and updateWorldUVData must run on Web too. setIndexBuffer stays JSB-only.
+        const indexCount = renderData.indexCount;
+        this.createQuadIndices(indexCount);
+        renderData.indices = QUAD_INDICES;
+        this.updateWorldUVData(sprite);
         if (JSB) {
-            const indexCount = renderData.indexCount;
-            this.createQuadIndices(indexCount);
             renderData.chunk.setIndexBuffer(QUAD_INDICES!);
-            // may can update color & uv here
-            // need dirty
-            this.updateWorldUVData(sprite);
-            //this.updateColorLate(sprite);
         }
 
         renderData.updateRenderData(sprite, frame);
     }
 
     private createQuadIndices (indexCount: number): void {
-        if (!JSB) return;
         if (indexCount % 6 !== 0) {
             errorID(16308);
             return;
@@ -151,42 +150,6 @@ class Tiled implements IAssembler {
         sprite._markForUpdateRenderData();
     }
 
-    fillBuffers (sprite: Sprite, renderer: IBatcher): void {
-        const node = sprite.node;
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        if (chunk === null) {
-            // If too many vertices are requested, this will result in a chunk of null.
-            return;
-        }
-        if (sprite._flagChangedVersion !== node.flagChangedVersion || renderData.vertDirty) {
-            this.updateWorldVertexAndUVData(sprite, chunk);
-            renderData.vertDirty = false;
-            sprite._flagChangedVersion = node.flagChangedVersion;
-        }
-
-        // forColor
-        this.updateColorLate(sprite);
-
-        // update indices
-        const bid = chunk.bufferId;
-        let vid = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        let indexOffset = meshBuffer.indexOffset;
-        for (let i = 0; i < renderData.indexCount; i += 6) {
-            ib[indexOffset++] = vid;
-            ib[indexOffset++] = vid + 1;
-            ib[indexOffset++] = vid + 2;
-            ib[indexOffset++] = vid + 1;
-            ib[indexOffset++] = vid + 3;
-            ib[indexOffset++] = vid + 2;
-            vid += 4;
-            meshBuffer.indexOffset += 6;
-        }
-        meshBuffer.setDirty();
-    }
 
     private updateWorldUVData (sprite: Sprite): void {
         const renderData = sprite.renderData;
@@ -202,32 +165,6 @@ class Tiled implements IAssembler {
     }
 
     // only for TS
-    private updateWorldVertexAndUVData (sprite: Sprite, chunk: StaticVBChunk): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const node = sprite.node;
-        node.getWorldMatrix(m);
-
-        const stride = renderData.floatStride;
-        const dataList: IRenderData[] = renderData.data;
-        const vData = chunk.vb;
-
-        const length = dataList.length;
-        for (let i  = 0; i < length; i++) {
-            const x = dataList[i].x;
-            const y = dataList[i].y;
-            const z = dataList[i].z;
-            let rhw = m.m03 * x + m.m07 * y + m.m11 * z + m.m15;
-            rhw = rhw ? 1 / rhw : 1;
-
-            const offset = i * stride;
-            vData[offset] = (m.m00 * x + m.m04 * y + m.m08 * z + m.m12) * rhw;
-            vData[offset + 1] = (m.m01 * x + m.m05 * y + m.m09 * z + m.m13) * rhw;
-            vData[offset + 2] = (m.m02 * x + m.m06 * y + m.m10 * z + m.m14) * rhw;
-        }
-
-        this.updateWorldUVData(sprite);
-    }
 
     private updateVerts (sprite: Sprite, sizableWidth: number, sizableHeight: number, row: number, col: number): void {
         const uiTrans = sprite.node._getUITransformComp()!;
@@ -503,27 +440,6 @@ class Tiled implements IAssembler {
     }
 
     // fill color here
-    private updateColorLate (sprite: Sprite): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const vData = renderData.chunk.vb;
-        const stride = renderData.floatStride;
-        const vertexCount = renderData.vertexCount;
-
-        let colorOffset = 5;
-        const color = sprite.color;
-        const colorR = color.r / 255;
-        const colorG = color.g / 255;
-        const colorB = color.b / 255;
-        const colorA = sprite.node._uiProps.opacity;
-        for (let i = 0; i < vertexCount; i++) {
-            vData[colorOffset] = colorR;
-            vData[colorOffset + 1] = colorG;
-            vData[colorOffset + 2] = colorB;
-            vData[colorOffset + 3] = colorA;
-            colorOffset += stride;
-        }
-    }
 
     // Too early
     updateColor (sprite: Sprite): void {
