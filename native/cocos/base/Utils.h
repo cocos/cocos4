@@ -189,7 +189,6 @@ struct HalfRaw {
 #endif
 };
 
-
 // Conversion routines, including fallbacks for the host or older CUDA.
 // Note that newer Intel CPUs (Haswell or newer) have vectorized versions of
 // these in hardware. If we need more performance on older/other CPUs, they are
