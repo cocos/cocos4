@@ -31,9 +31,8 @@
  * there ships in every build's main bundle. Routing the subsystem through this dedicated entry keeps
  * ~17 KB (minified) / ~5 KB (gzipped) out of projects that never use it.
  *
- * Only the public surface is re-exported here. Internal plumbing (`WorkerAdapter`, `getWorkerBackend`,
- * `getWebWorkerCtor`, `resetWorkerBackendCache`) stays off the `cc` namespace and remains reachable
- * via a direct module import when a test or an advanced integration needs it.
+ * Only the public surface is re-exported here. Platform implementations live in `pal/worker`.
+ * Internal backend selection and cache management stay off the `cc` namespace.
  */
 
 export {

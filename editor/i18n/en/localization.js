@@ -1133,6 +1133,10 @@ module.exports = link(mixin({
             label: "WebSocket Server",
             description: "Enable WebSocket Server for native. Note: WebSocket must also be enabled.",
         },
+        worker: {
+            label: "Worker",
+            description: "Enable the Worker subsystem (WorkerPool / Worker backends) for running tasks off the main thread. Falls back to synchronous execution automatically when the platform has no Worker support.",
+        },
         flags: {
             spine: {
                 loadManual: {

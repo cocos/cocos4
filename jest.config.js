@@ -12,6 +12,7 @@ module.exports = {
     moduleNameMapper: {
         ...pathsToModuleNameMapper(compilerOptions.paths, { prefix: `${__dirname}/` }),
         'external:(.*)': '<rootDir>/native/external/$1',
+        '^pal/worker$': '<rootDir>/tests/mocks/pal-worker.js',
     },
     transformIgnorePatterns: [
         // ignore everything in the node_modules EXCEPT for:

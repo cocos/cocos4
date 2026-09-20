@@ -365,6 +365,7 @@ export class WorkerPool {
             //   mini-game worker (only when FULLY set up) → global Worker → sync fallback → none.
             const platform = getWorkerBackend();
             const status = platform.diagnose(this._script);
+            const fallbackBackend = status.ready ? null : platform.scriptFallback;
             if (status.ready && platform.kind !== 'none') {
                 this._backend = platform.kind === 'minigame' ? 'minigame' : 'web';
                 this._backendReason = '';
@@ -374,13 +375,11 @@ export class WorkerPool {
                 this._maxWorkers = platform.concurrencyLimit === Infinity
                     ? desired
                     : Math.min(desired, platform.concurrencyLimit);
-            // eslint-disable-next-line no-restricted-globals
-            } else if (typeof Worker !== 'undefined') {
-                // Our own route: a standard Web Worker (Web platform, or a mini-game whose worker is
-                // not fully set up but which exposes a global Worker, e.g. some devtools environments).
-                this._backend = 'web';
+            } else if (fallbackBackend && fallbackBackend.diagnose(this._script).ready) {
+                // PAL may provide a script fallback, e.g. Web Workers in minigame devtools.
+                this._backend = fallbackBackend.kind === 'minigame' ? 'minigame' : 'web';
                 this._backendReason = '';
-                this._maxWorkers = desired;
+                this._maxWorkers = Math.min(desired, fallbackBackend.concurrencyLimit);
             } else if (this._fallback) {
                 // No worker backend at all (native platforms, Taobao, or a packaging mistake):
                 // single-threaded execution via options.fallback.

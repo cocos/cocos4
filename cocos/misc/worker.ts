@@ -24,9 +24,7 @@
 
 import {
     getWorkerBackend,
-    getWebWorkerCtor,
     getWorkerCapabilities,
-    WorkerAdapter,
 } from './worker-backend';
 import type { IWorker } from './worker-backend';
 
@@ -73,8 +71,6 @@ export type { IWorker };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WorkerTask<TArgs extends any[] = any[], TResult = unknown> = (...args: TArgs) => TResult;
 
-let _workerSupport: boolean | undefined;
-
 /**
  * @en
  * Detect whether the current environment supports spawning a Web Worker from a serialized function
@@ -105,28 +101,7 @@ let _workerSupport: boolean | undefined;
  * 把两者混为一谈，正是微信 V2 构建把最优 Worker 数报成 1 的原因。
  */
 export function isWorkerSupported (): boolean {
-    if (_workerSupport !== undefined) {
-        return _workerSupport;
-    }
-
-    _workerSupport = false;
-
-    // Only the Web backend can build a worker from a serialized string. Mini-game platforms forbid
-    // runtime code evaluation entirely, so this is false there by construction.
-    if (!getWorkerBackend().supportsFunctionWorker) {
-        return _workerSupport;
-    }
-    // The Web backend guarantees a global `Worker`; Blob + URL are still host APIs that can be absent
-    // (e.g. a stripped-down or sandboxed browser context), so verify them before committing.
-    if (typeof Blob === 'undefined') {
-        return _workerSupport;
-    }
-    if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
-        return _workerSupport;
-    }
-
-    _workerSupport = true;
-    return _workerSupport;
+    return getWorkerBackend().supportsFunctionWorker;
 }
 
 /**
@@ -181,10 +156,7 @@ export function getOptimalWorkerCount (): number {
     if (limit !== Infinity) {
         return limit;
     }
-    // eslint-disable-next-line no-restricted-globals
-    const hc = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency)
-        ? navigator.hardwareConcurrency
-        : 1;
+    const hc = getWorkerBackend().hardwareConcurrency;
     return Math.max(1, Math.floor(hc) - 1);
 }
 
@@ -326,126 +298,6 @@ export function getWorkerConcurrencyLimit (): number {
 }
 
 /**
- * The worker bootstrap, kept as a REAL function on purpose: `Function.prototype.toString()` yields
- * its compiled source — minified in release builds — which is what gets injected into the Blob
- * worker. A hand-written source string would ship un-minified text (~1.3 KB) and could drift from
- * the implementation; this way the payload is exactly as small as the build makes it.
- * The function must stay SELF-CONTAINED (only globals inside): it runs in a fresh worker scope.
- */
-function workerBootstrap (__fn: (...args: any[]) => any): void {
-    // SharedArrayBuffer is deliberately NOT transferable: listing it in the transfer array makes
-    // postMessage throw, and the tier-2 retry then drops zero-copy for EVERY genuine ArrayBuffer in
-    // the same reply. A SAB is shared by reference through structured clone, so it needs no entry.
-
-    // `OffscreenCanvas` is resolved off the global object instead of being named directly.
-    // TypeScript only added `declare var OffscreenCanvas` to lib.dom.d.ts in 4.9, while
-    // @types/webGPU.d.ts contributes a bare `interface OffscreenCanvas`. Under an older compiler
-    // (the API-docs toolchain pins TypeScript 4.6) the identifier therefore has a *type* meaning
-    // but no *value* meaning, and `typeof OffscreenCanvas` / `instanceof OffscreenCanvas` fail
-    // with TS2693. The indirection is also closer to runtime reality: a platform may ship the
-    // type without exposing the constructor. Reaching for the global object here — rather than
-    // going through `pal/` like the rest of the engine — is forced: this function is serialized
-    // with toString() and re-evaluated in a fresh worker scope, so it cannot import anything.
-    const globalScope: any = typeof globalThis !== 'undefined' ? globalThis : undefined;
-    const OffscreenCanvasCtor = globalScope ? globalScope.OffscreenCanvas : undefined;
-    const isTransferable = (v: any): boolean => (typeof ArrayBuffer !== 'undefined' && v instanceof ArrayBuffer)
-        || (typeof MessagePort !== 'undefined' && v instanceof MessagePort)
-        || (typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap)
-        || (!!OffscreenCanvasCtor && v instanceof OffscreenCanvasCtor);
-    // Recursively collect transferables from the result so big buffers MOVE (zero-copy) back to the
-    // main thread. Each rule fixes a real defect: seen-set (cycles), Object.keys (own props only,
-    // matching structured clone), depth cap 32 (stack safety). Collecting is an OPTIMISATION: any
-    // throw downgrades to a plain structured clone, never a task failure.
-    const collect = (v: any, out: Set<any>, seen: Set<any>, depth: number): void => {
-        if (v == null || depth > 32 || seen.has(v)) { return; }
-        if (isTransferable(v)) { out.add(v); return; }
-        if (ArrayBuffer.isView(v)) { if (v.buffer) { out.add(v.buffer); } return; }
-        if (typeof v !== 'object') { return; }
-        seen.add(v);
-        if (Array.isArray(v)) {
-            for (let i = 0; i < v.length; i++) { collect(v[i], out, seen, depth + 1); }
-            return;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        const keys = Object.keys(v);
-        for (let i = 0; i < keys.length; i++) { collect(v[keys[i]], out, seen, depth + 1); }
-    };
-    // eslint-disable-next-line no-restricted-globals
-    self.onmessage = (e: MessageEvent): void => {
-        const msg = e.data || {};
-        let reply: any;
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            reply = { id: msg.id, ok: true, value: __fn.apply(null, msg.args || []) };
-        } catch (err: any) {
-            reply = { id: msg.id, ok: false, error: (err && (err.message || err.stack)) || String(err) };
-        }
-        let transfer: Transferable[] | undefined;
-        try {
-            const set = new Set<any>();
-            collect(reply.value, set, new Set<any>(), 0);
-            transfer = Array.from(set);
-        } catch (eCollect) {
-            transfer = undefined;
-        }
-        try {
-            // eslint-disable-next-line no-restricted-globals
-            (self as any).postMessage(reply, transfer);
-        } catch (err2) {
-            // Three-tier degradation: the transfer list alone can fail postMessage (e.g. an already
-            // detached buffer) while the payload clones fine — retry once without it first.
-            try {
-                // eslint-disable-next-line no-restricted-globals
-                (self as any).postMessage(reply);
-            } catch (err3: any) {
-                try {
-                    // eslint-disable-next-line no-restricted-globals
-                    (self as any).postMessage({ id: msg.id, ok: false, error: `Worker result is not serializable: ${err3 && err3.message}` });
-                } catch (e4) { /* ignore */ }
-            }
-        }
-    };
-}
-
-/**
- * @en
- * Create a dedicated Web Worker from a serialized function (**mode 1**), and wire its message protocol.
- * Returns `null` where function-workers are unsupported (mini-game platforms / native), so callers
- * fall back to synchronous execution. Used internally by [[WorkerPool]].
- * @zh
- * 从序列化函数创建专用 Web Worker（**模式一**）并接好消息协议。
- * 在不支持函数式 Worker 的平台（全部小游戏平台 / 原生）返回 `null`，调用方据此降级为同步执行。
- * 供 [[WorkerPool]] 内部使用。
- * @internal
- */
-function createWorkerFromFunction (fn: WorkerTask): IWorker | null {
-    if (typeof fn !== 'function') {
-        throw new TypeError('WorkerTask must be a self-contained function');
-    }
-    if (!isWorkerSupported()) {
-        // Mini-game platforms forbid runtime code evaluation and have no Blob (only
-        // `createWorker(path)`); native has no browser host API. Mode 1 cannot build a worker from a
-        // string there → signal the caller to run synchronously.
-        return null;
-    }
-    const WorkerCtor = getWebWorkerCtor();
-    if (!WorkerCtor) {
-        // Defensive: support said yes but the constructor vanished → run synchronously.
-        return null;
-    }
-    // Inject the bootstrap's compiled source plus the task function; see workerBootstrap above.
-    const source = `'use strict';(${workerBootstrap.toString()})(${fn.toString()});`;
-
-    // eslint-disable-next-line no-restricted-globals
-    const blob = new Blob([source], { type: 'text/javascript' });
-    const url = URL.createObjectURL(blob);
-    const worker = new WorkerCtor(url);
-    // The blob URL can be revoked immediately; the worker has already loaded its source synchronously.
-    URL.revokeObjectURL(url);
-    return new WorkerAdapter(worker, true);
-}
-
-/**
  * @en
  * Create a worker from a packaged script path (**mode 2**), aligned with `minigame.createWorker`.
  * - Mini-game platforms (all nine): `minigame.createWorker(path)` — the script must live in the
@@ -479,28 +331,7 @@ function createWorkerFromPath (path: string): IWorker {
     if (typeof path !== 'string' || !path) {
         throw new TypeError('createWorker(path) requires a non-empty worker script path');
     }
-    const backend = getWorkerBackend();
-    if (backend.kind === 'minigame') {
-        // Go the mini-game route ONLY when its worker environment is fully set up for this path
-        // (createWorker available + path valid + file exists in the package). Otherwise fall through
-        // to a standard Web Worker (e.g. some devtools environments), and if that is missing too,
-        // report a precise error instead of failing obscurely.
-        const status = backend.diagnose(path);
-        if (status.ready) {
-            return backend.createScriptWorker(path);
-        }
-        // eslint-disable-next-line no-restricted-globals
-        if (typeof Worker !== 'undefined') {
-            // eslint-disable-next-line no-restricted-globals
-            return new WorkerAdapter(new Worker(path), true);
-        }
-        throw new Error(`No worker for "${path}": ${status.reason}; no global Worker fallback either. `
-            + 'Fix packaging (docs/worker/README.md) or pass WorkerPool options.fallback.');
-    }
-    if (backend.kind === 'web') {
-        return backend.createScriptWorker(path);
-    }
-    throw new Error('Worker is not supported in the current environment');
+    return getWorkerBackend().createScriptWorker(path);
 }
 
 /**
@@ -545,7 +376,7 @@ export function createWorker (path: string): IWorker;
 export function createWorker (fn: WorkerTask): IWorker;
 export function createWorker (pathOrFn: string | WorkerTask): IWorker {
     if (typeof pathOrFn === 'function') {
-        const w = createWorkerFromFunction(pathOrFn);
+        const w = getWorkerBackend().createFunctionWorker(pathOrFn);
         if (!w) {
             throw new Error('Function workers (mode 1) need Web; use WorkerPool for an '
                 + 'automatic sync fallback, or createWorker(path) (mode 2).');

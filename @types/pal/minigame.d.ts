@@ -174,6 +174,7 @@ declare module 'pal/minigame' {
          * WeChat only, base library 2.13.0+. Uses the "experimental" worker implementation, which
          * speeds up JS execution several times over on iOS. Requires pairing with
          * `onProcessKilled`, because the system may reclaim the worker process at any time.
+         * This legacy option does not select the V2 standard Worker.
          */
         useExperimentalWorker?: boolean;
         [key: string]: any;
@@ -186,7 +187,7 @@ declare module 'pal/minigame' {
         /**
          * WeChat only. `true` when the runtime supports the V2 standard worker: multiple concurrent
          * workers, `SharedArrayBuffer`, transfer lists in `postMessage`, `OffscreenCanvas`. Requires
-         * WeChat client >= 8.0.66 (Android) and base library >= 3.16.1, is in grey release, and is
+         * WeChat client >= 8.0.74 (Android) and base library >= 3.17.0, is in grey release, and is
          * NOT supported in the WeChat devtools — so it must be checked at runtime, never assumed.
          */
         isSupportStandardWorker?: boolean;
