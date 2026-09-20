@@ -42,7 +42,7 @@ import VelocityOvertimeModule from './animator/velocity-overtime';
 import Burst from './burst';
 import ShapeModule from './emitter/shape-module';
 import { ParticleCullingMode, ParticleSpace } from './enum';
-import { particleEmitZAxis } from './particle-general-function';
+import { isCurveTwoValues, particleEmitZAxis } from './particle-general-function';
 import ParticleSystemRenderer from './renderer/particle-system-renderer-data';
 import TrailModule from './renderer/trail';
 import { ParticleSystemRendererBase } from './renderer/particle-system-renderer-base';
@@ -1455,16 +1455,18 @@ export class ParticleSystem extends ModelRenderer {
 
             if (!self._isEmitting) return;
 
+            const randTime = isCurveTwoValues(self.rateOverTime) ? pseudoRandom(randomRangeInt(0, bits.INT_MAX)) : 1;
             // emit by rateOverTime
-            self._emitRateTimeCounter += self.rateOverTime.evaluate(self._time / self.duration, 1)! * dt;
+            self._emitRateTimeCounter += self.rateOverTime.evaluate(self._time / self.duration, randTime)! * dt;
             if (self._emitRateTimeCounter > 1) {
                 const emitNum = Math.floor(self._emitRateTimeCounter);
                 self._emitRateTimeCounter -= emitNum;
                 self.emit(emitNum, dt);
             }
 
+            const randDist = isCurveTwoValues(self.rateOverDistance) ? pseudoRandom(randomRangeInt(0, bits.INT_MAX)) : 1;
             // emit by rateOverDistance
-            const rateOverDistance = self.rateOverDistance.evaluate(self._time / self.duration, 1)!;
+            const rateOverDistance = self.rateOverDistance.evaluate(self._time / self.duration, randDist)!;
             if (rateOverDistance > 0) {
                 Vec3.copy(self._oldWPos, self._curWPos);
                 self.node.getWorldPosition(self._curWPos);
