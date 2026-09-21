@@ -141,8 +141,8 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeY')
+    // eslint-disable-next-line func-names
     @visible(
-        // eslint-disable-next-line func-names
         function (this: ParticleSystem): boolean { return this.startSize3D; }
     )
     public startSizeY = new CurveRange();
@@ -156,8 +156,8 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeZ')
+    // eslint-disable-next-line func-names
     @visible(
-        // eslint-disable-next-line func-names
         function (this: ParticleSystem): boolean { return this.startSize3D; }
     )
     public startSizeZ = new CurveRange();
@@ -190,8 +190,8 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationX')
+    // eslint-disable-next-line func-names
     @visible(
-        // eslint-disable-next-line func-names
         function (this: ParticleSystem): boolean { return this.startRotation3D; }
     )
     public startRotationX = new CurveRange();
@@ -205,8 +205,8 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationY')
+    // eslint-disable-next-line func-names
     @visible(
-        // eslint-disable-next-line func-names
         function (this: ParticleSystem): boolean { return this.startRotation3D; }
     )
     public startRotationY = new CurveRange();
