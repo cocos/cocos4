@@ -1,4 +1,4 @@
-require('./ensure-pal-worker.cjs')();
+require('./ensure-pal.cjs')();
 const { join } = require('path');
 const { emptyDir } = require('fs-extra');
 const { dtsBundler } = require('@cocos/ccbuild');

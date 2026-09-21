@@ -22,13 +22,40 @@
  THE SOFTWARE.
 */
 
-import {
-    getWorkerBackend,
-    getWorkerCapabilities,
-} from './worker-backend';
-import type { IWorker } from './worker-backend';
+import { createWorkerBackend } from 'pal/worker';
+import type { IWorker, IPlatformWorkerBackend, IWorkerCapabilities } from 'pal/worker';
 
 export type { IWorker };
+
+let backend: IPlatformWorkerBackend | undefined;
+
+/** @internal Shared by capability queries and WorkerPool. */
+export function getWorkerBackend (): IPlatformWorkerBackend {
+    return backend || (backend = createWorkerBackend());
+}
+
+/** @internal Re-probe PAL when a pool explicitly rechecks its capabilities. */
+export function resetWorkerBackendCache (): void {
+    backend = undefined;
+}
+
+/**
+ * @en Current Worker capabilities reported by PAL.
+ * @zh PAL 提供的当前 Worker 能力。
+ */
+export function getWorkerCapabilities (): IWorkerCapabilities {
+    const current = getWorkerBackend();
+    return {
+        supportsStandardWorker: current.supportsStandardWorker,
+        available: current.concurrencyLimit > 0,
+        parallel: current.concurrencyLimit > 1,
+        concurrencyLimit: current.concurrencyLimit,
+        supportsTransfer: current.supportsTransfer,
+        supportsSharedArrayBuffer: current.supportsSharedArrayBuffer,
+        supportsFunctionWorker: current.supportsFunctionWorker,
+        reason: current.capabilityReason,
+    };
+}
 
 /**
  * @en
@@ -194,8 +221,7 @@ export function getOptimalWorkerCount (): number {
  * 无 V2 时的硬约束：最多 **1** 个并发 Worker、数据走结构化克隆（无 transfer）、Worker 内无平台 API / 渲染。
  */
 export function isSupportStandardWorker (): boolean {
-    const backend = getWorkerBackend();
-    return backend.kind === 'minigame' && backend.supportsTransfer;
+    return getWorkerBackend().supportsStandardWorker;
 }
 
 /**
@@ -378,7 +404,7 @@ export function createWorker (pathOrFn: string | WorkerTask): IWorker {
     if (typeof pathOrFn === 'function') {
         const w = getWorkerBackend().createFunctionWorker(pathOrFn);
         if (!w) {
-            throw new Error('Function workers (mode 1) need Web; use WorkerPool for an '
+            throw new Error('Function workers are unavailable; use WorkerPool for an '
                 + 'automatic sync fallback, or createWorker(path) (mode 2).');
         }
         return w;

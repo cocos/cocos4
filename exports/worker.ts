@@ -42,17 +42,16 @@ export {
     checkWorkerScript,
     getWorkerConcurrencyLimit,
     getOptimalWorkerCount,
+    getWorkerCapabilities,
 } from '../cocos/misc/worker';
 export type { WorkerTask, IWorkerScriptStatus } from '../cocos/misc/worker';
 
 export { WorkerPool } from '../cocos/misc/worker-pool';
-export type { WorkerPoolOptions } from '../cocos/misc/worker-pool';
+export type { WorkerPoolOptions, WorkerExecutionMode } from '../cocos/misc/worker-pool';
 
-export { getWorkerCapabilities } from '../cocos/misc/worker-backend';
 export type {
     IWorker,
     IWorkerBackend,
     IWorkerDiagnosis,
     IWorkerCapabilities,
-    WorkerBackendKind,
-} from '../cocos/misc/worker-backend';
+} from 'pal/worker';

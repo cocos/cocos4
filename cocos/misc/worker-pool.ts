@@ -22,16 +22,15 @@
  THE SOFTWARE.
 */
 
-import { isWorkerSupported, WorkerTask, createWorker, IWorker, getOptimalWorkerCount } from './worker';
-import { getWorkerBackend, getWorkerCapabilities, resetWorkerBackendCache } from './worker-backend';
+import {
+    WorkerTask, IWorker, getOptimalWorkerCount,
+    getWorkerBackend, resetWorkerBackendCache,
+} from './worker';
+import type { IPlatformWorkerBackend } from 'pal/worker';
 import { warn } from '../core/platform/debug';
 
-/**
- * Shared tail for every "the worker backend is not usable" diagnostic. Inlined at three call sites
- * before; hoisted here so the literal is emitted once.
- */
-const PACKAGING_HINT = 'On mini-game builds, verify the script is packaged into the declared '
-    + 'workers directory (docs/worker/README.md).';
+/** Execution state, independent of the host platform. */
+export type WorkerExecutionMode = 'worker' | 'sync' | 'none';
 
 /**
  * @en
@@ -81,12 +80,16 @@ export interface WorkerPoolOptions {
      * platform has no worker API (Taobao mini-game, native) and there is no global `Worker` either —
      * tasks run single-threaded on the main thread with this function instead of rejecting. If omitted
      * in that situation, `run()` rejects with a descriptive error.
+     * Runtime failures retry non-transferred arguments only. Transferred tasks reject because
+     * ownership has moved; subsequent tasks use this fallback. Fallback computation must be retry-safe.
      * @zh
      * 同步降级任务函数（**仅脚本模式**）。它必须与 worker 脚本里的 `runTask(args)` 用相同的 `args`
      * 算出相同的结果。当所有 Worker 后端都不可用时——平台 Worker 环境未设置完整
      * （[[checkWorkerScript]] 不 ready），或平台根本没有 Worker API（淘宝小游戏、原生）且也没有全局
      * `Worker`——任务将用它在主线程**单线程**执行，而不是直接 reject。若此时未提供该函数，
      * `run()` 会以带说明的错误 reject。
+     * 运行时失败仅重试未移交所有权的参数；已 transfer 的任务拒绝，后续任务仍使用 fallback。
+     * fallback 应为可安全重试的计算逻辑。
      */
     fallback?: WorkerTask;
     /**
@@ -204,24 +207,15 @@ export class WorkerPool {
     private readonly _timeout: number;
     private readonly _explicitMax: number;
     private _maxWorkers: number;
-    /**
-     * Resolved execution backend (script mode):
-     * - `'minigame'` — mini-game worker (WeChat V1/V2, ByteDance, Alipay, Baidu, quick-game family),
-     *   environment verified fully set up by the platform backend's `diagnose()`;
-     * - `'web'`      — standard global `Worker` (also the fallback when a mini-game worker is not
-     *   fully set up);
-     * - `'sync'`     — no worker backend at all; run single-threaded via `options.fallback`;
-     * - `'none'`     — no worker backend AND no fallback; `run()` rejects with `_backendReason`.
-     * Function mode uses `'web'` (real workers) or `'sync'` (inline `_fn`).
-     *
-     * Mutable on purpose: [[WorkerPool.recheck]] can re-resolve it once a capability appears at
-     * runtime (a subpackage finishes downloading, a base library hot-updates).
-     */
-    private _backend: 'minigame' | 'web' | 'sync' | 'none';
+    /** Execution state only; platform selection and identity belong to PAL. */
+    private _executionMode: WorkerExecutionMode;
+    private _activeBackend: IPlatformWorkerBackend | null = null;
+    private _scriptFailureHint = '';
     private _backendReason: string;
     private _workers: PooledWorker[] = [];
     private _queue: PoolTask[] = [];
     private _released = false;
+    private _draining = false;
     private _taskId = 0;
     /**
      * @en Consecutive infrastructure failures on the real worker backend. Reset by [[WorkerPool.recheck]].
@@ -243,59 +237,16 @@ export class WorkerPool {
 
     /**
      * @en
-     * Create a worker pool. The first argument selects the mode:
-     *
-     * - **Function mode** — `new WorkerPool(fn, options?)`: the pool serializes the self-contained
-     *   function `fn` into a worker. Real parallelism on Web; on mini-game platforms and native (no
-     *   function-worker support, since they forbid rebuilding a function from source) every task runs
-     *   synchronously on the main thread (transparent fallback).
-     * - **Script mode** — `new WorkerPool('workers/my-task/index.js', options?)`: the pool creates its
-     *   workers from a **pre-packaged** worker script (mode 2). This is the ONLY way to get a real
-     *   worker on any mini-game platform, because they ban `new Function` / `eval`. The same script
-     *   also works on Web (`new Worker(path)`). The worker file must implement the engine protocol:
-     *   receive `{ id, args }`, reply `{ id, ok, value }` (or `{ id, ok: false, error }`) — see the
-     *   bundled worker template.
-     *
-     * In script mode the pool resolves its execution backend once, at construction, following a
-     * strict fallback chain driven purely by runtime capability (never by a platform constant):
-     *
-     * 1. **Platform worker** — used ONLY when the worker environment is verified *fully set up* for
-     *    the given path ([[checkWorkerScript]]: `createWorker` available, path valid, script file
-     *    exists in the package and is non-empty). Covers WeChat V1/V2 plus ByteDance, Alipay, Baidu,
-     *    Huawei, OPPO, vivo and Xiaomi. The pool size is then capped by the platform: ONE worker on
-     *    the seven single-worker platforms and WeChat V1 (still asynchronous offload, just not
-     *    multi-core); up to `maxWorkers` on WeChat V2.
-     * 2. **Standard Web `Worker`** — used when the platform worker is not fully set up (or on Web),
-     *    as long as a global `Worker` constructor exists.
-     * 3. **Single-threaded synchronous** — when no worker backend exists at all (native platforms,
-     *    Taobao mini-game, or a packaging mistake), tasks run on the main thread via
-     *    `options.fallback`. If no fallback was provided, `run()` rejects with a descriptive error
-     *    explaining exactly what is missing.
+     * Create a pool from a self-contained function or a packaged script path.
+     * PAL selects a usable script backend and its concurrency limit. When no backend is
+     * available, script tasks use options.fallback; without it, run() rejects with PAL's reason.
+     * Function tasks use a worker when PAL supports them, otherwise they execute inline.
+     * Scripts receive `{ id, args }` and reply with `{ id, ok, value }` or `{ id, ok: false, error }`.
      * @zh
-     * 创建一个 Worker 池。第一个参数决定模式：
-     *
-     * - **函数模式** — `new WorkerPool(fn, options?)`：池把自包含函数 `fn` 序列化进 Worker。
-     *   Web 上真并行；小游戏平台与原生（不支持函数式 Worker，因为它们禁止用源码重建函数）上
-     *   每个任务在主线程同步执行（透明降级）。
-     * - **脚本模式** — `new WorkerPool('workers/my-task/index.js', options?)`：池从**预先打包**的
-     *   Worker 脚本（模式二）创建 Worker。这是在任何小游戏平台上获得真 Worker 的**唯一**方式，
-     *   因为它们禁用 `new Function` / `eval`。同一脚本在 Web 上也可用（`new Worker(path)`）。
-     *   Worker 文件必须实现引擎协议：接收 `{ id, args }`，回复 `{ id, ok, value }`
-     *   （或 `{ id, ok: false, error }`）——参见随附的 Worker 模板。
-     *
-     * 脚本模式下，池在构造时一次性解析执行后端，遵循完全由**运行时能力**驱动（绝不依赖平台常量）的
-     * 严格降级链路：
-     *
-     * 1. **平台 Worker**——仅当 Worker 环境对该路径**设置完整**时才使用
-     *    （[[checkWorkerScript]]：`createWorker` 可用、路径合法、脚本文件存在于代码包且非空）。
-     *    覆盖微信 V1/V2 以及抖音、支付宝、百度、华为、OPPO、vivo、小米。池大小随后按平台封顶：
-     *    7 个单 Worker 平台与微信 V1 上为 **1 个** Worker（仍是异步卸载，只是非多核）；
-     *    微信 V2 上可达 `maxWorkers`。
-     * 2. **标准 Web `Worker`**——平台 Worker 未设置完整（或本就在 Web 上）时，只要存在全局 `Worker`
-     *    构造函数就走这条。
-     * 3. **单线程同步**——所有 Worker 后端都不可用时（原生平台、淘宝小游戏，或打包错误），
-     *    任务用 `options.fallback` 在主线程执行。若未提供 fallback，`run()` 会以带具体缺失原因的
-     *    说明性错误 reject。
+     * 使用独立函数或已打包的脚本路径创建任务池。脚本后端的选择和并发上限由 PAL 提供。
+     * 没有可用后端时，脚本任务执行 options.fallback；未提供则携带 PAL 的诊断原因拒绝任务。
+     * 函数任务在 PAL 支持时使用 Worker，否则在主线程执行。
+     * 脚本接收 `{ id, args }`，回复 `{ id, ok, value }` 或 `{ id, ok: false, error }`。
      */
     constructor (fnOrScript: WorkerTask | string, options?: WorkerPoolOptions) {
         const isScriptMode = typeof fnOrScript === 'string';
@@ -332,7 +283,7 @@ export class WorkerPool {
             ? options.idleReleaseAfter
             : 1000;
 
-        this._backend = 'none';
+        this._executionMode = 'none';
         this._backendReason = '';
         this._maxWorkers = 0;
         this._resolveBackend();
@@ -354,58 +305,37 @@ export class WorkerPool {
      * 小游戏平台掉进了同步执行。
      */
     private _resolveBackend (): void {
+        const platform = getWorkerBackend();
         const explicitMax = this._explicitMax;
-        // Desired size: the explicit maxWorkers if given, else a platform-aware default. Note that on
-        // mini-game platforms the core count is usually unavailable, so the default is 1 — pass an
-        // explicit maxWorkers on WeChat V2 / Web to scale beyond a single worker.
         const desired = explicitMax > 0 ? explicitMax : getOptimalWorkerCount();
+        this._activeBackend = null;
+        this._scriptFailureHint = platform.scriptFailureHint;
+        this._backendReason = '';
 
         if (this._script) {
-            // Resolve the backend chain purely by platform capability:
-            //   mini-game worker (only when FULLY set up) → global Worker → sync fallback → none.
-            const platform = getWorkerBackend();
-            const status = platform.diagnose(this._script);
-            const fallbackBackend = status.ready ? null : platform.scriptFallback;
-            if (status.ready && platform.kind !== 'none') {
-                this._backend = platform.kind === 'minigame' ? 'minigame' : 'web';
-                this._backendReason = '';
-                // Honor the platform's concurrency cap. On seven of the nine mini-game platforms the
-                // cap is 1, so the pool becomes a single real worker: still asynchronous offload,
-                // just not multi-core. WeChat V2 and Web scale up to the desired size.
-                this._maxWorkers = platform.concurrencyLimit === Infinity
-                    ? desired
-                    : Math.min(desired, platform.concurrencyLimit);
-            } else if (fallbackBackend && fallbackBackend.diagnose(this._script).ready) {
-                // PAL may provide a script fallback, e.g. Web Workers in minigame devtools.
-                this._backend = fallbackBackend.kind === 'minigame' ? 'minigame' : 'web';
-                this._backendReason = '';
-                this._maxWorkers = Math.min(desired, fallbackBackend.concurrencyLimit);
+            const resolved = platform.resolveScriptWorker(this._script);
+            if (resolved.backend) {
+                this._executionMode = 'worker';
+                this._activeBackend = resolved.backend;
+                this._scriptFailureHint = resolved.backend.scriptFailureHint;
+                this._maxWorkers = Math.min(desired, resolved.backend.concurrencyLimit);
             } else if (this._fallback) {
-                // No worker backend at all (native platforms, Taobao, or a packaging mistake):
-                // single-threaded execution via options.fallback.
-                this._backend = 'sync';
-                this._backendReason = '';
+                this._executionMode = 'sync';
                 this._maxWorkers = 1;
-                this._warnConstructionDegrade(platform.kind, status.reason);
+                this._warnConstructionDegrade(resolved.warnOnFailure, resolved.diagnosis.reason);
             } else {
-                // Nothing usable and no fallback provided: run() will reject with this precise reason.
-                this._backend = 'none';
-                this._backendReason = `No worker backend for "${this._script}" (${status.reason}). `
-                    + 'Provide options.fallback to run single-threaded, or fix packaging (docs/worker/README.md).';
+                this._executionMode = 'none';
                 this._maxWorkers = 0;
-                this._warnConstructionDegrade(platform.kind, status.reason);
+                this._backendReason = `No worker backend for "${this._script}" (${resolved.diagnosis.reason}). `
+                    + 'Provide options.fallback to run single-threaded, or fix packaging (docs/worker/README.md).';
+                this._warnConstructionDegrade(resolved.warnOnFailure, resolved.diagnosis.reason);
             }
-        } else if (isWorkerSupported()) {
-            // Function mode (mode 1) on a Worker-capable platform (Web): real workers.
-            this._backend = 'web';
-            this._backendReason = '';
-            this._maxWorkers = explicitMax > 0 ? explicitMax : 1;
+        } else if (platform.supportsFunctionWorker) {
+            this._executionMode = 'worker';
+            this._activeBackend = platform;
+            this._maxWorkers = Math.min(explicitMax > 0 ? explicitMax : 1, platform.concurrencyLimit);
         } else {
-            // Function mode everywhere else (all nine mini-game platforms, native): they forbid
-            // rebuilding a function from source, so the pool runs tasks synchronously on the main
-            // thread via `_fn` and a single inline executor is enough.
-            this._backend = 'sync';
-            this._backendReason = '';
+            this._executionMode = 'sync';
             this._maxWorkers = 1;
         }
     }
@@ -424,14 +354,11 @@ export class WorkerPool {
      * Without this, a pool that probed too early stays locked to `'sync'`/`'none'` for its entire
      * lifetime even though a real worker is now available.
      *
-     * Re-resolution is **upgrade-capable but never destroys running work**: queued tasks are always
-     * left alone, and any worker that is currently busy keeps running to completion. The one thing it
-     * does retire is an IDLE inline executor — a placeholder created back when no real backend
-     * existed. Those must go, or the upgrade would never take effect: `_findIdleWorker` hands queued
-     * tasks to an idle inline executor before spawning a real worker, so a stale placeholder would
-     * keep serving tasks on the main thread forever.
+     * Idle executors are retired; busy executors finish their current task and are then retired.
+     * Queued tasks use the newly selected backend, or reject if it is unavailable without a fallback.
+     * Transferred tasks cannot be replayed after failure because ownership has already moved.
      *
-     * @returns the backend now in use (`'minigame'` / `'web'` / `'sync'` / `'none'`).
+     * @returns the execution state: `'worker'`, `'sync'` or `'none'`.
      * @zh
      * 重新探测平台并重新解析执行后端。
      *
@@ -442,16 +369,14 @@ export class WorkerPool {
      * 没有这个入口，探测过早的池会在整个生命周期里被锁死在 `'sync'`/`'none'` 上，
      * 即便真 Worker 现在已经可用。
      *
-     * 重新解析**允许升级，但绝不销毁进行中的工作**：排队任务始终原样保留，正在忙的 worker 会跑完。
-     * 唯一会被退役的是**空闲的内联执行器**——那是当初没有任何真后端时留下的占位。它必须清掉，
-     * 否则升级永远不会生效：`_findIdleWorker` 会先把手头的任务交给空闲的内联执行器，再考虑创建真
-     * worker，于是一个陈旧占位会让任务永远留在主线程上执行。
+     * 空闲执行器立即释放，忙碌执行器完成当前任务后释放。排队任务交给新后端；
+     * 若新后端不可用且没有 fallback，则拒绝排队任务。已移交所有权的任务失败后不能重放。
      *
-     * @returns 当前使用的后端（`'minigame'` / `'web'` / `'sync'` / `'none'`）。
+     * @returns 当前执行状态：`'worker'`、`'sync'` 或 `'none'`。
      */
-    public recheck (): 'minigame' | 'web' | 'sync' | 'none' {
+    public recheck (): WorkerExecutionMode {
         if (this._released) {
-            return this._backend;
+            return this.backend;
         }
         // Give the real worker backend another chance: a subpackage may have finished downloading or
         // the base library may have hot-updated since we degraded. Reset the failure budget so the
@@ -462,41 +387,30 @@ export class WorkerPool {
         resetWorkerBackendCache();
         this._resolveBackend();
 
-        // A real backend just became available, but the pool may still be holding INLINE executors
-        // created back when nothing better existed. Those are placeholders, not parallelism, and
-        // `_findIdleWorker` hands queued tasks to them FIRST — so without retiring them the upgrade
-        // would silently never take effect for any pool that is not already full. Only idle ones go:
-        // an inline executor that is busy is running real user work and must be left to finish.
-        if (this._backend === 'web' || this._backend === 'minigame') {
-            this._retireInlineWorkers();
-        }
-        // A better backend may now allow more workers — re-drain so queued tasks can use them.
+        // New tasks must use the newly resolved backend. Busy workers finish their current
+        // task, but are never reused after this capability check.
+        this._retireWorkers();
         this._drain();
-        return this._backend;
+        return this.backend;
     }
 
-    /**
-     * @internal
-     * Splice out and dispose every idle inline executor, then re-drain so the queue is served by real
-     * workers. Iterates a snapshot because `_onWorkerIdle` mutates `_workers`.
-     */
-    private _retireInlineWorkers (): void {
-        const stale: PooledWorker[] = [];
-        for (const w of this._workers) {
-            if (w.isInline && !w.busy) {
-                stale.push(w);
+    private _retireWorkers (): void {
+        for (let i = this._workers.length - 1; i >= 0; i--) {
+            const worker = this._workers[i];
+            worker.retired = true;
+            if (!worker.busy) {
+                this._workers.splice(i, 1);
+                worker.dispose();
             }
         }
-        for (const w of stale) {
-            this._onWorkerIdle(w);
-        }
     }
 
     /**
-     * @en The execution backend currently in use. @zh 当前使用的执行后端。
+     * @en Current execution state: worker, synchronous fallback, or unavailable.
+     * @zh 当前执行状态：Worker、主线程同步回退，或不可用。
      */
-    public get backend (): 'minigame' | 'web' | 'sync' | 'none' {
-        return this._backend;
+    public get backend (): WorkerExecutionMode {
+        return this._executionMode;
     }
 
     /**
@@ -532,7 +446,7 @@ export class WorkerPool {
                 reject(new Error('WorkerPool has been terminated'));
                 return;
             }
-            if (this._backend === 'none') {
+            if (this._executionMode === 'none') {
                 // Script mode, but no worker backend is available (WeChat worker not fully set up,
                 // no global Worker) and no options.fallback was provided — we cannot proceed.
                 reject(new Error(this._backendReason || 'WorkerPool has no available execution backend'));
@@ -573,42 +487,50 @@ export class WorkerPool {
     }
 
     private _drain (): void {
-        if (this._released) {
-            return;
-        }
-        while (this._queue.length > 0) {
-            let worker = this._findIdleWorker();
-            if (!worker && this._workers.length < this._maxWorkers) {
-                try {
-                    worker = this._spawnWorker();
-                } catch (err) {
-                    // Script-mode worker creation can throw synchronously (e.g. the path is not
-                    // packaged into the `workers` directory, or a subpackage has not been downloaded).
-                    // Treat it as an infrastructure failure: degrade so we stop respawning a broken
-                    // backend, and re-run this task via the fallback when one exists (otherwise reject
-                    // it). Keep draining either way so the remaining tasks are not left hanging.
-                    const failed = this._queue.shift();
-                    this._onInfraFailure(failed || null, err as Error);
-                    continue;
-                }
-                if (worker) {
-                    this._workers.push(worker);
-                }
-            }
-            if (!worker) {
-                // No free worker and already at maxWorkers: wait for a completion callback.
+        if (this._released || this._draining) return;
+        this._draining = true;
+        try {
+            if (this._executionMode === 'none') {
+                const pending = this._queue.splice(0);
+                for (const task of pending) task.reject(new Error(this._backendReason));
                 return;
             }
-            const task = this._queue.shift();
-            if (task) {
-                this._dispatch(worker, task);
+            while (this._queue.length > 0) {
+                let worker = this._findIdleWorker();
+                if (!worker && this._workers.length < this._maxWorkers) {
+                    try {
+                        worker = this._spawnWorker();
+                    } catch (err) {
+                        // Script-mode worker creation can throw synchronously (e.g. the path is not
+                        // packaged into the `workers` directory, or a subpackage has not been downloaded).
+                        // Treat it as an infrastructure failure: degrade so we stop respawning a broken
+                        // backend, and re-run this task via the fallback when one exists (otherwise reject
+                        // it). Keep draining either way so the remaining tasks are not left hanging.
+                        const failed = this._queue.shift();
+                        this._onInfraFailure(failed || null, err as Error);
+                        continue;
+                    }
+                    if (worker) {
+                        this._workers.push(worker);
+                    }
+                }
+                if (!worker) {
+                    // No free worker and already at maxWorkers: wait for a completion callback.
+                    return;
+                }
+                const task = this._queue.shift();
+                if (task) {
+                    this._dispatch(worker, task);
+                }
             }
+        } finally {
+            this._draining = false;
         }
     }
 
     private _findIdleWorker (): PooledWorker | null {
         for (const w of this._workers) {
-            if (!w.busy) {
+            if (!w.busy && !w.retired) {
                 return w;
             }
         }
@@ -619,26 +541,34 @@ export class WorkerPool {
         let worker: IWorker | null = null;
         let fn = this._fn;
         if (this._script) {
-            if (this._backend === 'minigame' || this._backend === 'web') {
-                // Real worker — createWorker(path) re-verifies the platform environment and picks
-                // `minigame.createWorker(path)` when fully set up, else the global `Worker`. It throws
-                // if neither works; _drain catches it and fails the task with that precise reason.
-                worker = createWorker(this._script);
+            if (this._executionMode === 'worker') {
+                // Use the exact backend PAL selected, so creation matches its concurrency and capabilities.
+                worker = this._activeBackend!.createScriptWorker(this._script);
             } else {
                 // 'sync' backend (no worker at all): run the user-provided fallback inline.
                 // ('none' never reaches here — run() rejects before queuing.)
                 fn = this._fallback;
             }
-        } else if (isWorkerSupported()) {
-            // Function mode on a Worker-capable platform (Web): serialize the function into a worker.
-            worker = createWorker(this._fn!);
+        } else if (this._executionMode === 'worker') {
+            worker = this._activeBackend!.createFunctionWorker(this._fn!);
+            if (!worker) {
+                // Capability disappeared before creation. Do not silently report a worker pool
+                // while scheduling multiple inline executors.
+                this._executionMode = 'sync';
+                this._maxWorkers = 1;
+                this._retireWorkers();
+            }
         }
         // A null `worker` leaves PooledWorker in inline mode → it runs `fn` synchronously.
         const pooled = new PooledWorker(worker, fn, this._idleReleaseAfter, this._onWorkerIdle.bind(this), this._timeout);
         // Route infrastructure failures (timeout / onError / malformed reply) on a REAL worker back to
         // the pool so it can count them and degrade to single-threaded execution instead of hanging.
         // An inline executor never triggers it, so the callback simply stays unused there.
-        pooled.onInfraFailure = (t: PoolTask, err: Error): void => this._onInfraFailure(t, err);
+        pooled.onInfraFailure = (t: PoolTask, err: Error): void => {
+            // A failure from before recheck must not disable a freshly selected backend.
+            if (pooled.retired) t.reject(err);
+            else this._onInfraFailure(t, err);
+        };
         return pooled;
     }
 
@@ -648,8 +578,11 @@ export class WorkerPool {
         const id = ++this._taskId;
         worker.onComplete = (): void => {
             worker.busy = false;
-            this._drain();
+            if (worker.retired) this._onWorkerIdle(worker);
+            else this._drain();
         };
+        // Once ownership has been transferred, the original arguments cannot be replayed safely.
+        task.transferred = !worker.isInline && !!this._activeBackend?.supportsTransfer && task.transfer.length > 0;
         worker.execute(id, task);
     }
 
@@ -668,24 +601,6 @@ export class WorkerPool {
         worker.dispose();
         // A worker was freed up (idle-release or failure): re-drain so queued tasks don't stall.
         this._drain();
-    }
-
-    /**
-     * @internal
-     * Splice out and dispose every IDLE real (non-inline) worker WITHOUT re-draining. Used when
-     * degrading to the `'sync'` backend so a leftover real worker cannot pick up the next task —
-     * `_findIdleWorker` would otherwise hand it to a backend we have just decided is broken. Busy real
-     * workers are left running: never destroy in-flight work; they are released by their own idle
-     * timer once they finish. (Mirrors `_retireInlineWorkers`, which does the opposite on upgrade.)
-     */
-    private _retireIdleRealWorkers (): void {
-        for (let i = this._workers.length - 1; i >= 0; i--) {
-            const w = this._workers[i];
-            if (!w.isInline && !w.busy) {
-                this._workers.splice(i, 1);
-                w.dispose();
-            }
-        }
     }
 
     /**
@@ -725,12 +640,12 @@ export class WorkerPool {
             this._degraded = true;
             if (this._fallback) {
                 // Graceful degradation: every future task runs on the main thread via the fallback.
-                this._backend = 'sync';
+                this._executionMode = 'sync';
                 this._backendReason = '';
                 this._maxWorkers = 1;
                 // Drop idle real workers so the next dispatch goes to an inline executor, not a
                 // leftover worker on the backend we just gave up on.
-                this._retireIdleRealWorkers();
+                this._retireWorkers();
             }
             this._warnDegrade(error);
         }
@@ -738,7 +653,7 @@ export class WorkerPool {
         if (!task) {
             return;
         }
-        if (this._backend === 'sync' && this._fallback) {
+        if (this._executionMode === 'sync' && this._fallback && !task.transferred) {
             // Re-run the failed task on the main thread. Front of the queue preserves ordering; the
             // eviction-driven re-drain (runtime failure) or the _drain loop (spawn failure) dispatches
             // it through an inline executor running the fallback.
@@ -760,30 +675,18 @@ export class WorkerPool {
         this._degradeWarned = true;
         const script = this._script || '(function)';
         warn(`WorkerPool ${this._fallback ? 'degraded to single-threaded' : 'is rejecting tasks (no options.fallback)'} `
-            + `for "${script}": worker backend failed (${error.message}). ${PACKAGING_HINT}`);
+            + `for "${script}": worker backend failed (${error.message}). ${this._scriptFailureHint}`);
     }
 
-    /**
-     * @internal
-     * Warn at CONSTRUCTION time when a worker was genuinely expected but the script is not usable, so
-     * the pool silently fell back to sync (or none). "Genuinely expected" means a mini-game platform
-     * that DOES expose `createWorker` — i.e. a packaging / base-library / subpackage mistake worth
-     * fixing. Stay silent on native (`kind === 'none'`, where single-threaded script mode is the
-     * documented norm) and on mini-game platforms with no worker API at all (e.g. Taobao, where
-     * single-threaded is simply how the platform works — not a mistake). Sticky via
-     * `_constructionWarned` so repeated `recheck()` calls do not spam.
-     */
-    private _warnConstructionDegrade (kind: string, reason: string): void {
-        // `available` (concurrencyLimit > 0) is true for a mini-game backend exactly when it exposes
-        // createWorker, so this fires only on a real packaging / base-library / subpackage mistake —
-        // never on Taobao (no worker API) or native (kind 'none').
-        if (kind !== 'minigame' || !getWorkerCapabilities().available || this._constructionWarned) {
+    /** PAL decides whether unavailable script execution deserves a one-time warning. */
+    private _warnConstructionDegrade (warnOnFailure: boolean, reason: string): void {
+        if (!warnOnFailure || this._constructionWarned) {
             return;
         }
         this._constructionWarned = true;
         warn(`WorkerPool could not use a worker for "${this._script || '(function)'}" and is `
             + `${this._fallback ? 'running single-threaded via options.fallback' : 'REJECTING tasks (no options.fallback)'}. `
-            + `Reason: ${reason}. ${PACKAGING_HINT}`);
+            + `Reason: ${reason}. ${this._scriptFailureHint}`);
     }
 }
 
@@ -793,6 +696,7 @@ export class WorkerPool {
 interface PoolTask {
     args: unknown[];
     transfer: Transferable[];
+    transferred?: boolean;
     resolve: (value: unknown) => void;
     reject: (reason?: unknown) => void;
 }
@@ -803,6 +707,7 @@ interface PoolTask {
  */
 class PooledWorker {
     public busy = false;
+    public retired = false;
     public onComplete: (() => void) | null = null;
     /**
      * @internal
@@ -899,14 +804,20 @@ class PooledWorker {
             }
             return;
         }
-        this._worker.postMessage({ id, args: task.args }, task.transfer);
+        // Arm before sending: adapters may synchronously report an error (or a test reply).
+        this.armTimeout();
+        try {
+            this._worker.postMessage({ id, args: task.args }, task.transfer);
+        } catch (err) {
+            this._failed = true;
+            this._settle(null, err instanceof Error ? err : new Error(String(err)));
+        }
         // Watchdog. Only meaningful for a REAL worker: the inline synchronous path above blocks the
         // main thread for the whole duration, so a timer could never fire during it anyway.
         // Without this, a worker that accepts the message and never replies — a script that deadlocks,
         // an infinite loop, a platform that silently drops the message — leaves the task pending
         // forever AND leaves that worker parked in the pool with `busy === true`, permanently
         // shrinking the pool's effective size by one on every occurrence.
-        this.armTimeout();
     }
 
     /**

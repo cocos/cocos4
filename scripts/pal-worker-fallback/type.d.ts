@@ -7,8 +7,6 @@ export interface IWorker {
     terminate(): void;
 }
 
-export type WorkerBackendKind = 'web' | 'minigame' | 'none';
-
 export interface IWorkerDiagnosis {
     ready: boolean;
     version: 0 | 1 | 2;
@@ -16,7 +14,6 @@ export interface IWorkerDiagnosis {
 }
 
 export interface IWorkerBackend {
-    readonly kind: WorkerBackendKind;
     readonly concurrencyLimit: number;
     readonly supportsTransfer: boolean;
     readonly supportsSharedArrayBuffer: boolean;
@@ -27,13 +24,22 @@ export interface IWorkerBackend {
 }
 
 export interface IPlatformWorkerBackend extends IWorkerBackend {
+    readonly supportsStandardWorker: boolean;
+    readonly scriptFailureHint: string;
+    resolveScriptWorker(path: string): IWorkerResolution;
     readonly hardwareConcurrency: number;
     readonly scriptFallback: IPlatformWorkerBackend | null;
     createFunctionWorker(fn: (...args: any[]) => any): IWorker | null;
 }
 
+export interface IWorkerResolution {
+    backend: IPlatformWorkerBackend | null;
+    diagnosis: IWorkerDiagnosis;
+    warnOnFailure: boolean;
+}
+
 export interface IWorkerCapabilities {
-    kind: WorkerBackendKind;
+    supportsStandardWorker: boolean;
     available: boolean;
     parallel: boolean;
     concurrencyLimit: number;

@@ -24,7 +24,7 @@
 
 import './intersect';
 
-// NOTE: the worker subsystem (`./worker`, `./worker-pool`, `./worker-backend`) is deliberately
+// NOTE: the worker subsystem (`./worker`, `./worker-pool`) is deliberately
 // NOT re-exported here. `cocos/misc` is part of the always-on `base` feature, so anything exported
 // from this file ships in every build's main bundle. The worker subsystem is exposed through the
 // optional `worker` feature instead (see `exports/worker.ts` and `features.worker` in cc.config.json),

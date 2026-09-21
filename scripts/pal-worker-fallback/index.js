@@ -4,7 +4,11 @@ const reason = 'Installed PAL package has no worker module; using single-thread 
 
 export function createWorkerBackend() {
     return {
-        kind: 'none',
+        supportsStandardWorker: false,
+        scriptFailureHint: '',
+        resolveScriptWorker() {
+            return { backend: null, diagnosis: { ready: false, version: 0, reason }, warnOnFailure: false };
+        },
         concurrencyLimit: 0,
         hardwareConcurrency: 1,
         supportsTransfer: false,

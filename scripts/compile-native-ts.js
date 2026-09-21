@@ -1,4 +1,4 @@
-require('./ensure-pal-worker.cjs')();
+require('./ensure-pal.cjs')();
 const ccbuild = require('@cocos/ccbuild');
 const ps = require('path');
 const fs = require('fs-extra');
