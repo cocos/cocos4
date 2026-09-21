@@ -141,10 +141,7 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeY')
-    // eslint-disable-next-line func-names
-    @visible(
-        function (this: ParticleSystem): boolean { return this.startSize3D; }
-    )
+    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; }) // eslint-disable-line func-names, comma-dangle
     public startSizeY = new CurveRange();
 
     /**
@@ -156,10 +153,7 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeZ')
-    // eslint-disable-next-line func-names
-    @visible(
-        function (this: ParticleSystem): boolean { return this.startSize3D; }
-    )
+    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; }) // eslint-disable-line func-names, comma-dangle
     public startSizeZ = new CurveRange();
 
     /**
@@ -190,10 +184,7 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationX')
-    // eslint-disable-next-line func-names
-    @visible(
-        function (this: ParticleSystem): boolean { return this.startRotation3D; }
-    )
+    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; }) // eslint-disable-line func-names, comma-dangle
     public startRotationX = new CurveRange();
 
     /**
@@ -205,10 +196,7 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationY')
-    // eslint-disable-next-line func-names
-    @visible(
-        function (this: ParticleSystem): boolean { return this.startRotation3D; }
-    )
+    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; }) // eslint-disable-line func-names, comma-dangle
     public startRotationY = new CurveRange();
 
     /**
