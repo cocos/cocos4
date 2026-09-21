@@ -93,8 +93,8 @@ enum State {
 export enum ButtonEventType {
     /**
      * @event click
-     * @param {Event.EventCustom} event
      * @param {Button} button - The Button component.
+     * @param {EventTouch} event - The original touch event, undefined if the click is triggered by XR.
      */
     CLICK = 'click',
 }
@@ -156,16 +156,16 @@ export enum ButtonEventType {
  *
  * @example
  * ```ts
- * import { log, Node } from 'cc';
+ * import { log } from 'cc';
  * // Add an event to the button.
  * button.node.on(Node.EventType.TOUCH_START, (event) => {
  *     log("This is a callback after the trigger event");
  * });
  * // You could also add a click event
- * // Note: In this way, you can't get the touch event info, so use it wisely.
- * button.node.on(Node.EventType.CLICK, (button) => {
- *    //The event is a custom event, you could get the Button component via first argument
- * })
+ * // The callback receives the Button component and the original touch event (if available).
+ * button.on(Button.EventType.CLICK, (button, event) => {
+ *     log('button clicked');
+ * });
  * ```
  */
 @ccclass('cc.Button')
@@ -586,6 +586,53 @@ export class Button extends Component {
         super();
     }
 
+    /**
+     * @en
+     * Register a Button event listener on the component. Button events are dispatched by the owner
+     * node, and this method is a shorthand which forwards the registration to the node, so
+     * `button.on(...)` and `button.node.on(...)` share the same listener registry.
+     * @zh
+     * 在组件上注册 Button 事件监听。Button 的事件由所属节点派发，此方法是 `this.node.on(type, ...)`
+     * 的便捷封装，`button.on(...)` 与 `button.node.on(...)` 共用同一份监听器。
+     * @param type @en Event type, e.g. [[ButtonEventType.CLICK]]. @zh 事件类型，如 [[ButtonEventType.CLICK]]。
+     * @param callback @en The callback, receives the Button component and the original event. @zh 回调函数，参数为 Button 组件与原始事件。
+     * @param target @en The target to be bound with. @zh 绑定的目标对象。
+     * @example
+     * ```ts
+     * button.on(Button.EventType.CLICK, (button, event) => {
+     *     // clicked
+     * }, this);
+     * ```
+     */
+    public on (type: ButtonEventType, callback: (button: Button, event?: EventTouch) => void, target?: unknown): void {
+        this.node.on(type, callback, target);
+    }
+
+    /**
+     * @en
+     * Remove a Button event listener registered via [[on]] or `button.node.on`. To remove a listener,
+     * the `type`, `callback` and `target` must match the registration.
+     * @zh
+     * 移除通过 [[on]] 或 `button.node.on` 注册的 Button 事件监听。`type`、`callback`、`target`
+     * 需与注册时一致才能正确移除。
+     */
+    public off (type: ButtonEventType, callback?: (button: Button, event?: EventTouch) => void, target?: unknown): void {
+        this.node.off(type, callback, target);
+    }
+
+    /**
+     * @en
+     * Remove all Button event listeners registered with the given target.
+     * Note: this forwards to `node.targetOff`, so listeners registered by other components
+     * or by the engine internals on the same node with the same target are removed as well.
+     * @zh
+     * 移除指定 target 上注册的所有 Button 事件监听。注意：此方法会转发到 `node.targetOff`，
+     * 同一节点上其他组件或引擎内部以相同 target 注册的监听也会被一并移除。
+     */
+    public targetOff (target: unknown): void {
+        this.node.targetOff(target);
+    }
+
     public __preload (): void {
         if (!this.target) {
             this.target = this.node;
@@ -892,7 +939,7 @@ export class Button extends Component {
 
         if (this._pressed) {
             ComponentEventHandler.emitEvents(this.clickEvents, event);
-            this.node.emit(ButtonEventType.CLICK, this);
+            this.node.emit(ButtonEventType.CLICK, this, event);
         }
         this._pressed = false;
         this._updateState();
