@@ -210,6 +210,8 @@ export class WorkerPool {
     /** Execution state only; platform selection and identity belong to PAL. */
     private _executionMode: WorkerExecutionMode;
     private _activeBackend: IPlatformWorkerBackend | null = null;
+    /** Changes only on recheck; runtime degradation stays in the same recovery generation. */
+    private _backendGeneration = 0;
     private _scriptFailureHint = '';
     private _backendReason: string;
     private _workers: PooledWorker[] = [];
@@ -386,6 +388,7 @@ export class WorkerPool {
         // Drop the cached platform probe so the next read reflects the current environment.
         resetWorkerBackendCache();
         this._resolveBackend();
+        this._backendGeneration++;
 
         // New tasks must use the newly resolved backend. Busy workers finish their current
         // task, but are never reused after this capability check.
@@ -538,6 +541,7 @@ export class WorkerPool {
     }
 
     private _spawnWorker (): PooledWorker {
+        const generation = this._backendGeneration;
         let worker: IWorker | null = null;
         let fn = this._fn;
         if (this._script) {
@@ -565,8 +569,9 @@ export class WorkerPool {
         // the pool so it can count them and degrade to single-threaded execution instead of hanging.
         // An inline executor never triggers it, so the callback simply stays unused there.
         pooled.onInfraFailure = (t: PoolTask, err: Error): void => {
-            // A failure from before recheck must not disable a freshly selected backend.
-            if (pooled.retired) t.reject(err);
+            // Only faults from before recheck belong to an obsolete backend. Workers retired
+            // by degradation still recover non-transferred tasks in the current generation.
+            if (generation !== this._backendGeneration) t.reject(err);
             else this._onInfraFailure(t, err);
         };
         return pooled;
