@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <utility>
 #include "audio/common/decoder/AudioDecoder.h"
 #include "base/Log.h"
 #include "base/Utils.h"
@@ -500,6 +501,7 @@ void AudioEngineImpl::setFinishCallback(int audioID, const std::function<void(in
 }
 
 void AudioEngineImpl::update(float /*dt*/) {
+    ccstd::vector<std::function<void()>> finishCallbacks;
     ALint sourceState;
     int audioID;
     AudioPlayer *player;
@@ -534,7 +536,9 @@ void AudioEngineImpl::update(float /*dt*/) {
             _threadMutex.unlock();
 
             if (player->_finishCallbak) {
-                player->_finishCallbak(audioID, filePath); //IDEA: callback will delay 50ms
+                finishCallbacks.emplace_back([callback = std::move(player->_finishCallbak), audioID, filePath]() {
+                    callback(audioID, filePath);
+                });
             }
             delete player;
             _alSourceUsed[alSource] = false;
@@ -548,6 +552,12 @@ void AudioEngineImpl::update(float /*dt*/) {
         if (auto sche = _scheduler.lock()) {
             sche->unschedule("AudioEngine", this);
         }
+    }
+
+    // Callbacks may play/stop audio or destroy the engine. Finish all access to
+    // player state before invoking them, and keep the callbacks in local storage.
+    for (const auto &callback : finishCallbacks) {
+        callback();
     }
 }
 
