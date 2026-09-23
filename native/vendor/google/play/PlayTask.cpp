@@ -178,7 +178,7 @@ void PlayTask::onTaskSuccess(int listerId, void* obj) {
         // Therefore, it should be removed first.
         scopedListener listener(it->second.get());
         _listeners.erase(it);
-        callJSfuncWithJObject(it->second.get(), "onSuccess", obj);
+        callJSfuncWithJObject(listener.get(), "onSuccess", obj);
     }
 }
 

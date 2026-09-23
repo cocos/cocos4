@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <mutex>
 #include <thread>
+#include <utility>
 
 #include "application/ApplicationManager.h"
 #include "audio/include/AudioEngine.h"
@@ -265,10 +266,11 @@ int AudioEngineImpl::play2d(const ccstd::string &filePath, bool loop, float volu
 
                 auto iter = _callbackMap.find(id);
                 if (iter != _callbackMap.end()) {
-                    if (state == IAudioPlayer::State::OVER) {
-                        iter->second(id, filePath);
-                    }
+                    auto callback = std::move(iter->second);
                     _callbackMap.erase(iter);
+                    if (state == IAudioPlayer::State::OVER) {
+                        callback(id, filePath);
+                    }
                 }
             });
 
