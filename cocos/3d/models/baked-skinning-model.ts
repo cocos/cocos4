@@ -106,6 +106,16 @@ export class BakedSkinningModel extends MorphModel {
                 UBOSkinningTexture.SIZE,
             ));
         }
+
+        // `animInfo` is taken from the data pool by the `skinningRoot` uuid, so it may be a
+        // different object than before. The descriptor sets of the already existing sub models
+        // still bind the previous one, hence they must be refreshed here, otherwise a model that
+        // only switches its skeleton would read joint animation info of another skinning root.
+        if (this._subModels.length) {
+            for (let i = 0; i < this._subModels.length; i++) {
+                this._updateAttributesAndBinding(i);
+            }
+        }
     }
 
     // Override
