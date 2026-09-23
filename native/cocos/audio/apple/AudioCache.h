@@ -27,7 +27,9 @@
 
 #import <OpenAL/al.h>
 
+#include <atomic>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include "base/std/container/string.h"
 
@@ -40,6 +42,7 @@
 namespace cc {
 class AudioEngineImpl;
 class AudioPlayer;
+class Scheduler;
 
 class AudioCache {
 public:
@@ -96,13 +99,15 @@ protected:
 
     std::mutex _readDataTaskMutex;
 
-    State _state{State::INITIAL};
+    std::atomic<State> _state{State::INITIAL};
 
-    std::shared_ptr<bool> _isDestroyed;
+    // Assigned before the read task is submitted; workers must not look up the current application.
+    std::weak_ptr<Scheduler> _scheduler;
+    std::shared_ptr<std::atomic_bool> _isDestroyed;
     ccstd::string _fileFullPath;
     unsigned int _id;
-    bool _isLoadingFinished{false};
-    bool _isSkipReadDataTask{false};
+    std::atomic_bool _isLoadingFinished{false};
+    std::atomic_bool _isSkipReadDataTask{false};
 
     friend class AudioEngineImpl;
     friend class AudioPlayer;
