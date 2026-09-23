@@ -107,15 +107,12 @@ export class BakedSkinningModel extends MorphModel {
             ));
         }
 
-        // `animInfo` is taken from the data pool by the `skinningRoot` uuid, so it may be a
-        // different object than before. The descriptor sets of the already existing sub models
-        // still bind the previous one, hence they must be refreshed here, otherwise a model that
-        // only switches its skeleton would read joint animation info of another skinning root.
-        if (this._subModels.length) {
-            for (let i = 0; i < this._subModels.length; i++) {
-                this._updateAttributesAndBinding(i);
-            }
+        // The animation buffer belongs to the skinning root. Refresh its binding without
+        // rebuilding the instanced attribute block, which would erase custom attribute values.
+        for (let i = 0; i < this._subModels.length; i++) {
+            this._updateLocalDescriptors(i, this._subModels[i].descriptorSet);
         }
+        this.updateInstancedJointTextureInfo();
     }
 
     // Override

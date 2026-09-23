@@ -163,25 +163,13 @@ export class SkinningModel extends MorphModel {
             this._joints.push({ indices, buffers, bound, target, bindpose, transform });
         }
 
-        // The joint buffers / joint textures have just been re-created above (the previously used
-        // ones are destroyed), but the descriptor sets of the already existing sub models still
-        // reference those destroyed GPU resources, because `bindSkeleton` alone never touches the
-        // sub models. So re-bind them here, otherwise switching only the skeleton (without
-        // reassigning the mesh, which is the only path that would rebuild the sub models) leaves
-        // the draw call reading joint data from freed buffers / textures: all skinning matrices
-        // become invalid and the whole model disappears.
-        if (this._bufferIndices) {
-            const subModelCount = Math.min(this._subModels.length, this._bufferIndices.length);
-            if (subModelCount) {
-                if (prevRealTimeTextureMode !== this._realTimeTextureMode) {
-                    // `CC_USE_REAL_TIME_JOINT_TEXTURE` has been flipped, so the shader variants of the
-                    // sub models must be refreshed before re-binding the new descriptors.
-                    this.onMacroPatchesStateChanged();
-                }
-                for (let i = 0; i < subModelCount; i++) {
-                    this._updateAttributesAndBinding(i);
-                }
-            }
+        // Rebind recreated joint resources without resetting user-provided instanced attributes.
+        const subModelCount = Math.min(this._subModels.length, this._bufferIndices.length);
+        if (subModelCount && prevRealTimeTextureMode !== this._realTimeTextureMode) {
+            this.onMacroPatchesStateChanged();
+        }
+        for (let i = 0; i < subModelCount; i++) {
+            this._updateLocalDescriptors(i, this._subModels[i].descriptorSet);
         }
     }
 
