@@ -1,3 +1,4 @@
+require('./ensure-pal.cjs')();
 const { join } = require('path');
 const { ensureDir, emptyDir } = require('fs-extra');
 const { magenta } = require('chalk');

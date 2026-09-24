@@ -18,12 +18,12 @@
         "wrapModeS": "clamp-to-edge",
         "wrapModeT": "clamp-to-edge",
         "imageUuidOrDatabaseUri": "35ac62e8-0b7a-4367-970d-dfdfbdd023c6",
+        "isUuid": true,
+        "visible": false,
         "minfilter": "linear",
         "magfilter": "linear",
         "mipfilter": "none",
-        "anisotropy": 0,
-        "isUuid": true,
-        "visible": false
+        "anisotropy": 0
       },
       "ver": "1.0.22",
       "imported": true,
@@ -39,7 +39,6 @@
       "id": "f9941",
       "name": "spriteFrame",
       "userData": {
-        "trimType": "auto",
         "trimThreshold": 1,
         "rotated": false,
         "offsetX": 0,
@@ -55,9 +54,10 @@
         "borderLeft": 0,
         "borderRight": 0,
         "packable": true,
-        "isUuid": true,
-        "imageUuidOrDatabaseUri": "35ac62e8-0b7a-4367-970d-dfdfbdd023c6@6c48a",
-        "atlasUuid": "",
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
         "vertices": {
           "rawPosition": [
             -64,
@@ -112,10 +112,10 @@
             0
           ]
         },
-        "pixelsToUnit": 100,
-        "pivotX": 0.5,
-        "pivotY": 0.5,
-        "meshType": 0
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "35ac62e8-0b7a-4367-970d-dfdfbdd023c6@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
       },
       "ver": "1.0.12",
       "imported": true,

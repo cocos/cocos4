@@ -300,6 +300,9 @@
             "overrideConstants": {
                 "CULL_MESHOPT": false
             }
+        },
+        "worker": {
+            "modules": ["worker"]
         }
     },
     "moduleOverrides": [{
@@ -383,6 +386,7 @@
             "isVirtualModule": true,
             "overrides": {
                 "pal/minigame": "pal/minigame/non-minigame.js",
+                "pal/worker": "pal/worker/web/index.js",
                 "pal/audio": "pal/audio/web/player.js",
                 "pal/system-info": "pal/system-info/web/system-info.js",
                 "pal/screen-adapter": "pal/screen-adapter/web/screen-adapter.js",
@@ -397,6 +401,7 @@
             "isVirtualModule": true,
             "overrides": {
                 "pal/minigame": "pal/minigame/non-minigame.js",
+                "pal/worker": "pal/worker/native/index.js",
                 "pal/audio": "pal/audio/native/player.js",
                 "pal/system-info": "pal/system-info/native/system-info.js",
                 "pal/screen-adapter": "pal/screen-adapter/native/screen-adapter.js",
@@ -411,6 +416,7 @@
             "isVirtualModule": true,
             "overrides": {
                 "pal/minigame": "pal/minigame/{{context.platform.toLowerCase()}}.js",
+                "pal/worker": "pal/worker/minigame/index.js",
                 "pal/audio": "pal/audio/minigame/player.js",
                 "pal/system-info": "pal/system-info/minigame/system-info.js",
                 "pal/screen-adapter": "pal/screen-adapter/minigame/screen-adapter.js",
@@ -425,6 +431,7 @@
             "isVirtualModule": true,
             "overrides": {
                 "pal/minigame": "pal/minigame/runtime.js",
+                "pal/worker": "pal/worker/minigame/index.js",
                 "pal/audio": "pal/audio/minigame/player.js",
                 "pal/system-info": "pal/system-info/minigame/system-info.js",
                 "pal/screen-adapter": "pal/screen-adapter/minigame/screen-adapter.js",
@@ -439,6 +446,7 @@
             "isVirtualModule": true,
             "overrides": {
                 "pal/minigame": "pal/minigame/non-minigame.js",
+                "pal/worker": "pal/worker/nodejs/index.js",
                 "pal/audio": "pal/audio/nodejs/player.js",
                 "pal/system-info": "pal/system-info/nodejs/system-info.js",
                 "pal/screen-adapter": "pal/screen-adapter/nodejs/screen-adapter.js",

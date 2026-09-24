@@ -16,8 +16,19 @@ const fs = require('fs');
 const path = require('path');
 
 const engineRoot = path.join(__dirname, '..');
-const src = path.join(engineRoot, 'node_modules', '@cocos', 'engine-pal', 'dist');
+// Local PAL development: node scripts/spread-pal.cjs --source ../cocos-pal/dist
+const sourceIndex = process.argv.indexOf('--source');
+if (sourceIndex >= 0 && !process.argv[sourceIndex + 1]) {
+    throw new Error('--source requires a PAL dist directory');
+}
+const src = sourceIndex >= 0
+    ? path.resolve(process.argv[sourceIndex + 1])
+    : path.join(engineRoot, 'node_modules', '@cocos', 'engine-pal', 'dist');
 const dst = path.join(engineRoot, 'pal');
+
+if (src === dst || src.startsWith(dst + path.sep)) {
+    throw new Error('PAL source must be outside the destination directory');
+}
 
 if (!fs.existsSync(src)) {
     console.error(`[spread-pal] 找不到 pal 产物: ${src}\n请先安装 @cocos/engine-pal。`);
@@ -45,4 +56,5 @@ function copyDir(s, d) {
 
 removeExisting(dst);
 copyDir(src, dst);
+require('./ensure-pal.cjs')(dst);
 console.log(`[spread-pal] 已复制 ${count} 个文件: ${src} -> ${dst}`);
