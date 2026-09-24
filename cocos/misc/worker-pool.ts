@@ -27,7 +27,7 @@ import {
     getWorkerBackend, resetWorkerBackendCache,
 } from './worker';
 import type { IPlatformWorkerBackend } from 'pal/worker';
-import { warn } from '../core/platform/debug';
+import { getError, warnID } from '../core/platform/debug';
 
 /** Execution state, independent of the host platform. */
 export type WorkerExecutionMode = 'worker' | 'sync' | 'none';
@@ -254,13 +254,13 @@ export class WorkerPool {
         const isScriptMode = typeof fnOrScript === 'string';
         if (isScriptMode) {
             if (!fnOrScript) {
-                throw new TypeError('WorkerPool script path must be a non-empty string');
+                throw new TypeError(getError(16500));
             }
             this._script = fnOrScript;
             this._fn = null;
         } else {
             if (typeof fnOrScript !== 'function') {
-                throw new TypeError('WorkerPool requires a self-contained task function or a worker script path');
+                throw new TypeError(getError(16501));
             }
             this._fn = fnOrScript;
             this._script = null;
@@ -328,8 +328,7 @@ export class WorkerPool {
             } else {
                 this._executionMode = 'none';
                 this._maxWorkers = 0;
-                this._backendReason = `No worker backend for "${this._script}" (${resolved.diagnosis.reason}). `
-                    + 'Provide options.fallback to run single-threaded, or fix packaging (docs/worker/README.md).';
+                this._backendReason = getError(16504, this._script, resolved.diagnosis.reason);
                 this._warnConstructionDegrade(resolved.warnOnFailure, resolved.diagnosis.reason);
             }
         } else if (platform.supportsFunctionWorker) {
@@ -446,13 +445,13 @@ export class WorkerPool {
     public run<TResult = unknown> (args?: unknown[], transfer?: Transferable[]): Promise<TResult> {
         return new Promise<TResult>((resolve, reject) => {
             if (this._released) {
-                reject(new Error('WorkerPool has been terminated'));
+                reject(new Error(getError(16502)));
                 return;
             }
             if (this._executionMode === 'none') {
                 // Script mode, but no worker backend is available (WeChat worker not fully set up,
                 // no global Worker) and no options.fallback was provided — we cannot proceed.
-                reject(new Error(this._backendReason || 'WorkerPool has no available execution backend'));
+                reject(new Error(this._backendReason || getError(16503)));
                 return;
             }
             this._queue.push({
@@ -477,7 +476,7 @@ export class WorkerPool {
         }
         this._released = true;
 
-        const error = new Error('WorkerPool has been terminated');
+        const error = new Error(getError(16502));
         for (const task of this._queue) {
             task.reject(error);
         }
@@ -679,8 +678,7 @@ export class WorkerPool {
         }
         this._degradeWarned = true;
         const script = this._script || '(function)';
-        warn(`WorkerPool ${this._fallback ? 'degraded to single-threaded' : 'is rejecting tasks (no options.fallback)'} `
-            + `for "${script}": worker backend failed (${error.message}). ${this._scriptFailureHint}`);
+        warnID(this._fallback ? 16505 : 16506, script, error.message, this._scriptFailureHint);
     }
 
     /** PAL decides whether unavailable script execution deserves a one-time warning. */
@@ -689,9 +687,7 @@ export class WorkerPool {
             return;
         }
         this._constructionWarned = true;
-        warn(`WorkerPool could not use a worker for "${this._script || '(function)'}" and is `
-            + `${this._fallback ? 'running single-threaded via options.fallback' : 'REJECTING tasks (no options.fallback)'}. `
-            + `Reason: ${reason}. ${this._scriptFailureHint}`);
+        warnID(this._fallback ? 16507 : 16508, this._script || '(function)', reason, this._scriptFailureHint);
     }
 }
 
@@ -775,7 +771,7 @@ class PooledWorker {
                 this._failed = true;
                 if (this._current) {
                     // Busy: fail the in-flight task; _settle's `_failed` branch then evicts us.
-                    this._settle(null, new Error(e && e.message ? String(e.message) : 'Worker error'));
+                    this._settle(null, new Error(e && e.message ? String(e.message) : getError(16509)));
                 } else {
                     // Idle: there is no task to settle, but this worker is no longer trustworthy.
                     // It MUST be evicted here — otherwise it stays in the pool with `busy === false`,
@@ -796,7 +792,7 @@ class PooledWorker {
             if (!this._fn) {
                 // Script mode without a live worker should never reach here (run()/_drain guard it),
                 // but stay defensive: there is no function to run synchronously, so fail the task.
-                this._settle(null, new Error('Worker is unavailable and no synchronous fallback exists'));
+                this._settle(null, new Error(getError(16510)));
                 return;
             }
             // Inline synchronous fallback (non-Worker platforms, function mode only). This blocks the
@@ -846,8 +842,7 @@ class PooledWorker {
                 return;
             }
             this._failed = true;
-            this._settle(null, new Error(`Worker task timed out after ${this._timeout}ms — the worker never replied `
-                + '(deadlock, infinite loop, or non-protocol script). Worker discarded; see docs/worker/README.md'));
+            this._settle(null, new Error(getError(16511, this._timeout)));
         }, this._timeout);
     }
 
@@ -876,7 +871,7 @@ class PooledWorker {
             this._worker.terminate();
         }
         if (this._current) {
-            this._current.reject(new Error('Worker has been disposed'));
+            this._current.reject(new Error(getError(16512)));
             this._current = null;
             this._currentId = -1;
         }
@@ -894,8 +889,7 @@ class PooledWorker {
             || typeof reply.id !== 'number'
             || typeof reply.ok !== 'boolean') {
             this._failed = true;
-            this._settle(null, new Error('Worker script sent a malformed reply — it must implement the engine protocol: '
-                + 'receive { id, args }, post back { id, ok, value } or { id, ok: false, error } (docs/worker/cc-worker-template.js)'));
+            this._settle(null, new Error(getError(16513)));
             return;
         }
         // Guard against a stale/late reply from a previous task on the same worker.
@@ -905,7 +899,7 @@ class PooledWorker {
         if (reply.ok) {
             this._settle(reply.value, null);
         } else {
-            this._settle(null, new Error(reply.error || 'Worker task failed'));
+            this._settle(null, new Error(reply.error || getError(16514)));
         }
     }
 

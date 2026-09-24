@@ -24,6 +24,7 @@
 
 import { createWorkerBackend } from 'pal/worker';
 import type { IWorker, IPlatformWorkerBackend, IWorkerCapabilities } from 'pal/worker';
+import { getError } from '../core/platform/debug';
 
 export type { IWorker };
 
@@ -355,7 +356,7 @@ export function getWorkerConcurrencyLimit (): number {
  */
 function createWorkerFromPath (path: string): IWorker {
     if (typeof path !== 'string' || !path) {
-        throw new TypeError('createWorker(path) requires a non-empty worker script path');
+        throw new TypeError(getError(16515));
     }
     return getWorkerBackend().createScriptWorker(path);
 }
@@ -404,8 +405,7 @@ export function createWorker (pathOrFn: string | WorkerTask): IWorker {
     if (typeof pathOrFn === 'function') {
         const w = getWorkerBackend().createFunctionWorker(pathOrFn);
         if (!w) {
-            throw new Error('Function workers are unavailable; use WorkerPool for an '
-                + 'automatic sync fallback, or createWorker(path) (mode 2).');
+            throw new Error(getError(16516));
         }
         return w;
     }

@@ -28,8 +28,8 @@
  *
  * The worker subsystem lives in `cocos/misc/worker*.ts` but is intentionally NOT re-exported from
  * `cocos/misc/index.ts`: that file belongs to the always-on `base` feature, so anything exported
- * there ships in every build's main bundle. Routing the subsystem through this dedicated entry keeps
- * ~17 KB (minified) / ~5 KB (gzipped) out of projects that never use it.
+ * there ships in every build's main bundle. Routing the subsystem through this dedicated entry lets
+ * builds omit the worker scheduler and its PAL dependencies when the feature is disabled.
  *
  * Only the public surface is re-exported here. Platform implementations live in `pal/worker`.
  * Internal backend selection and cache management stay off the `cc` namespace.
