@@ -778,6 +778,8 @@ export class Director extends EventTarget {
                 this._compScheduler.startPhase();
                 // Update for components
                 this._compScheduler.updatePhase(dt);
+                // Update coroutines
+                this._compScheduler.coroutineUpdatePhase(dt, this._totalFrames);
                 // Update systems
                 for (let i = 0; i < this._systems.length; ++i) {
                     this._systems[i].update(dt);
