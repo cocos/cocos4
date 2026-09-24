@@ -1121,6 +1121,10 @@ module.exports = link(mixin({
             label: "Post Process Module (Deprecated)",
             description: "The render pipeline used in previous versions. This pipeline will be deprecated in future versions.",
         },
+        render_scene: {
+            label: "Render Scene (New)",
+            description: "The new data-oriented render scene.",
+        },
         legacy_pipeline: {
             label: "Render Pipeline (Legacy)",
             description: "The render pipeline used in previous versions. This pipeline will be deprecated in future versions.",
