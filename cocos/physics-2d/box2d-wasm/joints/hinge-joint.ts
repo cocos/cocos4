@@ -26,7 +26,6 @@ import { B2 } from '../instantiated';
 import { IHingeJoint } from '../../spec/i-physics-joint';
 import { HingeJoint2D } from '../../framework';
 import { B2Joint } from './joint-2d';
-import { PHYSICS_2D_PTM_RATIO } from '../../framework/physics-types';
 import { toRadian } from '../../../core';
 
 /** @mangle */
@@ -69,8 +68,10 @@ export class B2HingeJoint extends B2Joint implements IHingeJoint {
     _createJointDef (): any {
         const comp = this._jointComp as HingeJoint2D;
         const def = new B2.RevoluteJointDef();
-        def.localAnchorA = { x: comp.anchor.x / PHYSICS_2D_PTM_RATIO, y: comp.anchor.y / PHYSICS_2D_PTM_RATIO };
-        def.localAnchorB = { x: comp.connectedAnchor.x / PHYSICS_2D_PTM_RATIO, y: comp.connectedAnchor.y / PHYSICS_2D_PTM_RATIO };
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA = { x: anchorA.x, y: anchorA.y };
+        def.localAnchorB = { x: anchorB.x, y: anchorB.y };
 
         def.enableMotor = comp.enableMotor;
         def.maxMotorTorque = comp.maxMotorTorque;
