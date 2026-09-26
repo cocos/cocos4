@@ -940,7 +940,12 @@ export class Batcher2D implements IBatcher {
                 }
             }
 
-            if (children.length > 0 && !node._static) {
+            let breakWalk = false;
+            const entity = render ? render.renderEntity : null;
+            if (entity && entity.renderEntityType === RenderEntityType.CROSSED) {
+                breakWalk = true;
+            }
+            if (!breakWalk && children.length > 0 && !node._static) {
                 for (let i = 0; i < children.length; ++i) {
                     const child = children[i];
                     this.walk(child, level);
