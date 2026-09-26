@@ -28,6 +28,7 @@ import { log, warnID } from '../../platform/debug';
 import { formatStr, get, getClassName, isChildClassOf, value } from '../../utils/js';
 import { isPlainEmptyObj_DEV } from '../../utils/misc';
 import { legacyCC } from '../../global-exports';
+import { applyDynamicOneOfAttrs } from '../decorators/one-of';
 
 export const DELIMETER = '$_$';
 
@@ -80,7 +81,7 @@ export function attr (constructor: any, propertyName: string): { [attributeName:
             ret[key.slice(prefix.length)] = attrs[key];
         }
     }
-    return ret;
+    return applyDynamicOneOfAttrs(constructor, ret, propertyName);
 }
 
 /**
