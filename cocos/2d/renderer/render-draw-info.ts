@@ -24,11 +24,13 @@
 
 import { JSB } from 'internal:constants';
 import { IRenderData } from './render-data';
+import type { MeshRenderData } from './render-data';
 import { NativeRenderDrawInfo } from './native-2d';
 import { Node } from '../../scene-graph';
 import { Sampler, Texture } from '../../gfx';
 import { Model } from '../../render-scene/scene';
 import { Material } from '../../asset/assets';
+import type { MeshBuffer } from './mesh-buffer';
 
 const bitIndexForIsMeshBuffer = 0;
 const bitIndexForIsVertexPositionInWorld = 1;
@@ -77,15 +79,12 @@ export class RenderDrawInfo {
     protected _bufferId = -1;
     protected _vertexOffset = 0;
     protected _indexOffset = 0;
-    protected _vb: Float32Array | null = null;
-    protected _ib: Uint16Array | null = null;
-    protected _vData: Float32Array | null = null;
-    protected _iData: Uint16Array | null = null;
     protected _vertDirty = false;
     protected _vbCount = 0;
     protected _ibCount = 0;
     protected _dataHash = 0;
     protected _isMeshBuffer = false;
+    protected _isVertexPositionInWorld = false;
     protected _material: Material | null = null;
     protected _texture: Texture | null = null;
     protected _sampler: Sampler | null = null;
@@ -95,6 +94,17 @@ export class RenderDrawInfo {
     protected _model: Model | null = null;
     protected _drawInfoType: RenderDrawInfoType = RenderDrawInfoType.COMP;
     protected _subNode: Node | null = null;
+    protected _meshBuffer: MeshBuffer | null = null;
+
+    /**
+     * @en (Web only) Back-reference to the owning MeshRenderData for isMeshBuffer COMP drawInfo
+     * (Particle2D). WebBatcherCore delegates `uploadBuffers`/`requestIA` to this reference
+     * rather than replicating native's self-contained GFX resource management on RenderDrawInfo.
+     * @zh （仅 Web）对所属 MeshRenderData 的反向引用（isMeshBuffer COMP，如 Particle2D）。
+     * @engineInternal
+     * @mangle
+     */
+    public meshRenderData: MeshRenderData | null = null;
 
     protected declare _nativeObj: NativeRenderDrawInfo;
     protected declare _uint8SharedBuffer: Uint8Array;
@@ -124,6 +134,26 @@ export class RenderDrawInfo {
     get render2dBuffer (): Float32Array | null {
         return this._render2dBuffer;
     }
+
+    // ── Field accessors (read side for WebBatcherCore; JSB reads native shared buffers instead) ──
+    get accId (): number { return this._accId; }
+    get bufferId (): number { return this._bufferId; }
+    get vertexOffset (): number { return this._vertexOffset; }
+    get indexOffset (): number { return this._indexOffset; }
+    get vertDirty (): boolean { return this._vertDirty; }
+    get vbCount (): number { return this._vbCount; }
+    get ibCount (): number { return this._ibCount; }
+    get dataHash (): number { return this._dataHash; }
+    get isMeshBuffer (): boolean { return this._isMeshBuffer; }
+    get isVertexPositionInWorld (): boolean { return this._isVertexPositionInWorld; }
+    get material (): Material | null { return this._material; }
+    get texture (): Texture | null { return this._texture; }
+    get sampler (): Sampler | null { return this._sampler; }
+    get stride (): number { return this._stride; }
+    get model (): Model | null { return this._model; }
+    get drawInfoType (): RenderDrawInfoType { return this._drawInfoType; }
+    get subNode (): Node | null { return this._subNode; }
+    get meshBuffer (): MeshBuffer | null { return this._meshBuffer; }
 
     private init (nativeDrawInfo?: NativeRenderDrawInfo): void {
         if (JSB) {
@@ -176,16 +206,18 @@ export class RenderDrawInfo {
     }
 
     public setVertexOffset (vertexOffset: number): void {
-        this._vertexOffset = vertexOffset;
         if (JSB) {
             this._uint32SharedBuffer[AttrUInt32ArrayView.VertexOffset] = vertexOffset;
+        } else {
+            this._vertexOffset = vertexOffset;
         }
     }
 
     public setIndexOffset (indexOffset: number): void {
-        this._indexOffset = indexOffset;
         if (JSB) {
             this._uint32SharedBuffer[AttrUInt32ArrayView.IndexOffset] = indexOffset;
+        } else {
+            this._indexOffset = indexOffset;
         }
     }
 
@@ -216,28 +248,33 @@ export class RenderDrawInfo {
     public setVBCount (vbCount: number): void {
         if (JSB) {
             this._uint32SharedBuffer[AttrUInt32ArrayView.VBCount] = vbCount;
+        } else {
+            this._vbCount = vbCount;
         }
-        this._vbCount = vbCount;
     }
 
     public setIBCount (ibCount: number): void {
         if (JSB) {
             this._uint32SharedBuffer[AttrUInt32ArrayView.IBCount] = ibCount;
+        } else {
+            this._ibCount = ibCount;
         }
     }
 
     public setVertDirty (val: boolean): void {
         if (JSB) {
             this._uint8SharedBuffer[AttrUInt8ArrayView.VertDirty] = val ? 1 : 0;
+        } else {
+            this._vertDirty = val;
         }
-        this._vertDirty = val;
     }
 
     public setDataHash (dataHash: number): void {
         if (JSB) {
             this._uint32SharedBuffer[AttrUInt32ArrayView.DataHash] = dataHash;
+        } else {
+            this._dataHash = dataHash;
         }
-        this._dataHash = dataHash;
     }
 
     public setIsMeshBuffer (isMeshBuffer: boolean): void {
@@ -247,8 +284,9 @@ export class RenderDrawInfo {
             } else {
                 clearBitInTypedArray(this._uint8SharedBuffer, AttrUInt8ArrayView.BooleanValues, bitIndexForIsMeshBuffer);
             }
+        } else {
+            this._isMeshBuffer = isMeshBuffer;
         }
-        this._isMeshBuffer = isMeshBuffer;
     }
 
     public setVertexPositionInWorld (isVertexPositionInWorld: boolean): void {
@@ -258,6 +296,8 @@ export class RenderDrawInfo {
             } else {
                 clearBitInTypedArray(this._uint8SharedBuffer, AttrUInt8ArrayView.BooleanValues, bitIndexForIsVertexPositionInWorld);
             }
+        } else {
+            this._isVertexPositionInWorld = isVertexPositionInWorld;
         }
     }
 
@@ -294,6 +334,7 @@ export class RenderDrawInfo {
                 this._nativeObj.model = model;
             }
         }
+        this._model = model;
     }
 
     public setDrawInfoType (drawInfoType: RenderDrawInfoType): void {
@@ -314,11 +355,20 @@ export class RenderDrawInfo {
         this._subNode = node;
     }
 
+    public setMeshBuffer (meshBuffer: MeshBuffer | null): void {
+        if (JSB) {
+            this._nativeObj.meshBuffer = meshBuffer;
+        } else {
+            this._meshBuffer = meshBuffer;
+        }
+    }
+
     public setStride (stride: number): void {
         if (JSB) {
             this._uint8SharedBuffer[AttrUInt8ArrayView.Stride] = stride;
+        } else {
+            this._stride = stride;
         }
-        this._stride = stride;
     }
 
     public initRender2dBuffer (): void {

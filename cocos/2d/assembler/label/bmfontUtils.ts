@@ -137,6 +137,8 @@ export class BmfontUtils {
                 this.resetRenderData(comp);
                 renderData.dataLength = outputRenderData.quadCount;
                 renderData.resize(renderData.dataLength, renderData.dataLength / 2 * 3);
+                this.createQuadIndices(renderData.indexCount);
+                renderData.indices = QUAD_INDICES;
                 isResized = true;
             }
             const datalist = renderData.data;

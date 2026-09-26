@@ -487,15 +487,6 @@ export class UIRenderer extends Renderer {
     }
 
     /**
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     */
-    public fillBuffers (render: IBatcher): void {
-        if (this._renderFlag) {
-            this._render(render);
-        }
-    }
-
-    /**
      * @en Post render data submission procedure, it's executed after assembler updated for all children.
      * It may assemble some extra render data to the geometry buffers, or it may only change some render states.
      * Don't call it unless you know what you are doing.
@@ -507,10 +498,6 @@ export class UIRenderer extends Renderer {
         if (this._postAssembler && this._renderFlag) {
             this._postRender(render);
         }
-    }
-
-    protected _render (render: IBatcher): void {
-        // Implemented by subclasses
     }
 
     protected _postRender (render: IBatcher): void {

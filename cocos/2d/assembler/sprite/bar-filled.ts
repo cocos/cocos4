@@ -207,60 +207,14 @@ class BarFilled implements IAssembler {
         renderData.dataLength = 4;
         renderData.resize(4, 6);
         renderData.chunk.setIndexBuffer(QUAD_INDICES);
+        renderData.indices = QUAD_INDICES;
 
         // not need
         renderData.data.forEach((data) => { data.z = 0; });
         return renderData;
     }
 
-    private updateWorldVertexData (sprite: Sprite, chunk: StaticVBChunk): void {
-        const node = sprite.node;
-        node.getWorldMatrix(m);
 
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const stride = renderData.floatStride;
-        const dataList = sprite.renderData.data;
-        const vData = chunk.vb;
-
-        let offset = 0;
-        for (let i = 0; i < 4; i++) {
-            const local = dataList[i];
-            const x = local.x;
-            const y = local.y;
-            let rhw = m.m03 * x + m.m07 * y + m.m15;
-            rhw = rhw ? 1 / rhw : 1;
-
-            offset = i * stride;
-            vData[offset] = (m.m00 * x + m.m04 * y + m.m12) * rhw;
-            vData[offset + 1] = (m.m01 * x + m.m05 * y + m.m13) * rhw;
-            vData[offset + 2] = (m.m02 * x + m.m06 * y + m.m14) * rhw;
-        }
-    }
-
-    fillBuffers (sprite: Sprite, renderer: IBatcher): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        if (sprite._flagChangedVersion !== sprite.node.flagChangedVersion || renderData.vertDirty) {
-            this.updateWorldVertexData(sprite, chunk);
-            renderData.vertDirty = false;
-            sprite._flagChangedVersion = sprite.node.flagChangedVersion;
-        }
-
-        const bid = chunk.bufferId;
-        const vid = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        let indexOffset = meshBuffer.indexOffset;
-        ib[indexOffset++] = vid;
-        ib[indexOffset++] = vid + 1;
-        ib[indexOffset++] = vid + 2;
-        ib[indexOffset++] = vid + 2;
-        ib[indexOffset++] = vid + 1;
-        ib[indexOffset++] = vid + 3;
-        meshBuffer.indexOffset += 6;
-    }
 
     updateColor (sprite: Sprite): void {
         const renderData = sprite.renderData;
