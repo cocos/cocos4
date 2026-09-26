@@ -300,6 +300,9 @@
             "overrideConstants": {
                 "CULL_MESHOPT": false
             }
+        },
+        "webassembly": {
+            "modules": ["webassembly"]
         }
     },
     "moduleOverrides": [{
