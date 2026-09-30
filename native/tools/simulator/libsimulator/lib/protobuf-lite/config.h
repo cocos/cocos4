@@ -30,6 +30,11 @@
 /* protobuf config.h for MSVC.  On other platforms, this is generated
  * automatically by autoheader / autoconf / configure. */
 
+/* VS 18 (MSVC >= 1950) removed the legacy <hash_map>/<hash_set> headers.
+ * Leave the HAVE_* flags undefined there so stubs/hash.h takes its built-in
+ * MISSING_HASH fallback (std::map / std::set based). */
+#if !(defined(_MSC_VER) && _MSC_VER >= 1950)
+
 /* the location of <hash_map> */
 #define HASH_MAP_H <hash_map>
 
@@ -52,6 +57,8 @@
 
 /* define if the compiler has hash_set */
 #define HAVE_HASH_SET 1
+
+#endif // MSVC >= 1950
 
 /* define if you want to use zlib.  See readme.txt for additional
  * requirements. */
