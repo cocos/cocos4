@@ -71,6 +71,7 @@ async function buildTsEngine () {
             // "marionette",
             'custom-pipeline',
             'legacy-pipeline',
+            'render-scene',
             // "light-probe",
         ],
         mode: 'BUILD',
