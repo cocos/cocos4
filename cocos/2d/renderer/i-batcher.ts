@@ -22,30 +22,13 @@
  THE SOFTWARE.
 */
 
-import { CachedArray } from '../../core';
-import { TextureBase } from '../../asset/assets/texture-base';
 import { Device, Attribute } from '../../gfx';
 import { Camera } from '../../render-scene/scene/camera';
-import { Model } from '../../render-scene/scene/model';
-import { SpriteFrame } from '../assets/sprite-frame';
-import { UIStaticBatch } from '../components/ui-static-batch';
-import { UIRenderer, RenderRoot2D } from '../framework';
+import { RenderRoot2D } from '../framework';
 import { StaticVBAccessor } from './static-vb-accessor';
-import { DrawBatch2D } from './draw-batch';
-import { BaseRenderData } from './render-data';
-import { UIMeshRenderer } from '../components/ui-mesh-renderer';
-import { Material } from '../../asset/assets';
 import { Node } from '../../scene-graph';
 
 export interface IBatcher {
-    currBufferAccessor: StaticVBAccessor;
-    readonly batches: CachedArray<DrawBatch2D>;
-    // registerCustomBuffer (attributes: MeshBuffer | Attribute[], callback: ((...args: number[]) => void) | null) : MeshBuffer;
-    // unRegisterCustomBuffer (buffer: MeshBuffer);
-
-    currStaticRoot: UIStaticBatch | null;
-    currIsStatic: boolean;
-
     device: Device;
 
     initialize(): boolean;
@@ -62,25 +45,4 @@ export interface IBatcher {
     reset (): void;
 
     switchBufferAccessor (attributes?: Attribute[]): StaticVBAccessor;
-
-    commitComp (
-        comp: UIRenderer,
-        renderData: BaseRenderData|null,
-        textureOrFrame: TextureBase | SpriteFrame | null,
-        assembler: any,
-        transform: Node | null
-    ): void;
-
-    commitModel (comp: UIMeshRenderer | UIRenderer, model: Model | null, mat: Material | null): void;
-
-    setupStaticBatch (staticComp: UIStaticBatch, bufferAccessor: StaticVBAccessor): void;
-    endStaticBatch (): void;
-    commitStaticBatch (comp: UIStaticBatch): void;
-
-    autoMergeBatches (renderComp?: UIRenderer): void;
-    forceMergeBatches (material: Material, textureOrFrame: TextureBase | SpriteFrame | null, renderComp: UIRenderer): void;
-    finishMergeBatches (): void;
-    flushMaterial (mat: Material): void;
-
-    walk (node: Node, level?: number): void;
 }

@@ -36,7 +36,6 @@ import type { BaseRenderData } from './render-data';
  */
 export interface IAssembler {
     createData? (comp: UIRenderer): BaseRenderData;
-    fillBuffers? (comp: UIRenderer, renderer: IBatcher): void;
     updateUVs? (comp: UIRenderer, ...args: any[]): void;
     updateColor? (comp: UIRenderer): void;
     updateRenderData? (comp: UIRenderer): void;

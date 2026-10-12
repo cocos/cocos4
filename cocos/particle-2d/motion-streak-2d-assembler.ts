@@ -27,7 +27,6 @@ import { JSB } from 'internal:constants';
 import type { IAssembler, IAssemblerManager } from '../2d/renderer/base';
 import { MotionStreak, Point } from './motion-streak-2d';
 import { Vec2, Color } from '../core';
-import type { IBatcher } from '../2d/renderer/i-batcher';
 import type { RenderData } from '../2d/renderer/render-data';
 
 const _normal = new Vec2();
@@ -155,21 +154,28 @@ class MotionStreakAssembler implements IAssembler {
 
         renderData.resize(vertexCount, indexCount); // resize
 
-        if (JSB && comp.texture) {
-            const indexCount = renderData.indexCount;
-            this.createQuadIndices(comp, indexCount);
+        if (!comp.texture) return;
+
+        // Bake the fully-transformed world-space vertices (pos + uv + per-vertex color) into the chunk.
+        // MotionStreak positions are already in world space, so the draw info carries
+        // isVertexPositionInWorld (see motion-streak-2d.ts) and the batcher never re-transforms them.
+        this.updateWorldVertexAllData(comp);
+
+        if (JSB) {
+            this.createQuadIndices(comp, renderData.indexCount);
             renderData.chunk.setIndexBuffer(QUAD_INDICES!);
-
-            //  Fill all dataList to vData
-            this.updateWorldVertexAllData(comp);
-
-            renderData.updateRenderData(comp, comp.texture);
-            comp._markForUpdateRenderData();
+        } else {
+            // Web: WebBatcherCore._fillBuffers writes the mesh-buffer indices from renderData.indices
+            // (local, 0-based — it adds the chunk's vertexOffset). Provide that local index list.
+            this.buildLocalQuadIndices(renderData.indexCount);
+            renderData.indices = QUAD_INDICES!;
         }
+
+        renderData.updateRenderData(comp, comp.texture);
+        comp._markForUpdateRenderData();
     }
 
     private updateWorldVertexAllData (comp: MotionStreak): void {
-        if (!JSB) return;
         const renderData = comp.renderData;
         if (!renderData) return;
         const stride = renderData.floatStride;
@@ -208,6 +214,19 @@ class MotionStreakAssembler implements IAssembler {
         }
     }
 
+    private buildLocalQuadIndices (indexCount: number): void {
+        QUAD_INDICES = new Uint16Array(indexCount);
+        let o = 0;
+        for (let base = 0; o < indexCount; base += 2) {
+            QUAD_INDICES[o++] = base;
+            QUAD_INDICES[o++] = base + 2;
+            QUAD_INDICES[o++] = base + 1;
+            QUAD_INDICES[o++] = base + 1;
+            QUAD_INDICES[o++] = base + 2;
+            QUAD_INDICES[o++] = base + 3;
+        }
+    }
+
     private updateRenderDataCache (comp: MotionStreak, renderData: RenderData): void {
         if (renderData.passDirty) {
             renderData.updatePass(comp);
@@ -222,48 +241,6 @@ class MotionStreakAssembler implements IAssembler {
         if (renderData.hashDirty) {
             renderData.updateHash();
         }
-    }
-
-    fillBuffers (comp: MotionStreak, renderer: IBatcher): void {
-        const renderData = comp.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        const dataList = renderData.data;
-
-        const vertexCount = renderData.vertexCount;
-        const indexCount = renderData.indexCount;
-
-        const vData = chunk.vb;
-        let vertexOffset = 0;
-        for (let i = 0; i < vertexCount; i++) {
-            const vert = dataList[i];
-            vData[vertexOffset++] = vert.x;
-            vData[vertexOffset++] = vert.y;
-            vData[vertexOffset++] = vert.z;
-            vData[vertexOffset++] = vert.u;
-            vData[vertexOffset++] = vert.v;
-            Color.toArray(vData, vert.color, vertexOffset);
-            vertexOffset += 4;
-        }
-
-        // fill index data
-        const bid = chunk.bufferId;
-        const vid = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        let indexOffset = meshBuffer.indexOffset;
-        for (let i = 0, l = indexCount; i < l; i += 2) {
-            const start = vid + i;
-            ib[indexOffset++] = start;
-            ib[indexOffset++] = start + 2;
-            ib[indexOffset++] = start + 1;
-            ib[indexOffset++] = start + 1;
-            ib[indexOffset++] = start + 2;
-            ib[indexOffset++] = start + 3;
-        }
-
-        meshBuffer.indexOffset += renderData.indexCount;
-        meshBuffer.setDirty();
     }
 }
 
