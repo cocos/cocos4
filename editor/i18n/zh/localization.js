@@ -1111,6 +1111,10 @@ module.exports = link(mixin({
             label: "WebSocket Server",
             description: "对原生启用 WebSocket Server。注意: 必须同时启用 WebSocket。",
         },
+        worker: {
+            label: "Worker",
+            description: "启用 Worker 子系统（WorkerPool / Worker 后端），用于把耗时任务放到主线程之外执行。平台不支持 Worker 时会自动回退为同步执行。",
+        },
         flags: {
             spine: {
                 loadManual: {

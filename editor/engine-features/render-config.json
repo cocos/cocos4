@@ -346,6 +346,12 @@
             "enginePlugin": false,
             "category": "network"
         },
+        "worker": {
+            "default": false,
+            "label": "i18n:ENGINE.features.worker.label",
+            "description": "i18n:ENGINE.features.worker.description",
+            "enginePlugin": true
+        },
         "terrain": {
             "default": true,
             "label": "i18n:ENGINE.features.terrain.label",

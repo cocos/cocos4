@@ -1,3 +1,4 @@
+require('./ensure-pal.cjs')();
 const { StatsQuery } = require('@cocos/ccbuild');
 const { join } = require('path');
 const { outputFileSync } = require('fs-extra');
