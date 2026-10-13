@@ -43,6 +43,19 @@ set(USE_DEBUG_RENDERER OFF)
 include(${cocosdir}/CMakeLists.txt)
 include(${cocosdir}/tools/simulator/libsimulator/CMakeLists.txt)
 
+# Native plugin discovery, same mechanism as native builds. Opt-in: pass
+# -DSIMULATOR_PLUGIN_SCAN_DIRS="<dir>[;<dir>]" with directories to scan for
+# cc_plugin.json. Unset (default) keeps the stock plugin-less simulator.
+set(SIMULATOR_PLUGIN_SCAN_DIRS "" CACHE STRING
+    "Directories scanned for cc_plugin.json native plugins")
+set(COCOS_X_PATH ${cocosdir})
+if(SIMULATOR_PLUGIN_SCAN_DIRS)
+    set(CC_PROJECT_DIR ${CMAKE_BINARY_DIR}/plugin-scan)
+    set(CC_PLUGIN_PATH ${SIMULATOR_PLUGIN_SCAN_DIRS})
+    file(MAKE_DIRECTORY ${CC_PROJECT_DIR})
+    cc_common_before_target(${APP_NAME})
+endif()
+
 
 
 if(MACOSX)
@@ -153,6 +166,11 @@ else()
 endif()
 
 target_link_libraries(${LIB_NAME} ${ENGINE_NAME} simulator)
+# Plain signature, matching the call above: mixing keyword/plain forms for one
+# target is a hard CMake error.
+if(TARGET plugin_registry)
+    target_link_libraries(${LIB_NAME} plugin_registry)
+endif()
 target_include_directories(${LIB_NAME} PRIVATE
     Classes
 )
