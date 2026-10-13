@@ -45,5 +45,5 @@ export {
     DebugMode,
 } from './debug';
 
-export { screen } from './screen';
+export { screen, MaxDPR } from './screen';
 export type { Screen } from './screen';
