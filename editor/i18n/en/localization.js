@@ -1325,6 +1325,7 @@ module.exports = link(mixin({
     },
     reflection_probe: {
         fastBake: 'If checked, generating progress will ignore GGX convolution for cubemap, very fast generation.',
+        planarMSAA: 'MSAA for this planar reflection capture. Defaults to 4x; unsupported sample counts use a lower supported count.',
     },
     hbao: {
         radiusScale: 'The range of ambient occlusion, by adjusting this value, the dark area can be better adapted to the scale of the scene.',

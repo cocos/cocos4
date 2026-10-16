@@ -142,7 +142,7 @@ void main()  {
 
   // Color output
   #if CC_USE_RGBE_OUTPUT
-    color = packRGBE(color.rgb); // for reflection-map
+    color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb); // for reflection-map
   #else
     color = CCSurfacesDebugDisplayInvalidNumber(color);
     #if !CC_USE_FLOAT_OUTPUT || CC_IS_TRANSPARENCY_PASS

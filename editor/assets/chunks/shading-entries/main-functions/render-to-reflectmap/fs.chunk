@@ -48,7 +48,7 @@ layout(location = 0) out vec4 fragColorX;
       CC_APPLY_FOG_BASE(color, fogFactor);
     #endif
 
-    // Color output (RGBE)
-    fragColorX = packRGBE(color.rgb);
+    // Color output (linear HDR capture or RGBE)
+    fragColorX = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
   }
 #endif

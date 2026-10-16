@@ -1303,6 +1303,7 @@ module.exports = link(mixin({
     },
     reflection_probe: {
         fastBake: '勾选则不会对生成的 cubemap 进行 GGX 卷积，烘焙速度非常快。',
+        planarMSAA: '此平面反射探针的 MSAA 采样数，默认 4 倍；不支持的采样数会降级到设备支持的采样数。',
     },
     hbao: {
         radiusScale: '环境光遮蔽的范围，通过调整该值可以让暗部区域更好的按场景尺度进行适配',
