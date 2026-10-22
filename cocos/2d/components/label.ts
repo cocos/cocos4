@@ -29,7 +29,6 @@ import { minigame } from 'pal/minigame';
 import { BitmapFont, Font, SpriteFrame } from '../assets';
 import { ImageAsset, Texture2D } from '../../asset/assets';
 import { ccenum, cclegacy, Color, Vec2 } from '../../core';
-import { IBatcher } from '../renderer/i-batcher';
 import { FontAtlas } from '../assets/bitmap-font';
 import { CanvasPool, ISharedLabelData, LetterRenderTexture } from '../assembler/label/font-utils';
 import { InstanceMaterialType, UIRenderer } from '../framework/ui-renderer';
@@ -969,10 +968,6 @@ export class Label extends UIRenderer {
         if (this._assembler) {
             this._assembler.updateRenderData!(this);
         }
-    }
-
-    protected _render (render: IBatcher): void {
-        render.commitComp(this, this.renderData, this._texture, this._assembler!, null);
     }
 
     // Cannot use the base class methods directly because BMFont and CHAR cannot be updated in assambler with just color.

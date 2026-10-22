@@ -127,7 +127,7 @@ const oldDestroy = textureBaseProto.destroy;
 textureBaseProto.destroy = function () {
     if (cclegacy.director.root?.batcher2D) {
         // legacyCC.director.root.batcher2D._releaseDescriptorSetCache(this.getHash());
-        (cclegacy.director.root.batcher2D as Batcher2D)._releaseDescriptorSetCache(this.getGFXTexture(), this.getGFXSampler());
+        (cclegacy.director.root.batcher2D).releaseDescriptorSetCache(this.getGFXTexture(), this.getGFXSampler());
     }
     // dispatch into C++ virtual function CCObject::destroy
     return oldDestroy.call(this);

@@ -75,10 +75,6 @@ removeProperty(MeshBuffer.prototype, 'MeshBuffer', [
 
 replaceProperty(Batcher2D.prototype, 'Batcher2D', [
     {
-        name: 'currBufferBatch',
-        newName: 'currBufferAccessor',
-    },
-    {
         name: 'acquireBufferBatch',
         newName: 'switchBufferAccessor',
     },

@@ -46,6 +46,7 @@ class Simple implements IAssembler {
         renderData.dataLength = 4;
         renderData.resize(4, 6);
         renderData.chunk.setIndexBuffer(QUAD_INDICES);
+        renderData.indices = QUAD_INDICES;
         return renderData;
     }
 
@@ -63,79 +64,6 @@ class Simple implements IAssembler {
             }
             renderData.updateRenderData(sprite, frame);
         }
-    }
-
-    private updateWorldVerts (sprite: Sprite, chunk: StaticVBChunk): void {
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const vData = chunk.vb;
-
-        const dataList: IRenderData[] = renderData.data;
-        const node = sprite.node;
-        const m = node.worldMatrix;
-
-        const m00 = m.m00; const m01 = m.m01; const m02 = m.m02; const m03 = m.m03;
-        const m04 = m.m04; const m05 = m.m05; const m06 = m.m06; const m07 = m.m07;
-        const m12 = m.m12; const m13 = m.m13; const m14 = m.m14; const m15 = m.m15;
-
-        const stride = renderData.floatStride;
-        let offset = 0;
-        const length = dataList.length;
-        for (let i = 0; i < length; ++i) {
-            const curData = dataList[i];
-            const x = curData.x;
-            const y = curData.y;
-            let rhw = m03 * x + m07 * y + m15;
-            rhw = rhw ? 1 / rhw : 1;
-
-            offset = i * stride;
-            vData[offset + 0] = (m00 * x + m04 * y + m12) * rhw;
-            vData[offset + 1] = (m01 * x + m05 * y + m13) * rhw;
-            vData[offset + 2] = (m02 * x + m06 * y + m14) * rhw;
-        }
-    }
-
-    fillBuffers (sprite: Sprite, renderer: IBatcher): void {
-        if (sprite === null) {
-            return;
-        }
-
-        const renderData = sprite.renderData;
-        if (!renderData) return;
-        const chunk = renderData.chunk;
-        if (sprite._flagChangedVersion !== sprite.node.flagChangedVersion || renderData.vertDirty) {
-            // const vb = chunk.vertexAccessor.getVertexBuffer(chunk.bufferId);
-            this.updateWorldVerts(sprite, chunk);
-            renderData.vertDirty = false;
-            sprite._flagChangedVersion = sprite.node.flagChangedVersion;
-        }
-
-        // quick version
-        const vidOrigin = chunk.vertexOffset;
-        const meshBuffer = chunk.meshBuffer;
-        const ib = chunk.meshBuffer.iData;
-        let indexOffset = meshBuffer.indexOffset;
-
-        const vid = vidOrigin;
-
-        // left bottom
-        ib[indexOffset++] = vid;
-        // right bottom
-        ib[indexOffset++] = vid + 1;
-        // left top
-        ib[indexOffset++] = vid + 2;
-
-        // right bottom
-        ib[indexOffset++] = vid + 1;
-        // right top
-        ib[indexOffset++] = vid + 3;
-        // left top
-        ib[indexOffset++] = vid + 2;
-
-        // IndexOffset should add 6 when vertices of a rect are visited.
-        meshBuffer.indexOffset += 6;
-        // slow version
-        // renderer.switchBufferAccessor().appendIndices(chunk);
     }
 
     private updateVertexData (sprite: Sprite): void {
