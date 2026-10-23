@@ -26,7 +26,6 @@ import b2 from '@cocos/box2d';
 import { IWheelJoint } from '../../spec/i-physics-joint';
 import { WheelJoint2D } from '../../framework';
 import { b2Joint } from './joint-2d';
-import { PHYSICS_2D_PTM_RATIO } from '../../framework/physics-types';
 import { toRadian } from '../../../core';
 
 /** @mangle */
@@ -62,8 +61,10 @@ export class b2WheelJoint extends b2Joint implements IWheelJoint {
     _createJointDef (): any {
         const comp = this._jointComp as WheelJoint2D;
         const def = new b2.WheelJointDef();
-        def.localAnchorA.Set(comp.anchor.x / PHYSICS_2D_PTM_RATIO, comp.anchor.y / PHYSICS_2D_PTM_RATIO);
-        def.localAnchorB.Set(comp.connectedAnchor.x / PHYSICS_2D_PTM_RATIO, comp.connectedAnchor.y / PHYSICS_2D_PTM_RATIO);
+        const anchorA = this._getAnchorA();
+        const anchorB = this._getAnchorB();
+        def.localAnchorA.Set(anchorA.x, anchorA.y);
+        def.localAnchorB.Set(anchorB.x, anchorB.y);
         const angle = toRadian(comp.angle);
         def.localAxisA.Set(Math.cos(angle), Math.sin(angle));
         // def.localAxisA.Set(0, 1);
