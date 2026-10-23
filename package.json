@@ -83,7 +83,7 @@
     "@cocos/cannon": "1.2.8",
     "@cocos/ccbuild": "^2.3.21",
     "@cocos/dragonbones-js": "^1.0.1",
-    "@cocos/engine-pal": "^1.0.5",
+    "@cocos/engine-pal": "^1.0.6",
     "@cocos/engine-platforms": "^1.0.6",
     "@types/jest": "^24.9.1"
   },
