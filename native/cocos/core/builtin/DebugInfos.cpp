@@ -537,7 +537,7 @@ ccstd::unordered_map<uint32_t, ccstd::string> debugInfos = {
 { 16331, "InputAssemblerInfo.vertexBuffers is null." },
 { 16332, "Illegal index buffer stride." },
 { 16333, "This device does not support WebGL." },
-{ 16334, "A Class already exists with the same %s : %s. %s" },
+{ 16334, "Could not register class ID '%s' for '%s' since the ID has been registered for '%s'." },
 { 16335, "'%s' has already been set as name or alias of another class." },
 { 16336, "'%s' has already been set as id or alias of another class." },
 { 16337, "can not support canvas rendering in 3D" },
