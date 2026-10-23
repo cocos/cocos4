@@ -44,12 +44,6 @@
 #include "details/GraphView.h"
 #include "details/GslUtils.h"
 #include "details/Range.h"
-#if CC_USE_DEBUG_RENDERER
-    #include "cocos/renderer/pipeline/helper/Utils.h"
-#endif
-#if CC_USE_GEOMETRY_RENDERER
-    #include "cocos/renderer/pipeline/GeometryRenderer.h"
-#endif
 
 namespace cc {
 
@@ -704,10 +698,14 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             ctx.cmdBuff, ctx.currentPass, ctx.subpassIndex, sceneData.flags);
 
 #if CC_USE_GEOMETRY_RENDERER
-        if (any(sceneData.flags & SceneFlags::GEOMETRY) &&
-            camera && camera->getGeometryRenderer()) {
-            camera->getGeometryRenderer()->render(
-                ctx.currentPass, ctx.cmdBuff, ctx.ppl->getPipelineSceneData());
+        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, sceneID);
+        if (!renderData.custom.empty()) {
+            const auto& commands = ctx.ppl->custom.renderCommands;
+            auto iter = commands.find(renderData.custom);
+            if (iter != commands.end()) {
+                ctx.customContext.currentRenderPass = ctx.currentPass;
+                iter->second->beginRenderCommand(ctx.customContext, sceneID);
+            }
         }
 #endif
 
@@ -786,24 +784,18 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     }
 
     void begin(const Blit& blit, RenderGraph::vertex_descriptor vertID) const {
+        tryBindPassDescriptorSet(vertID);
+        tryBindQueueDescriptorSets(vertID);
         const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
         if (!renderData.custom.empty()) {
             const auto& commands = ctx.ppl->custom.renderCommands;
             auto iter = commands.find(renderData.custom);
             if (iter != commands.end()) {
+                ctx.customContext.currentRenderPass = ctx.currentPass;
                 iter->second->beginRenderCommand(ctx.customContext, vertID);
                 return;
             }
         }
-#if CC_USE_DEBUG_RENDERER
-        if (blit.blitType == BlitType::DRAW_PROFILE) {
-            auto* renderPass = ctx.currentPass;
-            auto* cmdBuff = ctx.cmdBuff;
-            renderDebugRenderer(renderPass, cmdBuff, ctx.ppl->getPipelineSceneData(), cc::pipeline::profilerCamera);
-        }
-#endif
-        tryBindPassDescriptorSet(vertID);
-        tryBindQueueDescriptorSets(vertID);
 
         switch (blit.blitType) {
             case BlitType::FULLSCREEN_QUAD:

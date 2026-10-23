@@ -105,6 +105,12 @@ using namespace cc;
 %ignore cc::pipeline::GeometryRenderer::activate;
 %ignore cc::pipeline::GeometryRenderer::render;
 %ignore cc::pipeline::GeometryRenderer::destroy;
+%ignore cc::pipeline::RenderCommand;
+%ignore cc::pipeline::RenderCommandContext;
+%ignore cc::pipeline::DebugRendererRenderCommand;
+%ignore cc::pipeline::GeometryRendererRenderCommand;
+%ignore cc::pipeline::RenderPipeline::addRenderCommand;
+%ignore cc::pipeline::RenderPipeline::getRenderCommand;
 
 // ----- Rename Section ------
 // Brief: Classes, methods or attributes needs to be renamed

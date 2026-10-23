@@ -222,13 +222,22 @@ Mesh::ICreateInfo MeshUtils::createMeshInfo(const IGeometry &geometry, const ccs
     // Fill index buffer.
     ArrayBuffer::Ptr indexBuffer;
     uint32_t idxCount = 0;
-    const uint32_t idxStride = 2;
+    uint32_t idxStride = 2;
+    gfx::Format indexFormat = gfx::Format::R16UI;
     if (geometry.indices.has_value()) {
         const ccstd::vector<uint32_t> &indices = geometry.indices.value();
+        uint32_t maxIndex = 0;
+        for (uint32_t idx : indices) {
+            maxIndex = std::max(maxIndex, idx);
+        }
+        if (maxIndex > std::numeric_limits<uint16_t>::max()) {
+            idxStride = 4;
+            indexFormat = gfx::Format::R32UI;
+        }
         idxCount = static_cast<uint32_t>(indices.size());
         indexBuffer = ccnew ArrayBuffer(idxStride * idxCount);
         DataView indexBufferView(indexBuffer);
-        writeBuffer(indexBufferView, indices, gfx::Format::R16UI);
+        writeBuffer(indexBufferView, indices, indexFormat);
     }
 
     // Create primitive.

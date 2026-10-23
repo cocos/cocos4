@@ -1264,15 +1264,6 @@ export class WebProgramLibrary implements ProgramLibrary {
         if (passSet) {
             info.setLayouts.push(passSet);
         }
-        const phaseSet = getDescriptorSetLayout(
-            this.layoutGraph,
-            subpassOrPassID,
-            phaseID,
-            UpdateFrequency.PER_PHASE,
-        );
-        if (phaseSet) {
-            info.setLayouts.push(phaseSet);
-        }
         const batchSet = getProgramDescriptorSetLayout(
             device,
             lg,
@@ -1292,6 +1283,15 @@ export class WebProgramLibrary implements ProgramLibrary {
         );
         if (instanceSet) {
             info.setLayouts.push(instanceSet);
+        }
+        const phaseSet = getDescriptorSetLayout(
+            this.layoutGraph,
+            subpassOrPassID,
+            phaseID,
+            UpdateFrequency.PER_PHASE,
+        );
+        if (phaseSet) {
+            info.setLayouts.push(phaseSet);
         }
         programData.pipelineLayout = device.createPipelineLayout(info);
         return programData.pipelineLayout;

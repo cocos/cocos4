@@ -751,7 +751,19 @@ void SpineSkeletonInstance::resizeSlotRegion(const spine::String &slotName, uint
         releaseSlotCacheInfo(cacheInfo);
     }
     _slotTextureSet.put(slot, info);
+
+    auto &bones = _skeleton->getBones();
+    const size_t boneCount = bones.size();
+    std::vector<bool> activeBackup(boneCount);
+    for (size_t i = 0; i < boneCount; ++i) {
+        activeBackup[i] = bones[i]->isActive();
+    }
+
     _skeleton->updateCache();
+
+    for (size_t i = 0; i < boneCount; ++i) {
+        bones[i]->setActive(activeBackup[i]);
+    }
 }
 
 void SpineSkeletonInstance::setSlotTexture(const spine::String &slotName, const spine::String& textureUuid) {

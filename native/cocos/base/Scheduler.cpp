@@ -157,6 +157,7 @@ void Scheduler::schedule(const ccSchedulerFunc &callback, void *target, float in
     if (iter == _hashForTimers.end()) {
         element = ccnew HashTimerEntry();
         element->target = target;
+        element->generation = ++_nextTimerGeneration;
 
         _hashForTimers[target] = element;
 
@@ -368,10 +369,23 @@ void Scheduler::runFunctionsToBePerformedInCocosThread() {
 void Scheduler::update(float dt) {
     _updateHashLocked = true;
 
-    // Iterate over all the custom selectors
-    HashTimerEntry *elt = nullptr;
-    for (auto iter = _hashForTimers.begin(); iter != _hashForTimers.end();) {
-        elt = iter->second;
+    // Callbacks can rehash the map or remove and recreate a target. Snapshot
+    // identities, not iterators or entry pointers; new entries start next frame.
+    struct TimerIdentity {
+        void *target;
+        uint64_t generation;
+    };
+    ccstd::vector<TimerIdentity> targets;
+    targets.reserve(_hashForTimers.size());
+    for (const auto &entry : _hashForTimers) {
+        targets.push_back({entry.first, entry.second->generation});
+    }
+    for (const auto &target : targets) {
+        auto iter = _hashForTimers.find(target.target);
+        if (iter == _hashForTimers.end() || iter->second->generation != target.generation) {
+            continue;
+        }
+        auto *elt = iter->second;
         _currentTarget = elt;
         _currentTargetSalvaged = false;
 
@@ -396,14 +410,9 @@ void Scheduler::update(float dt) {
 
         // only delete currentTarget if no actions were scheduled during the cycle (issue #481)
         if (_currentTargetSalvaged && _currentTarget->timers.empty()) {
-            ++iter;
             removeHashElement(_currentTarget);
-            if (iter != _hashForTimers.end()) {
-                ++iter;
-            }
-        } else {
-            ++iter;
         }
+        _currentTarget = nullptr;
     }
 
     _updateHashLocked = false;

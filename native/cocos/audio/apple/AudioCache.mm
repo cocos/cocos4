@@ -31,7 +31,6 @@
 #import <Foundation/Foundation.h>
 #import <OpenAL/alc.h>
 #include <thread>
-#include "application/ApplicationManager.h"
 #include "base/Scheduler.h"
 #include "base/memory/Memory.h"
 
@@ -85,7 +84,7 @@ unsigned int __idIndex = 0;
 using namespace cc;
 
 AudioCache::AudioCache()
-: _isDestroyed(std::make_shared<bool>(false)), _id(++__idIndex){
+: _isDestroyed(std::make_shared<std::atomic_bool>(false)), _id(++__idIndex){
     ALOGVV("AudioCache() %p, id=%u", this, _id);
     for (int i = 0; i < QUEUEBUFFER_NUM; ++i) {
         _queBuffers[i] = nullptr;
@@ -114,7 +113,7 @@ AudioCache::~AudioCache() {
             _alBufferId = INVALID_AL_BUFFER_ID;
         }
     } else {
-        ALOGW("AudioCache (%p), id=%u, buffer isn't ready, state=%d", this, _id, _state);
+        ALOGW("AudioCache (%p), id=%u, buffer isn't ready, state=%d", this, _id, static_cast<int>(_state.load()));
     }
 
     if (_queBufferFrames > 0) {
@@ -267,7 +266,6 @@ void AudioCache::readDataTask(unsigned int selfId) {
     invokingPlayCallbacks();
     invokingLoadCallbacks();
 
-    _isLoadingFinished = true;
     if (_state != State::READY) {
         _state = State::FAILED;
         if (_alBufferId != INVALID_AL_BUFFER_ID && alIsBuffer(_alBufferId)) {
@@ -277,12 +275,13 @@ void AudioCache::readDataTask(unsigned int selfId) {
         }
     }
 
+    _isLoadingFinished = true;
     _readDataTaskMutex.unlock();
 }
 
 void AudioCache::addPlayCallback(const std::function<void()> &callback) {
     std::lock_guard<std::mutex> lk(_playCallbackMutex);
-    switch (_state) {
+    switch (_state.load()) {
         case State::INITIAL:
         case State::LOADING:
             _playCallbacks.push_back(callback);
@@ -296,7 +295,7 @@ void AudioCache::addPlayCallback(const std::function<void()> &callback) {
             break;
 
         default:
-            ALOGE("Invalid state: %d", _state);
+            ALOGE("Invalid state: %d", static_cast<int>(_state.load()));
             break;
     }
 }
@@ -312,7 +311,7 @@ void AudioCache::invokingPlayCallbacks() {
 }
 
 void AudioCache::addLoadCallback(const std::function<void(bool)> &callback) {
-    switch (_state) {
+    switch (_state.load()) {
         case State::INITIAL:
         case State::LOADING:
             _loadCallbacks.push_back(callback);
@@ -326,7 +325,7 @@ void AudioCache::addLoadCallback(const std::function<void(bool)> &callback) {
             break;
 
         default:
-            ALOGE("Invalid state: %d", _state);
+            ALOGE("Invalid state: %d", static_cast<int>(_state.load()));
             break;
     }
 }
@@ -337,18 +336,27 @@ void AudioCache::invokingLoadCallbacks() {
         return;
     }
 
+    auto scheduler = _scheduler.lock();
+    if (!scheduler) {
+        return;
+    }
+
     auto isDestroyed = _isDestroyed;
-    auto scheduler = CC_CURRENT_ENGINE()->getScheduler();
-    scheduler->performFunctionInCocosThread([&, isDestroyed]() {
+    const bool isReady = _state.load() == State::READY;
+    scheduler->performFunctionInCocosThread([this, isDestroyed, isReady]() {
         if (*isDestroyed) {
             ALOGV("invokingLoadCallbacks perform in cocos thread, AudioCache (%p) was destroyed!", this);
             return;
         }
 
-        for (auto &&cb : _loadCallbacks) {
-            cb(_state == State::READY);
+        // A callback may uncache this file or end the audio engine. Do not access the
+        // cache again after invoking user code, and cancel any remaining callbacks.
+        auto callbacks = std::move(_loadCallbacks);
+        for (auto &&cb : callbacks) {
+            if (*isDestroyed) {
+                break;
+            }
+            cb(isReady);
         }
-
-        _loadCallbacks.clear();
     });
 }

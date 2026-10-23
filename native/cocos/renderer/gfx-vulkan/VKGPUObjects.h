@@ -1007,7 +1007,8 @@ public:
             for (auto *set : sets) {
                 set->update(oldView, newView);
             }
-            _gpuBufferViewSet.erase(iter);
+            // Connecting the new view may have rehashed the map.
+            _gpuBufferViewSet.erase(oldView);
         }
     }
 
@@ -1018,7 +1019,8 @@ public:
             for (auto *set : sets) {
                 set->update(oldView, newView);
             }
-            _gpuTextureViewSet.erase(iter);
+            // Connecting the new view may have rehashed the map.
+            _gpuTextureViewSet.erase(oldView);
         }
     }
 
@@ -1217,7 +1219,8 @@ public:
                 ia->update(oldBuffer, newBuffer);
                 _ias[newBuffer].insert(ia);
             }
-            _ias.erase(iter);
+            // Registering the new buffer may have rehashed the map.
+            _ias.erase(oldBuffer);
         }
     }
 

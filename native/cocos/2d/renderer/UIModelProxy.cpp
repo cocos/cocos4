@@ -27,6 +27,25 @@
 #include "core/assets/RenderingSubMesh.h"
 
 namespace cc {
+
+namespace {
+
+// GPU buffers are allocated on demand, in vertex/index counts, keep in sync with
+// cocos/2d/assembler/graphics/constants.ts. Grow only: doResize re-creates the GPU buffer.
+constexpr uint32_t MAX_VERTEX_COUNT = 65536;
+constexpr uint32_t INDICES_PER_VERTEX = 3;
+constexpr uint32_t MAX_INDEX_COUNT = MAX_VERTEX_COUNT * INDICES_PER_VERTEX;
+
+inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap) {
+    uint32_t cap = current > 1U ? current : 1U;
+    while (cap < needed) {
+        cap *= 2;
+    }
+    return cap < maxCap ? cap : maxCap;
+}
+
+} // namespace
+
 UIModelProxy::UIModelProxy() {
     _device = Root::getInstance()->getDevice();
 }
@@ -55,16 +74,20 @@ void UIModelProxy::activeSubModels() {
                     return;
                 }
 
+                // Allocate exactly for the data of this chunk, rounded up to a power of two.
+                const uint32_t vertexCapacity = growCapacity(drawInfo->getVertexOffset(), 0, MAX_VERTEX_COUNT);
+                const uint32_t indexCapacity = growCapacity(drawInfo->getIndexOffset(), 0, MAX_INDEX_COUNT);
+
                 auto* vertexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
                     gfx::MemoryUsageBit::DEVICE,
-                    65536 * _stride, // Uint16 can address 65536 vertices (indices 0–65535)
+                    vertexCapacity * _stride,
                     _stride,
                 });
                 auto* indexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::INDEX | gfx::BufferUsageBit::TRANSFER_DST,
                     gfx::MemoryUsageBit::DEVICE,
-                    65536 * sizeof(uint16_t) * 2, // Uint16 can address 65536 vertices (indices 0–65535)
+                    static_cast<uint32_t>(indexCapacity * sizeof(uint16_t)),
                     sizeof(uint16_t),
                 });
                 gfx::BufferList vbReference;
@@ -87,24 +110,32 @@ void UIModelProxy::uploadData() {
     for (size_t i = 0; i < drawInfos.size(); i++) {
         auto* drawInfo = drawInfos[i];
         auto* ia = subModelList.at(i)->getInputAssembler();
-        if (drawInfo->getVertexOffset() <= 0 || drawInfo->getIndexOffset() <= 0) continue;
+        const uint32_t vertexCount = drawInfo->getVertexOffset();
+        const uint32_t indexCount = drawInfo->getIndexOffset();
+        if (vertexCount == 0 || indexCount == 0) continue;
+
         gfx::BufferList vBuffers = ia->getVertexBuffers();
         if (!vBuffers.empty()) {
-            auto size = drawInfo->getVertexOffset() * _stride;
-            // if (size > vBuffers[0]->getSize()) {
-            vBuffers[0]->resize(size);
-            // }
-            vBuffers[0]->update(drawInfo->getVDataBuffer()); // vdata
+            gfx::Buffer* vBuffer = vBuffers[0];
+            const uint32_t neededVBytes = vertexCount * _stride;
+            if (neededVBytes > vBuffer->getSize()) {
+                const uint32_t capacity = growCapacity(vertexCount, vBuffer->getSize() / _stride, MAX_VERTEX_COUNT);
+                vBuffer->resize(capacity * _stride);
+            }
+            // pass the valid size explicitly, update(ptr) uploads the whole capacity
+            vBuffer->update(drawInfo->getVDataBuffer(), neededVBytes); // vdata
         }
-        ia->setVertexCount(drawInfo->getVertexOffset()); // count
+        ia->setVertexCount(vertexCount); // count
 
         gfx::Buffer* iBuffer = ia->getIndexBuffer();
-        auto size = drawInfo->getIndexOffset() * 2;
-        // if (size > iBuffer->getSize()) {
-        iBuffer->resize(size);
-        // }
-        iBuffer->update(drawInfo->getIDataBuffer());   // idata
-        ia->setIndexCount(drawInfo->getIndexOffset()); // indexCount
+        const auto neededIBytes = static_cast<uint32_t>(indexCount * sizeof(uint16_t));
+        if (neededIBytes > iBuffer->getSize()) {
+            const uint32_t capacity = growCapacity(indexCount, static_cast<uint32_t>(iBuffer->getSize() / sizeof(uint16_t)),
+                                                   MAX_INDEX_COUNT);
+            iBuffer->resize(static_cast<uint32_t>(capacity * sizeof(uint16_t)));
+        }
+        iBuffer->update(drawInfo->getIDataBuffer(), neededIBytes); // idata
+        ia->setIndexCount(indexCount); // indexCount
         // drawInfo->setModel(_model); // hack, render by model
     }
 

@@ -115,7 +115,7 @@ export class TextProcessing {
                     const maxValue = Math.max(outputLayoutData.canvasSize.width, outputLayoutData.canvasSize.height);
                     const canvasScaleToMaxSizeRatio = MAX_SIZE / maxValue;
                     this._fontScale *=  canvasScaleToMaxSizeRatio;
-                    this._fontScale = Math.max(1, this._fontScale);
+                    this._fontScale = Math.max(0.1, this._fontScale);
                 }
 
                 this._updatePaddingRect(style, outputLayoutData);

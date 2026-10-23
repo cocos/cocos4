@@ -25,12 +25,34 @@
  THE SOFTWARE.
 */
 
-import { screenAdapter } from 'pal/screen-adapter';
+import { screenAdapter, IScreenOptions } from 'pal/screen-adapter';
 import { legacyCC } from '../global-exports';
 import { Size } from '../math';
 import { settings, SettingsCategory } from '../settings';
-import { error, warn, warnID } from './debug';
-import { PalScreenEvent } from '../../../pal/screen-adapter/enum-type';
+import { error, getError, warn, warnID } from './debug';
+import type { PalScreenEvent } from '../../../pal/screen-adapter/enum-type';
+
+/**
+ * @en Presets for the Web startup setting `screen.maxDevicePixelRatio`.
+ * Store the preset's numeric value or any finite number >= 1 in the startup settings.
+ * An omitted or null setting keeps the default cap of 2. Effective DPR never exceeds the browser DPR.
+ * Configure before Screen initialization; changing settings afterward does not resize the running game.
+ * Non-Web platforms ignore this setting. Higher caps increase pixel-related rendering costs.
+ * @zh Web 启动配置 `screen.maxDevicePixelRatio` 的预设档位。
+ * 在启动配置中保存预设的数值或任意有限且 >=1 的数字。
+ * 未配置或为 null 时保留默认上限 2，实际 DPR 不超过浏览器 DPR。
+ * 需在 Screen 初始化前配置，之后修改 settings 不会调整运行中游戏的分辨率。
+ * 非 Web 平台忽略该配置；提高上限会增加像素相关的渲染开销。
+ */
+export enum MaxDPR {
+    /** @en Cap DPR at 1 to reduce rendering cost. @zh 上限为 1，优先降低渲染开销。 */
+    Performance = 1,
+    /** @en Cap DPR at 2, matching the existing default. @zh 上限为 2，与现有默认策略一致。 */
+    Balanced = 2,
+    /** @en Cap DPR at 4 for higher-density rendering. @zh 上限为 4，允许更高密度渲染。 */
+    Quality = 4,
+}
+
 /**
  * @en The screen API provides an easy way to do some screen managing stuff.
  * @zh screen 单例对象提供简单的方法来做屏幕管理相关的工作。
@@ -40,10 +62,18 @@ export class Screen {
      * @internal
      */
     public init (): void {
+        // PAL decides whether to consume the setting and validates its value.
+        const maximum = settings.querySettings<number>(SettingsCategory.SCREEN, 'maxDevicePixelRatio');
         const exactFitScreen = settings.querySettings(SettingsCategory.SCREEN, 'exactFitScreen') ?? true;
         const orientation = settings.querySettings(SettingsCategory.SCREEN, 'orientation') ?? 'auto';
         const isHeadlessMode = settings.querySettings(SettingsCategory.RENDERING, 'renderMode') === 3;
-        screenAdapter.init({ exactFitScreen, configOrientation: orientation, isHeadlessMode }, (): void => {
+        const options: IScreenOptions & { maxDevicePixelRatio?: number | null } = {
+            exactFitScreen, configOrientation: orientation, isHeadlessMode,
+        };
+        if (maximum != null) {
+            options.maxDevicePixelRatio = maximum;
+        }
+        screenAdapter.init(options, (): void => {
             const director = legacyCC.director;
             if (!director.root?.pipeline) {
                 warnID(1220);
@@ -51,6 +81,13 @@ export class Screen {
             }
             director.root.pipeline.shadingScale = screenAdapter.resolutionScale;
         });
+        // Only adapters exposing this capability are expected to apply the setting.
+        // The property check also narrows concrete adapter types in Native TS builds.
+        if (maximum != null
+            && 'maxDevicePixelRatio' in screenAdapter
+            && screenAdapter.maxDevicePixelRatio !== maximum) {
+            throw new Error(getError(9205));
+        }
     }
 
     /**
@@ -137,7 +174,11 @@ export class Screen {
      * @return {Promise|undefined}
      * @deprecated since v3.3, please use `screen.requestFullScreen(): Promise<void>` instead.
      */
-    public requestFullScreen (element: HTMLElement, onFullScreenChange?: (this: Document, ev: any) => any, onFullScreenError?: (this: Document, ev: any) => any): Promise<any> | undefined;
+    public requestFullScreen (
+        element: HTMLElement,
+        onFullScreenChange?: (this: Document, ev: any) => any,
+        onFullScreenError?: (this: Document, ev: any) => any,
+    ): Promise<any> | undefined;
     /**
      * @en Request to enter full screen mode.
      * Many browsers forbid to enter full screen mode without an user intended interaction.
@@ -150,7 +191,11 @@ export class Screen {
      * @return {Promise}
      */
     public requestFullScreen (): Promise<void>;
-    public requestFullScreen (element?: HTMLElement, onFullScreenChange?: (this: Document, ev?: any) => any, onFullScreenError?: (this: Document, ev?: any) => any): Promise<any> {
+    public requestFullScreen (
+        element?: HTMLElement,
+        onFullScreenChange?: (this: Document, ev?: any) => any,
+        onFullScreenError?: (this: Document, ev?: any) => any,
+    ): Promise<any> {
         if (arguments.length > 0) {
             warnID(1400, 'screen.requestFullScreen(element, onFullScreenChange?, onFullScreenError?)', 'screen.requestFullScreen(): Promise');
         }

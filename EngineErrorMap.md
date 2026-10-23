@@ -3226,6 +3226,18 @@ Cannot access game frame or container.
 
 Setting window size is not supported.
 
+### 9204
+
+maxDevicePixelRatio, when specified, must be a finite number >= 1.
+
+### 9205
+
+PAL did not apply the configured maximum DPR. Check that the engine and PAL versions match.
+
+### 9206
+
+maxDevicePixelRatio cannot change after ScreenAdapter.init().
+
 ### 9300
 
 The current buffer beyond the limit in ui static component, please reduce the amount

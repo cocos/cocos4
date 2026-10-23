@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <mutex>
 
@@ -278,6 +279,7 @@ private:
     struct HashTimerEntry {
         ccstd::vector<Timer *> timers;
         void *target;
+        uint64_t generation;
         int timerIndex;
         Timer *currentTimer;
         bool currentTimerSalvaged;
@@ -291,9 +293,10 @@ private:
 
     // Used for "selectors with interval"
     ccstd::unordered_map<void *, HashTimerEntry *> _hashForTimers;
+    uint64_t _nextTimerGeneration = 0;
     struct HashTimerEntry *_currentTarget = nullptr;
     bool _currentTargetSalvaged = false;
-    // If true unschedule will not remove anything from a hash. Elements will only be marked for deletion.
+    // True while timer entries are being updated.
     bool _updateHashLocked = false;
 
     // Used for "perform Function"

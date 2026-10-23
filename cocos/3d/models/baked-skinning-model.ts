@@ -106,6 +106,13 @@ export class BakedSkinningModel extends MorphModel {
                 UBOSkinningTexture.SIZE,
             ));
         }
+
+        // The animation buffer belongs to the skinning root. Refresh its binding without
+        // rebuilding the instanced attribute block, which would erase custom attribute values.
+        for (let i = 0; i < this._subModels.length; i++) {
+            this._updateLocalDescriptors(i, this._subModels[i].descriptorSet);
+        }
+        this.updateInstancedJointTextureInfo();
     }
 
     // Override

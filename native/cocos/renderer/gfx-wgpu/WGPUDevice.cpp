@@ -99,8 +99,8 @@ CCWGPUDevice::CCWGPUDevice() : Device() {
 
     _caps.maxComputeSharedMemorySize = 32768;
     _caps.maxComputeWorkGroupInvocations = 256;
-    _caps.maxComputeWorkGroupSize = {65535, 65535, 65535};
-    _caps.maxComputeWorkGroupCount = {256, 256, 64};
+    _caps.maxComputeWorkGroupSize = {256, 256, 64};
+    _caps.maxComputeWorkGroupCount = {65535, 65535, 65535};
 
     instance = this;
 }
@@ -582,8 +582,8 @@ void CCWGPUDevice::initLimits() {
 
     _caps.maxComputeSharedMemorySize = limits.maxComputeWorkgroupStorageSize;
     _caps.maxComputeWorkGroupInvocations = limits.maxComputeInvocationsPerWorkgroup;
-    _caps.maxComputeWorkGroupSize = {limits.maxComputeWorkgroupsPerDimension, limits.maxComputeWorkgroupsPerDimension, limits.maxComputeWorkgroupsPerDimension};
-    _caps.maxComputeWorkGroupCount = {limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ};
+    _caps.maxComputeWorkGroupSize = {limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ};
+    _caps.maxComputeWorkGroupCount = {limits.maxComputeWorkgroupsPerDimension, limits.maxComputeWorkgroupsPerDimension, limits.maxComputeWorkgroupsPerDimension};
 
 #endif
 }

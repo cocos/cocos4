@@ -53,7 +53,7 @@ import { WebGPUTexture } from './webgpu-texture';
 import { DefaultResources, hashCombineNum, hashCombineStr, webGPU, WebGPUDeviceManager } from './define';
 import {
     Filter, Format,
-    QueueType, Feature, BufferTextureCopy, Rect, DescriptorSetInfo,
+    QueueType, Feature, BufferTextureCopy, Rect, Size, DescriptorSetInfo,
     BufferInfo, BufferViewInfo, CommandBufferInfo, DeviceInfo,
     FramebufferInfo, InputAssemblerInfo, QueueInfo, RenderPassInfo, SamplerInfo,
     ShaderInfo, PipelineLayoutInfo, DescriptorSetLayoutInfo, TextureInfo, TextureViewInfo, GeneralBarrierInfo, TextureBarrierInfo,
@@ -551,6 +551,22 @@ export class WebGPUDevice extends Device {
         this._caps.maxArrayTextureLayers = limits.maxTextureArrayLayers;
         this._caps.max3DTextureSize = limits.maxTextureDimension3D;
         this._caps.uboOffsetAlignment  = limits.minUniformBufferOffsetAlignment;
+
+        // Compute limits are read from the device (not the adapter): no elevated
+        // compute limits are requested, so these are the values validation enforces.
+        const deviceLimits = device.limits;
+        this._caps.maxComputeSharedMemorySize = deviceLimits.maxComputeWorkgroupStorageSize;
+        this._caps.maxComputeWorkGroupInvocations = deviceLimits.maxComputeInvocationsPerWorkgroup;
+        this._caps.maxComputeWorkGroupSize = new Size(
+            deviceLimits.maxComputeWorkgroupSizeX,
+            deviceLimits.maxComputeWorkgroupSizeY,
+            deviceLimits.maxComputeWorkgroupSizeZ,
+        );
+        this._caps.maxComputeWorkGroupCount = new Size(
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+        );
 
         const features = this._adapter!.features;
         // FIXME: require by query

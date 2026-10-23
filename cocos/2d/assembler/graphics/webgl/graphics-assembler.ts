@@ -28,11 +28,9 @@ import { MeshRenderData } from '../../../renderer/render-data';
 import { IBatcher } from '../../../renderer/i-batcher';
 import { Graphics } from '../../../components/graphics';
 import { LineCap, LineJoin, PointFlags } from '../types';
+import { MAX_VERTEX_COUNT, INDICES_PER_VERTEX } from '../constants';
 import { earcut as Earcut } from './earcut';
 import { Impl, Point } from './impl';
-
-const MAX_VERTEX = 65535;
-const MAX_INDICES = MAX_VERTEX * 2;
 
 const PI = Math.PI;
 const min = Math.min;
@@ -95,7 +93,7 @@ export class GraphicsAssembler implements IAssembler {
         let meshBuffer = renderData;
 
         const maxVertexCount = meshBuffer ? meshBuffer.vertexStart + vertexCount : 0;
-        if (maxVertexCount > MAX_VERTEX || maxVertexCount * 3 > MAX_INDICES) {
+        if (maxVertexCount > MAX_VERTEX_COUNT) {
             ++_impl.dataOffset;
 
             if (_impl.dataOffset < renderDataList.length) {
@@ -109,7 +107,7 @@ export class GraphicsAssembler implements IAssembler {
         }
 
         if (meshBuffer && meshBuffer.vertexCount < maxVertexCount) {
-            meshBuffer.request(vertexCount, vertexCount * 3);
+            meshBuffer.request(vertexCount, vertexCount * INDICES_PER_VERTEX);
         }
 
         return renderData;

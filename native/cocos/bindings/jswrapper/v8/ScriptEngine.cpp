@@ -1184,10 +1184,12 @@ void ScriptEngine::removeUnhandledPromise(v8::Local<v8::Promise> promise) {
     // Remove handled promises from the list
     SE_ASSERT(promise->GetIsolate() == _isolate, "Wrong isolate");
     auto *isolate = promise->GetIsolate();
-    for (auto it = _unhandledPromises.begin(); it != _unhandledPromises.end(); ++it) {
+    for (auto it = _unhandledPromises.begin(); it != _unhandledPromises.end();) {
         v8::Local<v8::Promise> const unhandledPromise = std::get<0>(*it).Get(isolate);
         if (unhandledPromise == promise) {
-            _unhandledPromises.erase(it--);
+            it = _unhandledPromises.erase(it);
+        } else {
+            ++it;
         }
     }
 }

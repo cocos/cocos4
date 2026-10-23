@@ -167,6 +167,13 @@ AudioEngineImpl::~AudioEngineImpl() {
         sche->unschedule("AudioEngine", this);
     }
 
+    // AudioEngine::end() has joined the worker pool before deleting this backend.
+    // Queued tasks are discarded by the pool, so their caches will never receive
+    // a read/skip notification from a worker. Unblock those cache destructors.
+    for (auto &entry : _audioCaches) {
+        entry.second.setSkipReadDataTask(true);
+    }
+
     if (s_ALContext) {
         alDeleteSources(MAX_AUDIOINSTANCES, _alSources);
 
@@ -286,6 +293,7 @@ AudioCache *AudioEngineImpl::preload(const ccstd::string &filePath, std::functio
     auto it = _audioCaches.find(filePath);
     if (it == _audioCaches.end()) {
         audioCache = &_audioCaches[filePath];
+        audioCache->_scheduler = _scheduler;
         audioCache->_fileFullPath = FileUtils::getInstance()->fullPathForFilename(filePath);
         unsigned int cacheId = audioCache->_id;
         auto isCacheDestroyed = audioCache->_isDestroyed;

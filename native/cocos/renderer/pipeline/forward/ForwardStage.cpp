@@ -23,9 +23,6 @@
 ****************************************************************************/
 
 #include "ForwardStage.h"
-#if CC_USE_GEOMETRY_RENDERER
-    #include "../GeometryRenderer.h"
-#endif
 #include "../InstancedBuffer.h"
 #include "../PipelineSceneData.h"
 #include "../PipelineUBO.h"
@@ -262,15 +259,17 @@ void ForwardStage::render(scene::Camera *camera) {
         }
 
 #if CC_USE_GEOMETRY_RENDERER
-        if (camera->getGeometryRenderer()) {
-            camera->getGeometryRenderer()->render(renderPass, cmdBuff, pipeline->getPipelineSceneData());
+        if (auto *command = pipeline->getRenderCommand(cc::pipeline::GEOMETRY_RENDERER_COMMAND)) {
+            command->beginRenderCommand({renderPass, cmdBuff, pipeline->getPipelineSceneData(), camera});
         }
 #endif
 
         _uiPhase->render(camera, renderPass);
         renderProfiler(renderPass, cmdBuff, _pipeline->getProfiler(), camera);
 #if CC_USE_DEBUG_RENDERER
-        renderDebugRenderer(renderPass, cmdBuff, _pipeline->getPipelineSceneData(), camera);
+        if (auto *command = pipeline->getRenderCommand(cc::pipeline::DEBUG_RENDERER_COMMAND)) {
+            command->beginRenderCommand({renderPass, cmdBuff, pipeline->getPipelineSceneData(), camera});
+        }
 #endif
     };
 

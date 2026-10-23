@@ -24,10 +24,12 @@
 
 #include "RenderQueue.h"
 
+#include <cmath>
 #include <utility>
 #include "PipelineSceneData.h"
 #include "PipelineStateManager.h"
 #include "RenderPipeline.h"
+#include "base/Utils.h"
 #include "gfx-base/GFXCommandBuffer.h"
 #include "gfx-base/GFXDevice.h"
 #include "gfx-base/GFXShader.h"
@@ -60,7 +62,28 @@ bool RenderQueue::insertRenderPass(const RenderObject &renderObj, uint32_t subMo
     auto shaderId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(subModel->getShader(passIdx)));
     const auto hash = (0 << 30) | (passPriority << 16) | (modelPriority << 8) | passIdx;
     const auto priority = renderObj.model->getPriority();
-    RenderPass renderPass = {priority, hash, renderObj.depth, shaderId, passIdx, subModel};
+    RenderPass renderPass{};
+    renderPass.priority = priority;
+    renderPass.hash = hash;
+    renderPass.depth = renderObj.depth;
+    renderPass.shaderID = shaderId;
+    renderPass.passIndex = passIdx;
+    renderPass.subModel = subModel;
+
+    /**
+    * Pack the sort keys once here so the comparator only compares uint64 keys.
+    * secondaryKey: depthKey << 32 | shaderID (transparent inverts depth for back-to-front).
+    */
+    CC_ASSERT(!std::isnan(renderObj.depth));
+    const uint32_t depthKey = utils::numext::floatToSortableUint(renderObj.depth);
+    if (isTransparent) {
+        const uint32_t invertedDepthKey = ~depthKey;
+        renderPass.primaryKey = (static_cast<uint64_t>(priority) << 32) | hash;
+        renderPass.secondaryKey = (static_cast<uint64_t>(invertedDepthKey) << 32) | shaderId;
+    } else {
+        renderPass.primaryKey = hash;
+        renderPass.secondaryKey = (static_cast<uint64_t>(depthKey) << 32) | shaderId;
+    }
     _queue.emplace_back(renderPass);
 
     return true;
