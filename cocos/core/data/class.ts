@@ -107,7 +107,7 @@ function defineGetSet (cls, name, propName, val): void {
 
         attributeUtils.setClassAttr(cls, propName, 'serializable', false);
 
-        if (DEV) {
+        if (EDITOR || DEV) {
             // 不论是否 visible 都要添加到 props，否则 asset watcher 不能正常工作
             appendProp(cls, propName);
         }
