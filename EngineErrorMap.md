@@ -3205,6 +3205,38 @@ request fullscreen is not supported on this platform.
 
 exit fullscreen is not supported on this platform.
 
+### 9010
+
+UIMesh.setMeshData: unsupported vertexStride %d, expected %d (V3F_T2F_C4B) or %d (V3F_T2F_C4B_C4B); data rejected.
+
+### 9011
+
+UIMesh.setMeshData: negative counts (vertexCount %d, indexCount %d); data rejected.
+
+### 9012
+
+UIMesh.setMeshData: vertexData holds %d bytes, but %d vertices x %d bytes are declared; data rejected.
+
+### 9013
+
+UIMesh.setMeshData: indexData is %d bytes at offset %d, but %d Uint16 indices need %d bytes (2-byte aligned view); data rejected.
+
+### 9014
+
+UIMesh.setMeshData: indices[%d] = %d is out of range for %d vertices; data rejected.
+
+### 9015
+
+UIMesh.setMeshData: segment %d range [%d, %d) is out of bounds for indexCount %d; data rejected.
+
+### 9016
+
+UIMesh.setMeshData: %d vertices / %d indices exceed the accessor cap (%d / %d); split the mesh. Data rejected.
+
+### 9017
+
+UIMesh: render data allocation failed for %d vertices / %d indices (accessor cap: %d / %d).
+
 ### 9100
 
 texture size exceeds current device limits %d/%d
