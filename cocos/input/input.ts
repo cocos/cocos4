@@ -320,6 +320,13 @@ export class Input {
     private _simulateEventTouch (eventMouse: EventMouse): void {
         const eventType = pointerEventTypeMap[eventMouse.type];
         const touchID = 0;
+        const previousTouch = touchManager.getTouch(touchID);
+        if (eventType === InputEventType.TOUCH_START && previousTouch) {
+            const eventTouchCancel = new EventTouch([previousTouch], false, InputEventType.TOUCH_CANCEL, []);
+            eventTouchCancel.windowId = eventMouse.windowId;
+            touchManager.releaseTouch(touchID);
+            this._dispatchEventTouch(eventTouchCancel);
+        }
         const touch = touchManager.getOrCreateTouch(touchID, eventMouse.getLocationX(), eventMouse.getLocationY());
         if (!touch) {
             return;
