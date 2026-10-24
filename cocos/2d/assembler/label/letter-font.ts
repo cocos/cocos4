@@ -26,6 +26,7 @@ import type { Label } from '../../components';
 import { IAssembler } from '../../renderer/base';
 import { BmfontUtils } from './bmfontUtils';
 import { shareLabelInfo, LetterAtlas, computeHash, LetterRenderTexture } from './font-utils';
+import { buildFontDesc, CssFontFamily, getCanvasFontFamily } from '../../utils/font-family';
 
 const _atlasWidth = 1024;
 const _atlasHeight = 1024;
@@ -59,17 +60,8 @@ export class LetterFont extends BmfontUtils {
         }
     }
 
-    protected _getFontFamily (comp: Label): string {
-        let fontFamily = 'Arial';
-        if (!comp.useSystemFont) {
-            if (comp.font) {
-                fontFamily = comp.font._nativeAsset || 'Arial';
-            }
-        } else {
-            fontFamily = comp.fontFamily || 'Arial';
-        }
-
-        return fontFamily;
+    protected _getFontFamily (comp: Label): CssFontFamily {
+        return getCanvasFontFamily(comp);
     }
 
     protected _updateLabelInfo (comp: Label): void {
@@ -79,12 +71,6 @@ export class LetterFont extends BmfontUtils {
     }
 
     protected _getFontDesc (): string {
-        let fontDesc = `${shareLabelInfo.fontSize.toString()}px `;
-        fontDesc += shareLabelInfo.fontFamily;
-        if (_isBold) {
-            fontDesc = `bold ${fontDesc}`;
-        }
-
-        return fontDesc;
+        return buildFontDesc(shareLabelInfo.fontSize, shareLabelInfo.fontFamily, _isBold);
     }
 }

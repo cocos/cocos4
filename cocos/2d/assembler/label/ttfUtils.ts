@@ -31,6 +31,7 @@ import type { TextStyle } from './text-style';
 import type { TextLayout } from './text-layout';
 import { view } from '../../../ui/view';
 import { approx } from '../../../core';
+import { CssFontFamily, getCanvasFontFamily } from '../../utils/font-family';
 
 const Overflow = Label.Overflow;
 
@@ -192,18 +193,8 @@ export class TTFUtils {
         // no needs to update uv data
     }
 
-    _updateFontFamily (comp: Label): string {
-        let _fontFamily = '';
-        if (!comp.useSystemFont) {
-            if (comp.font) {
-                _fontFamily = comp.font._nativeAsset || 'Arial';
-            } else {
-                _fontFamily = 'Arial';
-            }
-        } else {
-            _fontFamily = comp.fontFamily || 'Arial';
-        }
-        return _fontFamily;
+    _updateFontFamily (comp: Label): CssFontFamily {
+        return getCanvasFontFamily(comp);
     }
 
     _calDynamicAtlas (comp: Label, outputLayoutData: TextOutputLayoutData): void {

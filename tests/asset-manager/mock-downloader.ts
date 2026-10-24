@@ -64,9 +64,6 @@ function getFontFamily (fontHandle: string): string {
     } else {
         fontFamilyName = `${fontHandle.substring(slashPos + 1, ttfIndex)}_LABEL`;
     }
-    if (fontFamilyName.indexOf(' ') !== -1) {
-        fontFamilyName = `"${fontFamilyName}"`;
-    }
     return fontFamilyName;
 }
 

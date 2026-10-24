@@ -660,6 +660,8 @@ elseif(OPENHARMONY)
 endif()
 
 cocos_source_files(
+    cocos/platform/interfaces/modules/canvas/CanvasFont.cpp
+    cocos/platform/interfaces/modules/canvas/CanvasFont.h
     cocos/platform/interfaces/modules/canvas/CanvasRenderingContext2D.cpp
     cocos/platform/interfaces/modules/canvas/CanvasRenderingContext2D.h
     cocos/platform/interfaces/modules/canvas/ICanvasRenderingContext2D.h
