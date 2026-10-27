@@ -25,6 +25,7 @@
 import { Color } from '../../../core';
 import { IConfig } from '../../assets/bitmap-font';
 import { SpriteFrame } from '../../assets/sprite-frame';
+import { CssFontFamily, DEFAULT_FONT_FAMILY } from '../../utils/font-family';
 
 export class TextStyle {
     // ---------------ttf extra part-----------------
@@ -59,7 +60,7 @@ export class TextStyle {
     public bmfontScale = 1.0;// both
 
     // font info // todo merge to font
-    public fontFamily = 'Arial'; // both
+    public fontFamily: CssFontFamily = DEFAULT_FONT_FAMILY; // Serialized CSS family, both TTF and CHAR.
     public fontDesc = ''; // both
 
     // -----------------------bitMap extra part-------------------------
