@@ -53,6 +53,19 @@ const _windowInfo: IRenderWindowInfo = {
     renderPassInfo: passInfo,
 };
 
+// The legacy limit used only when the GPU capability is unavailable,
+// e.g. in editor or during asset deserialization.
+const FALLBACK_MAX_RENDER_TEXTURE_SIZE = 2048;
+
+/**
+ * @en Gets the maximum render texture size supported by the current GPU, or null if it is unknown.
+ * @zh 获取当前 GPU 支持的最大渲染贴图尺寸，未知时返回 null。
+ */
+function getMaxRenderTextureSize (): number | null {
+    const maxTextureSize = deviceManager.gfxDevice?.capabilities.maxTextureSize;
+    return maxTextureSize && maxTextureSize > 0 ? maxTextureSize : null;
+}
+
 /**
  * @en Render texture is a render target for [[Camera]] or [[Canvas]] component,
  * the render pipeline will use its `RenderWindow` as the target of the rendering process.
@@ -111,12 +124,17 @@ export class RenderTexture extends TextureBase {
     /**
      * @en Resize the render texture.
      * @zh 修改渲染贴图的尺寸。
-     * @param width @en The pixel width to resize to, the range is from 1 to 2048. @zh 需要调整到的像素宽度，范围为 1-2048。
-     * @param height @en The pixel height to resize to, the range is from 1 to 2048. @zh 需要调整到的像素高度，范围为 1-2048。
+     * @param width @en The pixel width to resize to, the range is from 1 to the GPU max texture size.
+     * @zh 需要调整到的像素宽度，范围为 1 到当前 GPU 支持的最大贴图尺寸。
+     * @param height @en The pixel height to resize to, the range is from 1 to the GPU max texture size.
+     * @zh 需要调整到的像素高度，范围为 1 到当前 GPU 支持的最大贴图尺寸。
+     * Note: if the GPU limit is unavailable, the legacy 2048 limit is used as a fallback.
+     * @zh 注意：如果无法获取 GPU 上限，则回退到旧的 2048 限制。
      */
     public resize (width: number, height: number): void {
-        this._width = Math.floor(clamp(width, 1, 2048));
-        this._height = Math.floor(clamp(height, 1, 2048));
+        const maxSize = getMaxRenderTextureSize() ?? FALLBACK_MAX_RENDER_TEXTURE_SIZE;
+        this._width = Math.floor(clamp(width, 1, maxSize));
+        this._height = Math.floor(clamp(height, 1, maxSize));
         if (this._window) {
             this._window.resize(this._width, this._height);
         }
@@ -214,7 +232,10 @@ export class RenderTexture extends TextureBase {
      * @deprecated Since v3.7, this is an internal engine interface and you should not call this interface under any circumstances.
      */
     public validate (): boolean {
-        return this.width >= 1 && this.width <= 2048 && this.height >= 1 && this.height <= 2048;
+        const maxSize = getMaxRenderTextureSize();
+        const validLowerBound = this.width >= 1 && this.height >= 1;
+        // If the GPU limit is unknown, only validate the lower bound instead of rejecting a possibly valid asset.
+        return validLowerBound && (maxSize === null || (this.width <= maxSize && this.height <= maxSize));
     }
 
     /**
