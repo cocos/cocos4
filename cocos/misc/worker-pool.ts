@@ -22,11 +22,11 @@
  THE SOFTWARE.
 */
 
+import type { IPlatformWorkerBackend } from 'pal/worker';
 import {
     WorkerTask, IWorker, getOptimalWorkerCount,
     getWorkerBackend, resetWorkerBackendCache,
 } from './worker';
-import type { IPlatformWorkerBackend } from 'pal/worker';
 import { getError, warnID } from '../core/platform/debug';
 
 /** Execution state, independent of the host platform. */
