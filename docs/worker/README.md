@@ -38,12 +38,16 @@ npm run build
 
 ## 启用功能与选择模式
 
-在 Creator 的引擎功能裁剪配置中按需要选择（两项默认均关闭）：
+在 Creator 的引擎功能裁剪配置中展开 **Worker** 分组，按需要勾选子项（两项默认均关闭）：
 
 | 功能 | ccbuild 的 features | 从 cc 可用的能力 |
 | --- | --- | --- |
-| Worker | `['worker']` | 创建 Worker、收发消息、查询能力，由开发者管理生命周期 |
+| 基础 Worker 功能 | `['worker']` | 创建 Worker、收发消息、查询能力，由开发者管理生命周期 |
 | Worker Pool | `['worker-pool']` | 基础 Worker API，以及任务池、队列、超时和安全同步降级 |
+
+分组标题的勾选框是全选/清空：只选基础 Worker 时显示半选；全选会同时启用 Worker Pool。
+勾选 Worker Pool 会关联开启基础 Worker；取消基础 Worker 时也会取消 Worker Pool。
+功能 ID 与项目已有配置保持兼容，无需迁移 `cache` 或 `includeModules`。
 
 `worker-pool` 依赖 `worker`，Creator 会关联该依赖；直接调用 ccbuild 时，选择 `worker-pool`
 也会包含两者的导出入口。`exports/worker.ts` 与 `exports/worker-pool.ts` 分别提供公开 API，

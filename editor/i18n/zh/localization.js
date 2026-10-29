@@ -874,6 +874,10 @@ module.exports = link(mixin({
     },
     features: {
         categories: {
+            worker: {
+                label: 'Worker',
+                description: 'Worker 功能分组。分组勾选框用于全选或清空；Worker Pool 依赖基础 Worker 功能。',
+            },
             '2d': {
                 label: '2D',
                 description: '2D',
@@ -1112,7 +1116,7 @@ module.exports = link(mixin({
             description: "对原生启用 WebSocket Server。注意: 必须同时启用 WebSocket。",
         },
         worker: {
-            label: "Worker",
+            label: "基础 Worker 功能",
             description: "启用跨平台 Worker 创建、消息通信和能力查询，由开发者自行管理 Worker。需要任务调度与同步降级时，额外启用 Worker Pool。",
         },
         worker_pool: {

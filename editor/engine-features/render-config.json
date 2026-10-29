@@ -350,13 +350,15 @@
             "default": false,
             "label": "i18n:ENGINE.features.worker.label",
             "description": "i18n:ENGINE.features.worker.description",
-            "enginePlugin": true
+            "enginePlugin": true,
+            "category": "worker"
         },
         "worker-pool": {
             "default": false,
             "label": "i18n:ENGINE.features.worker_pool.label",
             "description": "i18n:ENGINE.features.worker_pool.description",
             "enginePlugin": true,
+            "category": "worker",
             "dependencies": ["worker"]
         },
         "terrain": {
@@ -510,6 +512,11 @@
             "description": "i18n:ENGINE.features.graphics.description",
             "checkable": true,
             "required": true
+        },
+        "worker": {
+            "label": "i18n:ENGINE.features.categories.worker.label",
+            "description": "i18n:ENGINE.features.categories.worker.description",
+            "checkable": true
         },
         "2d": {
             "label": "i18n:ENGINE.features.categories.2d.label",
