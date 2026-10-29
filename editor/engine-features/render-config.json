@@ -352,6 +352,13 @@
             "description": "i18n:ENGINE.features.worker.description",
             "enginePlugin": true
         },
+        "worker-pool": {
+            "default": false,
+            "label": "i18n:ENGINE.features.worker_pool.label",
+            "description": "i18n:ENGINE.features.worker_pool.description",
+            "enginePlugin": true,
+            "dependencies": ["worker"]
+        },
         "terrain": {
             "default": true,
             "label": "i18n:ENGINE.features.terrain.label",

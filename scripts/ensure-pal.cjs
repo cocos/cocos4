@@ -154,7 +154,7 @@ function fallbackFiles() {
 // PAL packages before 1.0.5 have no worker module. Keep `pal/worker` resolvable for builds that
 // enable the optional `worker` feature: prefer a real implementation whenever one is available,
 // otherwise supply a platform-independent unavailable backend (WorkerPool then runs inline).
-// Nothing here affects builds without the feature: only exports/worker.ts imports `pal/worker`.
+// Nothing here includes Worker in builds without either optional Worker feature.
 // Types come from @types/pal/worker.d.ts, so the compatibility module is JS only.
 function ensureWorker(palRoot) {
     const workerRoot = path.join(palRoot, 'worker');

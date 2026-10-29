@@ -1,4 +1,4 @@
-// Run against the real ccbuild output (features: ['worker'], HTML5, cjs,
+// Run against the real ccbuild output (features: ['worker-pool'], HTML5, cjs,
 // compress: true, DEBUG: false, mangleProperties: true).
 // Usage: node tests/scripts/worker-release.test.cjs /absolute/path/to/cc.js
 const fs = require('node:fs');
@@ -9,7 +9,7 @@ const bundle = process.argv[2];
 if (!bundle) throw new Error('Pass the minified HTML5 worker feature bundle path.');
 const source = fs.readFileSync(bundle, 'utf8');
 
-function load() {
+function load(code = source, filename = bundle) {
     const handles = [];
     class Worker {
         constructor() { this.sent = []; this.stopped = 0; handles.push(this); }
@@ -26,8 +26,36 @@ function load() {
     const context = { exports: {}, console, Worker, navigator: { hardwareConcurrency: 4 },
         setTimeout, clearTimeout, ArrayBuffer, SharedArrayBuffer, Uint8Array };
     context.global = context;
-    vm.runInNewContext(source, context, { filename: bundle });
+    vm.runInNewContext(code, context, { filename });
     return { cc: context.exports, handles };
+}
+
+if (process.argv[3] && process.argv[4]) {
+    test('basic Worker feature supports developer-managed messaging without WorkerPool', () => {
+        const filename = process.argv[3];
+        const { cc, handles } = load(fs.readFileSync(filename, 'utf8'), filename);
+        assert.equal('WorkerPool' in cc, false);
+        assert.equal(handles.length, 0);
+        assert.equal(cc.getWorkerCapabilities().available, true);
+        const worker = cc.createWorker('workers/service.js');
+        let received;
+        worker.onMessage(message => { received = message; });
+        worker.postMessage({ cmd: 'ping' });
+        assert.deepEqual(handles[0].sent[0], { cmd: 'ping' });
+        handles[0].onmessage({ data: { cmd: 'pong' } });
+        assert.deepEqual(received, { cmd: 'pong' });
+        worker.terminate();
+        assert.equal(handles[0].stopped, 1);
+    });
+
+    test('build without either Worker feature exports no Worker API', () => {
+        const filename = process.argv[4];
+        const { cc, handles } = load(fs.readFileSync(filename, 'utf8'), filename);
+        assert.equal('WorkerPool' in cc, false);
+        assert.equal('createWorker' in cc, false);
+        assert.equal('getWorkerCapabilities' in cc, false);
+        assert.equal(handles.length, 0);
+    });
 }
 
 // Host workers are controlled substitutes; scheduler and PAL are the compiled code.

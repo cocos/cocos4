@@ -14,6 +14,8 @@
  *
  * HOW TO USE
  * ----------
+ * Enable the `worker-pool` engine feature (which depends on `worker`) for the pool example below.
+ * `createWorker(path)` alone only requires `worker`; the caller manages its message protocol.
  * 1. Copy this file into your project's worker directory, e.g. `workers/heavy-compute/index.js`.
  * 2. Implement your pure computation in `runTask(args)` below. It MUST be self-contained: it runs in
  *    a separate thread and CANNOT access `cc`, the scene, the DOM, or any closure variable from the

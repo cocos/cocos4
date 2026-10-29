@@ -26,10 +26,11 @@
 /**
  * Entry of the optional `worker` feature.
  *
- * The worker subsystem lives in `cocos/misc/worker*.ts` but is intentionally NOT re-exported from
+ * The worker API lives in `cocos/misc/worker.ts` but is intentionally NOT re-exported from
  * `cocos/misc/index.ts`: that file belongs to the always-on `base` feature, so anything exported
  * there ships in every build's main bundle. Routing the subsystem through this dedicated entry lets
- * builds omit the worker scheduler and its PAL dependencies when the feature is disabled.
+ * builds omit the Worker API and its PAL dependencies when the feature is disabled.
+ * Pool scheduling is separately enabled by the `worker-pool` feature.
  *
  * Only the public surface is re-exported here. Platform implementations live in `pal/worker`.
  * Internal backend selection and cache management stay off the `cc` namespace.
@@ -45,9 +46,6 @@ export {
     getWorkerCapabilities,
 } from '../cocos/misc/worker';
 export type { WorkerTask, IWorkerScriptStatus } from '../cocos/misc/worker';
-
-export { WorkerPool } from '../cocos/misc/worker-pool';
-export type { WorkerPoolOptions, WorkerExecutionMode } from '../cocos/misc/worker-pool';
 
 export type {
     IWorker,

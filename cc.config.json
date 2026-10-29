@@ -303,6 +303,10 @@
         },
         "worker": {
             "modules": ["worker"]
+        },
+        "worker-pool": {
+            "modules": ["worker", "worker-pool"],
+            "dependentModules": ["worker"]
         }
     },
     "moduleOverrides": [{

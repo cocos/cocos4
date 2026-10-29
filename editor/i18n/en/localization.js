@@ -1135,7 +1135,11 @@ module.exports = link(mixin({
         },
         worker: {
             label: "Worker",
-            description: "Enable the Worker subsystem (WorkerPool / Worker backends) for running tasks off the main thread. Falls back to synchronous execution automatically when the platform has no Worker support.",
+            description: "Enable cross-platform Worker creation, messaging and capability queries. Manage workers yourself; enable Worker Pool separately for task scheduling and synchronous fallback.",
+        },
+        worker_pool: {
+            label: "Worker Pool",
+            description: "Enable WorkerPool task scheduling, queuing, timeouts and safe synchronous fallback. Depends on Worker.",
         },
         flags: {
             spine: {

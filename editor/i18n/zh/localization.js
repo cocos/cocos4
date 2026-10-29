@@ -1113,7 +1113,11 @@ module.exports = link(mixin({
         },
         worker: {
             label: "Worker",
-            description: "启用 Worker 子系统（WorkerPool / Worker 后端），用于把耗时任务放到主线程之外执行。平台不支持 Worker 时会自动回退为同步执行。",
+            description: "启用跨平台 Worker 创建、消息通信和能力查询，由开发者自行管理 Worker。需要任务调度与同步降级时，额外启用 Worker Pool。",
+        },
+        worker_pool: {
+            label: "Worker Pool",
+            description: "启用 WorkerPool 任务调度、队列、超时和安全同步降级。依赖 Worker 功能。",
         },
         flags: {
             spine: {
