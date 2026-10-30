@@ -1,5 +1,5 @@
 import { ccclass } from 'cc.decorator';
-import { warnID } from '../../cocos/core';
+import { warnID, errorID } from '../../cocos/core';
 import { float, property } from '../../cocos/core/data/class-decorator';
 import * as requiringFrame from '../../cocos/core/data/utils/requiring-frame';
 import { getClassName, unregisterClass, getClassId } from '../../cocos/core/utils/js-typed';
@@ -60,6 +60,19 @@ describe('ccclass warnings', () => {
         { @ccclass class _ { @property(C) p; } }
         expect(warnID).not.toHaveBeenCalled();
     });
+});
+
+test('Error on duplicated class id', () => {
+    // @ts-expect-error
+    errorID.mockClear();
+
+    const id = 'test-duplicated-class-id';
+
+    {@ccclass(id) class A {}}
+    {@ccclass(id) class B {}}
+
+    expect(errorID).toHaveBeenCalledTimes(1);
+    expect(errorID).toHaveBeenCalledWith(16334, id, 'B', 'A');
 });
 
 describe('Class id & class name', () => {
