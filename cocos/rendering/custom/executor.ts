@@ -112,6 +112,7 @@ import {
     ResolvePass,
     ResourceDesc,
     ResourceGraph,
+    ResourceGraphValue,
     ResourceGraphVisitor,
     ResourceTraits,
     SceneData,
@@ -170,7 +171,7 @@ class ResourceVisitor implements ResourceGraphVisitor {
     createDeviceTex (value: PersistentTexture | Framebuffer | ManagedResource | RenderSwapchain): void {
         let dTex = context.deviceTextures.get(this.name);
         if (!dTex || !this.checkTexture(this.name)) {
-            if (dTex?.texture) {
+            if (dTex?.texture && dTex.owned) {
                 dTex.texture.destroy();
             }
             dTex = new DeviceTexture(this.name, value);
@@ -243,8 +244,11 @@ class DeviceTexture extends DeviceResource {
     protected _framebuffer: Framebuffer | null = null;
     protected _desc: ResourceDesc | null = null;
     protected _trait: ResourceTraits | null = null;
+    /** Only textures created by the executor are owned; imported textures are never resized or destroyed. */
+    protected _owned = false;
 
     get texture (): Texture | null { return this._texture; }
+    get owned (): boolean { return this._owned; }
     set framebuffer (val: Framebuffer | null) { this._framebuffer = val; }
     get framebuffer (): Framebuffer | null { return this._framebuffer; }
     get description (): ResourceDesc | null { return this._desc; }
@@ -258,8 +262,8 @@ class DeviceTexture extends DeviceResource {
         this._desc = resGraph.getDesc(verID);
         this._trait = resGraph.getTraits(verID);
 
-        if (tex instanceof Texture) {
-            this._texture = tex;
+        if (tex instanceof PersistentTexture) {
+            this._texture = tex.texture;
         } else if (tex instanceof Framebuffer) {
             this._framebuffer = tex;
         } else if (tex instanceof RenderSwapchain) {
@@ -299,6 +303,7 @@ class DeviceTexture extends DeviceResource {
         );
         texInfo.samples = desc.sampleCount;
         this._texture = context.device.createTexture(texInfo);
+        this._owned = true;
     }
 
     public getGPUTexture (): Texture {
@@ -314,7 +319,7 @@ class DeviceTexture extends DeviceResource {
     release (): void {
         this.framebuffer?.destroy();
         this._framebuffer = null;
-        this.texture?.destroy();
+        if (this._owned) this.texture?.destroy();
         this._texture = null;
     }
 }
@@ -690,6 +695,13 @@ class RenderPassLayoutInfo {
         }
 
         const layoutDesc = layoutData.descriptorSet!;
+        const resGraph = context.resourceGraph;
+        const inputID = resGraph.vertex(this._inputName);
+        if (resGraph.h(ResourceGraphValue.PersistentTexture, inputID)) {
+            // Managed inputs are created by the pass writing them; an imported one is created where it is read.
+            resourceVisitor.resName = this._inputName;
+            resGraph.visitVertex(resourceVisitor, inputID);
+        }
         const deviceTex = context.deviceTextures.get(this._inputName);
         const gfxTex = deviceTex?.texture;
 
@@ -762,6 +774,8 @@ const textureBlit = new TextureBlit();
 class DeviceRenderPass implements RecordingInterface {
     protected _renderPass: RenderPass;
     protected _framebuffer!: Framebuffer;
+    /** False when `_framebuffer` is borrowed from a `ResourceGraph` `Framebuffer` vertex (`addRenderWindow`). */
+    protected _ownedFramebuffer = false;
     protected _clearColor: Color[] = [];
     protected _deviceQueues: Map<number, DeviceRenderQueue> = new Map();
     protected _resolveTextures: Map<string, DeviceTexture> = new Map();
@@ -797,7 +811,7 @@ class DeviceRenderPass implements RecordingInterface {
             const resFbo = resGraph.object(resId);
             if (resTex.framebuffer && resFbo instanceof Framebuffer && resTex.framebuffer !== resFbo) {
                 resTex.framebuffer = resFbo;
-            } else if (resTex.texture) {
+            } else if (resTex.texture && resTex.owned) {
                 const desc = resGraph.getDesc(resId);
                 if (resTex.texture.width !== desc.width || resTex.texture.height !== desc.height) {
                     resTex.texture.resize(desc.width, desc.height);
@@ -906,6 +920,7 @@ class DeviceRenderPass implements RecordingInterface {
     get renderLayout (): RenderPassLayoutInfo | null { return this._layout; }
     get renderPass (): RenderPass { return this._renderPass; }
     get framebuffer (): Framebuffer { return this._framebuffer; }
+    get ownedFramebuffer (): boolean { return this._ownedFramebuffer; }
     get clearColor (): Color[] { return this._clearColor; }
     get clearDepth (): number { return this._clearDepth; }
     get clearStencil (): number { return this._clearStencil; }
@@ -1024,12 +1039,13 @@ class DeviceRenderPass implements RecordingInterface {
 
     private _createFramebuffer (fbo: Framebuffer | null, cols: Texture[], depthTex: Texture | null): void {
         if (!fbo && !cols.length) return;
-        if (this._framebuffer && fbo !== this._framebuffer) this._framebuffer.destroy();
+        if (this._framebuffer && this._ownedFramebuffer && fbo !== this._framebuffer) this._framebuffer.destroy();
         this._framebuffer = fbo || context.device.createFramebuffer(new FramebufferInfo(
             this._renderPass,
             cols,
             depthTex,
         ));
+        this._ownedFramebuffer = !fbo;
     }
 
     resetResource (id: number, pass: RasterPass): void {
@@ -1071,10 +1087,10 @@ class DeviceRenderPass implements RecordingInterface {
             const resFbo = resGraph.object(resId);
             const resDesc = resGraph.getDesc(resId);
             if (deviceTex.framebuffer && resFbo instanceof Framebuffer && (deviceTex.framebuffer !== resFbo || resFbo !== this._framebuffer)) {
-                framebuffer = this._framebuffer = deviceTex.framebuffer = resFbo;
+                framebuffer = deviceTex.framebuffer = resFbo;
             } else if (deviceTex.texture && needRebuild) {
                 const gfxTex = deviceTex.texture;
-                gfxTex.resize(resDesc.width, resDesc.height);
+                if (deviceTex.owned) gfxTex.resize(resDesc.width, resDesc.height);
                 if (rasterV.attachmentType === AttachmentType.RENDER_TARGET) {
                     colTextures.push(gfxTex);
                 } else if (rasterV.attachmentType === AttachmentType.DEPTH_STENCIL) {
@@ -1600,6 +1616,15 @@ class BlitInfo {
     }
 }
 
+function referencesTexture (desc: DescriptorSet, texture: Texture): boolean {
+    for (const binding of desc.layout.bindings) {
+        for (let i = 0; i < binding.count; ++i) {
+            if (desc.getTexture(binding.binding, i) === texture) return true;
+        }
+    }
+    return false;
+}
+
 class ExecutorContext {
     constructor (
         pipeline: BasicPipeline,
@@ -1663,6 +1688,34 @@ class ExecutorContext {
     passDescriptorSet: DescriptorSet | null;
     profilerDescriptorSet: DescriptorSet;
     passShowStatistics: boolean = false;
+
+    /**
+     * Drops every cached object derived from an imported texture that left `name`
+     * (replaced or removed). Each one is rebuilt from the resource graph on next use.
+     */
+    invalidateExternalTexture (name: string, texture: Texture): void {
+        if (this.deviceTextures.get(name)?.texture === texture) {
+            this.deviceTextures.delete(name);
+        }
+        for (const [hash, pass] of this.devicePasses) {
+            const fbo = pass.framebuffer;
+            if (pass.ownedFramebuffer && fbo && (fbo.colorTextures.includes(texture) || fbo.depthStencilTexture === texture)) {
+                // The next frame constructs a new DeviceRenderPass: render pass and framebuffer for the current texture.
+                fbo.destroy();
+                this.devicePasses.delete(hash);
+            }
+        }
+        // Per-frame binding refills a fresh set with the UBOs, samplers and textures the frame needs.
+        for (const layout of this.layoutGraph._layouts) {
+            for (const set of layout.getSets().values()) {
+                const desc = set.descriptorSet;
+                if (!desc || !referencesTexture(desc, texture)) continue;
+                desc.destroy();
+                set.descriptorSet = this.device.createDescriptorSet(new DescriptorSetInfo(set.descriptorSetLayout!));
+                if (this.profilerDescriptorSet === desc) this.profilerDescriptorSet = set.descriptorSet;
+            }
+        }
+    }
 }
 
 export class Executor {
@@ -1748,6 +1801,11 @@ export class Executor {
         depthFirstSearch(this._visitor.graphView, this._visitor, this._visitor.colorMap);
         cmdBuff.end();
         context.device.queue.submit([cmdBuff]);
+    }
+
+    /** Drops the cached objects derived from an imported texture that left `name`; the texture itself is untouched. */
+    invalidateExternalTexture (name: string, texture: Texture): void {
+        this._context.invalidateExternalTexture(name, texture);
     }
 
     release (): void {
