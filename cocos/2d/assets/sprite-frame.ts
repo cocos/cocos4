@@ -26,8 +26,8 @@
 */
 
 import { ccclass } from 'cc.decorator';
-import { EDITOR, NODEJS, TEST, BUILD } from 'internal:constants';
-import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, js, v3, mat4, rect, v4, v2, size } from '../../core';
+import { EDITOR, NODEJS, TEST, BUILD, DEBUG } from 'internal:constants';
+import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, warn, js, v3, mat4, rect, v4, v2, size } from '../../core';
 import { Asset } from '../../asset/assets/asset';
 import { TextureBase } from '../../asset/assets/texture-base';
 import { ImageAsset, ImageSource } from '../../asset/assets/image-asset';
@@ -132,6 +132,12 @@ export interface ISpriteFrameInitInfo {
      * 在图集中的精灵帧可能会被剔除透明像素以获得更高的空间利用李，剔除后的矩形尺寸比剪裁前更小，偏移量指的是从原始矩形的中心到剪裁后的矩形中心的距离。
      */
     offset?: Vec2;
+    /**
+     * @en Number of pixels corresponding to unit size in world space.
+     * @zh 世界空间中的单位大小对应的像素数量。
+     * @default 100
+     */
+    pixelsToUnit?: number;
     /**
      * @en Top side border for sliced 9 frame.
      * @zh 九宫格精灵帧的上边界。
@@ -815,6 +821,7 @@ export class SpriteFrame extends Asset {
     public reset (info?: ISpriteFrameInitInfo, clearData = false): void {
         const self = this;
         let calUV = false;
+        let shouldUpdateMesh = false;
         if (clearData) {
             self._originalSize.set(0, 0);
             self._rect.set(0, 0, 0, 0);
@@ -825,10 +832,24 @@ export class SpriteFrame extends Asset {
         }
 
         if (info) {
+            const pixelsToUnit = info.pixelsToUnit;
+            if (pixelsToUnit !== undefined && pixelsToUnit !== self._pixelsToUnit) {
+                let isValid = true;
+                if (DEBUG && (typeof pixelsToUnit !== 'number' || !Number.isFinite(pixelsToUnit) || pixelsToUnit <= 0)) {
+                    isValid = false;
+                    warn('SpriteFrame pixelsToUnit must be a finite number greater than 0.');
+                }
+                if (isValid) {
+                    self._pixelsToUnit = pixelsToUnit;
+                    shouldUpdateMesh = true;
+                }
+            }
+
             if (info.texture) {
                 self._rect.set(0, 0, info.texture.width, info.texture.height);
-                self._refreshTexture(info.texture);
+                self._refreshTexture(info.texture, false);
                 self.checkRect(self._texture);
+                shouldUpdateMesh = true;
             }
 
             if (info.originalSize) {
@@ -875,6 +896,9 @@ export class SpriteFrame extends Asset {
             self._calculateUV();
         }
         self._calcTrimmedBorder();
+        if (shouldUpdateMesh && self._mesh) {
+            self._updateMesh();
+        }
     }
 
     /**
@@ -1379,7 +1403,7 @@ export class SpriteFrame extends Asset {
         return sp;
     }
 
-    protected _refreshTexture (texture: TextureBase): void {
+    protected _refreshTexture (texture: TextureBase, updateMesh = true): void {
         const self = this;
         self._texture = texture;
         const tex = self._texture;
@@ -1404,7 +1428,7 @@ export class SpriteFrame extends Asset {
         }
 
         self._checkPackable();
-        if (self._mesh) {
+        if (updateMesh && self._mesh) {
             self._updateMesh();
         }
     }
