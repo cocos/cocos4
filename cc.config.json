@@ -281,6 +281,10 @@
             ],
             "dependentModules": ["custom-pipeline"]
         },
+        "render-scene": {
+            "modules": ["render-scene"],
+            "dependentModules": ["custom-pipeline"]
+        },
         "legacy-pipeline": {
             "modules": ["legacy-pipeline"],
             "dependentScripts": [
