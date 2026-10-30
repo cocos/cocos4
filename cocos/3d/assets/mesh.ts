@@ -25,7 +25,7 @@
 import { ccclass, serializable } from 'cc.decorator';
 import { EDITOR } from 'internal:constants';
 import { Asset } from '../../asset/assets/asset';
-import { IDynamicGeometry } from '../../primitive/define';
+import { IDynamicGeometry, DynamicAttributeValues } from '../../primitive/define';
 import { BufferBlob } from '../misc/buffer-blob';
 import { Skeleton } from './skeleton';
 import { geometry, cclegacy, sys, warnID, Mat4, Quat, Vec3, assertIsTrue, murmurhash2_32_gc, errorID, halfToFloat, v3 } from '../../core';
@@ -581,7 +581,7 @@ export class Mesh extends Asset {
             return;
         }
 
-        const buffers: Float32Array[] = [];
+        const buffers: DynamicAttributeValues[] = [];
         if (dynamicGeometry.positions.length > 0) {
             buffers.push(dynamicGeometry.positions);
         }
@@ -618,7 +618,24 @@ export class Mesh extends Asset {
         for (let index = 0; index < buffers.length; index++) {
             const vertices = buffers[index];
             const bundle = this._struct.vertexBundles[primitive.vertexBundelIndices[index]];
+            const attribute = bundle.attributes[0];
+            const formatInfo = FormatInfos[attribute.format];
             const stride = bundle.view.stride;
+
+            // Defensive check: the element type of `vertices` must physically match the GPU
+            // format declared for this attribute (e.g. a Uint16Array for RGBA16UI), otherwise
+            // the vertex count derived from byteLength/stride would silently be wrong (see the
+            // historical "a_joints becomes 2x vertices" bug this replaces). Fail fast with a
+            // clear diagnostic instead of blindly copying misinterpreted data.
+            assertIsTrue(
+                vertices.BYTES_PER_ELEMENT * formatInfo.count === formatInfo.size,
+                `Custom attribute '${attribute.name}': the element byte size of the supplied `
+                + `TypedArray (${vertices.BYTES_PER_ELEMENT}) times its component count (${formatInfo.count}) `
+                + `does not match the byte size (${formatInfo.size}) of the declared GPU format. `
+                + 'Supply a TypedArray whose element type matches the target format (e.g. Uint16Array '
+                + 'for RGBA16UI) instead of converting through Float32Array.',
+            );
+
             const vertexCount = vertices.byteLength / stride;
             const updateSize  = vertices.byteLength;
             const dstBuffer   = new Uint8Array(this._data.buffer, bundle.view.offset, updateSize);
