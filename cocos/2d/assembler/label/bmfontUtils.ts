@@ -35,6 +35,7 @@ import { TextOutputLayoutData, TextOutputRenderData } from './text-output-data';
 import { TextStyle } from './text-style';
 import { TextLayout } from './text-layout';
 import { view } from '../../../ui/view';
+import { retryLabelTextureUpload } from './texture-upload-retry';
 
 const _defaultLetterAtlas = new LetterAtlas(64, 64);
 const _defaultFontAtlas = new FontAtlas(null);
@@ -112,6 +113,9 @@ export class BmfontUtils {
             const outputRenderData = comp.textRenderData;
             style.fontScale = view.getScaleX();
             this._updateFontFamily(comp);
+            if (shareLabelInfo.fontAtlas instanceof LetterAtlas) {
+                shareLabelInfo.fontAtlas.beginUpdate();
+            }
 
             this.updateProcessingData(style, layout, outputLayoutData, outputRenderData, comp, _uiTrans);
 
@@ -160,7 +164,12 @@ export class BmfontUtils {
                 _comp.node._uiProps.colorDirty = false;
             }
 
-            renderData.vertDirty = false;
+            const uploadFailed = shareLabelInfo.fontAtlas instanceof LetterAtlas && shareLabelInfo.fontAtlas.textureUploadFailed;
+            outputRenderData.textureReady = !uploadFailed;
+            renderData.vertDirty = uploadFailed;
+            if (uploadFailed) {
+                retryLabelTextureUpload(comp);
+            }
             _comp = null;
 
             this._resetProperties();

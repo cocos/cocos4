@@ -485,6 +485,7 @@ export class TextProcessing {
         outputLayoutData: TextOutputLayoutData,
         outputRenderData: TextOutputRenderData,
     ): void {
+        outputRenderData.textureReady = false;
         const context = this._context;
         const canvas = this._canvas;
         if (!context || !canvas) {
@@ -539,10 +540,10 @@ export class TextProcessing {
             context.shadowColor = 'transparent';
         }
 
-        this._uploadTexture(outputRenderData);
+        outputRenderData.textureReady = this._uploadTexture(outputRenderData);
     }
 
-    private _uploadTexture (outputRenderData: TextOutputRenderData): void {
+    private _uploadTexture (outputRenderData: TextOutputRenderData): boolean {
         const canvas = this._canvas;
         if (outputRenderData.texture && canvas) {
             let tex: Texture2D;
@@ -558,31 +559,45 @@ export class TextProcessing {
                 const oldGfxTexture = tex.getGFXTexture();
                 const oldGfxSampler = tex.getGFXSampler();
 
-                tex.reset({
-                    width: canvas.width,
-                    height: canvas.height,
-                    mipmapLevel: 1,
-                });
-                tex.uploadData(canvas);
+                let uploaded = false;
+                try {
+                    tex.reset({
+                        width: canvas.width,
+                        height: canvas.height,
+                        mipmapLevel: 1,
+                    });
+                    if (typeof tex.uploadDataChecked === 'function') {
+                        uploaded = tex.uploadDataChecked(canvas);
+                    } else {
+                        // JSB SimpleTexture retains its native upload implementation.
+                        tex.uploadData(canvas);
+                        uploaded = true;
+                    }
+                } catch {
+                    uploaded = false;
+                }
+                // reset() invalidates the old texture even if its replacement fails.
+                if (cclegacy.director.root?.batcher2D) {
+                    const batcher = cclegacy.director.root.batcher2D as Batcher2D;
+                    if (JSB) {
+                        batcher._releaseDescriptorSetCache(oldGfxTexture, oldGfxSampler);
+                    } else {
+                        batcher._releaseDescriptorSetCache(tex.getHash());
+                    }
+                }
+                if (!uploaded) {
+                    return false;
+                }
                 tex.setWrapMode(WrapMode.CLAMP_TO_EDGE, WrapMode.CLAMP_TO_EDGE);
                 if (outputRenderData.texture instanceof SpriteFrame) {
                     outputRenderData.texture.rect = new Rect(0, 0, canvas.width, canvas.height);
                     outputRenderData.texture._calculateUV();
                 }
-                if (cclegacy.director.root && cclegacy.director.root.batcher2D) {
-                    if (JSB) {
-                        // NOTE: Release the old descriptor set cache referenced by old gfx texture and sampler.
-                        // We should not release the new generated `tex.getGFXTexture()` and `tex.getGFXSampler()`
-                        // since `tex.reset(...)` will reset `gfxTexture` and `gfxSampler`.
-                        // The other non-JSB branch uses `tex.getHash()` which returns the hash value that will not be
-                        // changed after `tex.reset(...)`, so there will be no problems for non-JSB branch.
-                        (cclegacy.director.root.batcher2D as Batcher2D)._releaseDescriptorSetCache(oldGfxTexture, oldGfxSampler);
-                    } else {
-                        (cclegacy.director.root.batcher2D as Batcher2D)._releaseDescriptorSetCache(tex.getHash());
-                    }
-                }
+                return true;
             }
+            return true;
         }
+        return false;
     }
 
     private _drawTextEffect (

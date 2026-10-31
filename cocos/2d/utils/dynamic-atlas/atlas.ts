@@ -31,10 +31,6 @@ import { SpriteFrame } from '../../assets/sprite-frame';
 
 const space = 2;
 
-function drawTextureAt (texture: DynamicAtlasTexture, image: ImageAsset, x: number, y: number): void {
-    texture.drawTextureAt(image, x, y);
-}
-
 export class Atlas {
     private declare _texture: DynamicAtlasTexture;
     private declare _width: number;
@@ -49,10 +45,14 @@ export class Atlas {
         }> = {};
     private _innerSpriteFrames: SpriteFrame[] = [];
     private _count: number = 0;
+    private _textureUploadFailed = false;
+
+    get textureUploadFailed (): boolean {
+        return this._textureUploadFailed;
+    }
 
     constructor (width: number, height: number) {
         const texture = new DynamicAtlasTexture();
-        texture.initWithSize(width, height);
         this._texture = texture;
 
         this._width = width;
@@ -61,6 +61,11 @@ export class Atlas {
         this._x = space;
         this._y = space;
         this._nextY = space;
+        try {
+            texture.initWithSize(width, height);
+        } catch {
+            this._textureUploadFailed = true;
+        }
     }
 
     /**
@@ -78,6 +83,15 @@ export class Atlas {
         y: number;
         texture: DynamicAtlasTexture;
     } | null {
+        if (this._textureUploadFailed && this._count === 0) {
+            // No entries refer to this storage yet, so it is safe to retry its allocation.
+            try {
+                this._texture.initWithSize(this._width, this._height);
+            } catch {
+                return null;
+            }
+        }
+        this._textureUploadFailed = false;
         const rect = spriteFrame.rect;
         // Todo:No renderTexture
         const texture = spriteFrame.texture as Texture2D;
@@ -92,52 +106,62 @@ export class Atlas {
         } else {
             const width = texture.width;
             const height = texture.height;
+            let x = this._x;
+            let y = this._y;
+            let nextY = this._nextY;
 
-            if ((this._x + width + space) > this._width) {
-                this._x = space;
-                this._y = this._nextY;
+            if ((x + width + space) > this._width) {
+                x = space;
+                y = nextY;
             }
 
-            if ((this._y + height + space) > this._nextY) {
-                this._nextY = this._y + height + space;
+            if ((y + height + space) > nextY) {
+                nextY = y + height + space;
             }
 
-            if (this._nextY > this._height) {
+            if (nextY > this._height || x + width + space > this._width) {
                 return null;
             }
 
             const thisTexture = this._texture;
             const image = texture.image!;
+            let uploaded = true;
 
             if (cclegacy.internal.dynamicAtlasManager.textureBleeding) {
                 // Smaller frame is more likely to be affected by linear filter
                 if (width <= 8 || height <= 8) {
-                    drawTextureAt(thisTexture, image, this._x - 1, this._y - 1);
-                    drawTextureAt(thisTexture, image, this._x - 1, this._y + 1);
-                    drawTextureAt(thisTexture, image, this._x + 1, this._y - 1);
-                    drawTextureAt(thisTexture, image, this._x + 1, this._y + 1);
+                    uploaded = thisTexture.drawTextureAt(image, x - 1, y - 1, false)
+                        && thisTexture.drawTextureAt(image, x - 1, y + 1, false)
+                        && thisTexture.drawTextureAt(image, x + 1, y - 1, false)
+                        && thisTexture.drawTextureAt(image, x + 1, y + 1, false);
                 }
 
-                drawTextureAt(thisTexture, image, this._x - 1, this._y);
-                drawTextureAt(thisTexture, image, this._x + 1, this._y);
-                drawTextureAt(thisTexture, image, this._x, this._y - 1);
-                drawTextureAt(thisTexture, image, this._x, this._y + 1);
+                uploaded = uploaded && thisTexture.drawTextureAt(image, x - 1, y, false)
+                    && thisTexture.drawTextureAt(image, x + 1, y, false)
+                    && thisTexture.drawTextureAt(image, x, y - 1, false)
+                    && thisTexture.drawTextureAt(image, x, y + 1, false);
             }
 
-            drawTextureAt(thisTexture, image, this._x, this._y);
+            // The final checked copy also detects GL errors from the preceding bleeding copies.
+            if (!uploaded || !thisTexture.drawTextureAt(image, x, y)) {
+                this._textureUploadFailed = true;
+                return null;
+            }
 
             this._innerTextureInfos[texture.getId()] = {
-                x: this._x,
-                y: this._y,
+                x,
+                y,
                 texture,
             };
 
             this._count++;
 
-            sx += this._x;
-            sy += this._y;
+            sx += x;
+            sy += y;
 
-            this._x += width + space;
+            this._x = x + width + space;
+            this._y = y;
+            this._nextY = nextY;
         }
 
         const frame = {
@@ -146,7 +170,9 @@ export class Atlas {
             texture: this._texture,
         };
 
-        this._innerSpriteFrames.push(spriteFrame);
+        if (!this._innerSpriteFrames.includes(spriteFrame)) {
+            this._innerSpriteFrames.push(spriteFrame);
+        }
 
         return frame;
     }
@@ -209,6 +235,8 @@ export class Atlas {
         }
         this._innerSpriteFrames.length = 0;
         this._innerTextureInfos = {};
+        this._count = 0;
+        this._textureUploadFailed = false;
     }
 
     /**
@@ -256,16 +284,16 @@ export class DynamicAtlasTexture extends Texture2D {
      * @param {Number} x
      * @param {Number} y
      */
-    public drawTextureAt (image: ImageAsset, x: number, y: number): void {
+    public drawTextureAt (image: ImageAsset, x: number, y: number, checkErrors = true): boolean {
         const gfxTexture = this.getGFXTexture();
         if (!image || !gfxTexture) {
-            return;
+            return false;
         }
 
         const gfxDevice = this._getGFXDevice();
         if (!gfxDevice) {
             warnID(16363);
-            return;
+            return false;
         }
 
         const region = new BufferTextureCopy();
@@ -273,6 +301,15 @@ export class DynamicAtlasTexture extends Texture2D {
         region.texOffset.y = y;
         region.texExtent.width = image.width;
         region.texExtent.height = image.height;
-        gfxDevice.copyTexImagesToTexture([image.data as HTMLCanvasElement], gfxTexture, [region]);
+        try {
+            if (checkErrors && typeof gfxDevice.copyTexImagesToTextureChecked === 'function') {
+                return gfxDevice.copyTexImagesToTextureChecked([image.data as HTMLCanvasElement], gfxTexture, [region]);
+            }
+            // Native devices may replace the JS Device implementation.
+            gfxDevice.copyTexImagesToTexture([image.data as HTMLCanvasElement], gfxTexture, [region]);
+            return true;
+        } catch {
+            return false;
+        }
     }
 }
