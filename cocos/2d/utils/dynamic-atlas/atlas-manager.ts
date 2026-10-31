@@ -203,7 +203,7 @@ export class DynamicAtlasManager extends System {
         }
 
         const frame = atlas ? atlas.insertSpriteFrame(spriteFrame) : null;
-        if (!frame && this._atlasIndex < this._maxAtlasCount) {
+        if (!frame && !atlas?.textureUploadFailed && this._atlasIndex < this._maxAtlasCount) {
             atlas = this.newAtlas();
             return atlas ? atlas.insertSpriteFrame(spriteFrame) : null;
         }

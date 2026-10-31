@@ -112,6 +112,15 @@ export class FontAtlas {
     public clear (): void {
         this.letterDefinitions = {};
     }
+
+    public destroy (): void {
+        const texture = this._texture;
+        this._texture = null;
+        this.clear();
+        // Loaded font textures also belong to the asset dependency graph. Let
+        // its release manager remove cached assets and their dependencies.
+        texture?.decRef();
+    }
 }
 
 /**
@@ -159,10 +168,19 @@ export class BitmapFont extends Font {
         super();
     }
 
+    public destroy (): boolean {
+        if (this.fontDefDictionary) {
+            this.fontDefDictionary.destroy();
+        }
+        return super.destroy();
+    }
+
     onLoaded (): void {
         const spriteFrame = this.spriteFrame;
         if (!this.fontDefDictionary && spriteFrame) {
-            this.fontDefDictionary = new FontAtlas(spriteFrame.texture);
+            // Keep ownership tied to the source asset while the frame is packed.
+            const texture = spriteFrame.original ? spriteFrame.original._texture : spriteFrame.texture;
+            this.fontDefDictionary = new FontAtlas(texture);
         }
 
         const fntConfig = this.fntConfig;

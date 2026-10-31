@@ -42,6 +42,8 @@ import { TextOutputLayoutData, TextOutputRenderData } from '../assembler/label/t
 import type { RenderData } from '../renderer/render-data';
 import type { LetterFont } from '../assembler/label/letter-font';
 import type { TTF } from '../assembler/label/ttf';
+import { dynamicAtlasManager } from '../utils/dynamic-atlas/atlas-manager';
+import { retryLabelTextureUpload } from '../assembler/label/texture-upload-retry';
 
 const tempColor = Color.WHITE.clone();
 /**
@@ -505,10 +507,10 @@ export class Label extends UIRenderer {
         }
 
         if (oldCacheMode === CacheMode.BITMAP && !(this._font instanceof BitmapFont) && this._ttfSpriteFrame) {
+            dynamicAtlasManager.deleteAtlasSpriteFrame(this._ttfSpriteFrame);
             this._ttfSpriteFrame._resetDynamicAtlasFrame();
         }
         if (oldCacheMode === CacheMode.CHAR) {
-            this._ttfSpriteFrame = null;
             this.destroyLetterTexture();
         }
 
@@ -899,20 +901,29 @@ export class Label extends UIRenderer {
     }
 
     private destroyTtfSpriteFrame (): void {
-        if (!this._ttfSpriteFrame) {
-            return;
-        }
-        this._ttfSpriteFrame._resetDynamicAtlasFrame();
-        const tex = this._ttfSpriteFrame.texture;
-        this._ttfSpriteFrame.destroy();
-        if (tex) {
-            const tex2d = tex as Texture2D;
-            if (tex2d.image) {
-                tex2d.image.destroy();
+        const spriteFrame = this._ttfSpriteFrame;
+        if (spriteFrame) {
+            // Keep the source texture before removing the frame from its dynamic atlas.
+            const tex = spriteFrame.original ? spriteFrame.original._texture : spriteFrame.texture;
+            dynamicAtlasManager.deleteAtlasSpriteFrame(spriteFrame);
+            spriteFrame._resetDynamicAtlasFrame();
+            spriteFrame.destroy();
+            if (tex) {
+                const tex2d = tex as Texture2D;
+                if (tex2d.image) {
+                    tex2d.image.destroy();
+                }
+                tex.destroy();
             }
-            tex.destroy();
+            if (this._texture === spriteFrame) {
+                this._texture = null;
+            }
+            this._ttfSpriteFrame = null;
         }
-        this._ttfSpriteFrame = null;
+        if (this._assemblerData) {
+            Label._canvasPool.put(this._assemblerData);
+            this._assemblerData = null;
+        }
     }
 
     // Override
@@ -925,11 +936,6 @@ export class Label extends UIRenderer {
     }
 
     public onDestroy (): void {
-        if (this._assembler && this._assembler.resetAssemblerData) {
-            this._assembler.resetAssemblerData(this._assemblerData!);
-        }
-
-        this._assemblerData = null;
         this.destroyTtfSpriteFrame();
         // Don't set null for properties which are init in constructor.
         // this._textStyle = null;
@@ -999,6 +1005,9 @@ export class Label extends UIRenderer {
         if (!super._canRender() || !this._string) {
             return false;
         }
+        if (!this.textRenderData.textureReady) {
+            return false;
+        }
 
         const font = this._font;
         if (font && font instanceof BitmapFont) {
@@ -1016,6 +1025,8 @@ export class Label extends UIRenderer {
         const assembler = Label.Assembler.getAssembler(this);
 
         if (this._assembler !== assembler) {
+            this.destroyTtfSpriteFrame();
+            this.destroyLetterTexture();
             this.destroyRenderData();
             this._assembler = assembler;
             this.textStyle.reset();
@@ -1060,11 +1071,24 @@ export class Label extends UIRenderer {
                 }
                 this._texture = this._letterTexture = letterTexture;
             } else if (!this._ttfSpriteFrame) {
+                try {
+                    this._assemblerData = (this._assembler as TTF).getAssemblerData();
+                } catch {
+                    // No frame is published until its Canvas is available.
+                    this.textRenderData.textureReady = false;
+                    retryLabelTextureUpload(this, true);
+                    return;
+                }
                 this._ttfSpriteFrame = new SpriteFrame();
-                this._assemblerData = (this._assembler as TTF).getAssemblerData();
                 const image = new ImageAsset(this._assemblerData.canvas);
                 const texture = new Texture2D();
-                texture.image = image;
+                try {
+                    texture.image = image;
+                } catch {
+                    // Keep the texture attached even if its initial allocation
+                    // fails. TextProcessing can reset and upload it on retry.
+                    this.textRenderData.textureReady = false;
+                }
                 this._ttfSpriteFrame.texture = texture;
             }
 

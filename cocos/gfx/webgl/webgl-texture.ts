@@ -40,6 +40,7 @@ export class WebGLTexture extends Texture {
 
     private _gpuTexture: IWebGLGPUTexture | null = null;
     private _lodLevel = 0;
+    private _textureAllocationFailed = false;
 
     constructor () {
         super();
@@ -100,7 +101,16 @@ export class WebGLTexture extends Texture {
             };
 
             if (!self._gpuTexture.isSwapchainTexture) {
-                WebGLCmdFuncCreateTexture(instance, self._gpuTexture);
+                try {
+                    WebGLCmdFuncCreateTexture(instance, self._gpuTexture);
+                } catch (error) {
+                    const gpuTexture = self._gpuTexture;
+                    self._gpuTexture = null;
+                    // initialize() has not added memory accounting yet.
+                    WebGLCmdFuncDestroyTexture(instance, gpuTexture);
+                    throw error;
+                }
+                self._textureAllocationFailed = false;
                 instance.memoryStatus.textureSize += self._size;
             }
 
@@ -147,7 +157,7 @@ export class WebGLTexture extends Texture {
         const self = this;
         const { instance } = WebGLDeviceManager;
         const thisTextureInfo = self._info;
-        if (thisTextureInfo.width === width && thisTextureInfo.height === height) {
+        if (thisTextureInfo.width === width && thisTextureInfo.height === height && !self._textureAllocationFailed) {
             return;
         }
 
@@ -175,9 +185,22 @@ export class WebGLTexture extends Texture {
             thisGpuTexture.height = height;
             thisGpuTexture.size = self._size;
             if (!thisGpuTexture.isSwapchainTexture) {
-                WebGLCmdFuncResizeTexture(instance, thisGpuTexture);
-                instance.memoryStatus.textureSize -= oldSize;
-                instance.memoryStatus.textureSize += self._size;
+                try {
+                    if (self._textureAllocationFailed) {
+                        WebGLCmdFuncCreateTexture(instance, thisGpuTexture);
+                    } else {
+                        WebGLCmdFuncResizeTexture(instance, thisGpuTexture);
+                    }
+                    self._textureAllocationFailed = false;
+                } catch (error) {
+                    self._textureAllocationFailed = true;
+                    WebGLCmdFuncDestroyTexture(instance, thisGpuTexture);
+                    throw error;
+                } finally {
+                    // Keep accounting consistent with the wrapper's logical size,
+                    // including failed allocations that can be retried at this size.
+                    instance.memoryStatus.textureSize += self._size - oldSize;
+                }
             }
         }
     }
