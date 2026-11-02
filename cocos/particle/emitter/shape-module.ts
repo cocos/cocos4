@@ -216,8 +216,8 @@ export default class ShapeModule {
     public emitFrom = ParticleEmitLocation.Volume;
 
     /**
-     * @en Align particle with particle direction.
-     * @zh 根据粒子的初始方向决定粒子的移动方向。
+     * @en Align the particle's negative Z axis with its initial emission direction, then apply start rotation.
+     * @zh 将粒子的负 Z 轴对齐到初始发射方向，再叠加初始旋转。
      */
     @serializable
     @displayOrder(16)
