@@ -110,7 +110,7 @@ export default class ShapeModule {
      */
     @displayOrder(6)
     @tooltip('i18n:shapeModule.arc')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArc (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -131,7 +131,7 @@ export default class ShapeModule {
      */
     @displayOrder(5)
     @tooltip('i18n:shapeModule.angle')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectAngle (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -208,7 +208,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(2)
     @tooltip('i18n:shapeModule.emitFrom')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectEmitFrom (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Box', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -258,7 +258,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(3)
     @tooltip('i18n:shapeModule.radius')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectRadius (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Circle', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -278,7 +278,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(4)
     @tooltip('i18n:shapeModule.radiusThickness')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectRadiusThickness (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Circle', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -293,7 +293,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(7)
     @tooltip('i18n:shapeModule.arcMode')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcMode (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -308,7 +308,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(9)
     @tooltip('i18n:shapeModule.arcSpread')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcSpread (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -325,7 +325,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(10)
     @tooltip('i18n:shapeModule.arcSpeed')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcSpeed (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -340,7 +340,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(11)
     @tooltip('i18n:shapeModule.length')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectCone (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -354,7 +354,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(12)
     @tooltip('i18n:shapeModule.boxThickness')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectBox (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Box'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
