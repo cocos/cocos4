@@ -152,7 +152,14 @@ export class Atlas {
     }
 
     public removeSpriteFrame (spriteFrame: SpriteFrame): void {
-        js.array.fastRemove(this._innerSpriteFrames, spriteFrame);
+        const index = this._innerSpriteFrames.indexOf(spriteFrame);
+        if (index < 0) return;
+        js.array.fastRemoveAt(this._innerSpriteFrames, index);
+        const texture = spriteFrame.original?._texture;
+        // A packed source texture can be shared by several frames on this page.
+        if (texture && !this._innerSpriteFrames.some((frame) => frame.original?._texture === texture)) {
+            this.deleteInnerTexture(texture as Texture2D);
+        }
     }
 
     /**
