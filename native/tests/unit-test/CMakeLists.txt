@@ -3,6 +3,9 @@ project(CocosTest)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Allows deterministic pacing tests without initializing a graphics device or V8.
+option(CC_FRAME_PACER_TESTS_ONLY "Build only the standalone frame pacer tests" OFF)
+
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -29,10 +32,20 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
-include(../../CMakeLists.txt)
+if(NOT CC_FRAME_PACER_TESTS_ONLY)
+  include(../../CMakeLists.txt)
+endif()
 # Add googletest directly to our build. This defines
 # the gtest and gtest_main targets.
 add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
                  EXCLUDE_FROM_ALL)
+if(CC_FRAME_PACER_TESTS_ONLY)
+  enable_testing()
+  add_executable(frame_pacer_tests src/frame_pacer_test.cpp)
+  target_include_directories(frame_pacer_tests PRIVATE ../../cocos)
+  target_link_libraries(frame_pacer_tests PRIVATE gtest_main)
+  add_test(NAME frame_pacer_tests COMMAND frame_pacer_tests)
+  return()
+endif()
 add_subdirectory(src)

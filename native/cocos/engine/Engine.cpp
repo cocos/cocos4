@@ -27,6 +27,7 @@
 #include <functional>
 #include <memory>
 #include <sstream>
+#include <thread>
 #include "base/DeferredReleasePool.h"
 #include "base/Macros.h"
 #include "bindings/jswrapper/SeApi.h"
@@ -133,6 +134,9 @@ Engine::~Engine() {
 }
 
 int32_t Engine::init() {
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    _resetFramePacer.store(true);
+#endif
     _scheduler = std::make_shared<Scheduler>();
     _fs = createFileUtils();
     // May create gfx device in render subsystem in future.
@@ -234,10 +238,16 @@ int32_t Engine::run() {
 }
 
 void Engine::pause() {
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    _resetFramePacer.store(true);
+#endif
     // TODO(cc) : Follow-up support
 }
 
 void Engine::resume() {
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    _resetFramePacer.store(true);
+#endif
     // TODO(cc) : Follow-up support
 }
 
@@ -266,12 +276,20 @@ uint Engine::getTotalFrames() const {
 }
 
 void Engine::setPreferredFramesPerSecond(int fps) {
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    if (fps <= 0 || fps > NANOSECONDS_PER_SECOND) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(_frameRateMutex);
+    _pendingFrameRates.emplace_back(fps);
+#else
     if (fps == 0) {
         return;
     }
     BasePlatform *platform = BasePlatform::getPlatform();
     platform->setFps(fps);
     _preferredNanosecondsPerFrame = static_cast<long>(1.0 / fps * NANOSECONDS_PER_SECOND); // NOLINT(google-runtime-int)
+#endif
 }
 
 void Engine::tick() {
@@ -286,6 +304,30 @@ void Engine::tick() {
             _needRestart = false;
         }
 
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+        if (_resetFramePacer.exchange(false)) {
+            _framePacer.reset();
+        }
+        std::vector<int> frameRates;
+        {
+            std::lock_guard<std::mutex> lock(_frameRateMutex);
+            frameRates.swap(_pendingFrameRates);
+        }
+        if (!frameRates.empty()) {
+            // Coalesce requests received before this boundary to the latest FPS.
+            const int fps = frameRates.back();
+            _framePacer.setFrameRate(fps);
+            BasePlatform::getPlatform()->setFps(fps);
+            _preferredNanosecondsPerFrame = _framePacer.getFrameInterval().count();
+        }
+        ++_totalFrames;
+        const float dt = static_cast<float>(_framePacer.beginFrame(
+            [] { return FramePacer::Clock::now(); },
+            [](FramePacer::TimePoint deadline) {
+                CC_PROFILE(EngineSleep);
+                std::this_thread::sleep_until(deadline);
+            }));
+#else
         static std::chrono::steady_clock::time_point prevTime;
         static std::chrono::steady_clock::time_point now;
         static float dt = 0.F;
@@ -293,20 +335,24 @@ void Engine::tick() {
 
         ++_totalFrames;
 
-        // iOS/macOS use its own fps limitation algorithm.
+        // iOS uses its own fps limitation algorithm.
         // Windows for Editor should not sleep,because Editor call tick function synchronously
-#if (CC_PLATFORM == CC_PLATFORM_ANDROID || (CC_PLATFORM == CC_PLATFORM_WINDOWS && !CC_EDITOR) || CC_PLATFORM == CC_PLATFORM_OHOS || CC_PLATFORM == CC_PLATFORM_OPENHARMONY || CC_PLATFORM == CC_PLATFORM_MACOS)
+    #if (CC_PLATFORM == CC_PLATFORM_ANDROID || (CC_PLATFORM == CC_PLATFORM_WINDOWS && !CC_EDITOR) || CC_PLATFORM == CC_PLATFORM_OHOS || CC_PLATFORM == CC_PLATFORM_OPENHARMONY || CC_PLATFORM == CC_PLATFORM_MACOS)
         if (dtNS < static_cast<double>(_preferredNanosecondsPerFrame)) {
             CC_PROFILE(EngineSleep);
             std::this_thread::sleep_for(
                 std::chrono::nanoseconds(_preferredNanosecondsPerFrame - static_cast<int64_t>(dtNS)));
             dtNS = static_cast<double>(_preferredNanosecondsPerFrame);
         }
+    #endif
+
 #endif
 
         events::BeforeTick::broadcast();
 
+#if !(CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR)
         prevTime = std::chrono::steady_clock::now();
+#endif
         if (_xr) _xr->beginRenderFrame();
         _scheduler->update(dt);
 
@@ -320,11 +366,16 @@ void Engine::tick() {
         // Executing async tasks at the end of the current frame to make the callback invoked as soon as possible.
         _scheduler->runFunctionsToBePerformedInCocosThread();
 
+#if !(CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR)
         now = std::chrono::steady_clock::now();
         dtNS = dtNS * 0.1 + 0.9 * static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(now - prevTime).count());
         dt = static_cast<float>(dtNS) / NANOSECONDS_PER_SECOND;
+#endif
 
         events::AfterTick::broadcast();
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+        _framePacer.endFrame(FramePacer::Clock::now());
+#endif
     }
 
     CC_PROFILER_END_FRAME;
@@ -346,6 +397,9 @@ bool Engine::redirectWindowEvent(const WindowEvent &ev) {
     switch (ev.type) {
         case WindowEvent::Type::SHOW:
         case WindowEvent::Type::RESTORED:
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+            resume();
+#endif
             emit<EngineStatusChange>(ON_RESUME);
 #if CC_PLATFORM == CC_PLATFORM_WINDOWS
             events::WindowRecreated::broadcast(ev.windowId);
@@ -366,6 +420,9 @@ bool Engine::redirectWindowEvent(const WindowEvent &ev) {
         }
         case WindowEvent::Type::HIDDEN:
         case WindowEvent::Type::MINIMIZED:
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+            pause();
+#endif
             emit<EngineStatusChange>(ON_PAUSE);
 #if CC_PLATFORM == CC_PLATFORM_WINDOWS
             events::WindowDestroy::broadcast(ev.windowId);
