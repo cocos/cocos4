@@ -55,6 +55,9 @@ import { director, DirectorEvent } from '../game/director';
 
 const _world_mat = new Mat4();
 const _world_rol = new Quat();
+const _emitDirection = new Vec3();
+const _alignRotation = new Quat();
+const _startRotation = new Quat();
 
 const superMaterials = Object.getOwnPropertyDescriptor(Renderer.prototype, 'sharedMaterials')!;
 
@@ -1376,6 +1379,14 @@ export class ParticleSystem extends ModelRenderer {
                 self._textureAnimationModule.init(particle);
             }
 
+            const alignToDirection = self._shapeModule?.enable && self._shapeModule.alignToDirection;
+            if (alignToDirection) {
+                Vec3.copy(_emitDirection, particle.velocity);
+                if (self._simulationSpace === ParticleSpace.World) {
+                    Vec3.transformQuat(_emitDirection, _emitDirection, _world_rol);
+                }
+            }
+
             const curveStartSpeed = self.startSpeed.evaluate(loopDelta, rand)!;
             Vec3.multiplyScalar(particle.velocity, particle.velocity, curveStartSpeed);
 
@@ -1391,6 +1402,17 @@ export class ParticleSystem extends ModelRenderer {
                 particle.startEuler.set(self.startRotationX.evaluate(loopDelta, rand), self.startRotationY.evaluate(loopDelta, rand), self.startRotationZ.evaluate(loopDelta, rand));
             } else {
                 particle.startEuler.set(0, 0, self.startRotationZ.evaluate(loopDelta, rand));
+            }
+            if (alignToDirection && _emitDirection.lengthSqr() > 0) {
+                // Align before applying start rotation, in simulation space. Use the
+                // shape direction so zero start speed still has a defined orientation.
+                Vec3.normalize(_emitDirection, _emitDirection);
+                Quat.rotationTo(_alignRotation, particleEmitZAxis, _emitDirection);
+                const r2d = 180 / Math.PI;
+                Quat.fromEuler(_startRotation, particle.startEuler.x * r2d, particle.startEuler.y * r2d, particle.startEuler.z * r2d);
+                Quat.multiply(_startRotation, _alignRotation, _startRotation);
+                Quat.toEuler(particle.startEuler, _startRotation);
+                particle.startEuler.multiplyScalar(1 / r2d);
             }
             particle.rotation.set(particle.startEuler);
 
