@@ -336,7 +336,16 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             return;
         }
 
-        if (this._alignSpace === ParticleAlignmentSpace.Local) {
+        const ps = this._particleSystem;
+        if (mode === ParticleRenderMode.Mesh && ps?._shapeModule?.enable && ps._shapeModule.alignToDirection) {
+            // Aligned particle rotations are already in simulation space. The mesh
+            // shader only needs the remaining simulation-to-world rotation.
+            if (ps.simulationSpace === ParticleSpace.Local) {
+                ps.node.getWorldRotation(_node_rot);
+            } else {
+                _node_rot.set(0, 0, 0, 1);
+            }
+        } else if (this._alignSpace === ParticleAlignmentSpace.Local) {
             this._particleSystem?.node.getRotation(_node_rot);
         } else if (this._alignSpace === ParticleAlignmentSpace.World) {
             this._particleSystem?.node.getWorldRotation(_node_rot);

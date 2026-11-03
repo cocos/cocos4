@@ -1,10 +1,15 @@
 import { Quat, Vec3 } from '../../cocos/core';
-import { Node } from '../../cocos/scene-graph';
+import { Node, Scene } from '../../cocos/scene-graph';
 import { ParticleSystem } from '../../cocos/particle/particle-system';
 import { Particle } from '../../cocos/particle/particle';
-import { ParticleRenderMode, ParticleShapeType, ParticleSpace } from '../../cocos/particle/enum';
+import { ParticleAlignmentSpace, ParticleRenderMode, ParticleShapeType, ParticleSpace } from '../../cocos/particle/enum';
 import RotationOvertimeModule from '../../cocos/particle/animator/rotation-overtime';
 import ShapeModule from '../../cocos/particle/emitter/shape-module';
+import ParticleSystemRendererCPU from '../../cocos/particle/renderer/particle-system-renderer-cpu';
+import ParticleSystemRendererGPU from '../../cocos/particle/renderer/particle-system-renderer-gpu';
+import ParticleSystemRenderer from '../../cocos/particle/renderer/particle-system-renderer-data';
+import { ParticleSystemRendererBase } from '../../cocos/particle/renderer/particle-system-renderer-base';
+import { Pass } from '../../cocos/render-scene';
 
 const forward = new Vec3(0, 0, -1);
 
@@ -45,6 +50,65 @@ function fixture() {
 }
 
 describe('AlignToDirection', () => {
+    describe.each([ParticleSystemRendererCPU, ParticleSystemRendererGPU])('mesh renderer %p', (Renderer) => {
+        test.each([
+            [ParticleSpace.Local, ParticleAlignmentSpace.Local],
+            [ParticleSpace.Local, ParticleAlignmentSpace.World],
+            [ParticleSpace.Local, ParticleAlignmentSpace.View],
+            [ParticleSpace.World, ParticleAlignmentSpace.Local],
+            [ParticleSpace.World, ParticleAlignmentSpace.World],
+            [ParticleSpace.World, ParticleAlignmentSpace.View],
+        ])('combines shader rotations in simulation space %s with alignment space %s', (space, alignment) => {
+            const { ps, p, shape } = fixture();
+            const scene = new Scene();
+            const parent = new Node();
+            scene.addChild(parent);
+            parent.addChild(ps.node);
+            Object.defineProperty(ps.node, 'scene', { value: scene });
+            parent.setRotationFromEuler(15, 25, 35);
+            ps.node.setRotationFromEuler(20, 50, 10);
+            // A rotated camera must not change a direction-aligned mesh.
+            Object.defineProperty(scene, 'renderScene', { value: { cameras: [{
+                visibility: 0xffffffff, name: 'Editor Camera', forward: new Vec3(1, 0, 0),
+            }] } });
+            ps.simulationSpace = space;
+            shape.rotation = new Vec3(30, 40, 0);
+            ps.emit(1, 0);
+            const info = new ParticleSystemRenderer();
+            info.renderMode = ParticleRenderMode.Mesh;
+            const renderer = new Renderer(info);
+            // Initialize only the system reference; no GPU resources are needed.
+            ParticleSystemRendererBase.prototype.onInit.call(renderer, ps);
+            renderer.updateAlignSpace(alignment);
+            const uniform = new Quat();
+            const pass = { setUniform: (_handle: number, value: Quat) => Quat.copy(uniform, value) } as unknown as Pass;
+            const check = () => {
+                renderer.updateRotation(pass);
+                // Match particle-vs-legacy.chunk: rotMat = nodeMat * rotMat.
+                const rendered = Quat.multiply(new Quat(), uniform, rotationOf(p));
+                const actual = Vec3.transformQuat(new Vec3(), forward, rendered);
+                const expected = p.velocity.clone().normalize();
+                if (space === ParticleSpace.Local) Vec3.transformQuat(expected, expected, ps.node.worldRotation);
+                expect(actual.x).toBeCloseTo(expected.x, 5);
+                expect(actual.y).toBeCloseTo(expected.y, 5);
+                expect(actual.z).toBeCloseTo(expected.z, 5);
+            };
+            check();
+            // Existing world particles remain fixed; local particles follow their parent.
+            parent.setRotationFromEuler(60, -35, 20);
+            ps.node.setRotationFromEuler(-10, 80, 30);
+            check();
+
+            // Disabling alignment restores the renderer's existing alignment-space behavior.
+            shape.alignToDirection = false;
+            renderer.updateRotation(pass);
+            const expected = alignment === ParticleAlignmentSpace.Local ? ps.node.rotation
+                : alignment === ParticleAlignmentSpace.World ? ps.node.worldRotation
+                    : Quat.fromViewUp(new Quat(), new Vec3(1, 0, 0));
+            expectRotation(uniform, expected);
+        });
+    });
+
     test.each([[0, 0, 0], [0, 180, 0], [90, 0, 0], [31, 47, 19]])('aligns with rotated shape (%s, %s, %s)', (x, y, z) => {
         const { ps, p, shape } = fixture();
         shape.rotation = new Vec3(x, y, z);
