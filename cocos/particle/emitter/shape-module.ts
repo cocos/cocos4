@@ -304,7 +304,8 @@ export default class ShapeModule {
      * @en Control arc spread for Cone and circle shape.
      * @zh 控制可能产生粒子的弧周围的离散间隔。
      */
-    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; }) // Bug fix: Hide this input when arcMode is random
+    // Bug fix: Hide this input when arcMode is random
+    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; })
     @serializable
     @displayOrder(9)
     @tooltip('i18n:shapeModule.arcSpread')
@@ -319,8 +320,9 @@ export default class ShapeModule {
      * @en Emit speed around arc (available for Cone and Circle).
      * @zh 粒子沿圆周发射的速度。
      */
+    // Bug fix: Hide this input when arcMode is random
     @type(CurveRange)
-    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; }) // Bug fix: Hide this input when arcMode is random
+    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; })
     @range([0, 1])
     @serializable
     @displayOrder(10)
@@ -445,6 +447,7 @@ export default class ShapeModule {
         if (this.arcMode === ParticleArcMode.Random) {
             return randomRange(0, this._arc);
         }
+        /* eslint-disable-next-line max-len */
         let angle = this.totalAngle + 2 * Math.PI * this.arcSpeed.evaluate(this.particleSystem!.time, 1)! * (this.particleSystem!.time - this.lastTime);
         this.totalAngle = angle;
         if (this.arcSpread !== 0) {
