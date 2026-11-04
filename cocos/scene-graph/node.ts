@@ -59,6 +59,7 @@ const ACTIVE_ON = 1 << 1;
 
 const idGenerator = new js.IDGenerator('Node');
 
+/* eslint-disable-next-line max-len */
 function getConstructor<T> (typeOrClassName: string | Constructor<T> | AbstractedConstructor<T>): Constructor<T> | AbstractedConstructor<T> | null | undefined {
     if (!typeOrClassName) {
         errorID(3804);
@@ -316,6 +317,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         return null;
     }
 
+    /* eslint-disable-next-line max-len */
     protected static _findComponents<T extends Component> (node: Node, constructor: Constructor<T> | AbstractedConstructor<T>, components: Component[]): void {
         const cls = constructor;
         const comps = node._components;
