@@ -29,6 +29,7 @@
 #include <sstream>
 #include <thread>
 #include "base/DeferredReleasePool.h"
+#include "base/Log.h"
 #include "base/Macros.h"
 #include "bindings/jswrapper/SeApi.h"
 #include "core/builtin/BuiltinResMgr.h"
@@ -305,7 +306,8 @@ void Engine::tick() {
         }
 
 #if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
-        if (_resetFramePacer.exchange(false)) {
+        const bool pacingReset = _resetFramePacer.exchange(false);
+        if (pacingReset) {
             _framePacer.reset();
         }
         std::vector<int> frameRates;
@@ -375,6 +377,22 @@ void Engine::tick() {
         events::AfterTick::broadcast();
 #if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
         _framePacer.endFrame(FramePacer::Clock::now());
+    #if CC_USE_ANDROID_FRAME_PACER_LOG
+        // Log after endFrame so logging is excluded from this frame's tick
+        // duration. Its overhead is still part of the next start-to-start dt.
+        const auto &timing = _framePacer.getTiming();
+        using Milliseconds = std::chrono::duration<double, std::milli>;
+        CC_LOG_INFO("[FramePacer] frame=%u target_ms=%.6f dt_ms=%.6f wait_req_ms=%.6f wait_actual_ms=%.6f wait_overrun_ms=%.6f tick_ms=%.6f reset=%d fps_request=%d",
+                    _totalFrames,
+                    Milliseconds(_framePacer.getFrameInterval()).count(),
+                    timing.rawDt * 1000.0,
+                    Milliseconds(timing.requestedWait).count(),
+                    Milliseconds(timing.actualWait).count(),
+                    Milliseconds(timing.actualWait - timing.requestedWait).count(),
+                    Milliseconds(timing.tickWallDuration).count(),
+                    static_cast<int>(pacingReset),
+                    frameRates.empty() ? 0 : frameRates.back());
+    #endif
 #endif
     }
 

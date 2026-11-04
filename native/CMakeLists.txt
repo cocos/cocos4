@@ -54,6 +54,7 @@ cc_set_if_undefined(NET_MODE                  0) # 0 is client
 cc_set_if_undefined(USE_REMOTE_LOG           OFF)
 cc_set_if_undefined(USE_ADPF                 OFF)
 cc_set_if_undefined(USE_ANDROID_FRAME_PACER  OFF)
+cc_set_if_undefined(USE_ANDROID_FRAME_PACER_LOG OFF)
 cc_set_if_undefined(USE_GOOGLE_BILLING       OFF)
 cc_set_if_undefined(USE_GOOGLE_PLAY_GAMES    OFF)
 cc_set_if_undefined(USE_GAMEPAD              ON)
@@ -3451,6 +3452,7 @@ function(cc_apply_definations target)
         $<$<OR:$<CONFIG:Debug>,$<BOOL:${CC_DEBUG_FORCE}>>:CC_DEBUG=1>
         $<IF:$<BOOL:${USE_ADPF}>,CC_USE_ADPF=1,CC_USE_ADPF=0>
         $<IF:$<BOOL:${USE_ANDROID_FRAME_PACER}>,CC_USE_ANDROID_FRAME_PACER=1,CC_USE_ANDROID_FRAME_PACER=0>
+        $<IF:$<BOOL:${USE_ANDROID_FRAME_PACER_LOG}>,CC_USE_ANDROID_FRAME_PACER_LOG=1,CC_USE_ANDROID_FRAME_PACER_LOG=0>
         $<IF:$<BOOL:${USE_GOOGLE_BILLING}>,CC_USE_GOOGLE_BILLING=1,CC_USE_GOOGLE_BILLING=0>
         $<IF:$<BOOL:${USE_GOOGLE_PLAY_GAMES}>,CC_USE_GOOGLE_PLAY_GAMES=1,CC_USE_GOOGLE_PLAY_GAMES=0>
         $<IF:$<BOOL:${USE_BOX2D_JSB}>,CC_USE_BOX2D_JSB=1,CC_USE_BOX2D_JSB=0>

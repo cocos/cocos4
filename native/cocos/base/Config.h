@@ -72,3 +72,8 @@
 #ifndef CC_USE_ANDROID_FRAME_PACER
     #define CC_USE_ANDROID_FRAME_PACER 0
 #endif
+
+// Per-frame diagnostics perturb timing; enable only for short captures.
+#ifndef CC_USE_ANDROID_FRAME_PACER_LOG
+    #define CC_USE_ANDROID_FRAME_PACER_LOG 0
+#endif

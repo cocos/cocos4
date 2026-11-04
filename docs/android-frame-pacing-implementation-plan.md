@@ -30,6 +30,49 @@ ctest --test-dir native/tests/unit-test/build-frame-pacer -C Debug --output-on-f
 
 边界：当前生产等待器为 `sleep_until`，无法在睡眠中处理 Looper 消息；低 FPS 下暂停、退出和 FPS 更新可能等待旧截止时间后才被处理。可中断等待需要后续与 Android 事件循环集成，本批不宣称解决此问题，也不默认启用新路径。生命周期单测验证的是计时重置契约，真实 Android 事件顺序仍须设备验收。ADPF 专项、Swappy/XR 接管及验收标准第 7 项仍属后续批次。
 
+## 第一批诊断日志的启用与验证
+
+在 Android 非 XR 构建的 CMake 配置中同时传入以下选项，并重新编译安装：
+
+```text
+-DUSE_ANDROID_FRAME_PACER=ON
+-DUSE_ANDROID_FRAME_PACER_LOG=ON
+```
+
+`USE_ANDROID_FRAME_PACER_LOG` 默认关闭；日志开关不会单独启用新限速路径。原生日志级别须允许 INFO（`cc::LogLevel::INFO`）或 DEBUG。启用后每帧通过 `CC_LOG_INFO` 输出一行，以 `[FramePacer]` 为前缀。Windows PowerShell 可用：
+
+```powershell
+adb logcat -v threadtime | Select-String -SimpleMatch '[FramePacer]'
+```
+
+示例仅说明格式，不是真机结果：
+
+```text
+[FramePacer] frame=120 target_ms=16.666666 dt_ms=16.820000 wait_req_ms=11.600000 wait_actual_ms=11.753334 wait_overrun_ms=0.153334 tick_ms=5.100000 reset=0 fps_request=0
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `frame` | Engine 帧计数，用于关联相邻日志 |
+| `target_ms` | 本帧生效的目标周期，毫秒 |
+| `dt_ms` | 上一帧开始到本帧开始的实际间隔，毫秒；首次或重置帧为 0 |
+| `wait_req_ms` | 本帧开始前按截止时间请求的等待，毫秒 |
+| `wait_actual_ms` | 本帧开始前实际等待，毫秒；没有等待时为 0 |
+| `wait_overrun_ms` | 实际等待减请求等待，毫秒，反映等待超时及少量测量开销 |
+| `tick_ms` | 本帧实际开始到 `AfterTick` 完成的墙钟时间，包含区间内阻塞；不是纯 CPU 工作耗时或 ADPF actual |
+| `reset` | 本帧是否消费了计时重置请求，1 表示启动、恢复或重启等重置边界 |
+| `fps_request` | 本帧边界应用的最后一个 FPS 请求；0 表示没有应用新请求，不表示目标为 0 FPS |
+
+验证时，`dt_ms[n]` 对应前一帧工作和本帧开始前的等待，不能将同一行的 `tick_ms + wait_actual_ms` 当成该行的 dt。连续且没有重置的样本中，可以近似使用：
+
+```text
+帧间开销[n] ≈ dt_ms[n] − tick_ms[n−1] − wait_actual_ms[n]
+```
+
+帧间开销包括上一行日志打印、平台消息处理、前置同步和计时边界的少量额外开销。60 FPS、前一帧工作约 5 ms、无显著帧间开销时，请求等待应约为 11.67 ms；如果工作及帧间开销已超过目标周期，请求和实际等待应为 0。系统晚唤醒应体现为实际等待和 dt 增大，后续帧不追赶；FPS 请求生效时 `target_ms` 更新，普通切换不清零 dt，重置帧则应显示 `reset=1 dt_ms=0`。
+
+日志在 `endFrame()` 之后打印，因此打印耗时不包含在本行 `tick_ms` 中，但会影响下一帧间隔。逐帧日志只用于短时诊断；正式性能、功耗对照应关闭该开关。日志不拆分 VSync/GPU 等待，也不能代替 ADPF 专项或显示帧节奏验证。
+
 ## 现有实现的问题
 
 ### 平滑计算带来限速偏差
