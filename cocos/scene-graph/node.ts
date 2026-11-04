@@ -29,7 +29,7 @@ import { NodeUIProperties } from './node-ui-properties';
 import { cclegacy } from '../core/global-exports';
 import { nodePolyfill } from './node-dev';
 import { ISchedulable } from '../core/scheduler';
-import { approx, EPSILON, Mat3, mat4, Mat4, quat, Quat, v3, Vec3 } from '../core/math';
+import { approx, EPSILON, Mat3, mat4, Mat4, quat, Quat, toDegree, v3, Vec3 } from '../core/math';
 import { MobilityMode, NodeSpace, TransformBit } from './node-enum';
 import { CustomSerializable, editorExtrasTag, SerializationContext, SerializationOutput, serializeTag } from '../core/data';
 import { errorID, warnID, error, log, getError } from '../core/platform/debug';
@@ -1833,6 +1833,16 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
      */
     @editable
     get angle (): number {
+        // Preserve explicitly assigned angles (including full turns).
+        if (!this._eulerDirty && this._euler.x === 0 && this._euler.y === 0) {
+            return this._euler.z;
+        }
+        // YZX Euler decomposition folds Z into [-90, 90]. For a 2D rotation,
+        // extract the signed angle directly, without changing the 3D Euler cache.
+        const { x, y, z, w } = this._lrot;
+        if (Math.abs(x) < EPSILON && Math.abs(y) < EPSILON) {
+            return toDegree(Math.atan2(2 * w * z, 1 - 2 * z * z));
+        }
         return this.eulerAngles.z;
     }
 

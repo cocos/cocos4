@@ -666,6 +666,39 @@ describe(`Node`, () => {
         ))).toBeTruthy();
     });
 
+    test.each([-179, -120, -91, -90, 90, 91, 120, 179])('2D angle after quaternion writeback: %s', (angle) => {
+        const node = new Node();
+        const rotation = Quat.fromAngleZ(new Quat(), angle);
+        node.setRotation(rotation);
+        expect(node.angle).toBeCloseTo(angle);
+        // Reading the 3D Euler cache first must not change the 2D angle.
+        const euler = node.eulerAngles.clone();
+        expect(node.angle).toBeCloseTo(angle);
+        expect(Vec3.equals(node.eulerAngles, euler)).toBe(true);
+        node.setRotation(new Quat(-rotation.x, -rotation.y, -rotation.z, -rotation.w));
+        expect(node.angle).toBeCloseTo(angle);
+    });
+
+    test('angle stays local under a rotated parent', () => {
+        const parent = new Node();
+        const node = new Node();
+        parent.addChild(node);
+        parent.angle = 30;
+        node.setWorldRotationFromEuler(0, 0, 150);
+        expect(node.angle).toBeCloseTo(120);
+    });
+
+    test('angle preserves explicit full turns and 3D Euler behavior', () => {
+        const node = new Node();
+        node.angle = 720;
+        expect(node.angle).toBe(720);
+        const rotation = Quat.fromEuler(new Quat(), 30, 40, 120);
+        node.setRotation(rotation);
+        const euler = Quat.toEuler(new Vec3(), rotation);
+        expect(node.angle).toBeCloseTo(euler.z);
+        expect(node.eulerAngles).toEqual(euler);
+    });
+
     test ('angle', ()=> {
         let node = new Node();
 
@@ -673,6 +706,6 @@ describe(`Node`, () => {
         let theta = Math.PI / 2;
         node.setWorldRotation(0, 0, Math.cos(theta / 2), Math.sin(theta / 2));
 
-        expect(node.angle).toEqual(theta / Math.PI * 180);
+        expect(node.angle).toBeCloseTo(theta / Math.PI * 180);
     });
 });
