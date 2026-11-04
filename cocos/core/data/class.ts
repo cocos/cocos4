@@ -37,6 +37,10 @@ import * as RF from './utils/requiring-frame';
 import { legacyCC } from '../global-exports';
 import { PropertyStash, PropertyStashInternalFlag } from './class-stash';
 import { setPropertyEnumTypeOnAttrs } from './utils/attribute-internal';
+import {
+    applyOneOfPropertyAttributes,
+    isOneOfPropertyType,
+} from './decorators/one-of';
 
 const DELIMETER = attributeUtils.DELIMETER;
 const CCCLASS_TAG = '__ctors__'; // Still use this historical name to avoid unsynchronized version issue
@@ -409,14 +413,9 @@ interface IParsedAttribute extends IAcceptableAttributes {
     enumList?: readonly any[];
     bitmaskList?: any[];
 }
+
 type OnAfterProp = (constructor: Function, mainPropertyName: string) => void;
 const onAfterProps_ET: OnAfterProp[] = [];
-
-interface AttributesRecord {
-    get?: unknown;
-    set?: unknown;
-    default?: unknown;
-}
 
 function parseAttributes (constructor: Function, attributes: PropertyStash, className: string, propertyName: string, usedInGetter): void {
     const ERR_Type = DEV ? 'The %s of %s must be type %s' : '';
@@ -437,6 +436,7 @@ function parseAttributes (constructor: Function, attributes: PropertyStash, clas
     }
 
     let warnOnNoDefault = true;
+    let oneOfType: unknown;
 
     const type = attributes.type;
     if (type) {
@@ -465,6 +465,9 @@ function parseAttributes (constructor: Function, attributes: PropertyStash, clas
             } else if (BitMask.isBitMask(type)) {
                 (attrs || initAttrs())[`${propertyNamePrefix}type`] = BITMASK_TAG;
                 attrs![`${propertyNamePrefix}bitmaskList`] = BitMask.getList(type);
+            } else if (isOneOfPropertyType(type)) {
+                warnOnNoDefault = false;
+                oneOfType = type;
             } else if (DEV) {
                 errorID(3645, className, propertyName, type);
             }
@@ -607,6 +610,10 @@ function parseAttributes (constructor: Function, attributes: PropertyStash, clas
     }
     parseSimpleAttribute('step', 'number');
     parseSimpleAttribute('userData', 'object');
+
+    if (oneOfType) {
+        applyOneOfPropertyAttributes(attrs || initAttrs(), constructor, propertyName, propertyNamePrefix, oneOfType);
+    }
 }
 
 CCClass.isArray = function (defaultVal): boolean {
