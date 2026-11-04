@@ -58,6 +58,7 @@ export class TextOutputRenderData {
     public quadCount = 0; // both
     public vertexBuffer: IRenderData[] = []; // both
     public texture: Texture2D | SpriteFrame | null = null;  // both
+    public textureReady = true;
 
     // anchor
     public uiTransAnchorX = 0.5; // both
@@ -67,6 +68,7 @@ export class TextOutputRenderData {
         this.quadCount = 0;
         this.vertexBuffer.length = 0;
         this.texture = null;
+        this.textureReady = true;
         this.uiTransAnchorX = 0.5;
         this.uiTransAnchorY = 0.5;
     }

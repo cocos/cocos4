@@ -376,6 +376,26 @@ export abstract class Device {
     public abstract copyTexImagesToTexture (texImages: Readonly<TexImageSource[]>, texture: Texture, regions: Readonly<BufferTextureCopy[]>): void;
 
     /**
+     * @engineInternal
+     * Opt-in image upload status for callers which must not cache a failed upload.
+     * WebGL backends also check pending GL errors. Other backends only detect synchronous exceptions.
+     * A false result does not recreate texture storage or discard its previous contents.
+     * Native devices may replace this class at runtime, so callers must check that this method exists.
+     */
+    public copyTexImagesToTextureChecked (
+        texImages: Readonly<TexImageSource[]>,
+        texture: Texture,
+        regions: Readonly<BufferTextureCopy[]>,
+    ): boolean {
+        try {
+            this.copyTexImagesToTexture(texImages, texture, regions);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
      * @en Whether the device has specific feature.
      * @zh 是否具备特性。
      * @param feature The GFX feature to be queried.

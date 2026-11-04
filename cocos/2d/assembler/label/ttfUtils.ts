@@ -32,6 +32,7 @@ import type { TextLayout } from './text-layout';
 import { view } from '../../../ui/view';
 import { approx } from '../../../core';
 import { CssFontFamily, getCanvasFontFamily } from '../../utils/font-family';
+import { retryLabelTextureUpload } from './texture-upload-retry';
 
 const Overflow = Label.Overflow;
 
@@ -126,21 +127,44 @@ export class TTFUtils {
             style.fontScale = view.getScaleX();
             this.updateProcessingData(style, layout, outputLayoutData, outputRenderData, comp, trans);
             // use canvas in assemblerData // to do to optimize
-            processing.setCanvasUsed(comp.assemblerData!.canvas, comp.assemblerData!.context);
+            const assemblerData = comp.assemblerData;
+            if (!assemblerData) {
+                outputRenderData.textureReady = false;
+                retryLabelTextureUpload(comp, true);
+                return;
+            }
+            if (!assemblerData.context) {
+                try {
+                    assemblerData.context = assemblerData.canvas.getContext('2d');
+                } catch {
+                    assemblerData.context = null;
+                }
+            }
+            processing.setCanvasUsed(assemblerData.canvas, assemblerData.context);
             style.fontFamily = this._updateFontFamily(comp);
             this._resetDynamicAtlas(comp);
 
             // TextProcessing
-            processing.processingString(false, style, layout, outputLayoutData, comp.string);
-            processing.generateRenderInfo(
-                false,
-                style,
-                layout,
-                outputLayoutData,
-                outputRenderData,
-                comp.string,
-                this.generateVertexData,
-            );
+            outputRenderData.textureReady = false;
+            try {
+                processing.processingString(false, style, layout, outputLayoutData, comp.string);
+                processing.generateRenderInfo(
+                    false,
+                    style,
+                    layout,
+                    outputLayoutData,
+                    outputRenderData,
+                    comp.string,
+                    this.generateVertexData,
+                );
+            } catch {
+                // Canvas/font allocation failures must keep the Label dirty too.
+                outputRenderData.textureReady = false;
+            }
+            if (!outputRenderData.textureReady) {
+                retryLabelTextureUpload(comp);
+                return;
+            }
 
             renderData.textureDirty = true;
             this._calDynamicAtlas(comp, outputLayoutData);

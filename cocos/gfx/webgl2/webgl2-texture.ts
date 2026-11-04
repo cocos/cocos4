@@ -36,6 +36,7 @@ import { IWebGL2GPUTexture, IWebGL2GPUTextureView } from './webgl2-gpu-objects';
 export class WebGL2Texture extends Texture {
     private _gpuTexture: IWebGL2GPUTexture | null = null;
     private _gpuTextureView: IWebGL2GPUTextureView | null = null;
+    private _textureAllocationFailed = false;
 
     constructor () {
         super();
@@ -105,7 +106,16 @@ export class WebGL2Texture extends Texture {
             };
 
             if (!self._gpuTexture.isSwapchainTexture) {
-                WebGL2CmdFuncCreateTexture(instance, self._gpuTexture);
+                try {
+                    WebGL2CmdFuncCreateTexture(instance, self._gpuTexture);
+                } catch (error) {
+                    const gpuTexture = self._gpuTexture;
+                    self._gpuTexture = null;
+                    // initialize() has not added memory accounting yet.
+                    WebGL2CmdFuncDestroyTexture(instance, gpuTexture);
+                    throw error;
+                }
+                self._textureAllocationFailed = false;
                 instance.memoryStatus.textureSize += self._size;
             }
 
@@ -172,7 +182,7 @@ export class WebGL2Texture extends Texture {
         const self = this;
         const { instance } = WebGL2DeviceManager;
         const thisTextureInfo = self._info;
-        if (thisTextureInfo.width === width && thisTextureInfo.height === height) {
+        if (thisTextureInfo.width === width && thisTextureInfo.height === height && !self._textureAllocationFailed) {
             return;
         }
 
@@ -199,9 +209,22 @@ export class WebGL2Texture extends Texture {
             thisGpuTexture.height = height;
             thisGpuTexture.size = self._size;
             if (!thisGpuTexture.isSwapchainTexture) {
-                WebGL2CmdFuncResizeTexture(instance, thisGpuTexture);
-                instance.memoryStatus.textureSize -= oldSize;
-                instance.memoryStatus.textureSize += self._size;
+                try {
+                    if (self._textureAllocationFailed) {
+                        WebGL2CmdFuncCreateTexture(instance, thisGpuTexture);
+                    } else {
+                        WebGL2CmdFuncResizeTexture(instance, thisGpuTexture);
+                    }
+                    self._textureAllocationFailed = false;
+                } catch (error) {
+                    self._textureAllocationFailed = true;
+                    WebGL2CmdFuncDestroyTexture(instance, thisGpuTexture);
+                    throw error;
+                } finally {
+                    // Keep accounting consistent with the wrapper's logical size,
+                    // including failed allocations that can be retried at this size.
+                    instance.memoryStatus.textureSize += self._size - oldSize;
+                }
             }
         }
     }

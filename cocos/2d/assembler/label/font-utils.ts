@@ -57,17 +57,41 @@ export class CanvasPool {
 
         if (!data) {
             const canvas = ccwindow.document.createElement('canvas');
-            const context = canvas.getContext('2d');
             data = {
                 canvas,
-                context,
+                context: null,
             };
+        }
+        if (!data.context) {
+            try {
+                data.context = data.canvas.getContext('2d');
+            } catch {
+                data.context = null;
+            }
         }
 
         return data;
     }
 
     public put (canvas: ISharedLabelData): void {
+        // A pooled canvas must not retain a large backing store between labels.
+        try {
+            canvas.canvas.width = 1;
+            canvas.canvas.height = 1;
+        } catch {
+            // Discard an unusable canvas without interrupting texture cleanup.
+            if (JSB) {
+                const c = canvas.canvas as any;
+                try {
+                    c._destroy?.();
+                } catch {
+                    // The native canvas may already be unavailable.
+                }
+                canvas.canvas = null!;
+                canvas.context = null;
+            }
+            return;
+        }
         if (this.pool.length >= macro.MAX_LABEL_CANVAS_POOL_SIZE) {
             if (JSB) {
                 const c = canvas.canvas as any;
@@ -138,9 +162,13 @@ class LetterTexture {
         this.hash = `${getSymbolCodeAt(char, 0)}${labelInfo.hash}`;
     }
 
-    public updateRenderData (): void {
+    public updateRenderData (): boolean {
         this._updateProperties();
+        if (!this.context || !this.canvas) {
+            return false;
+        }
         this._updateTexture();
+        return true;
     }
 
     public destroy (): void {
@@ -242,16 +270,16 @@ export class LetterRenderTexture extends Texture2D {
      * @param {Number} x
      * @param {Number} y
      */
-    public drawTextureAt (image: ImageAsset, x: number, y: number): void {
+    public drawTextureAt (image: ImageAsset, x: number, y: number): boolean {
         const gfxTexture = this.getGFXTexture();
         if (!image || !gfxTexture) {
-            return;
+            return false;
         }
 
         const gfxDevice = this._getGFXDevice();
         if (!gfxDevice) {
             warnID(16363);
-            return;
+            return false;
         }
 
         const region = new BufferTextureCopy();
@@ -259,7 +287,16 @@ export class LetterRenderTexture extends Texture2D {
         region.texOffset.y = y;
         region.texExtent.width = image.width;
         region.texExtent.height = image.height;
-        gfxDevice.copyTexImagesToTexture([image.data as HTMLCanvasElement], gfxTexture, [region]);
+        try {
+            if (typeof gfxDevice.copyTexImagesToTextureChecked === 'function') {
+                return gfxDevice.copyTexImagesToTextureChecked([image.data as HTMLCanvasElement], gfxTexture, [region]);
+            }
+            // Native devices retain the existing three-argument upload ABI.
+            gfxDevice.copyTexImagesToTexture([image.data as HTMLCanvasElement], gfxTexture, [region]);
+            return true;
+        } catch {
+            return false;
+        }
     }
 }
 
@@ -280,10 +317,18 @@ export class LetterAtlas {
     private _halfBleed = 0;
     public declare fontDefDictionary: FontAtlas;
     private _dirty = false;
+    public textureUploadFailed = false;
+    private _hasTextureData = false;
+    private _needsTextureRecreation = false;
 
     constructor (width: number, height: number) {
         const texture = new LetterRenderTexture();
-        texture.initWithSize(width, height);
+        try {
+            texture.initWithSize(width, height);
+        } catch {
+            this.textureUploadFailed = true;
+            this._needsTextureRecreation = true;
+        }
 
         this.fontDefDictionary = new FontAtlas(texture);
         this._halfBleed = bleed / 2;
@@ -294,47 +339,59 @@ export class LetterAtlas {
 
     public insertLetterTexture (letterTexture: LetterTexture): FontLetterDefinition | null {
         const img = letterTexture.image;
-        const device = director.root!.device;
+        const device = director.root?.device;
         if (!img || !this.fontDefDictionary || !device) {
+            this.textureUploadFailed = true;
             return null;
         }
 
         const width = img.width;
         const height = img.height;
 
-        if ((this._x + width + space) > this._width) {
-            this._x = space;
-            this._y = this._nextY;
+        let x = this._x;
+        let y = this._y;
+        let nextY = this._nextY;
+        if ((x + width + space) > this._width) {
+            x = space;
+            y = nextY;
         }
 
-        if ((this._y + height) > this._nextY) {
-            this._nextY = this._y + height + space;
+        if ((y + height) > nextY) {
+            nextY = y + height + space;
         }
 
-        if (this._nextY > this._height) {
+        if (width > this._width || nextY > this._height) {
             warnID(12100);
             return null;
         }
 
         if (!this.fontDefDictionary.texture) {
+            this.textureUploadFailed = true;
             return null;
         }
 
         const rt = this.fontDefDictionary.texture as LetterRenderTexture;
-        rt.drawTextureAt(img, this._x, this._y);
+        if (!rt.drawTextureAt(img, x, y)) {
+            this.textureUploadFailed = true;
+            this._needsTextureRecreation = !this._hasTextureData;
+            return null;
+        }
 
+        this._hasTextureData = true;
         this._dirty = true;
 
         const letterDefinition = new FontLetterDefinition();
-        letterDefinition.u = this._x + this._halfBleed;
-        letterDefinition.v = this._y + this._halfBleed;
+        letterDefinition.u = x + this._halfBleed;
+        letterDefinition.v = y + this._halfBleed;
         letterDefinition.valid = true;
         letterDefinition.w = letterTexture.width - bleed;
         letterDefinition.h = letterTexture.height - bleed;
         letterDefinition.xAdvance = letterDefinition.w;
         letterDefinition.offsetY = letterTexture.offsetY;
 
-        this._x += width + space;
+        this._x = x + width + space;
+        this._y = y;
+        this._nextY = nextY;
         this.fontDefDictionary.addLetterDefinitions(letterTexture.hash, letterDefinition);
         /*
         const region = new BufferTextureCopy();
@@ -359,6 +416,9 @@ export class LetterAtlas {
         this._x = space;
         this._y = space;
         this._nextY = space;
+        this.textureUploadFailed = false;
+        this._hasTextureData = false;
+        this._needsTextureRecreation = false;
 
         // const chars = this.letterDefinitions;
         // for (let i = 0, l = (Object.keys(chars)).length; i < l; i++) {
@@ -393,9 +453,13 @@ export class LetterAtlas {
         this.destroy();
 
         const texture = new LetterRenderTexture();
-        texture.initWithSize(this._width, this._height);
-
         this.fontDefDictionary.texture = texture;
+        try {
+            texture.initWithSize(this._width, this._height);
+        } catch {
+            this.textureUploadFailed = true;
+            this._needsTextureRecreation = true;
+        }
     }
 
     public getLetter (key: string): FontLetterDefinition {
@@ -406,13 +470,45 @@ export class LetterAtlas {
         const hash = getSymbolCodeAt(char, 0) + labelInfo.hash;
         let letter: FontLetterDefinition | null = this.fontDefDictionary.letterDefinitions[hash];
         if (!letter) {
+            if (this.textureUploadFailed) {
+                return null;
+            }
             const temp = new LetterTexture(char, labelInfo);
-            temp.updateRenderData();
-            letter = this.insertLetterTexture(temp);
-            temp.destroy();
+            try {
+                if (temp.updateRenderData()) {
+                    letter = this.insertLetterTexture(temp);
+                } else {
+                    this.textureUploadFailed = true;
+                }
+            } catch {
+                this.textureUploadFailed = true;
+                return null;
+            } finally {
+                if (temp.data) {
+                    temp.destroy();
+                }
+            }
         }
 
         return letter;
+    }
+
+    public beginUpdate (): void {
+        this.textureUploadFailed = false;
+        if (!this.fontDefDictionary.texture) {
+            this.fontDefDictionary.texture = new LetterRenderTexture();
+            this._needsTextureRecreation = true;
+        }
+        if (this._needsTextureRecreation && !this._hasTextureData) {
+            // An initial allocation can leave a handle without texture storage.
+            // Only recreate an empty atlas so existing cached glyphs stay intact.
+            try {
+                (this.fontDefDictionary.texture as LetterRenderTexture | null)?.initWithSize(this._width, this._height);
+                this._needsTextureRecreation = false;
+            } catch {
+                this.textureUploadFailed = true;
+            }
+        }
     }
 }
 

@@ -1,6 +1,14 @@
-import { Sprite, SpriteFrame } from '../../cocos/2d';
+import { Sprite } from '../../cocos/2d/components/sprite';
+import { SpriteFrame } from '../../cocos/2d/assets/sprite-frame';
 import { dynamicAtlasManager } from '../../cocos/2d/utils/dynamic-atlas/atlas-manager';
-import { Texture2D } from '../../cocos/asset/assets';
+import { ImageAsset, Texture2D } from '../../cocos/asset/assets';
+
+function fillTexture (texture: Texture2D, width: number, height: number): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    texture.image = new ImageAsset(canvas);
+}
 
 test('Pack to DynamicAtlas', function () {
 
@@ -22,7 +30,7 @@ test('Pack to DynamicAtlas', function () {
     dynamicAtlasManager.packToDynamicAtlas(sprite, spriteFrame_0);
     expect(dynamicAtlasManager.atlasCount).toBe(0);
 
-    texture_0.create(1, 1);
+    fillTexture(texture_0, 1, 1);
     spriteFrame_0.packable = true;
     dynamicAtlasManager.packToDynamicAtlas(sprite, spriteFrame_0);
     expect(dynamicAtlasManager.atlasCount).toBe(1);
@@ -37,7 +45,7 @@ test('Delete Atlas SpriteFrame', function () {
     let spriteFrame_0 = new SpriteFrame();
     let texture_0 = new Texture2D();
     spriteFrame_0.texture = texture_0;
-    texture_0.create(1, 1);
+    fillTexture(texture_0, 1, 1);
     spriteFrame_0.packable = true;
     dynamicAtlasManager.packToDynamicAtlas(sprite, spriteFrame_0);
     expect(dynamicAtlasManager.atlasCount).toBe(1);
@@ -63,7 +71,7 @@ test('DynamicAtlasManager-insertSpriteFrame' ,function(){
     for(let i = 0; i < 2 * 4; ++i) {
         let spriteFrame = new SpriteFrame();
         let texture = new Texture2D();
-        texture.create(200, 200);
+        fillTexture(texture, 200, 200);
         spriteFrame.texture = texture;
         spriteFrame.packable = true;
         dynamicAtlasManager.insertSpriteFrame(spriteFrame);
@@ -71,7 +79,7 @@ test('DynamicAtlasManager-insertSpriteFrame' ,function(){
     {
         let spriteFrame = new SpriteFrame();
         let texture = new Texture2D();
-        texture.create(200, 200);
+        fillTexture(texture, 200, 200);
         spriteFrame.texture = texture;
         spriteFrame.packable = true;
         expect(dynamicAtlasManager.insertSpriteFrame(spriteFrame)).toEqual(null);
@@ -79,7 +87,7 @@ test('DynamicAtlasManager-insertSpriteFrame' ,function(){
     {
         let spriteFrame = new SpriteFrame();
         let texture = new Texture2D();
-        texture.create(200, 200);
+        fillTexture(texture, 200, 200);
         spriteFrame.texture = texture;
         spriteFrame.packable = true;
         expect(dynamicAtlasManager.insertSpriteFrame(spriteFrame)).toEqual(null);

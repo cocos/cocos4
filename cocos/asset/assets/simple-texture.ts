@@ -181,6 +181,34 @@ export class SimpleTexture extends TextureBase {
     }
 
     /**
+     * Upload a canvas/image and report unavailable targets or WebGL errors.
+     * @engineInternal
+     */
+    public uploadDataChecked (source: HTMLCanvasElement | HTMLImageElement | ImageBitmap, level = 0, arrayIndex = 0): boolean {
+        if (!this._gfxTexture || this._mipmapLevel <= level) {
+            return false;
+        }
+        const device = this._getGFXDevice();
+        if (!device) {
+            return false;
+        }
+        const region = _regions[0];
+        region.texExtent.width = this._textureWidth >> level;
+        region.texExtent.height = this._textureHeight >> level;
+        region.texSubres.mipLevel = level;
+        region.texSubres.baseArrayLayer = arrayIndex;
+        try {
+            if (typeof device.copyTexImagesToTextureChecked === 'function') {
+                return device.copyTexImagesToTextureChecked([source], this._gfxTexture, _regions);
+            }
+            device.copyTexImagesToTexture([source], this._gfxTexture, _regions);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
      * @engineInternal
      * @mangle
      */

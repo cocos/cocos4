@@ -83,6 +83,21 @@ function setTextureExclusive (textureExclusive: boolean[], indexArray: Format[],
     }
 }
 
+function hasNoTextureUploadErrors (gl: WebGL2RenderingContext): boolean {
+    if (typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+        return false;
+    }
+    let success = true;
+    // Broken runtimes must not leave an upload stuck in an unbounded error-draining loop.
+    for (let i = 0; i < 16; ++i) {
+        if (gl.getError() === WebGLConstants.NO_ERROR) {
+            return success;
+        }
+        success = false;
+    }
+    return false;
+}
+
 /** @mangle */
 export class WebGL2Device extends Device {
     constructor () {
@@ -680,5 +695,23 @@ export class WebGL2Device extends Device {
             (texture as WebGL2Texture).gpuTexture,
             regions,
         );
+    }
+
+    public override copyTexImagesToTextureChecked (
+        texImages: Readonly<TexImageSource[]>,
+        texture: Texture,
+        regions: Readonly<BufferTextureCopy[]>,
+    ): boolean {
+        try {
+            // A pending error may belong to storage allocation or an unrelated operation.
+            // Conservatively fail without attributing it to this upload.
+            if (!hasNoTextureUploadErrors(this.gl)) {
+                return false;
+            }
+            this.copyTexImagesToTexture(texImages, texture, regions);
+            return hasNoTextureUploadErrors(this.gl);
+        } catch {
+            return false;
+        }
     }
 }
