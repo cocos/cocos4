@@ -26,6 +26,10 @@ import b2 from '@cocos/box2d';
 import { IJoint2D } from '../../spec/i-physics-joint';
 import { Joint2D, PhysicsSystem2D, RigidBody2D } from '../../framework';
 import { b2PhysicsWorld } from '../physics-world';
+import { Vec2 } from '../../../core';
+
+const tempAnchorA = new Vec2();
+const tempAnchorB = new Vec2();
 
 /** @mangle */
 export class b2Joint implements IJoint2D {
@@ -116,6 +120,14 @@ export class b2Joint implements IJoint2D {
 
     _createJointDef (): b2.JointDef | null {
         return null;
+    }
+
+    protected _getAnchorA (): Vec2 {
+        return this._jointComp!._getAnchorA(tempAnchorA);
+    }
+
+    protected _getAnchorB (): Vec2 {
+        return this._jointComp!._getAnchorB(tempAnchorB);
     }
 
     isValid (): Joint2D | null {
