@@ -27,7 +27,7 @@
 
 import { ccclass } from 'cc.decorator';
 import { EDITOR, NODEJS, TEST, BUILD } from 'internal:constants';
-import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, js, v3, mat4, rect, v4, v2, size } from '../../core';
+import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, js, v3, mat4, rect, v4, v2, size, isValid, warn } from '../../core';
 import { Asset } from '../../asset/assets/asset';
 import { TextureBase } from '../../asset/assets/texture-base';
 import { ImageAsset, ImageSource } from '../../asset/assets/image-asset';
@@ -172,6 +172,10 @@ const temp_uvs: IUV[] = [{ u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0,
 
 export enum SpriteFrameEvent {
     UV_UPDATED = 'uv_updated',
+    /** @engineInternal The cached world mesh is invalid; consumers must rebind before the old mesh is released. */
+    MESH_CHANGED = 'mesh_changed',
+    /** @engineInternal Stop submitting and release world mesh references. */
+    MESH_DESTROYED = 'mesh_destroyed',
 }
 
 /**
@@ -363,6 +367,11 @@ export class SpriteFrame extends Asset {
             return;
         }
 
+        if (this._original) {
+            // Public rect coordinates remain relative to the current (possibly dynamic) texture.
+            this._original._x += value.x - this._rect.x;
+            this._original._y += value.y - this._rect.y;
+        }
         this._rect.set(value);
         if (this._texture) {
             this._calculateUV();
@@ -484,6 +493,7 @@ export class SpriteFrame extends Asset {
             return;
         }
         if (value) {
+            this._detachFromDynamicAtlas(value);
             this._refreshTexture(value);
             this._calculateUV();
         }
@@ -643,6 +653,9 @@ export class SpriteFrame extends Asset {
 
     // Mesh api
     protected _mesh: Mesh | null = null;
+    // No per-frame bookkeeping is allocated until a world renderer actually uses this frame.
+    private declare _meshUsers?: number;
+    private declare _meshTexture?: TextureBase;
     protected _minPos = v3();
     protected _maxPos = v3();
 
@@ -814,6 +827,10 @@ export class SpriteFrame extends Asset {
      */
     public reset (info?: ISpriteFrameInitInfo, clearData = false): void {
         const self = this;
+        const keepsPackedTexture = !!self._original && info?.texture === self._texture;
+        const previousX = self._rect.x;
+        const previousY = self._rect.y;
+        if (clearData || info?.texture) self._detachFromDynamicAtlas(info?.texture);
         let calUV = false;
         if (clearData) {
             self._originalSize.set(0, 0);
@@ -836,6 +853,11 @@ export class SpriteFrame extends Asset {
             }
 
             if (info.rect) {
+                if (self._original) {
+                    // reset may have changed _rect while reusing the packed texture.
+                    self._original._x += info.rect.x - (keepsPackedTexture ? previousX : self._rect.x);
+                    self._original._y += info.rect.y - (keepsPackedTexture ? previousY : self._rect.y);
+                }
                 self._rect.set(info.rect);
             }
 
@@ -933,17 +955,53 @@ export class SpriteFrame extends Asset {
      * @zh 确保 mesh 可用，你应该在使用 mesh 之前调用它。
      */
     public ensureMeshData (): void {
-        if (this._mesh) return;
-        // If SpriteFrame from load, we need init vertices when use mesh
-        this._initVertices();
+        if (this._mesh || !isValid(this, true) || !this._texture) return;
         this._createMesh();
     }
 
+    /** @engineInternal Source texture before UI dynamic packing; may itself be a static atlas. */
+    public _getSourceTexture (): TextureBase {
+        return this._original ? this._original._texture : this._texture;
+    }
+
+    private _detachFromDynamicAtlas (textureToKeep?: TextureBase): void {
+        if (!this._original || textureToKeep === this._texture) return;
+        // A real texture replacement must not later be undone by an atlas reset.
+        dynamicAtlasManager?.deleteAtlasSpriteFrame(this);
+        this._resetDynamicAtlasFrame();
+    }
+
+    /** @engineInternal Retain derived geometry independently of the asset's UI users. */
+    public _retainMesh (): void {
+        this._meshUsers = (this._meshUsers || 0) + 1;
+    }
+
+    /** @engineInternal The caller must first detach its SubModels and unsubscribe. */
+    public _releaseMesh (): void {
+        if (!this._meshUsers) return;
+        if (--this._meshUsers === 0) {
+            delete this._meshUsers;
+            this._mesh?.destroy();
+            this._mesh = null;
+            this._meshTexture?.decRef(false);
+            delete this._meshTexture;
+        }
+    }
+
     public destroy (): boolean {
+        if (!super.destroy()) return false;
+        if (this._meshUsers) {
+            this.emit(SpriteFrameEvent.MESH_DESTROYED, this);
+        }
+        this._mesh?.destroy();
+        this._mesh = null;
+        delete this._meshUsers;
+        this._meshTexture?.decRef(false);
+        delete this._meshTexture;
         if (this._packable && dynamicAtlasManager) {
             dynamicAtlasManager.deleteAtlasSpriteFrame(this);
         }
-        return super.destroy();
+        return true;
     }
 
     /**
@@ -1022,7 +1080,7 @@ export class SpriteFrame extends Asset {
      * @engineInternal
      * @mangle
      */
-    public _calculateUV (): void {
+    public _calculateUV (sourceChanged = true): void {
         const arrayFill = js.array.fillItems;
         const self = this;
         const rect = self._rect;
@@ -1130,6 +1188,8 @@ export class SpriteFrame extends Asset {
             }
         }
 
+        // UI relocation changes the public mapping, not the source used by world geometry.
+        if (sourceChanged && (self._mesh || self._meshUsers)) self._updateMesh();
         self._calculateSlicedUV();
     }
 
@@ -1150,7 +1210,7 @@ export class SpriteFrame extends Asset {
         this._texture = frame.texture;
         this._rect.x = frame.x;
         this._rect.y = frame.y;
-        this._calculateUV();
+        this._calculateUV(false);
     }
 
     /**
@@ -1164,7 +1224,7 @@ export class SpriteFrame extends Asset {
         this._rect.y = this._original._y;
         this._texture = this._original._texture;
         this._original = null;
-        this._calculateUV();
+        this._calculateUV(false);
     }
 
     /**
@@ -1275,12 +1335,12 @@ export class SpriteFrame extends Asset {
         self._name = data.name;
         self._packable = !!data.packable;
 
-        self._pixelsToUnit = data.pixelsToUnit;
+        self._pixelsToUnit = data.pixelsToUnit ?? 100;
         const pivot = data.pivot;
         if (pivot) {
             self._pivot = v2(pivot.x, pivot.y);
         }
-        self._meshType = data.meshType;
+        self._meshType = data.meshType ?? MeshType.RECT;
 
         const capInsets = data.capInsets;
         if (capInsets) {
@@ -1333,7 +1393,7 @@ export class SpriteFrame extends Asset {
         const sp = new SpriteFrame();
         const v = self.vertices;
         sp.vertices = v ? {
-            rawPosition: v.rawPosition.slice(0),
+            rawPosition: v.rawPosition.map((position) => position.clone()),
             positions: v.positions.slice(0),
             indexes: v.indexes.slice(0),
             uv: v.uv.slice(0),
@@ -1369,13 +1429,9 @@ export class SpriteFrame extends Asset {
         sp._meshType = self._meshType;
         sp._extrude = self._extrude;
         sp._customOutLine.splice(0, sp._customOutLine.length, ...self._customOutLine);
-        sp._minPos = self._minPos;
-        sp._maxPos = self._maxPos;
-        if (self._mesh) {
-            // Creates a new mesh, and 'this' creates the mesh in the same way. So we can make a copy like this.
-            // It must be placed last because the mesh will depend on some of its members when it is created.
-            sp._createMesh();
-        }
+        sp._minPos.set(self._minPos);
+        sp._maxPos.set(self._maxPos);
+        // Derived world meshes are created by their consumers, never as a side effect of cloning an asset.
         return sp;
     }
 
@@ -1403,10 +1459,9 @@ export class SpriteFrame extends Asset {
             self.reset(config);
         }
 
-        self._checkPackable();
-        if (self._mesh) {
-            self._updateMesh();
-        }
+        // Reusing a packed texture must not derive source eligibility from the larger atlas page.
+        if (!self._original) self._checkPackable();
+        // reset/_textureSource calculate the final UVs after all texture/rect changes are applied.
     }
 
     /**
@@ -1543,33 +1598,71 @@ export class SpriteFrame extends Asset {
     }
 
     protected _createMesh (): void {
+        const { width, height } = this._rect;
+        const ppu = this._pixelsToUnit;
+        if (!Number.isFinite(ppu) || ppu <= 0 || !Number.isFinite(width) || !Number.isFinite(height)
+            || !Number.isFinite(this._pivot.x) || !Number.isFinite(this._pivot.y)) {
+            warn('SpriteFrame: world geometry requires a positive finite PPU and finite rectangle/pivot.');
+            return;
+        }
+        if (width <= 0 || height <= 0 || this.uv.length !== 8) return;
+        if (this._meshType !== MeshType.RECT) {
+            warn('SpriteFrame: world SpriteRenderer currently supports Rect geometry only.');
+            return;
+        }
+
+        // Keep the existing asset pivot interpretation until an equivalent importer migration is available.
+        // These are derived data: never overwrite `vertices`, which may contain serialized/UI source geometry.
+        const left = -this._pivot.x * width / ppu;
+        const bottom = -this._pivot.y * height / ppu;
+        const right = left + width / ppu;
+        const top = bottom + height / ppu;
+        if (![left, bottom, right, top].every(Number.isFinite)) return;
+        const texture = this._getSourceTexture();
+        if (!isValid(texture, true)) return;
+        const original = this._original;
+        // Undo only the dynamic-atlas translation/normalization. Static rotation and flips remain.
+        const uvs = this.uv.map((value, index) => {
+            if (original) {
+                const size = index % 2 ? texture.height : texture.width;
+                const packedSize = index % 2 ? this._texture.height : this._texture.width;
+                const translation = index % 2 ? this._rect.y - original._y : this._rect.x - original._x;
+                value = size === 0 ? 0 : (value * packedSize - translation) / size;
+            }
+            return index % 2 ? 1 - value : value;
+        });
+        this._minPos.set(left, bottom, 0);
+        this._maxPos.set(right, top, 0);
         this._mesh = createMesh({
             primitiveMode: PrimitiveMode.TRIANGLE_LIST,
-            positions: this.vertices!.positions,
-            uvs: this.vertices!.nuv,
-            indices: this.vertices!.indexes,
+            positions: [left, bottom, 0, right, bottom, 0, left, top, 0, right, top, 0],
+            // Preserve the Sprite Effect's existing V inversion contract.
+            uvs,
+            indices: [0, 1, 2, 2, 1, 3],
             minPos: this._minPos,
             maxPos: this._maxPos,
-
-            // colors: [
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a],
             attributes: [
                 new Attribute(AttributeName.ATTR_POSITION, Format.RGB32F),
                 new Attribute(AttributeName.ATTR_TEX_COORD, Format.RG32F),
-                // new Attribute(AttributeName.ATTR_COLOR, Format.RGBA8UI, true),
             ],
         });
+        texture.addRef();
+        this._meshTexture = texture;
     }
 
     protected _updateMesh (): void {
-        if (this._mesh) {
-            this._mesh.destroy();
+        const previous = this._mesh;
+        const previousTexture = this._meshTexture;
+        this._mesh = null;
+        delete this._meshTexture;
+        try {
+            // Active consumers lazily build the replacement once; inactive consumers only detach stale bindings.
+            if (this._meshUsers) this.emit(SpriteFrameEvent.MESH_CHANGED, this);
+        } finally {
+            previous?.destroy();
+            // This cache borrows the texture; normal asset ownership controls its destruction.
+            previousTexture?.decRef(false);
         }
-        this._initVertices();
-        this._createMesh();
     }
 }
 

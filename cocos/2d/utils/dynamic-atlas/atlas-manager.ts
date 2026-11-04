@@ -244,9 +244,12 @@ export class DynamicAtlasManager extends System {
         for (let i = this._atlases.length - 1; i >= 0; i--) {
             atlas = this._atlases[i];
             atlas.removeSpriteFrame(spriteFrame);
+            if (atlas.isEmpty()) {
+                atlas.destroy();
+                this._atlases.splice(i, 1);
+                this._atlasIndex--;
+            }
         }
-        const texture = spriteFrame.original._texture;
-        this.deleteAtlasTexture(texture);
     }
 
     /**
