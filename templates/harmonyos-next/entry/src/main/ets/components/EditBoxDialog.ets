@@ -57,6 +57,9 @@ export struct EditBoxDialog {
           .showUnderline(this.showInfo.showUnderline)
           .enterKeyType(this.showInfo.enterKeyType)
           .layoutWeight(1)
+          .onBlur(() => {
+            this.controller?.close();
+          })
           .onChange((value) => {
             this.showInfo.defaultMessage = value;
             this.workPort?.postMessage('onTextInput', value);
