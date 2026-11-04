@@ -135,7 +135,7 @@ void UIModelProxy::uploadData() {
             iBuffer->resize(static_cast<uint32_t>(capacity * sizeof(uint16_t)));
         }
         iBuffer->update(drawInfo->getIDataBuffer(), neededIBytes); // idata
-        ia->setIndexCount(indexCount); // indexCount
+        ia->setIndexCount(indexCount);                             // indexCount
         // drawInfo->setModel(_model); // hack, render by model
     }
 
