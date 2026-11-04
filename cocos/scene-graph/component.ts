@@ -37,6 +37,13 @@ import { legacyCC } from '../core/global-exports';
 import { errorID, warnID, assertID } from '../core/platform/debug';
 import { CompPrefabInfo } from './prefab/prefab-info';
 import { EventHandler } from './component-event-handler';
+import {
+    CoroutineRunner,
+    stopCoroutine as stopCoroutineRecord,
+    type Coroutine,
+    type CoroutineIterator,
+    type StartCoroutineOptions,
+} from './component-coroutine';
 
 const idGenerator = new IDGenerator('Comp');
 const IsOnLoadCalled = CCObjectFlags.IsOnLoadCalled;
@@ -211,6 +218,9 @@ class Component extends CCObject {
     public _id: string = idGenerator.getNewId();
 
     // private __scriptUuid = '';
+
+    private _coroutines: CoroutineRunner | undefined = undefined;
+    private _coroutineScheduled = false;
 
     /**
      * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
@@ -394,6 +404,7 @@ class Component extends CCObject {
             if (this._enabled && this.node.activeInHierarchy) {
                 legacyCC.director._compScheduler.disableComp(this);
             }
+            this.stopAllCoroutines();
             return true;
         }
         return false;
@@ -403,6 +414,8 @@ class Component extends CCObject {
      * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
      */
     public _onPreDestroy (): void {
+        this.stopAllCoroutines();
+
         // Schedules
         this.unscheduleAllCallbacks();
 
@@ -429,6 +442,82 @@ class Component extends CCObject {
     }
 
     // Scheduler
+
+    /**
+     * @en Starts a coroutine owned by this component.
+     * @zh 启动一个由当前组件持有的协程。
+     * @param coroutine The coroutine iterator to start.
+     * @param opts Optional start options.
+     * @returns An opaque coroutine handle that can be passed to stopCoroutine.
+     */
+    protected startCoroutine (coroutine: CoroutineIterator, opts?: StartCoroutineOptions): Coroutine {
+        const coroutines = this._coroutines ??= new CoroutineRunner();
+        let handle!: Coroutine;
+        try {
+            handle = coroutines.start(coroutine, legacyCC.director._compScheduler.getCoroutineResumeFrame(), opts);
+        } finally {
+            if (!coroutines.empty) {
+                this._enableCoroutineUpdate();
+            }
+            this._clearCoroutinesIfEmpty();
+        }
+        return handle;
+    }
+
+    /**
+     * @en Stops a coroutine.
+     * @zh 停止一个协程。
+     * @param coroutine The coroutine handle returned by startCoroutine.
+     */
+    protected stopCoroutine (coroutine: Coroutine): void {
+        if (this._coroutines) {
+            this._coroutines.stop(coroutine);
+        } else {
+            stopCoroutineRecord(coroutine);
+        }
+        this._clearCoroutinesIfEmpty();
+    }
+
+    /**
+     * @en Stops all coroutines owned by this component.
+     * @zh 停止当前组件持有的所有协程。
+     */
+    protected stopAllCoroutines (): void {
+        const coroutines = this._coroutines;
+        if (!coroutines) {
+            return;
+        }
+
+        this._coroutines = undefined;
+        this._disableCoroutineUpdate();
+        coroutines.stopAll();
+    }
+
+    /**
+     * @engineInternal
+     */
+    public _invokeCoroutineUpdate (dt: number, directorFrame: number): void {
+        const coroutines = this._coroutines;
+        if (!coroutines) {
+            this._disableCoroutineUpdate();
+            return;
+        }
+
+        if (!this.node.activeInHierarchy) {
+            this.stopAllCoroutines();
+            return;
+        }
+
+        coroutines.update(dt, directorFrame);
+        this._clearCoroutinesIfEmpty();
+    }
+
+    /**
+     * @engineInternal
+     */
+    public _stopAllCoroutines (): void {
+        this.stopAllCoroutines();
+    }
 
     /**
      * @en
@@ -511,6 +600,27 @@ class Component extends CCObject {
      */
     public unscheduleAllCallbacks (): void {
         legacyCC.director.getScheduler().unscheduleAllForTarget(this);
+    }
+
+    private _enableCoroutineUpdate (): void {
+        if (!this._coroutineScheduled) {
+            legacyCC.director._compScheduler.enableCoroutine(this);
+            this._coroutineScheduled = true;
+        }
+    }
+
+    private _disableCoroutineUpdate (): void {
+        if (this._coroutineScheduled) {
+            legacyCC.director._compScheduler.disableCoroutine(this);
+            this._coroutineScheduled = false;
+        }
+    }
+
+    private _clearCoroutinesIfEmpty (): void {
+        if (this._coroutines?.empty) {
+            this._coroutines = undefined;
+            this._disableCoroutineUpdate();
+        }
     }
 
     // LIFECYCLE METHODS

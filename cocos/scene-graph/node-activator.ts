@@ -299,6 +299,7 @@ export default class NodeActivator {
         const originCount = node.components.length;
         for (let c = 0; c < originCount; ++c) {
             const component = node.components[c];
+            component._stopAllCoroutines();
             if (component._enabled) {
                 legacyCC.director._compScheduler.disableComp(component);
 
