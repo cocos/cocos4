@@ -6,3 +6,18 @@ cmake ..
 make
 ./src/CocosTest
 ```
+
+Standalone frame pacing tests (no graphics device or JavaScript engine):
+```
+cmake -S native/tests/unit-test -B native/tests/unit-test/build-frame-pacer -DCC_FRAME_PACER_TESTS_ONLY=ON
+cmake --build native/tests/unit-test/build-frame-pacer --config Debug --target frame_pacer_tests
+ctest --test-dir native/tests/unit-test/build-frame-pacer -C Debug --output-on-failure
+```
+Run these commands from the repository root. On Windows, select an installed
+Visual Studio generator and architecture when configuring, for example
+`-G "Visual Studio 17 2022" -A x64`. The tests use an injected clock/waiter and do
+not sleep. They are also included in the normal CocosTest target.
+
+The Android Engine integration is experimental: enable it with
+`-DUSE_ANDROID_FRAME_PACER=ON` in the Android application's CMake configuration.
+It defaults to OFF; XR builds and non-Android platforms retain the legacy path.
