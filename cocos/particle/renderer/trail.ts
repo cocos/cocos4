@@ -102,7 +102,7 @@ class TrailSegment {
         }
         if (this.start === -1) {
             this.start = 0;
-            this.end = 1;
+            this.end = 1 % this.trailElements.length;
             return this.trailElements[0];
         }
         if (this.start === this.end) {
@@ -128,20 +128,25 @@ class TrailSegment {
         p: Particle,
         dt: number,
     ): void {
-        const end = this.start >= this.end ? this.end + this.trailElements.length : this.end;
-        for (let i = this.start; i < end; i++) {
+        if (this.start === -1) return;
+        const count = this.count();
+        const start = this.start;
+        let removed = 0;
+        for (let i = start; i < start + count; i++) {
             if (f(target, this.trailElements[i % this.trailElements.length], p, dt)) {
                 this.start++;
                 this.start %= this.trailElements.length;
+                removed++;
             }
         }
-        if (this.start === end) {
+        if (removed === count) {
             this.start = -1;
             this.end = -1;
         }
     }
 
     public count (): number {
+        if (this.start === -1) return 0;
         if (this.start < this.end) {
             return this.end - this.start;
         } else {
@@ -182,7 +187,11 @@ export default class TrailModule {
         }
         if (val && !this._enable) {
             this._enable = val;
-            if (this._particleSystem!.processor) this._particleSystem!.processor.updateTrailMaterial();
+            if (this._particleSystem?.processor) this._particleSystem.processor.updateTrailMaterial();
+        }
+        if (!this._particleSystem) {
+            this._enable = val;
+            return;
         }
         if (val && !this._trailModel) {
             this._createModel();
@@ -397,7 +406,7 @@ export default class TrailModule {
     }
 
     public onDisable (): void {
-        this._particleTrail.clear();
+        this.clear();
         this._detachFromScene();
     }
 
@@ -423,6 +432,7 @@ export default class TrailModule {
     }
 
     public destroy (): void {
+        this.clear();
         this.destroySubMeshData();
         if (this._trailModel) {
             director.root!.destroyModel(this._trailModel);
@@ -441,17 +451,14 @@ export default class TrailModule {
     }
 
     public clear (): void {
-        if (this.enable) {
-            const trailIter = this._particleTrail.values();
-            let trail = trailIter.next();
-            while (!trail.done) {
-                trail.value.clear();
-                trail = trailIter.next();
-            }
-            this._particleTrail.clear();
-            this.updateRenderData();
-            if (this._trailModel) this._trailModel.enabled = false;
+        for (const trail of this._particleTrail.values()) {
+            trail.clear();
+            this._trailSegments?.free(trail);
         }
+        this._particleTrail.clear();
+        this.vbOffset = 0;
+        this.ibOffset = 0;
+        if (this._trailModel) this._trailModel.enabled = false;
     }
 
     public updateMaterial (): void {
@@ -505,7 +512,7 @@ export default class TrailModule {
         }
         if (lastSeg) {
             trail.iterateElement(this, this._updateTrailElement, p, scaledDt);
-            if (Vec3.squaredDistance(lastSeg.position, _temp_vec3) < this._minSquaredDistance) {
+            if (trail.count() > 0 && Vec3.squaredDistance(lastSeg.position, _temp_vec3) < this._minSquaredDistance) {
                 return;
             }
         }
@@ -516,6 +523,8 @@ export default class TrailModule {
 
         Vec3.copy(lastSeg.position, _temp_vec3);
         lastSeg.lifetime = 0;
+        lastSeg.direction = 0;
+        lastSeg.velocity.set(0, 0, 0);
         if (this.widthFromParticle) {
             lastSeg.width = p.size.x * this.widthRatio.evaluate(0, 1)!;
         } else {
@@ -526,6 +535,7 @@ export default class TrailModule {
         if (trailNum === 2) {
             const lastSecondTrail = trail.getElement(trail.end - 2)!;
             Vec3.subtract(lastSecondTrail.velocity, lastSeg.position, lastSecondTrail.position);
+            Vec3.normalize(lastSecondTrail.velocity, lastSecondTrail.velocity);
         } else if (trailNum > 2) {
             const lastSecondTrail = trail.getElement(trail.end - 2)!;
             const lastThirdTrail = trail.getElement(trail.end - 3)!;
@@ -557,14 +567,20 @@ export default class TrailModule {
     public updateRenderData (): void {
         this.vbOffset = 0;
         this.ibOffset = 0;
-        for (const p of this._particleTrail.keys()) {
-            const trailSeg = this._particleTrail.get(p)!;
+        let vertexCount = 0;
+        for (const trail of this._particleTrail.values()) {
+            if (trail.count() > 0) vertexCount += (trail.count() + 1) * 2;
+        }
+        this._ensureBufferCapacity(Math.min(vertexCount, 65536));
+        for (const [p, trailSeg] of this._particleTrail) {
             if (trailSeg.start === -1) {
                 continue;
             }
             const indexOffset = this.vbOffset * 4 / this._vertSize;
             const end = trailSeg.start >= trailSeg.end ? trailSeg.end + trailSeg.trailElements.length : trailSeg.end;
             const trailNum = end - trailSeg.start;
+            // Uint16 indices cannot address vertices beyond this limit.
+            if (indexOffset + (trailNum + 1) * 2 > 65536) continue;
             // const lastSegRatio = vec3.distance(trailSeg.getTailElement()!.position, p.position) / this._minParticleDistance;
             const textCoordSeg = 1 / (trailNum /* - 1 + lastSegRatio */);
             const startSegEle = trailSeg.trailElements[trailSeg.start];
@@ -656,11 +672,13 @@ export default class TrailModule {
         const subModels = this._trailModel && this._trailModel.subModels;
         if (subModels && subModels.length > 0) {
             const subModel = subModels[0];
-            subModel.inputAssembler.vertexBuffers[0].update(this._vbF32!);
-            subModel.inputAssembler.indexBuffer!.update(this._iBuffer!);
+            if (count > 0) {
+                subModel.inputAssembler.vertexBuffers[0].update(this._vbF32!, this.vbOffset * 4);
+                subModel.inputAssembler.indexBuffer!.update(this._iBuffer!, count * Uint16Array.BYTES_PER_ELEMENT);
+            }
             subModel.inputAssembler.firstIndex = 0;
             subModel.inputAssembler.indexCount = count;
-            subModel.inputAssembler.vertexCount = this._iaVertCount;
+            subModel.inputAssembler.vertexCount = this.vbOffset * 4 / this._vertSize;
         }
     }
 
@@ -676,8 +694,22 @@ export default class TrailModule {
         this._trailModel = (cclegacy.director.root as Root).createModel(scene.Model);
     }
 
+    private _ensureBufferCapacity (vertexCount: number): void {
+        if (vertexCount <= this._iaVertCount || !this._subMeshData) return;
+        const capacity = Math.min(65536, Math.max(vertexCount, this._iaVertCount * 2));
+        const buffer = new ArrayBuffer(capacity * this._vertSize);
+        this._vbF32 = new Float32Array(buffer);
+        this._vbUint32 = new Uint32Array(buffer);
+        this._iBuffer = new Uint16Array(capacity * 3);
+        this._subMeshData.vertexBuffers[0].resize(buffer.byteLength);
+        this._subMeshData.indexBuffer!.resize(this._iBuffer.byteLength);
+        this._iaVertCount = capacity;
+        this._iaIndexCount = this._iBuffer.length;
+    }
+
     private rebuild (): void {
         const self = this;
+        self._trailNum = Math.min(Math.max(1, self._trailNum), 32767);
         const device: Device = director.root!.device;
         const vertexBuffer = device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
@@ -715,6 +747,7 @@ export default class TrailModule {
 
     private _updateTrailElement (module: TrailModule, trailEle: ITrailElement, p: Particle, dt: number): boolean {
         trailEle.lifetime += dt;
+        if (module._trailLifetime <= 0 || trailEle.lifetime > module._trailLifetime) return true;
         if (module.colorFromParticle) {
             trailEle.color.set(p.color);
             trailEle.color.multiply(module.colorOvertime.evaluate(1.0 - p.remainingLifetime / p.startLifetime, 1));
