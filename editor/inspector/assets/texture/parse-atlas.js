@@ -42,7 +42,7 @@ function formatValue(value) {
 }
 
 const imageExt = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-const pageAttr = ['name', 'size', 'format', 'filter', 'repeat', 'scale', 'pma'];
+const pageAttr = ['name', 'size', 'format', 'filter', 'repeat', 'pma'];
 
 class ParseAtlasFile {
     constructor() { }
