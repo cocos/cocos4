@@ -1624,7 +1624,7 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
     addShadingRateTexture (name: string, width: number, height: number, residency = ResourceResidency.MANAGED): number {
         const resID = this._resourceGraph.find(name);
         if (resID !== 0xFFFFFFFF) {
-            this.addShadingRateTexture(name, width, height);
+            this.updateShadingRateTexture(name, width, height);
             return resID;
         }
         const desc = new ResourceDesc();
