@@ -32,6 +32,7 @@ import { Color, warnID, cclegacy } from '../../core';
 import { scene } from '../../render-scene';
 import type { IBatcher } from '../renderer/i-batcher';
 import { LineCap, LineJoin } from '../assembler/graphics/types';
+import { MAX_VERTEX_COUNT, MAX_INDEX_COUNT } from '../assembler/graphics/constants';
 import { Impl } from '../assembler/graphics/webgl/impl';
 import { Material, RenderingSubMesh } from '../../asset/assets';
 import { Format, PrimitiveMode, Attribute, Device, BufferUsageBit, BufferInfo, MemoryUsageBit, deviceManager } from '../../gfx';
@@ -39,6 +40,8 @@ import { vfmtPosColor, getAttributeStride, getComponentPerVertex } from '../rend
 import { NativeUIModelProxy } from '../renderer/native-2d';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
 import type { GraphicsAssembler } from '../assembler/graphics/webgl/graphics-assembler';
+import type { MeshRenderData } from '../renderer/render-data';
+import type { InputAssembler } from '../../gfx';
 
 const attributes = vfmtPosColor.concat([
     new Attribute('a_dist', Format.R32F),
@@ -47,6 +50,15 @@ const attributes = vfmtPosColor.concat([
 const componentPerVertex = getComponentPerVertex(attributes);
 
 const stride = getAttributeStride(attributes);
+
+// Grow only, by powers of two, so a changing geometry does not re-create the GPU buffer every frame.
+function growCapacity (needed: number, current: number, max: number): number {
+    let cap = Math.max(current, 1);
+    while (cap < needed) {
+        cap *= 2;
+    }
+    return Math.min(cap, max);
+}
 
 /**
  * @en
@@ -635,7 +647,7 @@ export class Graphics extends UIRenderer {
     /**
      * @deprecated since v3.7.0, this is an engine private interface that will be removed in the future.
      */
-    public activeSubModel (idx: number): void {
+    public activeSubModel (idx: number, vertexCount = 1, indexCount = 1): void {
         if (!this.model) {
             warnID(4500, this.node.name);
             return;
@@ -646,13 +658,13 @@ export class Graphics extends UIRenderer {
             const vertexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65536 * stride, // Uint16 can address 65536 vertices (indices 0–65535)
+                growCapacity(vertexCount, 0, MAX_VERTEX_COUNT) * stride,
                 stride,
             ));
             const indexBuffer = gfxDevice.createBuffer(new BufferInfo(
                 BufferUsageBit.INDEX | BufferUsageBit.TRANSFER_DST,
                 MemoryUsageBit.DEVICE,
-                65536 * Uint16Array.BYTES_PER_ELEMENT * 2,  // Uint16 can address 65536 vertices (indices 0–65535)
+                growCapacity(indexCount, 0, MAX_INDEX_COUNT) * Uint16Array.BYTES_PER_ELEMENT,
                 Uint16Array.BYTES_PER_ELEMENT,
             ));
 
@@ -683,6 +695,9 @@ export class Graphics extends UIRenderer {
                 continue;
             }
 
+            // Buffer.update() does not grow the buffer on WebGL, reserve the capacity first.
+            this._ensureCapacity(renderData, ia);
+
             const vb = new Float32Array(renderData.vData.buffer, 0, renderData.vertexStart * componentPerVertex);
             ia.vertexBuffers[0].update(vb);
             ia.vertexCount = renderData.vertexStart;
@@ -696,6 +711,27 @@ export class Graphics extends UIRenderer {
         this._isNeedUploadData = false;
     }
 
+    /**
+     * Grow only, never shrink: the capacity is reused after clear().
+     */
+    private _ensureCapacity (renderData: MeshRenderData, ia: InputAssembler): void {
+        const vb = ia.vertexBuffers[0];
+        const vbStride = vb.stride;
+        if (renderData.vertexStart * vbStride > vb.size) {
+            const count = growCapacity(renderData.vertexStart, vb.size / vbStride, MAX_VERTEX_COUNT);
+            vb.resize(count * vbStride);
+        }
+
+        const ib = ia.indexBuffer;
+        if (!ib) {
+            return;
+        }
+        if (renderData.indexStart * Uint16Array.BYTES_PER_ELEMENT > ib.size) {
+            const count = growCapacity(renderData.indexStart, ib.size / Uint16Array.BYTES_PER_ELEMENT, MAX_INDEX_COUNT);
+            ib.resize(count * Uint16Array.BYTES_PER_ELEMENT);
+        }
+    }
+
     protected _render (render: IBatcher): void {
         if (this._isNeedUploadData) {
             if (this.impl) {
@@ -703,7 +739,8 @@ export class Graphics extends UIRenderer {
                 const len = this.model!.subModels.length;
                 if (renderDataList.length > len) {
                     for (let i = len; i < renderDataList.length; i++) {
-                        this.activeSubModel(i);
+                        const renderData = renderDataList[i];
+                        this.activeSubModel(i, renderData.vertexStart, renderData.indexStart);
                     }
                 }
             }

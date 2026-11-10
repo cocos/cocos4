@@ -896,6 +896,10 @@ module.exports = link(mixin({
     },
     features: {
         categories: {
+            worker: {
+                label: 'Worker',
+                description: 'Worker features. The group checkbox selects or clears all items; Worker Pool depends on Basic Worker.',
+            },
             '2d': {
                 label: '2D',
                 description: '2D',
@@ -1132,6 +1136,14 @@ module.exports = link(mixin({
         websocket_server: {
             label: "WebSocket Server",
             description: "Enable WebSocket Server for native. Note: WebSocket must also be enabled.",
+        },
+        worker: {
+            label: "Basic Worker",
+            description: "Enable cross-platform Worker creation, messaging and capability queries. Manage workers yourself; enable Worker Pool separately for task scheduling and synchronous fallback.",
+        },
+        worker_pool: {
+            label: "Worker Pool",
+            description: "Enable WorkerPool task scheduling, queuing, timeouts and safe synchronous fallback. Depends on Worker.",
         },
         flags: {
             spine: {

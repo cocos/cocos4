@@ -73,8 +73,9 @@ public:
     /**
      * @en Resize the render texture
      * @zh 修改渲染贴图的尺寸
-     * @param width The pixel width, the range is from 1 to 2048
-     * @param height The pixel height, the range is from 1 to 2048
+     * The upper bound is the GPU max texture size. If the limit is unavailable, 2048 is used as a fallback.
+     * @param width The pixel width, the range is from 1 to the maximum texture size supported by the GPU
+     * @param height The pixel height, the range is from 1 to the maximum texture size supported by the GPU
      */
     void resize(uint32_t width, uint32_t height);
 

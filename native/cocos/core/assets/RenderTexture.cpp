@@ -23,15 +23,34 @@
 ****************************************************************************/
 
 #include "core/assets/RenderTexture.h"
+#include "base/std/optional.h"
 #include "core/Root.h"
 #include "core/platform/Debug.h"
 #include "core/utils/IDGenerator.h"
 #include "renderer/gfx-base/GFXDef-common.h"
+#include "renderer/gfx-base/GFXDevice.h"
 #include "scene/RenderWindow.h"
 
 namespace cc {
 
 namespace {
+// The legacy limit used only when the GPU capability is unavailable,
+// e.g. when assets are loaded before the renderer is initialized.
+constexpr uint32_t FALLBACK_MAX_RENDER_TEXTURE_SIZE = 2048;
+
+// Returns ccstd::nullopt when the device or its max texture size is unavailable.
+ccstd::optional<uint32_t> getMaxRenderTextureSize() {
+    auto *device = gfx::Device::getInstance();
+    if (device == nullptr) {
+        return ccstd::nullopt;
+    }
+    const uint32_t maxTextureSize = device->getCapabilities().maxTextureSize;
+    if (maxTextureSize == 0) {
+        return ccstd::nullopt;
+    }
+    return maxTextureSize;
+}
+
 gfx::RenderPassInfo getDefaultRenderPassInfo(gfx::Device *device) {
     gfx::RenderPassInfo info;
     info.colorAttachments.push_back({
@@ -72,8 +91,11 @@ bool RenderTexture::destroy() {
 }
 
 void RenderTexture::resize(uint32_t width, uint32_t height) {
-    _width = std::floor(clampf(static_cast<float>(width), 1.F, 2048.F));
-    _height = std::floor(clampf(static_cast<float>(height), 1.F, 2048.F));
+    const auto maxTextureSize = getMaxRenderTextureSize();
+    const auto maxSize = static_cast<float>(
+        maxTextureSize.has_value() ? maxTextureSize.value() : FALLBACK_MAX_RENDER_TEXTURE_SIZE);
+    _width = static_cast<uint32_t>(std::floor(clampf(static_cast<float>(width), 1.F, maxSize)));
+    _height = static_cast<uint32_t>(std::floor(clampf(static_cast<float>(height), 1.F, maxSize)));
     if (_window != nullptr) {
         _window->resize(_width, _height);
     }
@@ -146,7 +168,15 @@ void RenderTexture::initDefault(const ccstd::optional<ccstd::string> &uuid) {
 }
 
 bool RenderTexture::validate() const {
-    return _width >= 1 && _width <= 2048 && _height >= 1 && _height <= 2048;
+    if (_width == 0 || _height == 0) {
+        return false;
+    }
+    const auto maxTextureSize = getMaxRenderTextureSize();
+    if (!maxTextureSize.has_value()) {
+        return true;
+    }
+    const uint32_t maxSize = maxTextureSize.value();
+    return _width <= maxSize && _height <= maxSize;
 }
 
 ccstd::vector<uint8_t> RenderTexture::readPixels(uint32_t x, uint32_t y, uint32_t width, uint32_t height) const {

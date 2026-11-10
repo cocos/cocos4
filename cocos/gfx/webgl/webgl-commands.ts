@@ -574,6 +574,8 @@ export function WebGLCmdFuncResizeBuffer (device: WebGLDevice, gpuBuffer: IWebGL
         } else {
             gl.bufferData(WebGLConstants.ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ARRAY_BUFFER, null);
         stateCache.glArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.INDEX) {
@@ -594,6 +596,8 @@ export function WebGLCmdFuncResizeBuffer (device: WebGLDevice, gpuBuffer: IWebGL
         } else {
             gl.bufferData(WebGLConstants.ELEMENT_ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ELEMENT_ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ELEMENT_ARRAY_BUFFER, null);
         stateCache.glElementArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.UNIFORM) {
@@ -630,6 +634,7 @@ export function WebGLCmdFuncUpdateBuffer (
             gpuBuffer.indirects.setDrawInfo(offset + i, drawInfos[i]);
         }
     } else {
+        if (size > gpuBuffer.size) { return; }
         const buff = buffer as ArrayBuffer;
         const { gl, stateCache } = device;
 

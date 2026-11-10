@@ -1,6 +1,6 @@
 {
   "name": "cocos-creator",
-  "version": "4.0.0-beta.0",
+  "version": "4.0.0-beta.1",
   "description": "Cocos Creator is a cross-platform 2D & 3D game engine written in C++ and TypeScript, licensed under MIT.",
   "homepage": "http://www.cocos.com",
   "license": "MIT",
@@ -25,7 +25,8 @@
     "build:cli-min": "npm run build:debug-infos && node ./scripts/build-cli-minified",
     "clear": "node ./scripts/clear-cache.js",
     "clear:platform": "node ./native/utils/clear-platform.js && node ./scripts/clear-file.js",
-    "test": "tsc --noEmit && jest",
+    "test": "npm run test:pal && tsc --noEmit && jest",
+    "test:pal": "node --test tests/scripts/spread-pal.test.cjs tests/scripts/pal-worker-types.test.cjs",
     "test:dts": "npx tsc ./scripts/test-declarations/test.d.ts",
     "update:engine-version": "node ./scripts/checkout-engine-version.js",
     "update:native-external": "node ./native/utils/update-external.js",
@@ -83,7 +84,7 @@
     "@cocos/cannon": "1.2.8",
     "@cocos/ccbuild": "^2.3.21",
     "@cocos/dragonbones-js": "^1.0.1",
-    "@cocos/engine-pal": "^1.0.4",
+    "@cocos/engine-pal": "^1.0.6",
     "@cocos/engine-platforms": "^1.0.6",
     "@types/jest": "^24.9.1"
   },
