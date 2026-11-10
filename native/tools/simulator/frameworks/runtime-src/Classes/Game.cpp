@@ -25,6 +25,7 @@
 #include "Game.h"
 #include "cocos/application/ApplicationManager.h"
 #include "cocos/bindings/jswrapper/SeApi.h"
+#include "cocos/plugins/Plugins.h"
 #include "cocos/bindings/manual/jsb_classtype.h"
 #include "cocos/bindings/manual/jsb_global.h"
 #include "cocos/bindings/manual/jsb_module_register.h"
@@ -56,6 +57,8 @@ Game::~Game() {
 int Game::init() {
     
     cc::pipeline::GlobalDSManager::setDescriptorSetLayout();
+    // Mirrors BaseGame::init(): register native plugins before any script runs.
+    cc_load_all_plugins();
     SimulatorApp::getInstance()->init();
     std::call_once(_windowCreateFlag, [&]() {
         cc::ISystemWindowInfo info;

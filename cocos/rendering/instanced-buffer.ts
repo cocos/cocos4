@@ -141,12 +141,27 @@ export class InstancedBuffer {
 
     private _appendInstance (instance: IInstancedItem, data: Uint8Array, shader: Shader, descriptorSet: DescriptorSet): void {
         if (instance.count >= instance.capacity) { // resize buffers
-            instance.capacity = Math.min(instance.capacity << 1, MAX_CAPACITY);
+            const requiredCapacity = instance.count + 1;
+            const targetCapacity = Math.min(Math.max(instance.capacity << 1, requiredCapacity), MAX_CAPACITY);
+            const targetSize = instance.stride * targetCapacity;
+            instance.vb.resize(targetSize);
+            if (instance.vb.size < targetSize) {
+                const requiredSize = instance.stride * requiredCapacity;
+                if (instance.vb.size < requiredSize) {
+                    instance.vb.resize(requiredSize);
+                }
+            }
+            instance.capacity = Math.floor(instance.vb.size / instance.stride);
+            if (instance.count >= instance.capacity) {
+                instance.count = instance.capacity;
+                return;
+            }
             const newSize = instance.stride * instance.capacity;
-            const oldData = instance.data;
-            instance.data = new Uint8Array(newSize);
-            instance.data.set(oldData);
-            instance.vb.resize(newSize);
+            if (newSize > instance.data.byteLength) {
+                const oldData = instance.data;
+                instance.data = new Uint8Array(newSize);
+                instance.data.set(oldData.subarray(0, instance.count * instance.stride));
+            }
         }
         instance.shader = shader;
         instance.descriptorSet = descriptorSet;

@@ -770,6 +770,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         } else {
             gl.bufferData(WebGLConstants.ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ARRAY_BUFFER, null);
         cache.glArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.INDEX) {
@@ -790,6 +792,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         } else {
             gl.bufferData(WebGLConstants.ELEMENT_ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ELEMENT_ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ELEMENT_ARRAY_BUFFER, null);
         cache.glElementArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.UNIFORM) {
@@ -798,6 +802,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         }
 
         gl.bufferData(WebGLConstants.UNIFORM_BUFFER, gpuBuffer.size, glUsage);
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.UNIFORM_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.UNIFORM_BUFFER, null);
         cache.glUniformBuffer = null;
     } else if ((gpuBuffer.usage & BufferUsageBit.INDIRECT)
@@ -824,6 +830,7 @@ export function WebGL2CmdFuncUpdateBuffer (
             gpuBuffer.indirects.setDrawInfo(offset + i, drawInfos[i]);
         }
     } else {
+        if (size > gpuBuffer.size) { return; }
         const buff = buffer as ArrayBuffer;
         const { gl } = device;
         const cache = device.getStateCache();

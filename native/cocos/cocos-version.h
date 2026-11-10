@@ -30,4 +30,4 @@ THE SOFTWARE.
 #define COCOS_VERSION_DEFINED   1
 #define COCOS_VERSION           40000
 
-// #define COCOS_PRE_RELEASE       "alpha"
+// #define COCOS_PRE_RELEASE       "beta"

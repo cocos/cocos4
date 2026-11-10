@@ -145,7 +145,7 @@ void main()  {
     color = packRGBE(color.rgb); // for reflection-map
   #else
     color = CCSurfacesDebugDisplayInvalidNumber(color);
-    #if !CC_USE_FLOAT_OUTPUT || CC_IS_TRANSPARENCY_PASS
+    #if !CC_USE_FLOAT_OUTPUT
       color.rgb = HDRToLDR(color.rgb);
       color.rgb = LinearToSRGB(color.rgb);
     #endif
