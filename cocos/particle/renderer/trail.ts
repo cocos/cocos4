@@ -571,7 +571,10 @@ export default class TrailModule {
         for (const trail of this._particleTrail.values()) {
             if (trail.count() > 0) vertexCount += (trail.count() + 1) * 2;
         }
-        this._ensureBufferCapacity(Math.min(vertexCount, 65536));
+        // Initialization preallocates the estimated capacity; grow only if that estimate is exceeded.
+        if (vertexCount > this._iaVertCount) {
+            this._ensureBufferCapacity(Math.min(vertexCount, 65536));
+        }
         for (const [p, trailSeg] of this._particleTrail) {
             if (trailSeg.start === -1) {
                 continue;
@@ -709,7 +712,7 @@ export default class TrailModule {
 
     private rebuild (): void {
         const self = this;
-        self._trailNum = Math.min(Math.max(1, self._trailNum), 32767);
+        // Preserve the full estimate from onInit instead of relying on runtime buffer growth.
         const device: Device = director.root!.device;
         const vertexBuffer = device.createBuffer(new BufferInfo(
             BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
