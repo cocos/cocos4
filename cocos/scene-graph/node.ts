@@ -1835,10 +1835,16 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
      */
     @editable
     get angle (): number {
-        // Preserve explicitly assigned angles (including full turns).
-        if (!this._eulerDirty && this._euler.x === 0 && this._euler.y === 0) {
-            return this._euler.z;
-        }
+        return this.eulerAngles.z;
+    }
+
+    /**
+     * @en Gets the signed local Z rotation in degrees for 2D nodes, in [-180, 180].
+     * Full turns are not preserved. For non-planar rotations, returns the Euler Z component.
+     * @zh 获取二维节点的本地 Z 轴有符号旋转角度，范围为 [-180, 180]，不保留累计圈数。
+     * 非平面旋转返回欧拉角的 Z 分量。
+     */
+    public getAngle2D (): number {
         // YZX Euler decomposition folds Z into [-90, 90]. For a 2D rotation,
         // extract the signed angle directly, without changing the 3D Euler cache.
         const { x, y, z, w } = this._lrot;

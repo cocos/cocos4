@@ -28,7 +28,7 @@ import { NodeEventType } from './node-event';
 import { CCObjectFlags } from '../core/data/object';
 import { NodeUIProperties } from './node-ui-properties';
 import { MobilityMode, NodeSpace, TransformBit } from './node-enum';
-import { IVec2Like, Mat4, Quat, Vec3 } from '../core/math';
+import { EPSILON, IVec2Like, Mat4, Quat, toDegree, Vec3 } from '../core/math';
 import { Layers } from './layers';
 import { editorExtrasTag, SerializationContext, SerializationOutput, serializeTag } from '../core/data';
 import { _tempFloatArray, fillMat4WithTempFloatArray } from './utils.jsb';
@@ -690,6 +690,14 @@ nodeProto.setPosition = function setPosition(val: Readonly<Vec3> | number, y?: n
         this._lpos.z = _tempFloatArray[3] = z as number;
     }
     this._setPosition();
+};
+
+nodeProto.getAngle2D = function getAngle2D(): number {
+    const { x, y, z, w } = this._lrot;
+    if (Math.abs(x) < EPSILON && Math.abs(y) < EPSILON) {
+        return toDegree(Math.atan2(2 * w * z, 1 - 2 * z * z));
+    }
+    return this.eulerAngles.z;
 };
 
 nodeProto.getRotation = function getRotation(out?: Quat): Quat {

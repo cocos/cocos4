@@ -434,9 +434,11 @@ public:
     }
 
     inline float getAngle() const {
-        if (!_eulerDirty && _euler.x == 0.F && _euler.y == 0.F) {
-            return _euler.z;
-        }
+        return getEulerAngles().z;
+    }
+
+    // Signed local 2D angle in degrees, normalized to [-180, 180].
+    inline float getAngle2D() const {
         // Keep 2D angles independent of the folded Z in YZX Euler decomposition.
         const auto &q = _localRotation;
         if (std::abs(q.x) < 1e-6F && std::abs(q.y) < 1e-6F) {

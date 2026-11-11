@@ -11,7 +11,7 @@ export default function (parent: Node, _steps = 0) {
     if (physics2d.selector.id === 'builtin') 
         return;
 
-    // Regression: physics writeback must not fold node.angle at +/-90 degrees.
+    // Regression: physics writeback must not fold getAngle2D() at +/-90 degrees.
     for (const type of [physics2d.ERigidBody2DType.Dynamic, physics2d.ERigidBody2DType.Kinematic]) {
         for (const enabled of [true, false]) {
             const node = new Node('AngleRegression');
@@ -24,14 +24,14 @@ export default function (parent: Node, _steps = 0) {
             for (const angle of [-179, -120, -91, 91, 120, 179]) {
                 node.angle = angle;
                 director.tick(dt);
-                expect(node.angle).toBeCloseTo(angle, 3);
+                expect(node.getAngle2D()).toBeCloseTo(angle, 3);
                 expect(Math.abs(Quat.dot(node.worldRotation, Quat.fromAngleZ(new Quat(), angle)))).toBeCloseTo(1);
             }
             // Exercise read/modify/write across both 90 degrees and full turns.
             for (const delta of [10, -10]) {
                 node.angle = 0;
                 for (let step = 1; step <= 40; ++step) {
-                    node.angle += delta;
+                    node.angle = node.getAngle2D() + delta;
                     director.tick(dt);
                     const expected = Quat.fromAngleZ(new Quat(), step * delta);
                     expect(Math.abs(Quat.dot(node.worldRotation, expected))).toBeCloseTo(1);
