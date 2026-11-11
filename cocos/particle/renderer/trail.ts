@@ -573,7 +573,12 @@ export default class TrailModule {
         }
         // Initialization preallocates the estimated capacity; grow only if that estimate is exceeded.
         if (vertexCount > this._iaVertCount) {
-            this._ensureBufferCapacity(Math.min(vertexCount, 65536));
+            if (!this._ensureBufferCapacity(Math.min(vertexCount, 65536))) {
+                // Do not upload or draw with a partially resized pair of GPU buffers.
+                this.updateIA(0);
+                if (this._trailModel) this._trailModel.enabled = false;
+                return;
+            }
         }
         for (const [p, trailSeg] of this._particleTrail) {
             if (trailSeg.start === -1) {
@@ -697,17 +702,26 @@ export default class TrailModule {
         this._trailModel = (cclegacy.director.root as Root).createModel(scene.Model);
     }
 
-    private _ensureBufferCapacity (vertexCount: number): void {
-        if (vertexCount <= this._iaVertCount || !this._subMeshData) return;
+    private _ensureBufferCapacity (vertexCount: number): boolean {
+        if (vertexCount <= this._iaVertCount) return true;
+        if (!this._subMeshData) return false;
         const capacity = Math.min(65536, Math.max(vertexCount, this._iaVertCount * 2));
-        const buffer = new ArrayBuffer(capacity * this._vertSize);
+        const vertexBytes = capacity * this._vertSize;
+        const indexBytes = capacity * 3 * Uint16Array.BYTES_PER_ELEMENT;
+        const vertexBuffer = this._subMeshData.vertexBuffers[0];
+        const indexBuffer = this._subMeshData.indexBuffer!;
+        if (vertexBuffer.size < vertexBytes) vertexBuffer.resize(vertexBytes);
+        if (indexBuffer.size < indexBytes) indexBuffer.resize(indexBytes);
+        if (vertexBuffer.size < vertexBytes || indexBuffer.size < indexBytes) return false;
+
+        // Commit CPU storage and capacity only after both GPU allocations succeed.
+        const buffer = new ArrayBuffer(vertexBytes);
         this._vbF32 = new Float32Array(buffer);
         this._vbUint32 = new Uint32Array(buffer);
         this._iBuffer = new Uint16Array(capacity * 3);
-        this._subMeshData.vertexBuffers[0].resize(buffer.byteLength);
-        this._subMeshData.indexBuffer!.resize(this._iBuffer.byteLength);
         this._iaVertCount = capacity;
         this._iaIndexCount = this._iBuffer.length;
+        return true;
     }
 
     private rebuild (): void {
