@@ -216,6 +216,29 @@ TEST(NodeTest, setWorldScale0yz_and_rotation) {
         0, 0, 0, 1)));
 }
 
+TEST(NodeTest, angleAfterQuaternionWriteback) {
+    cc::IntrusivePtr<cc::Node> node(new Node());
+    for (const float angle : {-179.F, -120.F, -91.F, -90.F, 90.F, 91.F, 120.F, 179.F}) {
+        const float halfAngle = angle * math::DEG_TO_RAD * 0.5F;
+        const Quaternion rotation(0.F, 0.F, std::sin(halfAngle), std::cos(halfAngle));
+        node->setRotation(rotation);
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+        const Vec3 euler = node->getEulerAngles();
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+        EXPECT_TRUE(node->getEulerAngles().approxEquals(euler));
+        node->setRotation(Quaternion(-rotation.x, -rotation.y, -rotation.z, -rotation.w));
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+    }
+    node->setAngle(720.F);
+    EXPECT_FLOAT_EQ(node->getAngle(), 720.F);
+    EXPECT_NEAR(node->getAngle2D(), 0.F, 1e-4F);
+    const float halfAngle = 60.F * math::DEG_TO_RAD;
+    node->setRotation(Quaternion(0.F, 0.F, std::sin(halfAngle), std::cos(halfAngle)));
+    EXPECT_NEAR(node->getAngle2D(), 120.F, 1e-4F);
+    EXPECT_NEAR(node->getAngle(), 60.F, 1e-4F);
+    EXPECT_NEAR(node->getAngle2D(), 120.F, 1e-4F);
+}
+
 TEST(NodeTest, setWorldScaleSignedTargetsAreIdempotent) {
     for (int signs = 0; signs < 8; ++signs) {
         cc::IntrusivePtr<cc::Node> parent(new Node());
