@@ -666,6 +666,50 @@ describe(`Node`, () => {
         ))).toBeTruthy();
     });
 
+    test.each([-179, -120, -91, -90, 90, 91, 120, 179])('2D angle after quaternion writeback: %s', (angle) => {
+        const node = new Node();
+        const rotation = Quat.fromAngleZ(new Quat(), angle);
+        node.setRotation(rotation);
+        expect(node.getAngle2D()).toBeCloseTo(angle);
+        // Reading the 3D Euler cache first must not change the 2D angle.
+        const euler = node.eulerAngles.clone();
+        expect(node.getAngle2D()).toBeCloseTo(angle);
+        expect(Vec3.equals(node.eulerAngles, euler)).toBe(true);
+        node.setRotation(new Quat(-rotation.x, -rotation.y, -rotation.z, -rotation.w));
+        expect(node.getAngle2D()).toBeCloseTo(angle);
+    });
+
+    test('angle keeps legacy Euler results independently of getAngle2D', () => {
+        const node = new Node();
+        node.setRotation(Quat.fromAngleZ(new Quat(), 120));
+        expect(node.getAngle2D()).toBeCloseTo(120);
+        expect(node.angle).toBeCloseTo(60);
+        expect(node.getAngle2D()).toBeCloseTo(120);
+        expect(node.angle).toBeCloseTo(60);
+    });
+
+    test('getAngle2D stays local under a rotated parent', () => {
+        const parent = new Node();
+        const node = new Node();
+        parent.addChild(node);
+        parent.angle = 30;
+        node.setWorldRotationFromEuler(0, 0, 150);
+        expect(node.getAngle2D()).toBeCloseTo(120);
+    });
+
+    test('angle preserves explicit full turns and 3D Euler behavior', () => {
+        const node = new Node();
+        node.angle = 720;
+        expect(node.angle).toBe(720);
+        expect(node.getAngle2D()).toBeCloseTo(0);
+        const rotation = Quat.fromEuler(new Quat(), 30, 40, 120);
+        node.setRotation(rotation);
+        const euler = Quat.toEuler(new Vec3(), rotation);
+        expect(node.angle).toBeCloseTo(euler.z);
+        expect(node.getAngle2D()).toBeCloseTo(euler.z);
+        expect(node.eulerAngles).toEqual(euler);
+    });
+
     test ('angle', ()=> {
         let node = new Node();
 
