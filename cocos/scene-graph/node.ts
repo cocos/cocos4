@@ -1838,6 +1838,17 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         return this.eulerAngles.z;
     }
 
+    set angle (val: number) {
+        Vec3.set(this._euler, 0, 0, val);
+        Quat.fromAngleZ(this._lrot, val);
+        this._eulerDirty = false;
+
+        this.invalidateChildren(TransformBit.ROTATION);
+        if (this._eventMask & TRANSFORM_ON) {
+            this.emit(TRANSFORM_CHANGED, TransformBit.ROTATION);
+        }
+    }
+
     /**
      * @en Gets the signed local Z rotation in degrees for 2D nodes, in [-180, 180].
      * Full turns are not preserved. For non-planar rotations, returns the Euler Z component.
@@ -1852,17 +1863,6 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             return toDegree(Math.atan2(2 * w * z, 1 - 2 * z * z));
         }
         return this.eulerAngles.z;
-    }
-
-    set angle (val: number) {
-        Vec3.set(this._euler, 0, 0, val);
-        Quat.fromAngleZ(this._lrot, val);
-        this._eulerDirty = false;
-
-        this.invalidateChildren(TransformBit.ROTATION);
-        if (this._eventMask & TRANSFORM_ON) {
-            this.emit(TRANSFORM_CHANGED, TransformBit.ROTATION);
-        }
     }
 
     /**
