@@ -25,7 +25,7 @@
 import { ccclass, executeInEditMode, executionOrder, help, menu, serializable, type, visible, editable } from 'cc.decorator';
 import { builtinResMgr } from '../../asset/asset-manager';
 import { Material } from '../../asset/assets';
-import { Color, Vec2, Vec3, Vec4, CCBoolean, cclegacy, isValid, warn } from '../../core';
+import { Color, Vec2, Vec3, Vec4, CCBoolean, CCFloat, cclegacy, isValid, warn } from '../../core';
 import { ModelLocalBindings } from '../../rendering/define';
 import { Model } from '../../render-scene/scene';
 import type { Root } from '../../root';
@@ -34,6 +34,11 @@ import { SpriteFrame, SpriteFrameEvent } from '../assets/sprite-frame';
 import { ModelRenderer } from '../../misc';
 import type { Mesh } from '../../3d/assets/mesh';
 import { MaterialInstance } from '../../render-scene/core/material-instance';
+import type { TextureBase } from '../../asset/assets/texture-base';
+import { createMesh } from '../../3d/misc/create-mesh';
+import { generateSpriteGeometry, SpriteDrawMode, SpriteTileMode } from '../utils/sprite-renderer-geometry';
+
+export { SpriteDrawMode, SpriteTileMode };
 
 enum SpriteMode {
     SIMPLE = 0,
@@ -51,6 +56,8 @@ enum SpriteMode {
 @menu('2D/SpriteRenderer')
 @executeInEditMode
 export class SpriteRenderer extends ModelRenderer {
+    public static DrawMode = SpriteDrawMode;
+    public static TileMode = SpriteTileMode;
     constructor () {
         super();
     }
@@ -114,6 +121,59 @@ export class SpriteRenderer extends ModelRenderer {
         return this._model;
     }
 
+    /** @en Geometry generation mode. @zh 几何生成模式。 */
+    @type(SpriteDrawMode)
+    @editable
+    get drawMode (): SpriteDrawMode { return this._drawMode; }
+    set drawMode (value: SpriteDrawMode) {
+        if (this._drawMode === value) return;
+        this._drawMode = value;
+        this._destroyModel();
+        this._releaseFrame();
+        this._updateModels();
+    }
+
+    /** @en Target size in local world units; ignored in Simple mode. @zh 局部世界单位尺寸，Simple 模式忽略。 */
+    @type(Vec2)
+    @editable
+    @visible(function sizeVisible (this: SpriteRenderer) { return this._drawMode !== SpriteDrawMode.SIMPLE; })
+    get size (): Readonly<Vec2> {
+        if (!this._renderSize) {
+            const frame = this._spriteFrame;
+            return new Vec2(frame ? frame.rect.width / frame.pixelsToUnit : 1, frame ? frame.rect.height / frame.pixelsToUnit : 1);
+        }
+        return new Vec2(this._renderSize);
+    }
+    set size (value: Readonly<Vec2>) {
+        if (this._renderSize?.strictEquals(value)) return;
+        this._renderSize = new Vec2(value);
+        if (this._drawMode !== SpriteDrawMode.SIMPLE) this._invalidateGeometry();
+    }
+
+    /** @en Continuous or adaptive repetition. @zh 连续或自适应平铺。 */
+    @type(SpriteTileMode)
+    @editable
+    @visible(function tileModeVisible (this: SpriteRenderer) { return this._drawMode === SpriteDrawMode.TILED; })
+    get tileMode (): SpriteTileMode { return this._tileMode; }
+    set tileMode (value: SpriteTileMode) {
+        if (this._tileMode === value) return;
+        this._tileMode = value;
+        if (this._drawMode === SpriteDrawMode.TILED) this._invalidateGeometry();
+    }
+
+    /** @en Fraction of a repeat unit before adding a complete adaptive tile, in [0, 1]. @zh 增加完整平铺单元的阈值，范围 [0, 1]。 */
+    @type(CCFloat)
+    @editable
+    @visible(function thresholdVisible (this: SpriteRenderer) {
+        return this._drawMode === SpriteDrawMode.TILED && this._tileMode === SpriteTileMode.ADAPTIVE;
+    })
+    get adaptiveModeThreshold (): number { return this._adaptiveModeThreshold; }
+    set adaptiveModeThreshold (value: number) {
+        if (this._adaptiveModeThreshold === value) return;
+        this._adaptiveModeThreshold = value;
+        if (this._drawMode === SpriteDrawMode.TILED && this._tileMode === SpriteTileMode.ADAPTIVE) this._invalidateGeometry();
+    }
+
     @serializable
     protected _spriteFrame: SpriteFrame | null = null;
     @serializable
@@ -134,11 +194,22 @@ export class SpriteRenderer extends ModelRenderer {
     protected _instanceFlipY = false;
     @visible(false)
     @serializable
-    protected _size: Vec2 = new Vec2(); // todo for sliced & tiled
+    protected _size: Vec2 = new Vec2(); // Legacy inactive placeholder, preserved for old scenes.
+    @serializable
+    protected _drawMode = SpriteDrawMode.SIMPLE;
+    @serializable
+    protected _renderSize: Vec2 | null = null; // null = natural size; explicit zero remains zero on reload.
+    @serializable
+    protected _tileMode = SpriteTileMode.CONTINUOUS;
+    @serializable
+    protected _adaptiveModeThreshold = 0.5;
 
     private _model: Model | null = null;
     private _retainedFrame: SpriteFrame | null = null;
     private _boundMesh: Mesh | null = null;
+    private _ownedMesh: Mesh | null = null;
+    private _ownedTexture: TextureBase | null = null;
+    private _geometryWarning = '';
     private _applyingMaterial = false;
     private _warnedMaterial: Material | null = null;
     private _spriteFlip = new Vec4(1, 1, 1, 1);
@@ -193,6 +264,19 @@ export class SpriteRenderer extends ModelRenderer {
             this._models.length = 0;
         }
         this._boundMesh = null;
+        this._ownedMesh?.destroy();
+        this._ownedMesh = null;
+        this._ownedTexture?.decRef(false);
+        this._ownedTexture = null;
+    }
+
+    private _invalidateGeometry (): void {
+        this._destroyModel();
+        this._updateModels();
+    }
+
+    private _onBorderChanged (): void {
+        if (this._drawMode !== SpriteDrawMode.SIMPLE) this._invalidateGeometry();
     }
 
     private _releaseFrame (): void {
@@ -201,10 +285,15 @@ export class SpriteRenderer extends ModelRenderer {
         this._retainedFrame = null;
         frame.off(SpriteFrameEvent.MESH_CHANGED, this._onFrameChanged, this);
         frame.off(SpriteFrameEvent.MESH_DESTROYED, this._onFrameDestroyed, this);
+        frame.off(SpriteFrameEvent.BORDER_CHANGED, this._onBorderChanged, this);
         frame._releaseMesh();
     }
 
     private _onFrameChanged (): void {
+        if (this._drawMode !== SpriteDrawMode.SIMPLE) {
+            this._invalidateGeometry();
+            return;
+        }
         // Inactive components retain ownership, but do not rebuild or upload on resource changes.
         if (!this.enabledInHierarchy) {
             this._destroyModel();
@@ -233,11 +322,32 @@ export class SpriteRenderer extends ModelRenderer {
             frame._retainMesh();
             frame.on(SpriteFrameEvent.MESH_CHANGED, this._onFrameChanged, this);
             frame.on(SpriteFrameEvent.MESH_DESTROYED, this._onFrameDestroyed, this);
+            frame.on(SpriteFrameEvent.BORDER_CHANGED, this._onBorderChanged, this);
         }
-        frame.ensureMeshData();
-        const mesh = frame.mesh;
         const sourceTexture = frame._getSourceTexture();
-        if (!mesh || !isValid(sourceTexture, true) || !sourceTexture.getGFXTexture()) {
+        if (!isValid(sourceTexture, true) || !sourceTexture.getGFXTexture()) {
+            this._destroyModel();
+            return;
+        }
+        let mesh: Mesh | null;
+        if (this._drawMode === SpriteDrawMode.SIMPLE) {
+            frame.ensureMeshData();
+            mesh = frame.mesh;
+        } else {
+            if (!this._ownedMesh) {
+                const size = this._renderSize ?? this.size;
+                const result = generateSpriteGeometry(frame, size.x, size.y, this._drawMode, this._tileMode, this._adaptiveModeThreshold);
+                if (result.error && result.error !== this._geometryWarning) warn(`SpriteRenderer: ${result.error}.`);
+                this._geometryWarning = result.error || '';
+                if (result.geometry) {
+                    this._ownedMesh = createMesh(result.geometry);
+                    sourceTexture.addRef();
+                    this._ownedTexture = sourceTexture;
+                }
+            }
+            mesh = this._ownedMesh;
+        }
+        if (!mesh) {
             this._destroyModel();
             return;
         }

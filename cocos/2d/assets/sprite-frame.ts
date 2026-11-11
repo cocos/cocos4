@@ -174,6 +174,7 @@ export enum SpriteFrameEvent {
     UV_UPDATED = 'uv_updated',
     /** @engineInternal The cached world mesh is invalid; consumers must rebind before the old mesh is released. */
     MESH_CHANGED = 'mesh_changed',
+    BORDER_CHANGED = 'border_changed',
     /** @engineInternal Stop submitting and release world mesh references. */
     MESH_DESTROYED = 'mesh_destroyed',
 }
@@ -290,6 +291,7 @@ export class SpriteFrame extends Asset {
         }
 
         this._capInsets[INSET_TOP] = value;
+        if (this._meshUsers) this.emit(SpriteFrameEvent.BORDER_CHANGED, this);
         if (this._texture) {
             this._calculateSlicedUV();
         }
@@ -309,6 +311,7 @@ export class SpriteFrame extends Asset {
         }
 
         this._capInsets[INSET_BOTTOM] = value;
+        if (this._meshUsers) this.emit(SpriteFrameEvent.BORDER_CHANGED, this);
         if (this._texture) {
             this._calculateSlicedUV();
         }
@@ -328,6 +331,7 @@ export class SpriteFrame extends Asset {
         }
 
         this._capInsets[INSET_LEFT] = value;
+        if (this._meshUsers) this.emit(SpriteFrameEvent.BORDER_CHANGED, this);
         if (this._texture) {
             this._calculateSlicedUV();
         }
@@ -347,6 +351,7 @@ export class SpriteFrame extends Asset {
         }
 
         this._capInsets[INSET_RIGHT] = value;
+        if (this._meshUsers) this.emit(SpriteFrameEvent.BORDER_CHANGED, this);
         if (this._texture) {
             this._calculateSlicedUV();
         }
@@ -962,6 +967,26 @@ export class SpriteFrame extends Asset {
     /** @engineInternal Source texture before UI dynamic packing; may itself be a static atlas. */
     public _getSourceTexture (): TextureBase {
         return this._original ? this._original._texture : this._texture;
+    }
+
+    /** @engineInternal Whether rectangular world geometry is supported. */
+    public _isRectMesh (): boolean {
+        return this._meshType === MeshType.RECT;
+    }
+
+    /** @engineInternal Source corner UVs with the Sprite Effect V inversion; no cached UI data. */
+    public _getSourceUVs (): number[] {
+        const texture = this._getSourceTexture();
+        const original = this._original;
+        return this.uv.map((value, index) => {
+            if (original) {
+                const size = index % 2 ? texture.height : texture.width;
+                const packedSize = index % 2 ? this._texture.height : this._texture.width;
+                const translation = index % 2 ? this._rect.y - original._y : this._rect.x - original._x;
+                value = size === 0 ? 0 : (value * packedSize - translation) / size;
+            }
+            return index % 2 ? 1 - value : value;
+        });
     }
 
     private _detachFromDynamicAtlas (textureToKeep?: TextureBase): void {
@@ -1620,17 +1645,7 @@ export class SpriteFrame extends Asset {
         if (![left, bottom, right, top].every(Number.isFinite)) return;
         const texture = this._getSourceTexture();
         if (!isValid(texture, true)) return;
-        const original = this._original;
-        // Undo only the dynamic-atlas translation/normalization. Static rotation and flips remain.
-        const uvs = this.uv.map((value, index) => {
-            if (original) {
-                const size = index % 2 ? texture.height : texture.width;
-                const packedSize = index % 2 ? this._texture.height : this._texture.width;
-                const translation = index % 2 ? this._rect.y - original._y : this._rect.x - original._x;
-                value = size === 0 ? 0 : (value * packedSize - translation) / size;
-            }
-            return index % 2 ? 1 - value : value;
-        });
+        const uvs = this._getSourceUVs();
         this._minPos.set(left, bottom, 0);
         this._maxPos.set(right, top, 0);
         this._mesh = createMesh({
