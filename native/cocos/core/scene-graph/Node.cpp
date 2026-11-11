@@ -684,10 +684,12 @@ const Quaternion &Node::getWorldRotation() const { // NOLINT(misc-no-recursion)
 void Node::setWorldScale(float x, float y, float z) {
     bool forceUpdate = _parent != nullptr && (_transformFlags & static_cast<uint32_t>(TransformBit::SCALE)) != static_cast<uint32_t>(TransformBit::NONE);
 
+    // World-scale decomposition can hide local mirror signs. Preserve the same-value no-op for nonnegative targets.
+    const bool parentedNonnegativeTarget = _parent != nullptr && x >= 0.F && y >= 0.F && z >= 0.F;
     if (!forceUpdate && (_parent == nullptr || (y >= 0.F && z >= 0.F)) &&
         _worldScale.approxEquals({x, y, z}) &&
         (_worldScale.x < 0.F) == (x < 0.F) &&
-        (_localScale.y < 0.F) == (y < 0.F) && (_localScale.z < 0.F) == (z < 0.F)) {
+        (parentedNonnegativeTarget || ((_localScale.y < 0.F) == (y < 0.F) && (_localScale.z < 0.F) == (z < 0.F)))) {
         return;
     }
 

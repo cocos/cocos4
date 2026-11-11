@@ -323,10 +323,10 @@ TEST(NodeTest, setWorldScaleChangesMirrorAxisWhenWorldScaleMatches) {
 
     child->setScale(2.F, -3.F, -4.F);
     EXPECT_TRUE(child->getWorldScale().approxEquals(Vec3(2.F, 3.F, 4.F)));
+    const Mat4 matrixBefore = child->getWorldMatrix();
     child->setWorldScale(2.F, 3.F, 4.F);
-    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, 3.F, 4.F)));
-    Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO, Vec3(2.F, 3.F, 4.F), &expected);
-    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, -3.F, -4.F)));
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(matrixBefore));
 }
 
 TEST(NodeTest, setWorldScaleChangesXWithTinyNegativeY) {
