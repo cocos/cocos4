@@ -23,7 +23,7 @@
 */
 import { ccclass, displayName, executeInEditMode, help, menu, playOnFocus, serializable, tooltip, type, visible } from 'cc.decorator';
 import { EDITOR, EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
-import { CCBoolean, Color, screen, Enum, Vec3, warn, CCObjectFlags, v3 } from '../../core';
+import { CCBoolean, Color, screen, Enum, Vec3, warn, CCObjectFlags, v3, cclegacy, macro } from '../../core';
 
 import { TextureCube } from '../../asset/assets';
 import { scene } from '../../render-scene';
@@ -184,7 +184,11 @@ export class ReflectionProbe extends Component {
     @type(Enum(PlanarReflectionMSAA))
     @displayName('Planar MSAA')
     @tooltip('i18n:reflection_probe.planarMSAA')
-    @visible(function (this: ReflectionProbe) { return this.probeType === ProbeType.PLANAR; })
+    @visible(function (this: ReflectionProbe): boolean {
+        return this.probeType === ProbeType.PLANAR
+            && !!cclegacy.director?.root?.usesCustomPipeline
+            && macro.CUSTOM_PIPELINE_NAME === 'Builtin';
+    })
     get planarMSAA (): PlanarReflectionMSAA {
         return this._planarMSAA;
     }
