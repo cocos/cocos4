@@ -681,7 +681,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         sourceCamera: renderer.scene.Camera,
     ): void {
         const reflectionProbeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager | undefined;
-        if (!reflectionProbeManager) {
+        if (!reflectionProbeManager || !scene) {
             return;
         }
         const ResourceResidency = rendering.ResourceResidency;
@@ -703,6 +703,12 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 let reflectionCamera = probe.camera;
                 if (EDITOR && sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
                     reflectionCamera = probe.renderPreviewPlanarReflection(sourceCamera);
+                }
+                // Native scene queues require the capture camera to reference the rendered scene.
+                if (reflectionCamera.scene !== scene) {
+                    const enabled = reflectionCamera.enabled;
+                    reflectionCamera.attachToScene(scene);
+                    reflectionCamera.enabled = enabled;
                 }
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;
