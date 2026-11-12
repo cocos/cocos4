@@ -221,6 +221,7 @@ export class SkeletonData extends Asset {
                 textureUUIDs.push(tex.uuid || tex.getId());
             }
             if (this._skeletonJson) {
+                /* eslint-disable-next-line max-len */
                 this._skeletonCache = spine.wasmUtil.createSpineSkeletonDataWithJson(this.skeletonJsonStr, this._atlasText, this.textureNames, textureUUIDs);
                 spine.wasmUtil.registerSpineSkeletonDataWithUUID(this._skeletonCache, uuid);
             } else {
