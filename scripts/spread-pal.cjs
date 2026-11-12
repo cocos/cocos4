@@ -14,35 +14,31 @@
 //   物理位于 engineRoot/pal，paths 别名才生效。
 const fs = require('fs');
 const path = require('path');
+const ensurePal = require('./ensure-pal.cjs');
 
 const engineRoot = path.join(__dirname, '..');
-const src = path.join(engineRoot, 'node_modules', '@cocos', 'engine-pal', 'dist');
 const dst = path.join(engineRoot, 'pal');
+// Local PAL development: node scripts/spread-pal.cjs --source ../cocos-pal/dist
+const sourceIndex = process.argv.indexOf('--source');
+if (sourceIndex >= 0 && !process.argv[sourceIndex + 1]) {
+    throw new Error('--source requires a PAL dist directory');
+}
+const fromPackage = sourceIndex < 0;
+const src = fromPackage
+    ? ensurePal.packageDist(dst)
+    : path.resolve(process.argv[sourceIndex + 1]);
+
+if (src === dst || src.startsWith(dst + path.sep)) {
+    throw new Error('PAL source must be outside the destination directory');
+}
 
 if (!fs.existsSync(src)) {
     console.error(`[spread-pal] 找不到 pal 产物: ${src}\n请先安装 @cocos/engine-pal。`);
     process.exit(1);
 }
 
-// 安全清除已有 pal：软链只删链接本身(不碰目标)，真实目录才递归删。
-function removeExisting(p) {
-    let st;
-    try { st = fs.lstatSync(p); } catch (e) { return; } // 不存在
-    if (st.isSymbolicLink()) fs.unlinkSync(p);           // 兼容历史软链
-    else fs.rmSync(p, { recursive: true, force: true });
-}
-
-let count = 0;
-function copyDir(s, d) {
-    fs.mkdirSync(d, { recursive: true });
-    for (const name of fs.readdirSync(s)) {
-        const sp = path.join(s, name);
-        const dp = path.join(d, name);
-        if (fs.statSync(sp).isDirectory()) copyDir(sp, dp);
-        else { fs.copyFileSync(sp, dp); count++; }
-    }
-}
-
-removeExisting(dst);
-copyDir(src, dst);
+// 复制并记录来源(pal/.pal-source.json)。之后各构建入口的 ensure-pal 据此判断 pal/ 是否落后于
+// 已安装的 npm 包(例如 npm install --ignore-scripts 后未重新 spread),落后则自动重新同步。
+const count = ensurePal.spread(src, dst, fromPackage);
+ensurePal(dst);
 console.log(`[spread-pal] 已复制 ${count} 个文件: ${src} -> ${dst}`);

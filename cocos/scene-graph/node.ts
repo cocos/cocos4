@@ -29,7 +29,7 @@ import { NodeUIProperties } from './node-ui-properties';
 import { cclegacy } from '../core/global-exports';
 import { nodePolyfill } from './node-dev';
 import { ISchedulable } from '../core/scheduler';
-import { approx, EPSILON, Mat3, mat4, Mat4, quat, Quat, v3, Vec3 } from '../core/math';
+import { approx, EPSILON, Mat3, mat4, Mat4, quat, Quat, toDegree, v3, Vec3 } from '../core/math';
 import { MobilityMode, NodeSpace, TransformBit } from './node-enum';
 import { CustomSerializable, editorExtrasTag, SerializationContext, SerializationOutput, serializeTag } from '../core/data';
 import { errorID, warnID, error, log, getError } from '../core/platform/debug';
@@ -59,6 +59,7 @@ const ACTIVE_ON = 1 << 1;
 
 const idGenerator = new js.IDGenerator('Node');
 
+/* eslint-disable-next-line max-len */
 function getConstructor<T> (typeOrClassName: string | Constructor<T> | AbstractedConstructor<T>): Constructor<T> | AbstractedConstructor<T> | null | undefined {
     if (!typeOrClassName) {
         errorID(3804);
@@ -316,6 +317,7 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
         return null;
     }
 
+    /* eslint-disable-next-line max-len */
     protected static _findComponents<T extends Component> (node: Node, constructor: Constructor<T> | AbstractedConstructor<T>, components: Component[]): void {
         const cls = constructor;
         const comps = node._components;
@@ -1848,6 +1850,22 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
     }
 
     /**
+     * @en Gets the signed local Z rotation in degrees for 2D nodes, in [-180, 180].
+     * Full turns are not preserved. For non-planar rotations, returns the Euler Z component.
+     * @zh 获取二维节点的本地 Z 轴有符号旋转角度，范围为 [-180, 180]，不保留累计圈数。
+     * 非平面旋转返回欧拉角的 Z 分量。
+     */
+    public getAngle2D (): number {
+        // YZX Euler decomposition folds Z into [-90, 90]. For a 2D rotation,
+        // extract the signed angle directly, without changing the 3D Euler cache.
+        const { x, y, z, w } = this._lrot;
+        if (Math.abs(x) < EPSILON && Math.abs(y) < EPSILON) {
+            return toDegree(Math.atan2(2 * w * z, 1 - 2 * z * z));
+        }
+        return this.eulerAngles.z;
+    }
+
+    /**
      * @en Rotation in world coordinate system, represented by a quaternion
      * @zh 世界坐标系下的旋转，用四元数表示
      */
@@ -2801,9 +2819,18 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             Mat3.multiplyMat4(m3_1, m3_1, m4_2);
 
             const localScale = self._lscale;
-            localScale.x = Vec3.set(v3_a, m3_1.m00, m3_1.m01, m3_1.m02).length();
-            localScale.y = Vec3.set(v3_a, m3_1.m03, m3_1.m04, m3_1.m05).length();
-            localScale.z = Vec3.set(v3_a, m3_1.m06, m3_1.m07, m3_1.m08).length();
+            // Restore the requested signs. For negative X, the parent may already supply a reflection.
+            const parentScale = parent._scale;
+            const parentSign = (parentScale.x < 0 ? -1 : 1) * (parentScale.y < 0 ? -1 : 1) * (parentScale.z < 0 ? -1 : 1);
+            const localScaleX = Vec3.set(v3_a, m3_1.m00, m3_1.m01, m3_1.m02).length() * (worldScale.x < 0 ? -parentSign : 1);
+            const localScaleY = Vec3.set(v3_a, m3_1.m03, m3_1.m04, m3_1.m05).length() * (worldScale.y < 0 ? -1 : 1);
+            const localScaleZ = Vec3.set(v3_a, m3_1.m06, m3_1.m07, m3_1.m08).length() * (worldScale.z < 0 ? -1 : 1);
+            if ((localScale.x < 0) !== (localScaleX < 0)
+                || (localScale.y < 0) !== (localScaleY < 0)
+                || (localScale.z < 0) !== (localScaleZ < 0)) {
+                rotationFlag = TransformBit.ROTATION;
+            }
+            Vec3.set(localScale, localScaleX, localScaleY, localScaleZ);
             if (localScale.x === 0 || localScale.y === 0 || localScale.z === 0) {
                 rotationFlag = TransformBit.ROTATION;
             }

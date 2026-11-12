@@ -34,11 +34,14 @@
 #include "renderer/core/PassUtils.h"
 #include "scene/Model.h"
 
+#include <memory>
+
 namespace cc {
 namespace gfx {
 class CommandBuffer;
 class DescriptorSet;
 class DescriptorSetLayout;
+class RenderPass;
 } // namespace gfx
 namespace scene {
 class Camera;
@@ -54,6 +57,53 @@ class PipelineSceneData;
 class GlobalDSManager;
 class RenderStage;
 class GeometryRenderer;
+
+struct RenderCommandContext {
+    gfx::RenderPass *renderPass{nullptr};
+    gfx::CommandBuffer *cmdBuff{nullptr};
+    PipelineSceneData *sceneData{nullptr};
+    const scene::Camera *camera{nullptr};
+};
+
+class RenderCommand {
+public:
+    RenderCommand() noexcept = default;
+    RenderCommand(RenderCommand &&rhs) = delete;
+    RenderCommand(RenderCommand const &rhs) = delete;
+    RenderCommand &operator=(RenderCommand &&rhs) = delete;
+    RenderCommand &operator=(RenderCommand const &rhs) = delete;
+    virtual ~RenderCommand() noexcept = default;
+
+    virtual void beginRenderCommand(const RenderCommandContext &ctx) = 0;
+    virtual void endRenderCommand(const RenderCommandContext &ctx) = 0;
+};
+
+#if CC_USE_DEBUG_RENDERER
+class DebugRendererRenderCommand final : public RenderCommand {
+public:
+    explicit DebugRendererRenderCommand(PipelineSceneData *sceneData);
+
+    void beginRenderCommand(const RenderCommandContext &ctx) override;
+    void endRenderCommand(const RenderCommandContext &ctx) override;
+
+private:
+    PipelineSceneData *_sceneData{nullptr};
+};
+#endif
+
+#if CC_USE_GEOMETRY_RENDERER
+class GeometryRendererRenderCommand final : public RenderCommand {
+public:
+    explicit GeometryRendererRenderCommand(PipelineSceneData *sceneData);
+
+    void beginRenderCommand(const RenderCommandContext &ctx) override;
+    void endRenderCommand(const RenderCommandContext &ctx) override;
+
+private:
+    PipelineSceneData *_sceneData{nullptr};
+};
+#endif
+
 struct CC_DLL RenderPipelineInfo {
     uint32_t tag = 0;
     RenderFlowList flows;
@@ -140,6 +190,9 @@ public:
 #endif
     }
 
+    void addRenderCommand(const ccstd::string &name, std::shared_ptr<RenderCommand> ptr);
+    RenderCommand *getRenderCommand(const ccstd::string &name) const;
+
     inline void resetRenderQueue(bool reset) { _resetRenderQueue = reset; }
     inline bool isRenderQueueReset() const { return _resetRenderQueue; }
 
@@ -194,6 +247,7 @@ protected:
     ccstd::unordered_map<Vec4, gfx::InputAssembler *, Hasher<Vec4>> _quadIA;
 
     framegraph::FrameGraph _fg;
+    ccstd::unordered_map<ccstd::string, std::shared_ptr<RenderCommand>> _renderCommands;
     ccstd::unordered_map<gfx::ClearFlags, gfx::RenderPass *> _renderPasses;
 
     // use cluster culling or not

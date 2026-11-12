@@ -53,7 +53,7 @@ import { WebGPUTexture } from './webgpu-texture';
 import { DefaultResources, hashCombineNum, hashCombineStr, webGPU, WebGPUDeviceManager } from './define';
 import {
     Filter, Format,
-    QueueType, Feature, BufferTextureCopy, Rect, DescriptorSetInfo,
+    QueueType, Feature, BufferTextureCopy, Rect, Size, DescriptorSetInfo,
     BufferInfo, BufferViewInfo, CommandBufferInfo, DeviceInfo,
     FramebufferInfo, InputAssemblerInfo, QueueInfo, RenderPassInfo, SamplerInfo,
     ShaderInfo, PipelineLayoutInfo, DescriptorSetLayoutInfo, TextureInfo, TextureViewInfo, GeneralBarrierInfo, TextureBarrierInfo,
@@ -552,6 +552,22 @@ export class WebGPUDevice extends Device {
         this._caps.max3DTextureSize = limits.maxTextureDimension3D;
         this._caps.uboOffsetAlignment  = limits.minUniformBufferOffsetAlignment;
 
+        // Compute limits are read from the device (not the adapter): no elevated
+        // compute limits are requested, so these are the values validation enforces.
+        const deviceLimits = device.limits;
+        this._caps.maxComputeSharedMemorySize = deviceLimits.maxComputeWorkgroupStorageSize;
+        this._caps.maxComputeWorkGroupInvocations = deviceLimits.maxComputeInvocationsPerWorkgroup;
+        this._caps.maxComputeWorkGroupSize = new Size(
+            deviceLimits.maxComputeWorkgroupSizeX,
+            deviceLimits.maxComputeWorkgroupSizeY,
+            deviceLimits.maxComputeWorkgroupSizeZ,
+        );
+        this._caps.maxComputeWorkGroupCount = new Size(
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+            deviceLimits.maxComputeWorkgroupsPerDimension,
+        );
+
         const features = this._adapter!.features;
         // FIXME: require by query
         this._multiDrawIndirect = false;
@@ -560,6 +576,7 @@ export class WebGPUDevice extends Device {
         this._features[Feature.ELEMENT_INDEX_UINT] = true;
         this._features[Feature.INSTANCED_ARRAYS] = true;
         this._features[Feature.MULTIPLE_RENDER_TARGETS] = true;
+        this._features[Feature.COMPUTE_SHADER] = true;
         this.initFormatFeatures(features);
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
@@ -684,6 +701,7 @@ export class WebGPUDevice extends Device {
     public present (): void {
         const queue = (this._queue as unknown as WebGPUQueue);
         this._numDrawCalls = queue.numDrawCalls;
+        this._numDispatches = queue.numDispatches;
         this._numInstances = queue.numInstances;
         this._numTris = queue.numTris;
         queue.clear();

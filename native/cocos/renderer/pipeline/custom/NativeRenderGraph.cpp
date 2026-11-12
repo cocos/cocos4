@@ -913,6 +913,13 @@ SceneBuilder *NativeRenderQueueBuilder::addScene(
             data);
     }
 
+#if CC_USE_GEOMETRY_RENDERER
+    if (any(sceneFlags & SceneFlags::GEOMETRY)) {
+        auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneID);
+        data.custom = cc::pipeline::GEOMETRY_RENDERER_COMMAND;
+    }
+#endif
+
     if (any(sceneFlags & SceneFlags::UI)) {
         CC_EXPECTS(camera);
         const auto passOrSubpassId = parent(nodeID, *renderGraph);
@@ -1085,6 +1092,31 @@ void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
         std::forward_as_tuple(QueueHint::BLEND, phaseLayoutId, passLayoutId),
         *renderGraph,
         passOrSubpassId);
+
+#if CC_USE_DEBUG_RENDERER
+    const auto debugId = addVertex2(
+        BlitTag{},
+        std::forward_as_tuple("DebugRenderer"),
+        std::forward_as_tuple(),
+        std::forward_as_tuple(),
+        std::forward_as_tuple(),
+        std::forward_as_tuple(
+            IntrusivePtr<Material>{},
+            RenderGraph::null_vertex(),
+            SceneFlags::NONE,
+            nullptr,
+            BlitType::FULLSCREEN_QUAD),
+        *renderGraph,
+        queueId);
+    auto &debugData = get(RenderGraph::DataTag{}, *renderGraph, debugId);
+    debugData.custom = cc::pipeline::DEBUG_RENDERER_COMMAND;
+    setCameraUBOValues(
+        *camera,
+        *layoutGraph,
+        *pipelineRuntime->getPipelineSceneData(),
+        camera->getScene() ? camera->getScene()->getMainLight() : nullptr,
+        debugData);
+#endif
 
     const auto sceneId = addVertex2(
         BlitTag{},

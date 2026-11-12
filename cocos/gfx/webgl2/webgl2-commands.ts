@@ -770,6 +770,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         } else {
             gl.bufferData(WebGLConstants.ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ARRAY_BUFFER, null);
         cache.glArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.INDEX) {
@@ -790,6 +792,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         } else {
             gl.bufferData(WebGLConstants.ELEMENT_ARRAY_BUFFER, gpuBuffer.size, glUsage);
         }
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.ELEMENT_ARRAY_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.ELEMENT_ARRAY_BUFFER, null);
         cache.glElementArrayBuffer = null;
     } else if (gpuBuffer.usage & BufferUsageBit.UNIFORM) {
@@ -798,6 +802,8 @@ export function WebGL2CmdFuncResizeBuffer (device: WebGL2Device, gpuBuffer: IWeb
         }
 
         gl.bufferData(WebGLConstants.UNIFORM_BUFFER, gpuBuffer.size, glUsage);
+        gpuBuffer.size = gl.getBufferParameter(WebGLConstants.UNIFORM_BUFFER, WebGLConstants.BUFFER_SIZE) as number;
+
         gl.bindBuffer(WebGLConstants.UNIFORM_BUFFER, null);
         cache.glUniformBuffer = null;
     } else if ((gpuBuffer.usage & BufferUsageBit.INDIRECT)
@@ -824,6 +830,7 @@ export function WebGL2CmdFuncUpdateBuffer (
             gpuBuffer.indirects.setDrawInfo(offset + i, drawInfos[i]);
         }
     } else {
+        if (size > gpuBuffer.size) { return; }
         const buff = buffer as ArrayBuffer;
         const { gl } = device;
         const cache = device.getStateCache();
@@ -2811,7 +2818,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
             offset.x =  regionTexOffset.x === 0 ? 0 : alignTo(regionTexOffset.x, blockSizeWidth);
             offset.y =  regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             stride.width = regionBuffStride > 0 ?  regionBuffStride : extent.width;
             stride.height = region.buffTexHeight > 0 ? region.buffTexHeight : extent.height;
@@ -2883,7 +2890,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
             offset.x =  regionTexOffset.x === 0 ? 0 : alignTo(regionTexOffset.x, blockSizeWidth);
             offset.y =  regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             extent.depth = 1;
             stride.width = regionBuffStride > 0 ?  regionBuffStride : extent.width;
@@ -2965,7 +2972,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
             offset.y = regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             offset.z = regionTexOffset.z;
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             extent.depth = regionTexExtent.depth;
             stride.width = regionBuffStride > 0 ?  regionBuffStride : extent.width;
@@ -2986,7 +2993,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
 
             if (!isCompressed) {
                 gl.texSubImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     offset.x,
                     offset.y,
@@ -3000,7 +3007,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
                 );
             } else if (gpuTexture.glInternalFmt !== WebGL2EXT.COMPRESSED_RGB_ETC1_WEBGL as number) {
                 gl.compressedTexSubImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     offset.x,
                     offset.y,
@@ -3013,7 +3020,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
                 );
             } else { // WEBGL_compressed_texture_etc1
                 gl.compressedTexImage3D(
-                    WebGLConstants.TEXTURE_2D_ARRAY,
+                    WebGLConstants.TEXTURE_3D,
                     mipLevel,
                     gpuTexture.glInternalFmt,
                     destWidth,
@@ -3043,7 +3050,7 @@ export function WebGL2CmdFuncCopyBuffersToTexture (
             offset.x =  regionTexOffset.x === 0 ? 0 : alignTo(regionTexOffset.x, blockSizeWidth);
             offset.y =  regionTexOffset.y === 0 ? 0 : alignTo(regionTexOffset.y, blockSizeHeight);
             extent.width = regionTexExtentWidth < blockSizeWidth ? regionTexExtentWidth : alignTo(regionTexExtentWidth, blockSizeWidth);
-            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentWidth
+            extent.height = regionTexExtentHeight < blockSizeHeight ? regionTexExtentHeight
                 : alignTo(regionTexExtentHeight, blockSizeHeight);
             stride.width = regionBuffStride > 0 ?  regionBuffStride : extent.width;
             stride.height = region.buffTexHeight > 0 ? region.buffTexHeight : extent.height;

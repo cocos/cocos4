@@ -48,6 +48,10 @@
     #include "profiler/DebugRenderer.h"
 #endif
 
+#if CC_USE_GEOMETRY_RENDERER
+    #include "cocos/renderer/pipeline/GeometryRenderer.h"
+#endif
+
 namespace cc {
 
 namespace render {
@@ -105,6 +109,54 @@ void addSubresourceNode<gfx::Format::DEPTH_STENCIL>(ResourceGraph::vertex_descri
 }
 
 } // namespace
+
+#if CC_USE_DEBUG_RENDERER
+namespace {
+class DebugRendererRenderCommand final : public CustomRenderCommand {
+public:
+    explicit DebugRendererRenderCommand(pipeline::PipelineSceneData *sceneData)
+    : _sceneData(sceneData) {}
+
+    void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
+        std::ignore = vertID;
+        if (rg.currentRenderPass) {
+            DebugRenderer::getInstance()->render(rg.currentRenderPass, rg.primaryCommandBuffer, _sceneData);
+        }
+    }
+
+    void endRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
+        std::ignore = rg;
+        std::ignore = vertID;
+    }
+
+private:
+    pipeline::PipelineSceneData *_sceneData{nullptr};
+};
+} // namespace
+#endif
+
+#if CC_USE_GEOMETRY_RENDERER
+class GeometryRendererRenderCommand final : public CustomRenderCommand {
+public:
+    explicit GeometryRendererRenderCommand(pipeline::PipelineSceneData *sceneData)
+    : _sceneData(sceneData) {}
+
+    void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
+        const auto &sceneData = get(SceneTag{}, vertID, *rg.renderGraph);
+        if (sceneData.camera && sceneData.camera->getGeometryRenderer()) {
+            sceneData.camera->getGeometryRenderer()->render(rg.currentRenderPass, rg.primaryCommandBuffer, _sceneData);
+        }
+    }
+
+    void endRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
+        std::ignore = vertID;
+        std::ignore = rg;
+    }
+
+private:
+    pipeline::PipelineSceneData *_sceneData{nullptr};
+};
+#endif
 
 NativePipeline::NativePipeline(const allocator_type &alloc) noexcept
 : device(gfx::Device::getInstance()),
@@ -1385,6 +1437,10 @@ bool NativePipeline::activate(gfx::Swapchain *swapchainIn) {
     pipelineSceneData->activate(device);
 #if CC_USE_DEBUG_RENDERER
     DebugRenderer::getInstance()->activate(device);
+    addCustomRenderCommand(cc::pipeline::DEBUG_RENDERER_COMMAND, std::make_shared<DebugRendererRenderCommand>(getPipelineSceneData()));
+#endif
+#if CC_USE_GEOMETRY_RENDERER
+    addCustomRenderCommand(cc::pipeline::GEOMETRY_RENDERER_COMMAND, std::make_shared<GeometryRendererRenderCommand>(getPipelineSceneData()));
 #endif
     // generate macros here rather than construct func because _clusterEnabled
     // switch may be changed in root.ts setRenderPipeline() function which is after

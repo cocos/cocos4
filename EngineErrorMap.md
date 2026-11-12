@@ -3226,6 +3226,18 @@ Cannot access game frame or container.
 
 Setting window size is not supported.
 
+### 9204
+
+maxDevicePixelRatio, when specified, must be a finite number >= 1.
+
+### 9205
+
+PAL did not apply the configured maximum DPR. Check that the engine and PAL versions match.
+
+### 9206
+
+maxDevicePixelRatio cannot change after ScreenAdapter.init().
+
 ### 9300
 
 The current buffer beyond the limit in ui static component, please reduce the amount
@@ -3983,4 +3995,72 @@ Spine version not supported.
 
 ### 16420
 
-Start time must bigger than end time.
+End time must bigger than start time.
+
+### 16500
+
+WorkerPool script path must be a non-empty string
+
+### 16501
+
+WorkerPool requires a self-contained task function or a worker script path
+
+### 16502
+
+WorkerPool has been terminated
+
+### 16503
+
+WorkerPool has no available execution backend
+
+### 16504
+
+No worker backend for "%s" (%s). Provide options.fallback to run single-threaded, or fix packaging (docs/worker/README.md).
+
+### 16505
+
+WorkerPool degraded to single-threaded for "%s": worker backend failed (%s). %s
+
+### 16506
+
+WorkerPool is rejecting tasks (no options.fallback) for "%s": worker backend failed (%s). %s
+
+### 16507
+
+WorkerPool could not use a worker for "%s" and is running single-threaded via options.fallback. Reason: %s. %s
+
+### 16508
+
+WorkerPool could not use a worker for "%s" and is REJECTING tasks (no options.fallback). Reason: %s. %s
+
+### 16509
+
+Worker error
+
+### 16510
+
+Worker is unavailable and no synchronous fallback exists
+
+### 16511
+
+Worker task timed out after %sms — the worker never replied (deadlock, infinite loop, or non-protocol script). Worker discarded; see docs/worker/README.md
+
+### 16512
+
+Worker has been disposed
+
+### 16513
+
+Worker script sent a malformed reply — it must implement the engine protocol: receive { id, args }, post back { id, ok, value } or { id, ok: false, error } (docs/worker/cc-worker-template.js)
+
+### 16514
+
+Worker task failed
+
+### 16515
+
+createWorker(path) requires a non-empty worker script path
+
+### 16516
+
+Function workers are unavailable; use WorkerPool for an automatic sync fallback, or createWorker(path) (mode 2).

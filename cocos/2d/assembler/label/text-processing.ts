@@ -45,6 +45,7 @@ import {
     safeMeasureText,
 } from '../../utils/text-utils';
 import type { Batcher2D } from '../../renderer/batcher-2d';
+import { buildFontDesc, CssFontFamily } from '../../utils/font-family';
 
 const Alignment = [
     'left', // macro.TextAlignment.LEFT
@@ -115,7 +116,7 @@ export class TextProcessing {
                     const maxValue = Math.max(outputLayoutData.canvasSize.width, outputLayoutData.canvasSize.height);
                     const canvasScaleToMaxSizeRatio = MAX_SIZE / maxValue;
                     this._fontScale *=  canvasScaleToMaxSizeRatio;
-                    this._fontScale = Math.max(1, this._fontScale);
+                    this._fontScale = Math.max(0.1, this._fontScale);
                 }
 
                 this._updatePaddingRect(style, outputLayoutData);
@@ -260,18 +261,8 @@ export class TextProcessing {
     }
 
     // can cache
-    private _getFontDesc (fontSize: number, fontFamily: string, isBold: boolean, isItalic: boolean): string {
-        let fontDesc = `${fontSize.toString()}px `;
-        fontDesc += fontFamily;
-        if (isBold) {
-            fontDesc = `bold ${fontDesc}`;
-        }
-
-        if (isItalic) {
-            fontDesc = `italic ${fontDesc}`;
-        }
-
-        return fontDesc;
+    private _getFontDesc (fontSize: number, fontFamily: CssFontFamily, isBold: boolean, isItalic: boolean): string {
+        return buildFontDesc(fontSize, fontFamily, isBold, isItalic);
     }
 
     // can cache

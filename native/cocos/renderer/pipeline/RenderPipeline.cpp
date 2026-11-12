@@ -47,6 +47,34 @@
 namespace cc {
 namespace pipeline {
 
+#if CC_USE_DEBUG_RENDERER
+DebugRendererRenderCommand::DebugRendererRenderCommand(PipelineSceneData *sceneData)
+: _sceneData(sceneData) {
+}
+
+void DebugRendererRenderCommand::beginRenderCommand(const RenderCommandContext &ctx) {
+    renderDebugRenderer(ctx.renderPass, ctx.cmdBuff, _sceneData, ctx.camera);
+}
+
+void DebugRendererRenderCommand::endRenderCommand(const RenderCommandContext & /*ctx*/) {
+}
+#endif
+
+#if CC_USE_GEOMETRY_RENDERER
+GeometryRendererRenderCommand::GeometryRendererRenderCommand(PipelineSceneData *sceneData)
+: _sceneData(sceneData) {
+}
+
+void GeometryRendererRenderCommand::beginRenderCommand(const RenderCommandContext &ctx) {
+    if (ctx.camera && ctx.camera->getGeometryRenderer()) {
+        ctx.camera->getGeometryRenderer()->render(ctx.renderPass, ctx.cmdBuff, _sceneData);
+    }
+}
+
+void GeometryRendererRenderCommand::endRenderCommand(const RenderCommandContext & /*ctx*/) {
+}
+#endif
+
 framegraph::StringHandle RenderPipeline::fgStrHandleOutDepthTexture = framegraph::FrameGraph::stringToHandle("depthTexture");
 framegraph::StringHandle RenderPipeline::fgStrHandleOutColorTexture = framegraph::FrameGraph::stringToHandle("outputTexture");
 framegraph::StringHandle RenderPipeline::fgStrHandlePostprocessPass = framegraph::FrameGraph::stringToHandle("pipelinePostPass");
@@ -87,6 +115,10 @@ bool RenderPipeline::activate(gfx::Swapchain * /*swapchain*/) {
     _pipelineSceneData->activate(_device);
 #if CC_USE_DEBUG_RENDERER
     CC_DEBUG_RENDERER->activate(_device);
+    addRenderCommand(cc::pipeline::DEBUG_RENDERER_COMMAND, std::make_shared<DebugRendererRenderCommand>(getPipelineSceneData()));
+#endif
+#if CC_USE_GEOMETRY_RENDERER
+    addRenderCommand(cc::pipeline::GEOMETRY_RENDERER_COMMAND, std::make_shared<GeometryRendererRenderCommand>(getPipelineSceneData()));
 #endif
 
     // generate macros here rather than construct func because _clusterEnabled
@@ -113,6 +145,15 @@ void RenderPipeline::render(const ccstd::vector<scene::Camera *> &cameras) {
 
 void RenderPipeline::onGlobalPipelineStateChanged() {
     // do nothing
+}
+
+void RenderPipeline::addRenderCommand(const ccstd::string &name, std::shared_ptr<RenderCommand> ptr) {
+    _renderCommands[name] = std::move(ptr);
+}
+
+RenderCommand *RenderPipeline::getRenderCommand(const ccstd::string &name) const {
+    const auto iter = _renderCommands.find(name);
+    return iter == _renderCommands.end() ? nullptr : iter->second.get();
 }
 
 void RenderPipeline::destroyQuadInputAssembler() {

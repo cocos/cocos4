@@ -1,9 +1,9 @@
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import * as fs from 'fs-extra';
 import * as ps from 'path';
 import * as os from 'os';
 import { CocosParams } from '../base/default';
-import { cchelper, toolHelper, Paths } from "../utils";
+import { cchelper, toolHelper } from "../utils";
 import { MacOSPackTool } from "./mac-os";
 
 export interface IOrientation {
@@ -115,13 +115,8 @@ export class IOSPackTool extends MacOSPackTool {
             throw new Error("Error: Try to build iphoneos application but no developer team id was given!");
         }
         const nativePrjDir = this.paths.nativePrjDir;
-
+        const simulatorArch = this.getIosSimulatorArch();
         const projName = this.params.projectName;
-        const os = require('os');
-        const cpus = os.cpus();
-        const model = (cpus && cpus[0] && cpus[0].model) ? cpus[0].model : '';
-        // check mac architecture
-        // const platform = /Apple/.test(model) ? `-arch arm64` : `-arch x86_64`;
         // get xcode workspace
         const regex = new RegExp(projName + '.xcworkspace$');
         const files = fs.readdirSync(nativePrjDir);
@@ -145,7 +140,7 @@ export class IOSPackTool extends MacOSPackTool {
                 await toolHelper.runCmake([projCompileParams, '-sdk', 'iphoneos', `-arch arm64`]);
             }
             if (options.simulator) {
-                await toolHelper.runCmake([projCompileParams, '-sdk', 'iphonesimulator', `-arch x86_64`]); //force compile x86_64 app for iPhone simulator on Mac
+                await toolHelper.runCmake([projCompileParams, '-sdk', 'iphonesimulator', `-arch ${simulatorArch}`]);
             }
         }
         return true;

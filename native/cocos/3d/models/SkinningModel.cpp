@@ -23,6 +23,8 @@
 ****************************************************************************/
 #include "3d/models/SkinningModel.h"
 
+#include <algorithm>
+
 #include <utility>
 
 #include "3d/assets/Mesh.h"
@@ -80,6 +82,7 @@ void SkinningModel::bindSkeleton(Skeleton *skeleton, Node *skinningRoot, Mesh *m
     _joints.clear();
 
     if (!skeleton || !skinningRoot || !mesh) return;
+    const bool prevRealTimeTextureMode = _realTimeTextureMode;
     auto jointCount = static_cast<uint32_t>(skeleton->getJoints().size());
     _realTimeTextureMode = pipeline::SkinningJointCapacity::jointUniformCapacity < jointCount;
     setTransform(skinningRoot);
@@ -112,6 +115,15 @@ void SkinningModel::bindSkeleton(Skeleton *skeleton, Node *skinningRoot, Mesh *m
         jointInfo.buffers = std::move(buffers);
         jointInfo.indices = std::move(indices);
         _joints.emplace_back(std::move(jointInfo));
+    }
+
+    // Rebind recreated resources without resetting custom instanced attributes.
+    const auto subModelCount = std::min(_subModels.size(), _bufferIndices.size());
+    if (subModelCount && prevRealTimeTextureMode != _realTimeTextureMode) {
+        onMacroPatchesStateChanged();
+    }
+    for (index_t i = 0; i < subModelCount; ++i) {
+        updateLocalDescriptors(i, _subModels[i]->getDescriptorSet());
     }
 }
 

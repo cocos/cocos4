@@ -48,6 +48,7 @@ import {
     Device,
     deviceManager,
     DispatchInfo,
+    Feature,
     Format,
     Framebuffer,
     FramebufferInfo,
@@ -56,9 +57,7 @@ import {
     InputAssemblerInfo,
     LoadOp,
     MemoryUsageBit,
-    PipelineBindPoint,
     PipelineState,
-    PipelineStateInfo,
     Rect,
     RenderPass,
     RenderPassInfo,
@@ -1910,26 +1909,23 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
         renderScene.preRecord();
     }
     dispatch (value: Dispatch): void {
+        if (!context.device.hasFeature(Feature.COMPUTE_SHADER)) return;
         let pso: PipelineState | null = null;
         const devicePass = this.currPass as DeviceComputePass;
         const pass = value.material?.passes[value.passID];
         pass?.update();
         const shader = pass?.getShaderVariant();
 
-        if (pass !== null && shader !== null) {
-            const psoInfo = new PipelineStateInfo(
-                shader,
-                pass?.pipelineLayout,
-            );
-            psoInfo.bindPoint = PipelineBindPoint.COMPUTE;
-            pso = deviceManager.gfxDevice.createPipelineState(psoInfo);
+        if (pass && shader) {
+            pso = PipelineStateManager.getOrCreateComputePipelineState(deviceManager.gfxDevice, pass, shader);
         }
         const cmdBuff = context.commandBuffer;
-        if (pso) {
+        if (pso && pass) {
             cmdBuff.bindPipelineState(pso);
             const layoutStage = devicePass.renderLayout;
             const layoutDesc = layoutStage!.descriptorSet!;
             cmdBuff.bindDescriptorSet(SetIndex.GLOBAL, layoutDesc);
+            cmdBuff.bindDescriptorSet(SetIndex.MATERIAL, pass.descriptorSet);
         }
 
         const gx = value.threadGroupCountX;
@@ -1965,10 +1961,12 @@ class PostRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor 
     computeSubpass (value: ComputeSubpass): void {
         // do nothing
     }
-    resolve (value: ResolvePass): void {
-        // do nothing
-    }
     compute (value: ComputePass): void {
+        if (!context.device.hasFeature(Feature.COMPUTE_SHADER)) return;
+        const cmdBuff = context.commandBuffer;
+        (cmdBuff as any).submitComputePass();
+    }
+    resolve (value: ResolvePass): void {
         // do nothing
     }
     copy (value: CopyPass): void {

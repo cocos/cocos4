@@ -86,6 +86,12 @@ void BakedSkinningModel::bindSkeleton(Skeleton *skeleton, Node *skinningRoot, Me
             pipeline::UBOSkinning::size,
         });
     }
+
+    // JSB synchronizes the new root's animation buffer before calling bindSkeleton.
+    for (index_t i = 0; i < _subModels.size(); ++i) {
+        updateLocalDescriptors(i, _subModels[i]->getDescriptorSet());
+    }
+    updateInstancedJointTextureInfo();
 }
 
 void BakedSkinningModel::updateTransform(uint32_t stamp) {

@@ -42,7 +42,7 @@ import VelocityOvertimeModule from './animator/velocity-overtime';
 import Burst from './burst';
 import ShapeModule from './emitter/shape-module';
 import { ParticleCullingMode, ParticleSpace } from './enum';
-import { particleEmitZAxis } from './particle-general-function';
+import { isCurveTwoValues, particleEmitZAxis } from './particle-general-function';
 import ParticleSystemRenderer from './renderer/particle-system-renderer-data';
 import TrailModule from './renderer/trail';
 import { ParticleSystemRendererBase } from './renderer/particle-system-renderer-base';
@@ -55,6 +55,9 @@ import { director, DirectorEvent } from '../game/director';
 
 const _world_mat = new Mat4();
 const _world_rol = new Quat();
+const _emitDirection = new Vec3();
+const _alignRotation = new Quat();
+const _startRotation = new Quat();
 
 const superMaterials = Object.getOwnPropertyDescriptor(Renderer.prototype, 'sharedMaterials')!;
 
@@ -141,7 +144,7 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeY')
-    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; })
+    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; }) // eslint-disable-line func-names, comma-dangle
     public startSizeY = new CurveRange();
 
     /**
@@ -153,7 +156,7 @@ export class ParticleSystem extends ModelRenderer {
     @range([0, Number.POSITIVE_INFINITY])
     @displayOrder(10)
     @tooltip('i18n:particle_system.startSizeZ')
-    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; })
+    @visible(function (this: ParticleSystem): boolean { return this.startSize3D; }) // eslint-disable-line func-names, comma-dangle
     public startSizeZ = new CurveRange();
 
     /**
@@ -184,7 +187,7 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationX')
-    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; })
+    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; }) // eslint-disable-line func-names, comma-dangle
     public startRotationX = new CurveRange();
 
     /**
@@ -196,7 +199,7 @@ export class ParticleSystem extends ModelRenderer {
     @radian
     @displayOrder(12)
     @tooltip('i18n:particle_system.startRotationY')
-    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; })
+    @visible(function (this: ParticleSystem): boolean { return this.startRotation3D; }) // eslint-disable-line func-names, comma-dangle
     public startRotationY = new CurveRange();
 
     /**
@@ -1376,6 +1379,14 @@ export class ParticleSystem extends ModelRenderer {
                 self._textureAnimationModule.init(particle);
             }
 
+            const alignToDirection = self._shapeModule?.enable && self._shapeModule.alignToDirection;
+            if (alignToDirection) {
+                Vec3.copy(_emitDirection, particle.velocity);
+                if (self._simulationSpace === ParticleSpace.World) {
+                    Vec3.transformQuat(_emitDirection, _emitDirection, _world_rol);
+                }
+            }
+
             const curveStartSpeed = self.startSpeed.evaluate(loopDelta, rand)!;
             Vec3.multiplyScalar(particle.velocity, particle.velocity, curveStartSpeed);
 
@@ -1391,6 +1402,17 @@ export class ParticleSystem extends ModelRenderer {
                 particle.startEuler.set(self.startRotationX.evaluate(loopDelta, rand), self.startRotationY.evaluate(loopDelta, rand), self.startRotationZ.evaluate(loopDelta, rand));
             } else {
                 particle.startEuler.set(0, 0, self.startRotationZ.evaluate(loopDelta, rand));
+            }
+            if (alignToDirection && _emitDirection.lengthSqr() > 0) {
+                // Align before applying start rotation, in simulation space. Use the
+                // shape direction so zero start speed still has a defined orientation.
+                Vec3.normalize(_emitDirection, _emitDirection);
+                Quat.rotationTo(_alignRotation, particleEmitZAxis, _emitDirection);
+                const r2d = 180 / Math.PI;
+                Quat.fromEuler(_startRotation, particle.startEuler.x * r2d, particle.startEuler.y * r2d, particle.startEuler.z * r2d);
+                Quat.multiply(_startRotation, _alignRotation, _startRotation);
+                Quat.toEuler(particle.startEuler, _startRotation);
+                particle.startEuler.multiplyScalar(1 / r2d);
             }
             particle.rotation.set(particle.startEuler);
 
@@ -1455,16 +1477,18 @@ export class ParticleSystem extends ModelRenderer {
 
             if (!self._isEmitting) return;
 
+            const randTime = isCurveTwoValues(self.rateOverTime) ? pseudoRandom(randomRangeInt(0, bits.INT_MAX)) : 1;
             // emit by rateOverTime
-            self._emitRateTimeCounter += self.rateOverTime.evaluate(self._time / self.duration, 1)! * dt;
+            self._emitRateTimeCounter += self.rateOverTime.evaluate(self._time / self.duration, randTime)! * dt;
             if (self._emitRateTimeCounter > 1) {
                 const emitNum = Math.floor(self._emitRateTimeCounter);
                 self._emitRateTimeCounter -= emitNum;
                 self.emit(emitNum, dt);
             }
 
+            const randDist = isCurveTwoValues(self.rateOverDistance) ? pseudoRandom(randomRangeInt(0, bits.INT_MAX)) : 1;
             // emit by rateOverDistance
-            const rateOverDistance = self.rateOverDistance.evaluate(self._time / self.duration, 1)!;
+            const rateOverDistance = self.rateOverDistance.evaluate(self._time / self.duration, randDist)!;
             if (rateOverDistance > 0) {
                 Vec3.copy(self._oldWPos, self._curWPos);
                 self.node.getWorldPosition(self._curWPos);

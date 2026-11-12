@@ -110,7 +110,7 @@ export default class ShapeModule {
      */
     @displayOrder(6)
     @tooltip('i18n:shapeModule.arc')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArc (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -131,7 +131,7 @@ export default class ShapeModule {
      */
     @displayOrder(5)
     @tooltip('i18n:shapeModule.angle')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectAngle (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -208,7 +208,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(2)
     @tooltip('i18n:shapeModule.emitFrom')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectEmitFrom (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Box', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -216,8 +216,8 @@ export default class ShapeModule {
     public emitFrom = ParticleEmitLocation.Volume;
 
     /**
-     * @en Align particle with particle direction.
-     * @zh 根据粒子的初始方向决定粒子的移动方向。
+     * @en Align the particle's negative Z axis with its initial emission direction, then apply start rotation.
+     * @zh 将粒子的负 Z 轴对齐到初始发射方向，再叠加初始旋转。
      */
     @serializable
     @displayOrder(16)
@@ -258,7 +258,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(3)
     @tooltip('i18n:shapeModule.radius')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectRadius (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Circle', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -278,7 +278,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(4)
     @tooltip('i18n:shapeModule.radiusThickness')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectRadiusThickness (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Circle', 'Cone', 'Sphere', 'Hemisphere'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -293,7 +293,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(7)
     @tooltip('i18n:shapeModule.arcMode')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcMode (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -304,11 +304,12 @@ export default class ShapeModule {
      * @en Control arc spread for Cone and circle shape.
      * @zh 控制可能产生粒子的弧周围的离散间隔。
      */
-    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; }) // Bug fix: Hide this input when arcMode is random
+    // Bug fix: Hide this input when arcMode is random
+    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; })
     @serializable
     @displayOrder(9)
     @tooltip('i18n:shapeModule.arcSpread')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcSpread (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -319,13 +320,14 @@ export default class ShapeModule {
      * @en Emit speed around arc (available for Cone and Circle).
      * @zh 粒子沿圆周发射的速度。
      */
+    // Bug fix: Hide this input when arcMode is random
     @type(CurveRange)
-    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; }) // Bug fix: Hide this input when arcMode is random
+    @visible(function noArc (this: ShapeModule) { return this.arcMode !== ParticleArcMode.Random; })
     @range([0, 1])
     @serializable
     @displayOrder(10)
     @tooltip('i18n:shapeModule.arcSpeed')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectArcSpeed (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone', 'Circle'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -340,7 +342,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(11)
     @tooltip('i18n:shapeModule.length')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectCone (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Cone'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -354,7 +356,7 @@ export default class ShapeModule {
     @serializable
     @displayOrder(12)
     @tooltip('i18n:shapeModule.boxThickness')
-    @visible(function (this: ShapeModule) {
+    @visible(function selectBox (this: ShapeModule) {
         const subset: Array<keyof typeof ParticleShapeType> = ['Box'];
         const enumName = getShapeTypeEnumName(this.shapeType);
         return subset.includes(enumName);
@@ -445,6 +447,7 @@ export default class ShapeModule {
         if (this.arcMode === ParticleArcMode.Random) {
             return randomRange(0, this._arc);
         }
+        /* eslint-disable-next-line max-len */
         let angle = this.totalAngle + 2 * Math.PI * this.arcSpeed.evaluate(this.particleSystem!.time, 1)! * (this.particleSystem!.time - this.lastTime);
         this.totalAngle = angle;
         if (this.arcSpread !== 0) {

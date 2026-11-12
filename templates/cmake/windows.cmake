@@ -49,8 +49,9 @@ endmacro()
 
 
 macro(cc_windows_after_target _target_name)
-        
-    source_group(TREE ${RES_DIR}/data PREFIX "Resources" FILES ${CC_ASSET_FILES})
+
+    get_filename_component(CC_ASSET_ROOT "${RES_DIR}/data" ABSOLUTE)
+    source_group(TREE ${CC_ASSET_ROOT} PREFIX "Resources" FILES ${CC_ASSET_FILES})
     source_group(TREE ${CC_PROJECT_DIR} PREFIX "Source Files" FILES ${CC_PROJ_SOURCES})
     source_group(TREE ${CC_PROJECT_DIR}/../common PREFIX "Source Files" FILES ${CC_COMMON_SOURCES})
     

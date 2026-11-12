@@ -60,6 +60,7 @@ interface IProfilerState {
     frame: ICounterOption;
     fps: ICounterOption;
     draws: ICounterOption;
+    dispatches: ICounterOption;
     instances: ICounterOption;
     tricount: ICounterOption;
     logic: ICounterOption;
@@ -73,6 +74,7 @@ interface IProfilerState {
 const _profileInfo = {
     fps: { desc: `Framerate (FPS)`, below: 30, average: _average, isInteger: true },
     draws: { desc: 'Draw call', isInteger: true },
+    dispatches: { desc: 'Dispatch call', isInteger: true },
     frame: { desc: 'Frame time (ms)', min: 0, max: 50, average: _average },
     instances: { desc: 'Instance Count', isInteger: true },
     tricount: { desc: 'Triangle', isInteger: true },
@@ -586,6 +588,8 @@ export class Profiler extends System {
 
         const device = this._device!;
         (profilerStats.draws.counter as PerfCounter).value = device.numDrawCalls;
+        // Native (JSB) devices expose no dispatch stats yet; WebGPU does. Treat missing as 0.
+        (profilerStats.dispatches.counter as PerfCounter).value = device.numDispatches ?? 0;
         (profilerStats.instances.counter as PerfCounter).value = device.numInstances;
         (profilerStats.bufferMemory.counter as PerfCounter).value = device.memoryStatus.bufferSize / (1024 * 1024);
         (profilerStats.textureMemory.counter as PerfCounter).value = device.memoryStatus.textureSize / (1024 * 1024);

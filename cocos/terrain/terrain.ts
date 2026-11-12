@@ -1537,6 +1537,7 @@ export class Terrain extends Component {
      * @zh 获得地形信息
      */
     @type(TerrainInfo)
+    @visible(false)
     public get info (): TerrainInfo {
         const ti = new TerrainInfo();
         ti.tileSize = this.tileSize;
@@ -1815,11 +1816,11 @@ export class Terrain extends Component {
      * @zh 获得纹理层
      */
     public getLayer (id: number): TerrainLayer | null {
-        if (id === -1) {
+        if (id === -1 || id === undefined) {
             return null;
         }
 
-        return this._layerList[id];
+        return this._layerList[id] || null;
     }
 
     /**
@@ -2584,7 +2585,8 @@ export class Terrain extends Component {
                 const index1 = j * this.blockCount[0] + i;
 
                 for (let l = 0; l < TERRAIN_MAX_BLEND_LAYERS; ++l) {
-                    layerBuffer[index0 * TERRAIN_MAX_BLEND_LAYERS + l] = this._layerBuffer[index1 * TERRAIN_MAX_BLEND_LAYERS + l];
+                    const oldVal = this._layerBuffer[index1 * TERRAIN_MAX_BLEND_LAYERS + l];
+                    layerBuffer[index0 * TERRAIN_MAX_BLEND_LAYERS + l] = oldVal !== undefined ? oldVal : -1;
                 }
             }
         }

@@ -41,6 +41,7 @@ import { InputFlag, InputMode, KeyboardReturnType } from './types';
 import { EditBoxImplBase } from './edit-box-impl-base';
 import { BrowserType, OS } from '../../../pal/system-info/enum-type';
 import { ccwindow } from '../../core/global-exports';
+import { getCanvasFontFamily } from '../../2d/utils/font-family';
 
 const ccdocument = ccwindow.document;
 
@@ -519,7 +520,7 @@ export class EditBoxImpl extends EditBoxImplBase {
 
         let font = textLabel.font;
         if (font && !(font instanceof BitmapFont)) {
-            font = font._fontFamily;
+            font = getCanvasFontFamily(textLabel as Label);
         } else {
             font = textLabel.fontFamily;
         }
@@ -570,7 +571,7 @@ export class EditBoxImpl extends EditBoxImplBase {
 
         let font = placeholderLabel.font;
         if (font && !(font instanceof BitmapFont)) {
-            font = placeholderLabel.font._fontFamily;
+            font = getCanvasFontFamily(placeholderLabel as Label);
         } else {
             font = placeholderLabel.fontFamily;
         }
@@ -610,9 +611,12 @@ export class EditBoxImpl extends EditBoxImplBase {
             break;
         }
 
-        styleEl!.innerHTML = `#${this._domId}::-webkit-input-placeholder{text-transform: initial;-family: ${font};font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`
-                            + `#${this._domId}::-moz-placeholder{text-transform: initial;-family: ${font};font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`
-                            + `#${this._domId}::-ms-input-placeholder{text-transform: initial;-family: ${font};font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`;
+        styleEl!.innerHTML = `#${this._domId}::-webkit-input-placeholder{text-transform: initial;-family: ${font};`
+            + `font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`
+            + `#${this._domId}::-moz-placeholder{text-transform: initial;-family: ${font};`
+            + `font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`
+            + `#${this._domId}::-ms-input-placeholder{text-transform: initial;-family: ${font};`
+            + `font-size: ${fontSize}px;color: ${fontColor};line-height: ${lineHeight}px;text-align: ${horizontalAlign};}`;
         // EDGE_BUG_FIX: hide clear button, because clearing input box in Edge does not emit input event
         // issue refference: https://github.com/angular/angular/issues/26307
         if (sys.browserType === BrowserType.EDGE) {

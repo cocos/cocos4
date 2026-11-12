@@ -23,7 +23,7 @@
 */
 
 import { warnID } from '../../core';
-import { safeMeasureText } from './text-utils';
+import { buildFontDesc, quoteFontFamily } from './font-family';
 import downloader from '../../asset/asset-manager/downloader';
 import factory from '../../asset/asset-manager/factory';
 import { TTFFont } from '../assets/ttf-font';
@@ -31,10 +31,13 @@ import { ccwindow } from '../../core/global-exports';
 
 const ccdocument = ccwindow.document;
 
+type FontCallback = (err: Error | null, family?: string) => void;
+
 interface IFontLoadHandle {
     fontFamilyName: string;
+    fontDesc: string;
     refWidth: number;
-    onComplete: ((err: Error | null, data?: any | null) => void);
+    onComplete: FontCallback;
     startTime: number;
 }
 
@@ -90,9 +93,9 @@ function checkFontLoaded (): void {
         }
 
         const oldWidth = fontLoadHandle.refWidth;
-        const fontDesc = `40px ${fontFamily}`;
-        _canvasContext!.font = fontDesc;
-        const newWidth = safeMeasureText(_canvasContext!, _testString, fontDesc);
+        _canvasContext!.font = fontLoadHandle.fontDesc;
+        // Font availability changes while loading; do not cache fallback-font metrics.
+        const newWidth = _canvasContext!.measureText(_testString).width;
         // loaded successfully
         if (oldWidth !== newWidth) {
             _loadingFonts.splice(i, 1);
@@ -109,7 +112,7 @@ function checkFontLoaded (): void {
 }
 
 // refer to https://github.com/typekit/webfontloader/blob/master/src/core/nativefontwatchrunner.js
-function nativeCheckFontLoaded (start: number, font: string, callback: ((err: Error | null, data?: any | null) => void)): void {
+function nativeCheckFontLoaded (start: number, font: string, fontDesc: string, callback: FontCallback): void {
     const loader = new Promise<void>((resolve, reject) => {
         const check = (): void => {
             const now = Date.now();
@@ -117,7 +120,7 @@ function nativeCheckFontLoaded (start: number, font: string, callback: ((err: Er
             if (now - start >= _timeout) {
                 reject();
             } else {
-                (ccdocument as any).fonts.load(`40px ${font}`).then((fonts) => {
+                (ccdocument as any).fonts.load(fontDesc).then((fonts) => {
                     if (fonts.length >= 1) {
                         resolve();
                     } else {
@@ -150,7 +153,7 @@ function nativeCheckFontLoaded (start: number, font: string, callback: ((err: Er
     });
 }
 
-export function loadFont (url: string, options: Record<string, any>, onComplete: ((err: Error | null, data?: any | null) => void)): void {
+export function loadFont (url: string, options: Record<string, any>, onComplete: FontCallback): void {
     const fontFamilyName = getFontFamily(url);
     // Already loaded fonts
     if (_fontFaces[fontFamilyName]) {
@@ -166,17 +169,13 @@ export function loadFont (url: string, options: Record<string, any>, onComplete:
     }
 
     // Default width reference to test whether new font is loaded correctly
-    const fontDesc = `40px ${fontFamilyName}`;
+    const familyCss = quoteFontFamily(fontFamilyName);
+    const fontDesc = buildFontDesc(40, familyCss);
 
     // Setup font face style
     const fontStyle = ccdocument.createElement('style');
     fontStyle.type = 'text/css';
-    let fontStr = '';
-    if (Number.isNaN(fontFamilyName)) {
-        fontStr += `@font-face { font-family:${fontFamilyName}; src:`;
-    } else {
-        fontStr += `@font-face { font-family:"${fontFamilyName}"; src:`;
-    }
+    let fontStr = `@font-face { font-family:${familyCss}; src:`;
     fontStr += `url("${url}");`;
     fontStyle.textContent = `${fontStr}}`;
     ccdocument.body.appendChild(fontStyle);
@@ -184,7 +183,7 @@ export function loadFont (url: string, options: Record<string, any>, onComplete:
     // Preload font with div
     const preloadDiv = ccdocument.createElement('div');
     const divStyle = preloadDiv.style;
-    divStyle.fontFamily = fontFamilyName;
+    divStyle.fontFamily = familyCss;
     preloadDiv.innerHTML = '.';
     divStyle.position = 'absolute';
     divStyle.left = '-100px';
@@ -192,12 +191,14 @@ export function loadFont (url: string, options: Record<string, any>, onComplete:
     ccdocument.body.appendChild(preloadDiv);
 
     if (useNativeCheck()) {
-        nativeCheckFontLoaded(Date.now(), fontFamilyName, onComplete);
+        nativeCheckFontLoaded(Date.now(), fontFamilyName, fontDesc, onComplete);
     } else {
-        const refWidth = safeMeasureText(_canvasContext!, _testString, fontDesc);
+        _canvasContext!.font = fontDesc;
+        const refWidth = _canvasContext!.measureText(_testString).width;
         // Save loading font
         const fontLoadHandle = {
             fontFamilyName,
+            fontDesc,
             refWidth,
             onComplete,
             startTime: Date.now(),
@@ -220,9 +221,6 @@ export function getFontFamily (fontHandle: string): string {
         fontFamilyName = `${fontHandle.substring(0, ttfIndex)}_LABEL`;
     } else {
         fontFamilyName = `${fontHandle.substring(slashPos + 1, ttfIndex)}_LABEL`;
-    }
-    if (fontFamilyName.indexOf(' ') !== -1) {
-        fontFamilyName = `"${fontFamilyName}"`;
     }
     return fontFamilyName;
 }

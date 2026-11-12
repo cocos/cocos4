@@ -6,7 +6,7 @@ endif()
 
 if(POLICY CMP0111)
 # https://cmake.org/cmake/help/latest/policy/CMP0111.html
-cmake_policy(SET CMP0111 OLD)
+cmake_policy(SET CMP0111 NEW)
 endif()
 
 # set(CC_REGISTERED_PLUGINS)

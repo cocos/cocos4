@@ -797,7 +797,7 @@ export class ParticleSystem2D extends UIRenderer {
     }
 
     private _startPreview (): void {
-        if (this._preview) {
+        if (!this._preview) {
             this.resetSystem();
         }
     }

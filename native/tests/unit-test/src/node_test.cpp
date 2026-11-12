@@ -216,4 +216,174 @@ TEST(NodeTest, setWorldScale0yz_and_rotation) {
         0, 0, 0, 1)));
 }
 
+TEST(NodeTest, angleAfterQuaternionWriteback) {
+    cc::IntrusivePtr<cc::Node> node(new Node());
+    for (const float angle : {-179.F, -120.F, -91.F, -90.F, 90.F, 91.F, 120.F, 179.F}) {
+        const float halfAngle = angle * math::DEG_TO_RAD * 0.5F;
+        const Quaternion rotation(0.F, 0.F, std::sin(halfAngle), std::cos(halfAngle));
+        node->setRotation(rotation);
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+        const Vec3 euler = node->getEulerAngles();
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+        EXPECT_TRUE(node->getEulerAngles().approxEquals(euler));
+        node->setRotation(Quaternion(-rotation.x, -rotation.y, -rotation.z, -rotation.w));
+        EXPECT_NEAR(node->getAngle2D(), angle, 1e-4F);
+    }
+    node->setAngle(720.F);
+    EXPECT_FLOAT_EQ(node->getAngle(), 720.F);
+    EXPECT_NEAR(node->getAngle2D(), 0.F, 1e-4F);
+    const float halfAngle = 60.F * math::DEG_TO_RAD;
+    node->setRotation(Quaternion(0.F, 0.F, std::sin(halfAngle), std::cos(halfAngle)));
+    EXPECT_NEAR(node->getAngle2D(), 120.F, 1e-4F);
+    EXPECT_NEAR(node->getAngle(), 60.F, 1e-4F);
+    EXPECT_NEAR(node->getAngle2D(), 120.F, 1e-4F);
+}
+
+TEST(NodeTest, setWorldScaleSignedTargetsAreIdempotent) {
+    for (int signs = 0; signs < 8; ++signs) {
+        cc::IntrusivePtr<cc::Node> parent(new Node());
+        cc::IntrusivePtr<cc::Node> child(new Node());
+        child->setParent(parent);
+        const Vec3 target((signs & 1) ? -2.F : 2.F,
+                          (signs & 2) ? -3.F : 3.F,
+                          (signs & 4) ? -4.F : 4.F);
+        child->setWorldScale(target);
+        Mat4 expected;
+        Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO, target, &expected);
+        EXPECT_TRUE(child->getScale().approxEquals(target));
+        EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+        child->setWorldScale(target);
+        EXPECT_TRUE(child->getScale().approxEquals(target));
+        EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+    }
+}
+
+TEST(NodeTest, setWorldScaleWithSignedParent) {
+    for (int signs = 0; signs < 8; ++signs) {
+        cc::IntrusivePtr<cc::Node> parent(new Node());
+        const float signX = (signs & 1) ? -1.F : 1.F;
+        const float signY = (signs & 2) ? -1.F : 1.F;
+        const float signZ = (signs & 4) ? -1.F : 1.F;
+        parent->setScale(2.F * signX, 3.F * signY, 4.F * signZ);
+        cc::IntrusivePtr<cc::Node> child(new Node());
+        child->setParent(parent);
+        child->setWorldScale(-6.F, 9.F, 8.F);
+        const Vec3 expectedLocal(-3.F * signX * signY * signZ, 3.F, 2.F);
+        EXPECT_TRUE(child->getScale().approxEquals(expectedLocal));
+        EXPECT_TRUE(child->getWorldScale().approxEquals(Vec3(-6.F, 9.F, 8.F)));
+        Mat4 expected;
+        Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO,
+                      Vec3(-6.F * signY * signZ, 9.F * signY, 8.F * signZ), &expected);
+        EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+        child->setWorldScale(-6.F, 9.F, 8.F);
+        EXPECT_TRUE(child->getScale().approxEquals(expectedLocal));
+        EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+
+        child->setWorldScale(6.F, 9.F, 8.F);
+        EXPECT_TRUE(child->getScale().approxEquals(Vec3(3.F, 3.F, 2.F)));
+        EXPECT_TRUE(child->getWorldScale().approxEquals(Vec3(6.F * signX * signY * signZ, 9.F, 8.F)));
+        Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO,
+                      Vec3(6.F * signX, 9.F * signY, 8.F * signZ), &expected);
+        EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+    }
+}
+
+TEST(NodeTest, setWorldScaleSignsDoNotDependOnPreviousLocalScale) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setScale(-1.F, -1.F, -1.F);
+    child->getWorldMatrix();
+    child->setWorldScale(2.F, -3.F, 4.F);
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, -3.F, 4.F)));
+    const Mat4 firstMatrix = child->getWorldMatrix();
+    child->setWorldScale(2.F, -3.F, 4.F);
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, -3.F, 4.F)));
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(firstMatrix));
+    child->setWorldScale(2.F, 3.F, 4.F);
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, 3.F, 4.F)));
+}
+
+TEST(NodeTest, setWorldScaleChangesMirrorAxisWhenWorldScaleMatches) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setWorldScale(2.F, -3.F, 4.F);
+    EXPECT_TRUE(child->getWorldScale().approxEquals(Vec3(-2.F, 3.F, 4.F)));
+    Mat4 expected;
+    Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO, Vec3(2.F, -3.F, 4.F), &expected);
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+
+    child->setWorldScale(-2.F, 3.F, 4.F);
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(-2.F, 3.F, 4.F)));
+    Mat4::fromRTS(Quaternion::identity(), Vec3::ZERO, Vec3(-2.F, 3.F, 4.F), &expected);
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+    child->setWorldScale(-2.F, 3.F, 4.F);
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+
+    child->setScale(2.F, -3.F, -4.F);
+    EXPECT_TRUE(child->getWorldScale().approxEquals(Vec3(2.F, 3.F, 4.F)));
+    const Mat4 matrixBefore = child->getWorldMatrix();
+    child->setWorldScale(2.F, 3.F, 4.F);
+    EXPECT_TRUE(child->getScale().approxEquals(Vec3(2.F, -3.F, -4.F)));
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(matrixBefore));
+}
+
+TEST(NodeTest, setWorldScaleChangesXWithTinyNegativeY) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setScale(2.F, -1e-7F, 4.F);
+    EXPECT_FLOAT_EQ(child->getWorldMatrix().m[0], 2.F);
+    child->setWorldScale(-2.F, -1e-7F, 4.F);
+    EXPECT_FLOAT_EQ(child->getWorldMatrix().m[0], -2.F);
+}
+
+TEST(NodeTest, setWorldScalePreservesTinyXSignChange) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setScale(1e-7F, 1.F, 1.F);
+    child->getWorldScale();
+    child->setWorldScale(-1e-7F, 1.F, 1.F);
+    EXPECT_TRUE(child->getScale().x < 0.F);
+    EXPECT_TRUE(child->getWorldScale().x < 0.F);
+    EXPECT_TRUE(child->getWorldMatrix().m[0] < 0.F);
+    child->setWorldScale(1e-7F, 1.F, 1.F);
+    EXPECT_TRUE(child->getScale().x > 0.F);
+    EXPECT_TRUE(child->getWorldScale().x > 0.F);
+    EXPECT_TRUE(child->getWorldMatrix().m[0] > 0.F);
+}
+
+TEST(NodeTest, setWorldScalePreservesLocalRotationWithSignedTargets) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    parent->setScale(2.F, 2.F, 2.F);
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setRotationFromEuler(10.F, 30.F, 25.F);
+    const Quaternion localRotation = child->getRotation();
+    child->setScale(-1.F, -1.F, 1.F);
+    child->getWorldMatrix();
+    child->setWorldScale(-2.F, -3.F, 4.F);
+    EXPECT_TRUE(child->getRotation().approxEquals(localRotation));
+    Mat4 expected;
+    Mat4::fromRTS(localRotation, Vec3::ZERO, Vec3(-2.F, -3.F, 4.F), &expected);
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+    child->setWorldScale(-2.F, -3.F, 4.F);
+    EXPECT_TRUE(child->getRotation().approxEquals(localRotation));
+    EXPECT_TRUE(child->getWorldMatrix().approxEquals(expected));
+}
+
+TEST(NodeTest, setWorldScaleSignChangeRefreshesWorldRotation) {
+    cc::IntrusivePtr<cc::Node> parent(new Node());
+    cc::IntrusivePtr<cc::Node> child(new Node());
+    child->setParent(parent);
+    child->setScale(1.F, -1.F, 1.F);
+    const Quaternion before = child->getWorldRotation();
+    EXPECT_FALSE(before.approxEquals(Quaternion::identity()));
+    child->setWorldScale(-2.F, 3.F, 4.F);
+    EXPECT_TRUE(child->getRotation().approxEquals(Quaternion::identity()));
+    EXPECT_TRUE(child->getWorldRotation().approxEquals(Quaternion::identity()));
+}
+
 } // namespace

@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include "base/Ptr.h"
 #include "base/std/any.h"
 #include "bindings/utils/BindingUtils.h"
@@ -34,6 +36,7 @@
 #include "core/scene-graph/Layers.h"
 #include "core/scene-graph/NodeEnum.h"
 #include "math/Mat3.h"
+#include "math/Math.h"
 #include "math/Mat4.h"
 #include "math/Quaternion.h"
 #include "math/Vec3.h"
@@ -431,6 +434,16 @@ public:
     }
 
     inline float getAngle() const {
+        return getEulerAngles().z;
+    }
+
+    // Signed local 2D angle in degrees, normalized to [-180, 180].
+    inline float getAngle2D() const {
+        // Keep 2D angles independent of the folded Z in YZX Euler decomposition.
+        const auto &q = _localRotation;
+        if (std::abs(q.x) < 1e-6F && std::abs(q.y) < 1e-6F) {
+            return std::atan2(2.F * q.w * q.z, 1.F - 2.F * q.z * q.z) * math::RAD_TO_DEG;
+        }
         return getEulerAngles().z;
     }
 

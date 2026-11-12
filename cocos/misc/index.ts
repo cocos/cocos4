@@ -24,6 +24,12 @@
 
 import './intersect';
 
+// NOTE: the worker subsystem (`./worker`, `./worker-pool`) is deliberately
+// NOT re-exported here. `cocos/misc` is part of the always-on `base` feature, so anything exported
+// from this file ships in every build's main bundle. The worker subsystem is exposed through the
+// optional `worker` and `worker-pool` features instead (see their entries in `exports/` and
+// cc.config.json). Projects enabling only `worker` do not include the pool scheduler.
+
 export { Camera } from './camera-component';
 export { ModelRenderer } from './model-renderer';
 export { Renderer } from './renderer';
