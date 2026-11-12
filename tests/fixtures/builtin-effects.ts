@@ -262,14 +262,14 @@ export const effects = [
   {
     "name": "builtin-graphics",
     "techniques": [
-      { "passes": [{ "blendState": { "targets": [{ "blend": true, "blendSrc": 1, "blendDst": 4, "blendSrcAlpha": 1, "blendDstAlpha": 4 }] }, "rasterizerState": { "cullMode": 0 }, "program": "graphics|vs:vert|fs:frag", "depthStencilState": { "depthTest": false, "depthWrite": false } }] }
+      {"passes": [{"blendState": {"targets": [{"blend": true,"blendSrc": 1,"blendDst": 4,"blendSrcAlpha": 1,"blendDstAlpha": 4}]},"rasterizerState": {"cullMode": 0},"program": "builtin-graphics|vs:vert|fs:frag","depthStencilState": {"depthTest": false,"depthWrite": false},"properties": {"uiCascadeOpacity": {"value": [1],"editor": {"visible": false},"type": 13,"handleInfo": ["graphicsParams",0,13]},"graphicsParams": {"type": 16,"editor": {"visible": false},"value": [1,0,0,0]}}}]}
     ],
     "shaders": [
       {
-        "name": "graphics|vs:vert|fs:frag",
-        "hash": 3387382926,
+        "name": "builtin-graphics|vs:vert|fs:frag",
+        "hash": 1048207640,
         "builtins": {
-          "statistics": { "CC_EFFECT_USED_VERTEX_UNIFORM_VECTORS": 54, "CC_EFFECT_USED_FRAGMENT_UNIFORM_VECTORS": 0 },
+          "statistics": { "CC_EFFECT_USED_VERTEX_UNIFORM_VECTORS": 57, "CC_EFFECT_USED_FRAGMENT_UNIFORM_VECTORS": 0 },
           "globals": { "blocks": [{ "name": "CCGlobal", "defines": [] }, { "name": "CCCamera", "defines": [] }], "samplerTextures": [], "buffers": [], "images": [] },
           "locals": { "blocks": [{ "name": "CCLocal", "defines": [] }], "samplerTextures": [], "buffers": [], "images": [] }
         },
@@ -279,7 +279,7 @@ export const effects = [
           { "name": "a_color", "defines": [], "format": 44, "location": 1 },
           { "name": "a_dist", "defines": [], "format": 11, "location": 2 }
         ],
-        "blocks": [],
+        "blocks": [{"name": "GraphicsParams","members": [{"name": "graphicsParams","type": 16,"count": 1}],"defines": [],"stageFlags": 1,"binding": 0}],
         "samplerTextures": [],
         "buffers": [],
         "images": [],

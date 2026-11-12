@@ -24,7 +24,9 @@
 
 #include "UIModelProxy.h"
 #include "2d/renderer/RenderEntity.h"
+#include "core/assets/Material.h"
 #include "core/assets/RenderingSubMesh.h"
+#include "scene/Pass.h"
 
 namespace cc {
 
@@ -44,6 +46,48 @@ inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap)
     return cap < maxCap ? cap : maxCap;
 }
 
+class GraphicsModel final : public scene::Model {
+public:
+    void updateUBOs(uint32_t stamp) override {
+        auto* node = getNode();
+        auto* entity = node ? static_cast<RenderEntity*>(node->getUserData()) : nullptr;
+        // uploadData attaches this model to the first draw info. Batcher2d uses
+        // that draw info's material for every Graphics submodel.
+        auto* drawInfo = entity ? entity->getDynamicRenderDrawInfo(0) : nullptr;
+        auto* material = drawInfo ? drawInfo->getMaterial() : nullptr;
+        if (material) {
+            updateOpacity(*material, node->_getFinalOpacity());
+        }
+        scene::Model::updateUBOs(stamp);
+    }
+
+private:
+    struct OpacityBinding {
+        IntrusivePtr<scene::Pass> pass;
+        uint32_t handle{0};
+    };
+
+    void updateOpacity(Material& material, float opacity) {
+        const auto& passes = *material.getPasses();
+        _opacityBindings.resize(passes.size());
+        for (size_t i = 0; i < passes.size(); ++i) {
+            auto& binding = _opacityBindings[i];
+            auto* pass = passes[i].get();
+            if (binding.pass.get() != pass) {
+                binding.pass = pass;
+                const auto handle = pass ? pass->getHandle("uiCascadeOpacity") : 0U;
+                binding.handle = scene::Pass::getTypeFromHandle(handle) == gfx::Type::FLOAT ? handle : 0U;
+            }
+            // A material property reset can change the value without replacing the pass.
+            if (binding.handle && ccstd::get<float>(pass->getUniform(binding.handle)) != opacity) {
+                pass->setUniform(binding.handle, opacity);
+            }
+        }
+    }
+
+    ccstd::vector<OpacityBinding> _opacityBindings;
+};
+
 } // namespace
 
 UIModelProxy::UIModelProxy() {
@@ -55,7 +99,7 @@ UIModelProxy::~UIModelProxy() {
 }
 
 void UIModelProxy::initModel(Node* node) {
-    _model = Root::getInstance()->createModel<scene::Model>();
+    _model = Root::getInstance()->createModel<GraphicsModel>();
     _model->setNode(node);
     _model->setTransform(node);
     _node = node;

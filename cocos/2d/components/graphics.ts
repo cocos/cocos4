@@ -35,7 +35,8 @@ import { LineCap, LineJoin } from '../assembler/graphics/types';
 import { MAX_VERTEX_COUNT, MAX_INDEX_COUNT } from '../assembler/graphics/constants';
 import { Impl } from '../assembler/graphics/webgl/impl';
 import { Material, RenderingSubMesh } from '../../asset/assets';
-import { Format, PrimitiveMode, Attribute, Device, BufferUsageBit, BufferInfo, MemoryUsageBit, deviceManager } from '../../gfx';
+import { Format, PrimitiveMode, Attribute, Device, BufferUsageBit, BufferInfo, MemoryUsageBit, Type, deviceManager } from '../../gfx';
+import { getTypeFromHandle } from '../../render-scene/core/pass-utils';
 import { vfmtPosColor, getAttributeStride, getComponentPerVertex } from '../renderer/vertex-format';
 import { NativeUIModelProxy } from '../renderer/native-2d';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
@@ -62,10 +63,14 @@ function growCapacity (needed: number, current: number, max: number): number {
 
 /**
  * @en
- * Graphics component.
+ * Graphics component. The built-in material multiplies each fill/stroke alpha by the node's cascaded UI opacity.
+ * Custom effects can consume the engine-managed float property `uiCascadeOpacity` to support the same behavior.
+ * Share the material asset across components so each Graphics can keep its own instance opacity.
  *
  * @zh
- * 自定义图形类。
+ * 自定义图形组件。内置材质将每笔填充或描边的透明度乘以节点的累计 UI 透明度。
+ * 自定义 effect 可使用引擎写入的 float 属性 `uiCascadeOpacity` 支持相同的行为。
+ * 多个组件可共享材质资源，每个 Graphics 使用各自的材质实例保存透明度。
  */
 @ccclass('cc.Graphics')
 @help('i18n:cc.Graphics')
@@ -205,11 +210,15 @@ export class Graphics extends UIRenderer {
     }
 
     set color (value) {
-        if (this._color === value) {
-            return;
+        if (this._color !== value) {
+            this._color.set(value);
         }
-
-        this._color.set(value);
+        // The getter exposes a mutable Color, so a caller can edit it and assign the same object back.
+        const rgba = Color.toUint32(this._color);
+        if (this.node && this._lastSyncedColor !== rgba) {
+            this._lastSyncedColor = rgba;
+            this._updateColor();
+        }
     }
 
     public static LineJoin = LineJoin;
@@ -236,6 +245,7 @@ export class Graphics extends UIRenderer {
     protected _isNeedUploadData = true;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
+    private _lastSyncedColor = -1;
 
     //nativeObj
     protected declare _graphicsNativeProxy: NativeUIModelProxy;
@@ -275,7 +285,9 @@ export class Graphics extends UIRenderer {
 
     public onEnable (): void {
         super.onEnable();
-        this._updateMtlForGraphics();
+        // Deserialization writes _color directly, before the native entity is attached.
+        this._lastSyncedColor = Color.toUint32(this._color);
+        this.setEntityColor(this._color);
     }
 
     protected override get _keepRenderData (): boolean {
@@ -632,15 +644,31 @@ export class Graphics extends UIRenderer {
         (this._assembler as GraphicsAssembler).fill(this);
     }
 
-    private _updateMtlForGraphics (): void {
-        let mat;
-        if (this._customMaterial) {
-            mat = this.getMaterialInstance(0);
-        } else {
-            mat = builtinResMgr.get('ui-graphics-material');
-            this.setSharedMaterial(mat as Material, 0);
-            mat = this.getMaterialInstance(0);
-            mat.recompileShaders({ USE_LOCAL: true });
+    public override updateMaterial (): void {
+        this.setSharedMaterial(this._customMaterial || builtinResMgr.get<Material>('ui-graphics-material'), 0);
+        if (!this._customMaterial) {
+            this.getMaterialInstance(0)?.recompileShaders({ USE_LOCAL: true });
+        }
+    }
+
+    protected override _onMaterialModified (idx: number, material: Material | null): void {
+        super._onMaterialModified(idx, material);
+        if (idx !== 0 || !material) {
+            return;
+        }
+        if (material !== this._materialInstances[0]) {
+            // Instancing invokes this callback again with the material used by this Graphics.
+            this.getMaterialInstance(0);
+            return;
+        }
+        if (JSB) {
+            this.impl?.setRenderDataMaterial(material);
+        }
+        if (this.model) {
+            const count = this.model.subModels.length;
+            for (let i = 0; i < count; ++i) {
+                this.model.setSubModelMaterial(i, material);
+            }
         }
     }
 
@@ -747,7 +775,18 @@ export class Graphics extends UIRenderer {
             this._uploadData();
         }
 
-        render.commitModel(this, this.model, this.getMaterialInstance(0));
+        const material = this.getMaterialInstance(0);
+        if (material) {
+            // Compare with the pass's actual float slot, including after a material reset or pass rebuild.
+            const opacity = Math.fround(this.node._uiProps.opacity);
+            for (const pass of material.passes) {
+                const handle = pass.getHandle('uiCascadeOpacity');
+                if (handle && getTypeFromHandle(handle) === Type.FLOAT && pass.getUniform(handle, 0) !== opacity) {
+                    pass.setUniform(handle, opacity);
+                }
+            }
+        }
+        render.commitModel(this, this.model, material);
     }
 
     protected _flushAssembler (): void {
