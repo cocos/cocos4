@@ -684,7 +684,12 @@ const Quaternion &Node::getWorldRotation() const { // NOLINT(misc-no-recursion)
 void Node::setWorldScale(float x, float y, float z) {
     bool forceUpdate = _parent != nullptr && (_transformFlags & static_cast<uint32_t>(TransformBit::SCALE)) != static_cast<uint32_t>(TransformBit::NONE);
 
-    if (!forceUpdate && _worldScale.approxEquals({x, y, z})) {
+    // World-scale decomposition can hide local mirror signs. Preserve the same-value no-op for nonnegative targets.
+    const bool parentedNonnegativeTarget = _parent != nullptr && x >= 0.F && y >= 0.F && z >= 0.F;
+    if (!forceUpdate && (_parent == nullptr || (y >= 0.F && z >= 0.F)) &&
+        _worldScale.approxEquals({x, y, z}) &&
+        (_worldScale.x < 0.F) == (x < 0.F) &&
+        (parentedNonnegativeTarget || ((_localScale.y < 0.F) == (y < 0.F) && (_localScale.z < 0.F) == (z < 0.F)))) {
         return;
     }
 
@@ -738,10 +743,22 @@ void Node::setWorldScale(float x, float y, float z) {
         // remove rotation part of the local matrix
         Mat3::multiply(localRotInv, localRS, &localRS);
 
-        // extract scaling part from local matrix
-        _localScale.x = Vec3{localRS.m[0], localRS.m[1], localRS.m[2]}.length();
-        _localScale.y = Vec3{localRS.m[3], localRS.m[4], localRS.m[5]}.length();
-        _localScale.z = Vec3{localRS.m[6], localRS.m[7], localRS.m[8]}.length();
+        // Restore the requested signs after extracting the scale magnitudes.
+        // A negative X request accounts for parent reflection. A nonnegative X keeps
+        // the original positive local X behavior.
+        const Vec3 &parentScale = _parent->_worldScale;
+        const float parentSign = (parentScale.x < 0.F ? -1.F : 1.F) *
+                                 (parentScale.y < 0.F ? -1.F : 1.F) *
+                                 (parentScale.z < 0.F ? -1.F : 1.F);
+        const float localScaleX = Vec3{localRS.m[0], localRS.m[1], localRS.m[2]}.length() * (_worldScale.x < 0.F ? -parentSign : 1.F);
+        const float localScaleY = Vec3{localRS.m[3], localRS.m[4], localRS.m[5]}.length() * (_worldScale.y < 0.F ? -1.F : 1.F);
+        const float localScaleZ = Vec3{localRS.m[6], localRS.m[7], localRS.m[8]}.length() * (_worldScale.z < 0.F ? -1.F : 1.F);
+        if ((_localScale.x < 0.F) != (localScaleX < 0.F) ||
+            (_localScale.y < 0.F) != (localScaleY < 0.F) ||
+            (_localScale.z < 0.F) != (localScaleZ < 0.F)) {
+            rotationFlag = TransformBit::ROTATION;
+        }
+        _localScale.set(localScaleX, localScaleY, localScaleZ);
 
         if (_localScale.x == 0 || _localScale.y == 0 || _localScale.z == 0) {
             rotationFlag = TransformBit::ROTATION;

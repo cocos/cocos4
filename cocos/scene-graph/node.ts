@@ -2819,9 +2819,18 @@ export class Node extends CCObject implements ISchedulable, CustomSerializable {
             Mat3.multiplyMat4(m3_1, m3_1, m4_2);
 
             const localScale = self._lscale;
-            localScale.x = Vec3.set(v3_a, m3_1.m00, m3_1.m01, m3_1.m02).length();
-            localScale.y = Vec3.set(v3_a, m3_1.m03, m3_1.m04, m3_1.m05).length();
-            localScale.z = Vec3.set(v3_a, m3_1.m06, m3_1.m07, m3_1.m08).length();
+            // Restore the requested signs. For negative X, the parent may already supply a reflection.
+            const parentScale = parent._scale;
+            const parentSign = (parentScale.x < 0 ? -1 : 1) * (parentScale.y < 0 ? -1 : 1) * (parentScale.z < 0 ? -1 : 1);
+            const localScaleX = Vec3.set(v3_a, m3_1.m00, m3_1.m01, m3_1.m02).length() * (worldScale.x < 0 ? -parentSign : 1);
+            const localScaleY = Vec3.set(v3_a, m3_1.m03, m3_1.m04, m3_1.m05).length() * (worldScale.y < 0 ? -1 : 1);
+            const localScaleZ = Vec3.set(v3_a, m3_1.m06, m3_1.m07, m3_1.m08).length() * (worldScale.z < 0 ? -1 : 1);
+            if ((localScale.x < 0) !== (localScaleX < 0)
+                || (localScale.y < 0) !== (localScaleY < 0)
+                || (localScale.z < 0) !== (localScaleZ < 0)) {
+                rotationFlag = TransformBit.ROTATION;
+            }
+            Vec3.set(localScale, localScaleX, localScaleY, localScaleZ);
             if (localScale.x === 0 || localScale.y === 0 || localScale.z === 0) {
                 rotationFlag = TransformBit.ROTATION;
             }
