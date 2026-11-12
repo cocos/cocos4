@@ -42,7 +42,7 @@ ValueArrayPool::ValueArrayPool() {
 }
 
 ValueArray &ValueArrayPool::get(uint32_t argc, bool &outNeedDelete) {
-    if (SE_UNLIKELY(_depth >= _pools.size())) {
+    if (SE_UNLIKELY(argc > MAX_ARGS || _depth >= _pools.size())) {
         outNeedDelete = true;
         auto *ret = ccnew ValueArray();
         ret->resize(argc);
@@ -50,7 +50,6 @@ ValueArray &ValueArrayPool::get(uint32_t argc, bool &outNeedDelete) {
     }
 
     outNeedDelete = false;
-    CC_ASSERT_LE(argc, MAX_ARGS);
     auto &ret = _pools[_depth][argc];
     CC_ASSERT(ret.size() == argc);
     return ret;
