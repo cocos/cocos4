@@ -468,6 +468,11 @@ class SkeletonCache {
                 }
             }
             const skeletonInfo = this._skeletonCache[uuid];
+            if (skeletonInfo) {
+                for (const animationName in skeletonInfo.animationsCache) {
+                    skeletonInfo.animationsCache[animationName]?.destroy();
+                }
+            }
             const skeleton = skeletonInfo && skeletonInfo.skeleton;
             if (skeleton) {
                 spine.wasmUtil.destroySpineSkeleton(skeleton);
@@ -475,6 +480,7 @@ class SkeletonCache {
             if (skeletonInfo) {
                 delete this._skeletonCache[uuid];
             }
+            this._sharedCacheMap.delete(uuid);
         } else {
             const animationPool = this._animationPool;
             for (const key in animationPool) {

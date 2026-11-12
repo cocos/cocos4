@@ -1,4 +1,9 @@
 mergeInto(LibraryManager.library, {
+    spineScheduleRelease: function () {
+        Promise.resolve().then(function () {
+            Module['SpineWasmUtil']['collectGarbage']();
+        });
+    },
     spineListenerCallBackFromJS: function () {
         var wasmUtil = Module['SpineWasmUtil'];
         var listenerID = wasmUtil.getCurrentListenerID();

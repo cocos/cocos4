@@ -83,6 +83,8 @@ public:
 private:
     void collectMeshData();
     void releaseSlotCacheInfo(SlotCacheInfo &info);
+    void retireSkeleton();
+    void discardMeshData();
 
 private:
     spine::Skeleton *_skeleton = nullptr;
@@ -95,6 +97,9 @@ private:
 #endif
     SpineModel *_model = nullptr;
     uint32_t _eventListenerID = 0;
+    uint64_t _generation = 0;
+    bool _destroyed = false;
+    bool _meshOverflowReported = false;
     spine::HashMap<spine::TrackEntry *, uint32_t> _trackListenerSet{};
     UserData _userData;
     spine::Vector<SpineDebugShape> _debugShapes{};

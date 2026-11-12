@@ -3,6 +3,7 @@
 #include "AtlasAttachmentLoaderExtension.h"
 #include "spine-mesh-data.h"
 #include "spine-wasm.h"
+#include <cstdio>
 
 SlotMesh globalMesh(nullptr, nullptr, 0, 0);
 
@@ -137,6 +138,13 @@ SpineSkeletonInstance::SpineSkeletonInstance() {
 }
 
 SpineSkeletonInstance::~SpineSkeletonInstance() {
+    // Release slot copies before releasing the last reference to SkeletonData.
+    auto entries = _slotTextureSet.getEntries();
+    while (entries.hasNext()) {
+        auto info = entries.next().value;
+        releaseSlotCacheInfo(info);
+    }
+    _slotTextureSet.clear();
     _trackListenerSet.clear();
     animationEvents.clear();
     trackEvents.clear();
@@ -146,32 +154,60 @@ SpineSkeletonInstance::~SpineSkeletonInstance() {
     if (_animStateData) delete _animStateData;
     if (_skeleton) delete _skeleton;
     if (_model) delete _model;
-
-    if (_slotTextureSet.size() > 0) {
-        auto entries = _slotTextureSet.getEntries();
-        while (entries.hasNext()) {
-            auto entry = entries.next();
-            auto info = entry.value;
-            releaseSlotCacheInfo(info);
-        }
-    }
 }
 
 void SpineSkeletonInstance::destroy() {
-    delete this;
+    if (_destroyed) return;
+    _destroyed = true;
+    ++_generation;
+    if (_animState) _animState->setRendererObject(nullptr);
+    animationEvents.clear();
+    trackEvents.clear();
+    SpineWasmUtil::deferRelease([this]() { delete this; });
+}
+
+void SpineSkeletonInstance::retireSkeleton() {
+    ++_generation;
+    animationEvents.clear();
+    trackEvents.clear();
+    _trackListenerSet.clear();
+    auto entries = _slotTextureSet.getEntries();
+    while (entries.hasNext()) {
+        auto info = entries.next().value;
+        releaseSlotCacheInfo(info);
+    }
+    _slotTextureSet.clear();
+    _userData.useSlotTexture = false;
+    auto* state = _animState;
+    auto* stateData = _animStateData;
+    auto* skeleton = _skeleton;
+    auto* clipper = _clipper;
+    if (state) state->setRendererObject(nullptr);
+    if (state || skeleton || clipper || stateData) {
+        SpineWasmUtil::deferRelease([state, stateData, skeleton, clipper]() {
+            delete state;
+            delete stateData;
+            delete clipper;
+            delete skeleton;
+        });
+    }
+    _animState = nullptr;
+    _animStateData = nullptr;
+    _skeleton = nullptr;
+    _skeletonData = nullptr;
+    _clipper = nullptr;
 }
 
 Skeleton *SpineSkeletonInstance::initSkeleton(SkeletonData *data) {
+    if (_destroyed) return nullptr;
     if (data == _skeletonData) {
         return _skeleton;
     }
-    if (_clipper) delete _clipper;
-    if (_animState) delete _animState;
-    if (_animStateData) delete _animStateData;
-    if (_skeleton) delete _skeleton;
+    retireSkeleton();
+    if (!data) return nullptr;
 
     _skeletonData = data;
-    _skeleton = new Skeleton(_skeletonData);
+    _skeleton = SpineWasmUtil::createSpineSkeleton(_skeletonData);
     _animStateData = new AnimationStateData(_skeletonData);
     _animState = new AnimationState(_animStateData);
     _clipper = new SkeletonClipping();
@@ -187,15 +223,19 @@ Skeleton *SpineSkeletonInstance::initSkeleton(SkeletonData *data) {
 }
 
 TrackEntry *SpineSkeletonInstance::setAnimation(float trackIndex, const spine::String &name, bool loop) {
-    if (!_skeleton) return nullptr;
+    if (!_skeleton || _destroyed) return nullptr;
+    const auto generation = _generation;
     spine::Animation *animation = _skeleton->getData()->findAnimation(name);
     if (!animation) {
         _animState->clearTracks();
+        if (_generation != generation) return nullptr;
         _skeleton->setToSetupPose();
         return nullptr;
     }
     auto *trackEntry = _animState->setAnimation(trackIndex, animation, loop);
+    if (_generation != generation) return nullptr;
     _animState->apply(*_skeleton);
+    if (_generation != generation) return nullptr;
 #ifdef CC_SPINE_VERSION_3_8
     _skeleton->updateWorldTransform();
 #else
@@ -211,15 +251,22 @@ void SpineSkeletonInstance::setSkin(const spine::String &name) {
 }
 
 void SpineSkeletonInstance::updateAnimation(float dltTime) {
-    if (!_skeleton) return;
+    if (!_skeleton || _destroyed) return;
+    const auto generation = _generation;
     dltTime *= dtRate;
     _skeleton->update(dltTime);
     _animState->update(dltTime);
+    if (_generation != generation) return;
     _animState->apply(*_skeleton);
+    if (_generation != generation) return;
     dispatchEvents();
 }
 
 SpineModel *SpineSkeletonInstance::updateRenderData() {
+    if (!_skeleton || _destroyed) {
+        _model->clearMeshes();
+        return _model;
+    }
     if (_userData.debugMode) {
         _debugShapes.clear();
     }
@@ -315,6 +362,7 @@ void SpineSkeletonInstance::collectMeshData() {
             auto *triangles = attachmentVertices->_triangles;
             auto vertCount = triangles->vertCount;
             auto indexCount = triangles->indexCount;
+            if (!SpineMeshData::hasSpace(vertCount, indexCount, byteStrideColor)) return discardMeshData();
             auto ibSize = indexCount * sizeof_uint16;
 
             auto vbSize = vertCount * byteStrideColor;
@@ -358,6 +406,7 @@ void SpineSkeletonInstance::collectMeshData() {
             auto *triangles = attachmentVertices->_triangles;
             auto vertCount = triangles->vertCount;
             auto indexCount = triangles->indexCount;
+            if (!SpineMeshData::hasSpace(vertCount, indexCount, byteStrideColor)) return discardMeshData();
             auto ibSize = indexCount * sizeof_uint16;
 
             auto vbSize = vertCount * byteStrideColor;
@@ -432,6 +481,7 @@ void SpineSkeletonInstance::collectMeshData() {
                 auto& clippedUVs = _clipper->getClippedUVs();
                 const auto vertCount = static_cast<int>(clippedVertices.size()) >> 1;
                 const auto indexCount = static_cast<int>(clippedTriangles.size());
+                if (!SpineMeshData::hasSpace(vertCount, indexCount, byteStrideColor)) return discardMeshData();
                 const auto vbSize = vertCount * byteStrideColor;
                 uint8_t *vPtr = SpineMeshData::queryVBuffer();
                 uint16_t *iPtr = SpineMeshData::queryIBuffer();
@@ -489,6 +539,7 @@ void SpineSkeletonInstance::collectMeshData() {
                 auto& clippedUVs = _clipper->getClippedUVs();
                 const auto vertCount = static_cast<int>(clippedVertices.size()) >> 1;
                 const auto indexCount = static_cast<int>(clippedTriangles.size());
+                if (!SpineMeshData::hasSpace(vertCount, indexCount, byteStrideColor)) return discardMeshData();
                 const auto vbSize = vertCount * byteStrideColor;
                 uint8_t *vPtr = SpineMeshData::queryVBuffer();
                 uint16_t *iPtr = SpineMeshData::queryIBuffer();
@@ -540,6 +591,8 @@ void SpineSkeletonInstance::collectMeshData() {
             }
         }
 
+        // The model uses uint16_t indices even when the backing buffer is larger.
+        if (currMesh.vCount > 65536U - _model->vCount) return discardMeshData();
         SpineMeshData::moveVB(currMesh.vCount * byteStrideColor);
         SpineMeshData::moveIB(currMesh.iCount);
         // record debug shape info
@@ -567,6 +620,20 @@ void SpineSkeletonInstance::collectMeshData() {
 
 void SpineSkeletonInstance::setPremultipliedAlpha(bool val) {
     _userData.premultipliedAlpha = val;
+}
+
+void SpineSkeletonInstance::discardMeshData() {
+    _clipper->clipEnd();
+#ifdef CC_SPINE_VERSION_3_8
+    if (_effect) _effect->end();
+#endif
+    _model->clearMeshes();
+    _debugShapes.clear();
+    SpineMeshData::reset();
+    if (!_meshOverflowReported) {
+        fprintf(stderr, "[Spine] Mesh exceeds buffer capacity or 16-bit index range; skipping this skeleton's render data.\n");
+        _meshOverflowReported = true;
+    }
 }
 
 void SpineSkeletonInstance::setColor(float r, float g, float b, float a) {
@@ -615,12 +682,15 @@ void SpineSkeletonInstance::setDebugMode(bool debug) {
 }
 
 void SpineSkeletonInstance::onTrackEntryEvent(TrackEntry *entry, EventType type, Event *event) {
+    if (_destroyed) return;
+    const auto generation = _generation;
     if (!entry->getRendererObject()) return;
     SpineWasmUtil::s_listenerID = _trackListenerSet[entry];
     SpineWasmUtil::s_currentType = type;
     SpineWasmUtil::s_currentEntry = entry;
     SpineWasmUtil::s_currentEvent = event;
     spineTrackListenerCallback();
+    if (_generation != generation) return;
     if (type == EventType_Dispose) {
         entry->setRendererObject(nullptr);
         _trackListenerSet.remove(entry);
@@ -628,6 +698,7 @@ void SpineSkeletonInstance::onTrackEntryEvent(TrackEntry *entry, EventType type,
 }
 
 void SpineSkeletonInstance::onAnimationStateEvent(TrackEntry *entry, EventType type, Event *event) {
+    if (_destroyed) return;
     SpineWasmUtil::s_currentType = type;
     SpineWasmUtil::s_currentEntry = entry;
     SpineWasmUtil::s_currentEvent = event;
@@ -780,6 +851,8 @@ void SpineSkeletonInstance::setSlotTexture(const spine::String &slotName, const 
 }
 
 void SpineSkeletonInstance::dispatchEvents() {
+    if (_destroyed) return;
+    const auto generation = _generation;
     spine::Vector<SpineEventInfo> vecAnimationEvents;
     spine::Vector<SpineEventInfo> vecTrackEvents;
     if (animationEvents.size() > 0) {
@@ -795,10 +868,12 @@ void SpineSkeletonInstance::dispatchEvents() {
     for (int i = 0; i < vecAnimationEvents.size(); i++) {
         auto& info = vecAnimationEvents[i];
         onAnimationStateEvent(info.entry, info.eventType, info.event);
+        if (_generation != generation) return;
     }
     for (int i = 0; i < vecTrackEvents.size(); i++) {
         auto& info = vecTrackEvents[i];
         onTrackEntryEvent(info.entry, info.eventType, info.event);
+        if (_generation != generation) return;
     }
 }
 
