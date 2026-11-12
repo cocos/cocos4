@@ -26,7 +26,7 @@
 import { EDITOR, NODEJS, TEST } from 'internal:constants';
 import { ccclass, serializable } from 'cc.decorator';
 import { Asset } from './asset';
-import { TextureFilter, PixelFormat, WrapMode } from './asset-enum';
+import { GFX_TEXTURE_CHANGED, TextureFilter, PixelFormat, WrapMode } from './asset-enum';
 import { Sampler, Texture, Device, Format, SamplerInfo, Address, Filter as GFXFilter, deviceManager } from '../../gfx';
 import { errorID, murmurhash2_32_gc, ccenum, cclegacy, js } from '../../core';
 import type { Batcher2D } from '../../2d/renderer/batcher-2d';
@@ -212,9 +212,7 @@ export class TextureBase extends Asset {
         this._wrapR = wrapR;
         this._samplerInfo.addressW = wrapR as unknown as Address;
 
-        if (this._gfxDevice) {
-            this._gfxSampler = this._gfxDevice.getSampler(this._samplerInfo);
-        }
+        this._updateSampler();
     }
 
     /**
@@ -229,9 +227,7 @@ export class TextureBase extends Asset {
         this._magFilter = magFilter;
         this._samplerInfo.magFilter = magFilter as unknown as GFXFilter;
 
-        if (this._gfxDevice) {
-            this._gfxSampler = this._gfxDevice.getSampler(this._samplerInfo);
-        }
+        this._updateSampler();
     }
 
     /**
@@ -243,9 +239,7 @@ export class TextureBase extends Asset {
         this._mipFilter = mipFilter;
         this._samplerInfo.mipFilter = mipFilter as unknown as GFXFilter;
 
-        if (this._gfxDevice) {
-            this._gfxSampler = this._gfxDevice.getSampler(this._samplerInfo);
-        }
+        this._updateSampler();
     }
 
     /**
@@ -258,8 +252,15 @@ export class TextureBase extends Asset {
         this._anisotropy = anisotropy;
         this._samplerInfo.maxAnisotropy = anisotropy;
 
-        if (this._gfxDevice) {
-            this._gfxSampler = this._gfxDevice.getSampler(this._samplerInfo);
+        this._updateSampler();
+    }
+
+    private _updateSampler (): void {
+        if (!this._gfxDevice) return;
+        const sampler = this._gfxDevice.getSampler(this._samplerInfo);
+        if (sampler !== this._gfxSampler) {
+            this._gfxSampler = sampler;
+            this.emit(GFX_TEXTURE_CHANGED);
         }
     }
 

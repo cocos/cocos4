@@ -1,4 +1,4 @@
-import { SpriteFrame, SpriteRenderer, SpriteDrawMode, SpriteTileMode } from '../../cocos/2d';
+import { SpriteFrame, SpriteFrameEvent, SpriteRenderer, SpriteDrawMode, SpriteTileMode } from '../../cocos/2d';
 import { Texture2D, Material, EffectAsset } from '../../cocos/asset/assets';
 import { Color, Rect, Vec2, isValid } from '../../cocos/core';
 import { CCObject } from '../../cocos/core/data/object';
@@ -81,6 +81,115 @@ describe('SpriteRenderer sliced and tiled', () => {
     function geometry (f: SpriteFrame, x: number, y: number, mode = SpriteDrawMode.TILED, tileMode = SpriteTileMode.CONTINUOUS, threshold = 0.5) {
         return generateSpriteGeometry(f, x, y, mode, tileMode, threshold);
     }
+
+    test('all draw modes preserve explicit source corners, including the fourth corner', () => {
+        const asset = frame();
+        asset.insetLeft = asset.insetRight = asset.insetTop = asset.insetBottom = 0;
+        asset.uv.splice(0, 8, 0.5, 1, 1, 1, 0.5, 0, 0.75, 0.25);
+        const expected = [0.5, 0, 1, 0, 0.5, 1, 0.75, 0.75];
+        const sprite = renderer();
+        sprite.spriteFrame = asset;
+        for (const mode of [SpriteDrawMode.SIMPLE, SpriteDrawMode.SLICED, SpriteDrawMode.TILED]) {
+            sprite.drawMode = mode;
+            expect(Array.from(mesh(sprite).readAttribute(0, AttributeName.ATTR_TEX_COORD))).toEqual(expected);
+        }
+    });
+
+    test('prewarming before a Pivot edit gives every renderer the same bounds as a fresh frame', () => {
+        const asset = frame();
+        asset.ensureMeshData();
+        const old = asset.mesh!;
+        old.addRef();
+        try {
+            asset.pivot.set(0, 0);
+            const fresh = asset.clone();
+            frames.push(fresh);
+            const reference = renderer();
+            reference.spriteFrame = fresh;
+            const referenceBounds = reference.model!.modelBounds!;
+            for (const mode of [SpriteDrawMode.SIMPLE, SpriteDrawMode.SLICED, SpriteDrawMode.TILED]) {
+                const sprite = renderer();
+                sprite.drawMode = mode;
+                sprite.spriteFrame = asset;
+                expect(sprite.model!.modelBounds!.center).toEqual(referenceBounds.center);
+                expect(sprite.model!.modelBounds!.halfExtents).toEqual(referenceBounds.halfExtents);
+            }
+            expect(asset.mesh).not.toBe(old);
+            expect(isValid(old, true)).toBe(true);
+            expect(old.struct.minPosition!.x).toBeLessThan(0);
+            expect(asset.mesh!.struct.minPosition!.x).toBe(0);
+        } finally {
+            old.decRef();
+        }
+    });
+
+    test('re-enabling a sized consumer refreshes shared and owned geometry after an in-place Pivot edit', () => {
+        const asset = frame(), sized = sliced(asset), simple = renderer();
+        simple.spriteFrame = asset;
+        const oldShared = asset.mesh, oldSized = mesh(sized);
+        sized.enabled = false;
+        asset.pivot.set(1, 0);
+        sized.enabled = true;
+        expect(asset.mesh).not.toBe(oldShared);
+        expect(mesh(sized)).not.toBe(oldSized);
+        for (const sprite of [simple, sized]) {
+            const bounds = sprite.model!.modelBounds!;
+            expect(bounds.center.x + bounds.halfExtents.x).toBeCloseTo(0);
+            expect(bounds.center.y - bounds.halfExtents.y).toBeCloseTo(0);
+        }
+    });
+
+    test('a source replaced by a geometry-change listener is checked before building the model', () => {
+        const asset = frame(), sprite = sliced(asset);
+        const late = new Texture2D();
+        textures.push(late);
+        sprite.enabled = false;
+        asset.pivot.set(0, 0);
+        asset.once(SpriteFrameEvent.MESH_CHANGED, () => { asset.texture = late; });
+        sprite.enabled = true;
+        expect(sprite.model).toBeNull();
+        late.reset({ width: 64, height: 64 });
+        expect(asset.texture).toBe(late);
+        expect(sprite.model).not.toBeNull();
+    });
+
+    test.each([false, true])('a border-only reset preserves source UVs and rebuilds sized meshes once (packed=%s)', (packed) => {
+        const asset = frame(), simple = renderer(), nine = renderer(), tiled = renderer();
+        asset.uv.splice(0, 8, 0.5, 1, 1, 1, 0.5, 0, 1, 0);
+        if (packed) asset._setDynamicAtlasFrame({ texture: texture(1024), x: 300, y: 400 });
+        nine.drawMode = SpriteDrawMode.SLICED; tiled.drawMode = SpriteDrawMode.TILED;
+        simple.spriteFrame = nine.spriteFrame = tiled.spriteFrame = asset;
+        const shared = asset.mesh, oldNine = mesh(nine), oldTiled = mesh(tiled);
+        const changed = jest.fn(), border = jest.fn(), uv = jest.fn();
+        asset.on(SpriteFrameEvent.MESH_CHANGED, changed);
+        asset.on(SpriteFrameEvent.BORDER_CHANGED, border);
+        asset.on(SpriteFrameEvent.UV_UPDATED, uv);
+        asset.reset({ borderLeft: 8, borderRight: 9, borderBottom: 2 });
+        expect(changed).not.toHaveBeenCalled();
+        expect(border).toHaveBeenCalledTimes(1);
+        expect(uv).toHaveBeenCalledTimes(1);
+        expect(asset.mesh).toBe(shared);
+        expect(mesh(nine)).not.toBe(oldNine);
+        expect(mesh(tiled)).not.toBe(oldTiled);
+        for (const sprite of [simple, nine, tiled]) {
+            expect(mesh(sprite).readAttribute(0, AttributeName.ATTR_TEX_COORD)[0]).toBe(0.5);
+        }
+        const installed = mesh(nine);
+        asset.reset({ borderLeft: 8 });
+        expect(mesh(nine)).toBe(installed);
+        asset.reset({ rect: new Rect(asset.rect.x + 8, asset.rect.y, 32, 32), borderLeft: 4 });
+        expect(changed).toHaveBeenCalledTimes(1);
+        expect(mesh(nine).readAttribute(0, AttributeName.ATTR_TEX_COORD)[0]).toBeCloseTo(24 / 256);
+    });
+
+    test('resubmitting a directly edited Rect refreshes automatic corners', () => {
+        const asset = frame(), sprite = renderer();
+        sprite.spriteFrame = asset;
+        asset.rect.x += 16;
+        asset.reset({ rect: asset.rect });
+        expect(asset.uv[0]).toBeCloseTo(32 / 256);
+        expect(asset.mesh!.readAttribute(0, AttributeName.ATTR_TEX_COORD)![0]).toBeCloseTo(32 / 256);
+    });
 
     test('legacy mode/size stay inactive, while new explicit zero survives deserialization', () => {
         const old = deserialize({ __type__: 'cc.SpriteRenderer', _mode: 2, _size: { __type__: 'cc.Vec2', x: 3, y: 2 } }) as SpriteRenderer;

@@ -56,7 +56,11 @@ SimpleTexture::~SimpleTexture() = default;
 bool SimpleTexture::destroy() {
     tryDestroyTextureView();
     tryDestroyTexture();
-    return Super::destroy();
+    const bool destroyed = Super::destroy();
+    if (destroyed) {
+        notifyTextureUpdated();
+    }
+    return destroyed;
 }
 
 void SimpleTexture::updateImage() {
@@ -118,15 +122,12 @@ void SimpleTexture::setMipmapLevel(uint32_t value) {
 void SimpleTexture::tryReset() {
     tryDestroyTextureView();
     tryDestroyTexture();
-    if (_mipmapLevel == 0) {
-        return;
-    }
     auto *device = getGFXDevice();
-    if (!device) {
-        return;
+    if (_mipmapLevel != 0 && device) {
+        createTexture(device);
+        _gfxTextureView = createTextureView(device);
     }
-    createTexture(device);
-    _gfxTextureView = createTextureView(device);
+    notifyTextureUpdated();
 }
 
 void SimpleTexture::createTexture(gfx::Device *device) {
@@ -163,8 +164,6 @@ void SimpleTexture::createTexture(gfx::Device *device) {
     _textureHeight = textureCreateInfo.height;
 
     _gfxTexture = texture;
-
-    notifyTextureUpdated();
 }
 
 gfx::Texture *SimpleTexture::createTextureView(gfx::Device *device) {
@@ -190,8 +189,6 @@ void SimpleTexture::tryDestroyTexture() {
     if (_gfxTexture != nullptr) {
         _gfxTexture->destroy();
         _gfxTexture = nullptr;
-
-        notifyTextureUpdated();
     }
 }
 
@@ -200,7 +197,6 @@ void SimpleTexture::tryDestroyTextureView() {
         _gfxTextureView->destroy();
         _gfxTextureView = nullptr;
 
-        //TODO(minggo): should notify JS if the performance is low.
     }
 }
 
@@ -218,6 +214,7 @@ void SimpleTexture::setMipRange(uint32_t baseLevel, uint32_t maxLevel) {
     gfx::Texture *textureView = createTextureView(device);
     tryDestroyTextureView();
     _gfxTextureView = textureView;
+    notifyTextureUpdated();
 }
 
 bool SimpleTexture::isUsingOfflineMipmaps() {
@@ -230,7 +227,8 @@ void SimpleTexture::setMipRangeInternal(uint32_t baseLevel, uint32_t maxLevel) {
 }
 
 void SimpleTexture::notifyTextureUpdated() {
-    emit<TextureUpdated>(_gfxTexture.get());
+    // Observers bind the final view returned by getGFXTexture(), including its mip range.
+    emit<TextureUpdated>(getGFXTexture());
 }
 
 } // namespace cc

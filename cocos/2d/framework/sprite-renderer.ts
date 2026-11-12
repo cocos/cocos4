@@ -86,11 +86,11 @@ export class SpriteRenderer extends ModelRenderer {
     /** @en Instance tint, multiplied by the material color. @zh 实例颜色，与材质颜色相乘。 */
     @type(Color)
     @editable
-    get color (): Readonly<Color> { return this._instanceColor; }
+    get color (): Readonly<Color> { return this._instanceColor.clone(); }
     set color (value: Readonly<Color>) {
         if (this._instanceColor.equals(value)) return;
         this._instanceColor.set(value);
-        this._updateInstanceParameters();
+        this._updateInstanceParameters(true, false);
     }
 
     /** @en Mirror the rendered geometry around its local pivot. @zh 围绕局部原点水平翻转渲染内容。 */
@@ -100,7 +100,7 @@ export class SpriteRenderer extends ModelRenderer {
     set flipX (value: boolean) {
         if (this._instanceFlipX === value) return;
         this._instanceFlipX = value;
-        this._updateInstanceParameters();
+        this._updateInstanceParameters(false, true);
     }
 
     /** @en Mirror the rendered geometry around its local pivot. @zh 围绕局部原点垂直翻转渲染内容。 */
@@ -110,7 +110,7 @@ export class SpriteRenderer extends ModelRenderer {
     set flipY (value: boolean) {
         if (this._instanceFlipY === value) return;
         this._instanceFlipY = value;
-        this._updateInstanceParameters();
+        this._updateInstanceParameters(false, true);
     }
 
     /**
@@ -245,8 +245,28 @@ export class SpriteRenderer extends ModelRenderer {
         this._materialInstances.length = 0;
     }
 
-    public setMaterialInstance (material: Material | MaterialInstance | null, index: number): void {
+    public override getMaterialInstance (index: number): MaterialInstance | null {
+        // A script may install an instance without assigning a shared material first.
+        return this._materialInstances[index] || super.getMaterialInstance(index);
+    }
+
+    public override setSharedMaterial (material: Material | null, index: number, forceUpdate = false): void {
+        if (!forceUpdate && material && this._materials[index] === material) return;
+        const instance = this._materialInstances[index];
+        if (instance && instance.owner !== this) {
+            // The base renderer destroys the instance in this slot when replacing the material.
+            this._materialInstances[index] = null;
+            forceUpdate = true;
+        }
+        super.setSharedMaterial(material, index, forceUpdate || (!!instance && material === null));
+    }
+
+    public override setMaterialInstance (material: Material | MaterialInstance | null, index: number): void {
         const previous = this._materialInstances[index];
+        if (material?.parent && index >= this._materials.length) {
+            // The inherited array setters visit shared slots when clearing material instances.
+            this._materials[index] = null;
+        }
         super.setMaterialInstance(material, index);
         // Renderer releases owned instances when changing a shared material, but not when installing another instance.
         // Release our generated instance only after the replacement has reached the Model; never release a borrowed one.
@@ -286,6 +306,7 @@ export class SpriteRenderer extends ModelRenderer {
         frame.off(SpriteFrameEvent.MESH_CHANGED, this._onFrameChanged, this);
         frame.off(SpriteFrameEvent.MESH_DESTROYED, this._onFrameDestroyed, this);
         frame.off(SpriteFrameEvent.BORDER_CHANGED, this._onBorderChanged, this);
+        frame.off(SpriteFrameEvent.TEXTURE_CHANGED, this._onTextureChanged, this);
         frame._releaseMesh();
     }
 
@@ -307,6 +328,15 @@ export class SpriteRenderer extends ModelRenderer {
         this._releaseFrame();
     }
 
+    private _onTextureChanged (): void {
+        if (!this.enabledInHierarchy) return;
+        if (this._model && this._retainedFrame?._getSourceTexture()?.getGFXTexture()) {
+            this._onUpdateLocalDescriptorSet();
+        } else {
+            this._updateModels();
+        }
+    }
+
     protected _updateModels (): void {
         if (!this.enabledInHierarchy) return;
         const frame = this._spriteFrame;
@@ -323,15 +353,20 @@ export class SpriteRenderer extends ModelRenderer {
             frame.on(SpriteFrameEvent.MESH_CHANGED, this._onFrameChanged, this);
             frame.on(SpriteFrameEvent.MESH_DESTROYED, this._onFrameDestroyed, this);
             frame.on(SpriteFrameEvent.BORDER_CHANGED, this._onBorderChanged, this);
+            frame.on(SpriteFrameEvent.TEXTURE_CHANGED, this._onTextureChanged, this);
         }
+        const mode = this._drawMode;
+        frame._validateWorldGeometry();
+        // Validation may notify a listener that changes the frame, mode or underlying texture.
+        if (this._retainedFrame !== frame || this._drawMode !== mode || !this.enabledInHierarchy) return;
         const sourceTexture = frame._getSourceTexture();
         if (!isValid(sourceTexture, true) || !sourceTexture.getGFXTexture()) {
             this._destroyModel();
             return;
         }
         let mesh: Mesh | null;
-        if (this._drawMode === SpriteDrawMode.SIMPLE) {
-            frame.ensureMeshData();
+        if (mode === SpriteDrawMode.SIMPLE) {
+            if (!frame.mesh) frame.ensureMeshData();
             mesh = frame.mesh;
         } else {
             if (!this._ownedMesh) {
@@ -341,6 +376,7 @@ export class SpriteRenderer extends ModelRenderer {
                 this._geometryWarning = result.error || '';
                 if (result.geometry) {
                     this._ownedMesh = createMesh(result.geometry);
+                    frame._recordWorldGeometry();
                     sourceTexture.addRef();
                     this._ownedTexture = sourceTexture;
                 }
@@ -421,14 +457,15 @@ export class SpriteRenderer extends ModelRenderer {
      */
     public override _onRebuildPSO (idx: number, material: Material): void {
         if (!this._model || !this._model.inited) { return; }
-        this._model.setSubModelMaterial(idx, this._applySpriteParameters(idx) || material);
+        this._model.setSubModelMaterial(idx, this._applySpriteParameters(idx) || this._getBuiltinMaterial());
         this._updateBounds();
         this._onUpdateLocalDescriptorSet();
     }
 
-    private _applySpriteParameters (index: number): Material | null {
+    private _applySpriteParameters (index: number, updateColor = true, updateFlip = true): Material | null {
         let material = this.getRenderMaterial(index);
-        if (!material || !isValid(material, true)) return null;
+        // A borrowed MaterialInstance can outlive its passes when its owner is destroyed.
+        if (!material || !isValid(material, true) || !material.passes?.length) return null;
         const hasColor = material.passes.some((pass) => !!pass.getHandle('spriteColor'));
         const hasFlip = material.passes.some((pass) => !!pass.getHandle('spriteFlip'));
         const tinted = !this._instanceColor.equals(Color.WHITE);
@@ -452,9 +489,11 @@ export class SpriteRenderer extends ModelRenderer {
                 material = this.getMaterialInstance(index);
             }
             if (material) {
-                if (hasColor) material.setProperty('spriteColor', this._instanceColor);
-                this._spriteFlip.set(this._instanceFlipX ? -1 : 1, this._instanceFlipY ? -1 : 1, 1, 1);
-                if (hasFlip) material.setProperty('spriteFlip', this._spriteFlip);
+                if (hasColor && (updateColor || material !== existing)) material.setProperty('spriteColor', this._instanceColor);
+                if (hasFlip && (updateFlip || material !== existing)) {
+                    this._spriteFlip.set(this._instanceFlipX ? -1 : 1, this._instanceFlipY ? -1 : 1, 1, 1);
+                    material.setProperty('spriteFlip', this._spriteFlip);
+                }
             }
         } finally {
             this._applyingMaterial = false;
@@ -462,21 +501,29 @@ export class SpriteRenderer extends ModelRenderer {
         return material;
     }
 
-    private _updateInstanceParameters (): void {
+    private _updateInstanceParameters (updateColor = true, updateFlip = true): void {
         if (!this.enabledInHierarchy || !this._model?.inited) return;
-        for (let i = 0; i < this._model.subModels.length; ++i) {
-            const material = this._applySpriteParameters(i) || this._getBuiltinMaterial();
-            this._model.setSubModelMaterial(i, material);
+        const subModels = this._model.subModels;
+        let rebound = false;
+        for (let i = 0; i < subModels.length; ++i) {
+            const material = this._applySpriteParameters(i, updateColor, updateFlip) || this._getBuiltinMaterial();
+            const bound = subModels[i].passes;
+            const passes = material.passes;
+            // JSB can return a new array containing the same passes.
+            if (bound !== passes && (bound.length !== passes.length || bound.some((pass, j) => pass !== passes[j]))) {
+                this._model.setSubModelMaterial(i, material);
+                rebound = true;
+            }
         }
-        this._updateBounds();
-        this._onUpdateLocalDescriptorSet();
+        if (updateFlip || rebound) this._updateBounds();
+        if (rebound) this._onUpdateLocalDescriptorSet();
     }
 
     private _updateBounds (): void {
         const min = this._boundMesh?.struct.minPosition;
         const max = this._boundMesh?.struct.maxPosition;
         if (!this._model || !min || !max) return;
-        const supportsFlip = this.getRenderMaterial(0)?.passes.some((pass) => !!pass.getHandle('spriteFlip'));
+        const supportsFlip = this._model.subModels[0]?.passes.some((pass) => !!pass.getHandle('spriteFlip'));
         const flipX = supportsFlip && this._instanceFlipX;
         const flipY = supportsFlip && this._instanceFlipY;
         this._boundsMin.set(flipX ? -max.x : min.x, flipY ? -max.y : min.y, min.z);

@@ -135,7 +135,10 @@ export function generateSpriteGeometry (
     const maxY = originY + height;
     const uv = frame._getSourceUVs();
     if (![originX, originY, maxX, maxY].every((v) => Number.isFinite(v) && Number.isFinite(Math.fround(v)))
-        || uv.length !== 8 || !uv.every(Number.isFinite)) return { geometry: null, error: 'invalid pivot, bounds or UVs' };
+        || uv.length !== 8 || !uv.every((v) => Number.isFinite(Math.fround(v)))) return { geometry: null, error: 'invalid pivot, bounds or UVs' };
+    // The fourth authored corner need not form a parallelogram with the other three.
+    const crossU = (uv[6] - uv[4]) - (uv[2] - uv[0]);
+    const crossV = (uv[7] - uv[5]) - (uv[3] - uv[1]);
     const continuous = mode === SpriteDrawMode.TILED && tileMode === SpriteTileMode.CONTINUOUS;
     const xs = segments(x, continuous);
     const ys = segments(y, continuous);
@@ -152,10 +155,9 @@ export function generateSpriteGeometry (
                 [col.end, row.end, col.uvEnd, row.uvEnd],
             ]) {
                 positions.push(originX + px, originY + py, 0);
-                // Affine corner interpolation preserves static rotation and resource UV flips.
                 uvs.push(
-                    uv[0] + (uv[2] - uv[0]) * u + (uv[4] - uv[0]) * v,
-                    uv[1] + (uv[3] - uv[1]) * u + (uv[5] - uv[1]) * v,
+                    uv[0] + (uv[2] - uv[0]) * u + (uv[4] - uv[0]) * v + crossU * u * v,
+                    uv[1] + (uv[3] - uv[1]) * u + (uv[5] - uv[1]) * v + crossV * u * v,
                 );
             }
             indices.push(index, index + 1, index + 2, index + 2, index + 1, index + 3);

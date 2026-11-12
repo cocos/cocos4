@@ -1,11 +1,14 @@
 import { SpriteFrame, SpriteRenderer, UITransform } from '../../cocos/2d';
-import { Texture2D, Material, EffectAsset } from '../../cocos/asset/assets';
-import { Color, Rect, Vec3, Vec4, isValid } from '../../cocos/core';
+import { Texture2D, Material, EffectAsset, ImageAsset, RenderTexture } from '../../cocos/asset/assets';
+import { GFX_TEXTURE_CHANGED } from '../../cocos/asset/assets/asset-enum';
+import { Color, Rect, Size, Vec2, Vec3, Vec4, isValid } from '../../cocos/core';
 import { CCObject } from '../../cocos/core/data/object';
 import { AttributeName, DescriptorSet } from '../../cocos/gfx';
 import { Node } from '../../cocos/scene-graph/node';
 import { Scene, director } from '../../exports/base';
 import { MaterialInstance } from '../../cocos/render-scene/core/material-instance';
+import { MeshRenderer } from '../../cocos/3d/framework/mesh-renderer';
+import { releaseManager } from '../../cocos/asset/asset-manager/release-manager';
 import { ModelLocalBindings } from '../../cocos/rendering/define';
 import { deserialize } from '../../cocos/serialization/deserialize';
 
@@ -334,6 +337,42 @@ describe('SpriteRenderer resources and lifecycle', () => {
         expect(isValid(mesh, true)).toBe(false);
     });
 
+    test('external mesh owners survive detach, geometry replacement and frame destruction', () => {
+        const retained = ['detach', 'replace', 'destroy'].map((operation) => {
+            const sprite = renderer();
+            const asset = frame();
+            sprite.spriteFrame = asset;
+            const mesh = asset.mesh!;
+            mesh.addRef();
+            const node = new Node();
+            scene.addChild(node);
+            const other = node.addComponent(MeshRenderer);
+            other.mesh = mesh;
+            const subMesh = mesh.renderingSubMeshes[0];
+            const destroy = jest.spyOn(subMesh, 'destroy');
+            if (operation === 'detach') sprite.spriteFrame = null;
+            else if (operation === 'replace') asset.rect = new Rect(0, 0, 80, 80);
+            else asset.destroy();
+            expect(asset.mesh).not.toBe(mesh);
+            expect(other.model!.subModels[0].subMesh).toBe(subMesh);
+            expect(mesh.refCount).toBe(1);
+            expect(isValid(mesh, true)).toBe(true);
+            expect(destroy).not.toHaveBeenCalled();
+            return { mesh, other, destroy };
+        });
+        for (const { mesh, other } of retained) {
+            other.mesh = null;
+            mesh.decRef();
+        }
+        // TEST queues releases without scheduling the runtime's next tick.
+        // @ts-expect-error Flush the same queue as the runtime.
+        releaseManager._freeAssets();
+        for (const { mesh, destroy } of retained) {
+            expect(destroy).toHaveBeenCalledTimes(1);
+            expect(isValid(mesh, true)).toBe(false);
+        }
+    });
+
     test('recovers after a zero source rectangle without submitting stale content', () => {
         const asset = frame();
         const component = renderer();
@@ -367,6 +406,304 @@ describe('SpriteRenderer resources and lifecycle', () => {
         expect(asset.mesh).toBe(mesh);
         first.color = Color.WHITE;
         expect(first.getRenderMaterial(0)!.getProperty('spriteColor')).toEqual(Color.WHITE);
+    });
+
+    test('tint snapshot and reassignment update the actual pass without rebinding the texture', () => {
+        const sprite = renderer();
+        sprite.setSharedMaterial(material(), 0);
+        sprite.spriteFrame = frame();
+        const tint = sprite.color.set(Color.RED);
+        expect(sprite.color.equals(Color.WHITE)).toBe(true);
+        sprite.color = tint;
+        const sub = sprite.model!.subModels[0];
+        const pass = sub.passes[0];
+        const ds = sub.descriptorSet;
+        const bind = jest.spyOn(ds, 'bindTexture');
+        const bounds = jest.spyOn(sprite.model!, 'createBoundingShape');
+        for (let i = 1; i <= 8; i++) {
+            tint.a = i * 25;
+            sprite.color = tint;
+            expect(pass.getUniform(pass.getHandle('spriteColor'), new Vec4()).w).toBeCloseTo(tint.a / 255);
+            expect(sub.descriptorSet).toBe(ds);
+        }
+        expect(bind).not.toHaveBeenCalled();
+        expect(bounds).not.toHaveBeenCalled();
+        sprite.setSharedMaterial(material(), 0);
+        expect(sub.passes[0]).not.toBe(pass);
+        expect(sub.descriptorSet).not.toBe(ds);
+        expect(sub.passes[0].getUniform(sub.passes[0].getHandle('spriteColor'), new Vec4()).w).toBeCloseTo(tint.a / 255);
+    });
+
+    test('late image assignment restores active users with subrect UVs and respects disable and detach', () => {
+        const source = new Texture2D();
+        const asset = new SpriteFrame();
+        textures.push(source);
+        frames.push(asset);
+        asset.texture = source;
+        asset.rect = new Rect(8, 16, 16, 32);
+        const active = renderer(), disabled = renderer(), detached = renderer();
+        active.spriteFrame = disabled.spriteFrame = detached.spriteFrame = asset;
+        expect(active.model).toBeNull();
+        disabled.enabled = false;
+        detached.spriteFrame = null;
+        const image = new ImageAsset({ _data: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+        try {
+            source.image = image;
+            expect(active.model!.subModels[0].subMesh).toBe(asset.mesh!.renderingSubMeshes[0]);
+            expect(Array.from(asset.mesh!.readAttribute(0, AttributeName.ATTR_TEX_COORD)!))
+                .toEqual([0.125, 0.25, 0.375, 0.25, 0.125, 0.75, 0.375, 0.75]);
+            expect(disabled.model).toBeNull();
+            expect(detached.model).toBeNull();
+            disabled.enabled = true;
+            expect(disabled.model!.subModels[0].subMesh).toBe(active.model!.subModels[0].subMesh);
+        } finally {
+            image.destroy();
+        }
+    });
+
+    test('late full texture resolves once; an explicit 1x1 or zero rect stays explicit', () => {
+        const source = new Texture2D();
+        textures.push(source);
+        const full = new SpriteFrame(), single = new SpriteFrame(), empty = new SpriteFrame();
+        frames.push(full, single, empty);
+        full.texture = single.texture = source;
+        single.rect = new Rect(0, 0, 1, 1); // Also exercises the rect setter's equal-value fast path.
+        empty.reset({ texture: source, rect: new Rect(0, 0, 0, 0) }, true);
+        const a = renderer(), b = renderer(), c = renderer();
+        a.spriteFrame = full; b.spriteFrame = single; c.spriteFrame = empty;
+        source.reset({ width: 64, height: 32 });
+        expect(full.rect).toEqual(new Rect(0, 0, 64, 32));
+        expect(full.originalSize).toEqual(new Size(64, 32));
+        expect(a.model!.modelBounds!.halfExtents.x).toBeCloseTo(0.32);
+        expect(single.rect).toEqual(new Rect(0, 0, 1, 1));
+        expect(b.model!.modelBounds!.halfExtents.x).toBeCloseTo(0.005);
+        expect(empty.rect).toEqual(new Rect(0, 0, 0, 0));
+        expect(c.model).toBeNull();
+        source.reset({ width: 128, height: 64 });
+        expect(full.rect).toEqual(new Rect(0, 0, 64, 32));
+    });
+
+    test.each([0, 1])('UV callback sees the committed frame and can set a %i-pixel rect', (width) => {
+        const source = new Texture2D(), asset = new SpriteFrame();
+        textures.push(source);
+        frames.push(asset);
+        let outerNotifications = 0;
+        asset.once('uv_updated', () => {
+            ++outerNotifications;
+            expect(asset.insetLeft).toBe(3);
+            expect(asset.offset.x).toBe(2);
+            asset.rect = new Rect(0, 0, width, width);
+        });
+        asset.reset({ texture: source, offset: new Vec2(2, 0), borderLeft: 3 }, true);
+        const sprite = renderer();
+        sprite.spriteFrame = asset;
+        source.reset({ width: 64, height: 64 });
+        expect(outerNotifications).toBe(1);
+        expect(asset.rect.width).toBe(width);
+        expect(!!sprite.model).toBe(width !== 0);
+    });
+
+    test('replacing the source in a UV callback does not inherit the abandoned pending rect', () => {
+        const late = new Texture2D(), ready = texture(64), asset = new SpriteFrame();
+        textures.push(late);
+        frames.push(asset);
+        asset.once('uv_updated', () => { asset.texture = ready; });
+        asset.texture = late;
+        ready.reset({ width: 128, height: 128 });
+        late.reset({ width: 32, height: 32 });
+        expect(asset.texture).toBe(ready);
+        expect(asset.rect).toEqual(new Rect(0, 0, 64, 64));
+        expect(late.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        expect(ready.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+    });
+
+    test('repeated implicit texture assignment preserves both pending sizes and an explicit original size', () => {
+        const late = new Texture2D(), full = new SpriteFrame(), trimmed = new SpriteFrame();
+        textures.push(late);
+        frames.push(full, trimmed);
+        full.texture = trimmed.texture = late;
+        trimmed.originalSize = new Size(1, 1);
+        full.reset({ texture: late });
+        trimmed.reset({ texture: late });
+        late.reset({ width: 64, height: 32 });
+        expect(full.rect).toEqual(trimmed.rect);
+        expect(full.originalSize).toEqual(new Size(64, 32));
+        expect(trimmed.originalSize).toEqual(new Size(1, 1));
+    });
+
+    test('UV edits after prewarming are used by the first renderer without destroying an external mesh reference', () => {
+        const asset = frame();
+        asset.ensureMeshData();
+        const prewarmed = asset.mesh!;
+        prewarmed.addRef();
+        try {
+            asset.uv.splice(0, 8, 0.5, 1, 1, 1, 0.5, 0, 1, 0);
+            const sprite = renderer();
+            sprite.spriteFrame = asset;
+            expect(asset.mesh).not.toBe(prewarmed);
+            expect(isValid(prewarmed, true)).toBe(true);
+            expect(sprite.model!.subModels[0].subMesh).toBe(asset.mesh!.renderingSubMeshes[0]);
+            expect(Array.from(asset.mesh!.readAttribute(0, AttributeName.ATTR_TEX_COORD)!)).toEqual([0.5, 0, 1, 0, 0.5, 1, 1, 1]);
+        } finally {
+            prewarmed.decRef();
+        }
+    });
+
+    test('pending full rect is runtime-only and resolves without a renderer or derived mesh', () => {
+        const late = new Texture2D(), ready = texture(64);
+        textures.push(late);
+        const pending = new SpriteFrame(), explicit = new SpriteFrame(), ordinary = new SpriteFrame();
+        frames.push(pending, explicit, ordinary);
+        const ordinaryKeys = Object.keys(ordinary).sort();
+        ordinary.texture = ready;
+        expect(Object.keys(ordinary).sort()).toEqual(ordinaryKeys);
+        expect(ready.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        pending.texture = late;
+        explicit.reset({ texture: late, rect: new Rect(0, 0, 1, 1) }, true);
+        expect(pending._serialize(null)).toEqual(explicit._serialize(null));
+        expect(Object.keys(explicit).sort()).toEqual(ordinaryKeys);
+        const copy = pending.clone();
+        frames.push(copy);
+        copy.originalSize = new Size(1, 1);
+        const corners = [0.5, 1, 1, 1, 0.5, 0, 1, 0];
+        pending.uv.splice(0, 8, ...corners);
+        late.reset({ width: 64, height: 64 });
+        expect(pending.uv).toEqual(corners);
+        expect(pending.rect).toEqual(ordinary.rect);
+        expect(pending.originalSize).toEqual(ordinary.originalSize);
+        expect(copy.rect).toEqual(ordinary.rect);
+        expect(copy.originalSize).toEqual(new Size(1, 1));
+        expect(pending.mesh).toBeNull();
+        expect(late.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        expect(Object.keys(pending).sort()).toEqual(ordinaryKeys);
+    });
+
+    test('replacing or destroying an unresolved full frame cancels the old source callback', () => {
+        const first = new Texture2D(), second = new Texture2D();
+        textures.push(first, second);
+        const asset = new SpriteFrame();
+        frames.push(asset);
+        asset.texture = first;
+        const copy = asset.clone();
+        frames.push(copy);
+        asset.texture = second;
+        copy.destroy();
+        expect(first.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        first.reset({ width: 128, height: 128 });
+        expect(asset.rect).toEqual(new Rect(0, 0, 1, 1));
+        second.reset({ width: 32, height: 16 });
+        expect(asset.rect).toEqual(new Rect(0, 0, 32, 16));
+        expect(second.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+    });
+
+    test('destroying a source before its first upload releases the temporary full-rect state', () => {
+        const source = new Texture2D(), asset = new SpriteFrame();
+        textures.push(source);
+        frames.push(asset);
+        const ordinaryKeys = Object.keys(asset).sort();
+        asset.texture = source;
+        expect(source.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(true);
+        source.destroy();
+        expect(source.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        expect(Object.keys(asset).sort()).toEqual(ordinaryKeys);
+    });
+
+    test('Simple rejects a finite PPU that overflows Float32 vertices and recovers on frame change', () => {
+        const sprite = renderer(), invalid = frame(), valid = frame();
+        invalid._deserialize({ pixelsToUnit: 1e-38 }, null);
+        sprite.spriteFrame = valid;
+        sprite.spriteFrame = invalid;
+        expect(invalid.mesh).toBeNull();
+        expect(sprite.model).toBeNull();
+        sprite.spriteFrame = valid;
+        expect(sprite.model!.subModels[0].subMesh).toBe(valid.mesh!.renderingSubMeshes[0]);
+    });
+
+    test('switching an unready source transfers the listener; destroying the frame cancels it', () => {
+        const first = new Texture2D(), second = new Texture2D();
+        textures.push(first, second);
+        const asset = new SpriteFrame();
+        frames.push(asset);
+        asset.texture = first;
+        const sprite = renderer();
+        sprite.spriteFrame = asset;
+        expect(first.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(true);
+        asset.texture = second;
+        asset.rect = new Rect(0, 0, 16, 16);
+        expect(first.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        expect(second.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(true);
+        first.reset({ width: 32, height: 32 });
+        expect(sprite.model).toBeNull();
+        asset.destroy();
+        expect(second.hasEventListener(GFX_TEXTURE_CHANGED)).toBe(false);
+        second.reset({ width: 32, height: 32 });
+        expect(sprite.model).toBeNull();
+    });
+
+    test('rebinds recreated views and samplers without replacing the mesh or local descriptor set', () => {
+        const sprite = renderer(), asset = frame(), source = asset.texture as Texture2D;
+        sprite.setSharedMaterial(material(), 0);
+        sprite.spriteFrame = asset;
+        const mesh = asset.mesh;
+        const sub = sprite.model!.subModels[0];
+        const ds = sub.descriptorSet;
+        const textureBind = jest.spyOn(ds, 'bindTexture'), samplerBind = jest.spyOn(ds, 'bindSampler');
+        const oldView = source.getGFXTexture();
+        source.reset({ width: source.width, height: source.height, mipmapLevel: 2 });
+        expect(source.getGFXTexture()).not.toBe(oldView);
+        expect(textureBind).toHaveBeenLastCalledWith(ModelLocalBindings.SAMPLER_SPRITE, source.getGFXTexture());
+        source.setMipRange(1, 1);
+        expect(textureBind).toHaveBeenLastCalledWith(ModelLocalBindings.SAMPLER_SPRITE, source.getGFXTexture());
+        source.setFilters(Texture2D.Filter.NEAREST, Texture2D.Filter.NEAREST);
+        expect(samplerBind).toHaveBeenLastCalledWith(ModelLocalBindings.SAMPLER_SPRITE, source.getGFXSampler());
+        expect(asset.mesh).toBe(mesh);
+        expect(sprite.model!.subModels[0].descriptorSet).toBe(ds);
+    });
+
+    test('resizing a shared source updates automatic UVs for active and temporarily disabled sprites', () => {
+        const first = renderer(), second = renderer(), asset = frame();
+        first.spriteFrame = second.spriteFrame = asset;
+        const old = asset.mesh!;
+        second.enabled = false;
+        (asset.texture as Texture2D).reset({ width: 512, height: 128 });
+        expect(isValid(old, true)).toBe(false);
+        expect(asset.mesh!.readAttribute(0, AttributeName.ATTR_TEX_COORD)![0]).toBeCloseTo(asset.rect.x / 512);
+        second.enabled = true;
+        expect(first.model!.subModels[0].subMesh).toBe(second.model!.subModels[0].subMesh);
+    });
+
+    test('a RenderTexture assigned before reset becomes drawable without toggling the renderer', () => {
+        const target = new RenderTexture(), asset = new SpriteFrame(), sprite = renderer();
+        frames.push(asset);
+        try {
+            asset.texture = target;
+            asset.rect = new Rect(0, 0, 16, 16);
+            sprite.spriteFrame = asset;
+            expect(sprite.model).toBeNull();
+            target.reset({ width: 64, height: 64 });
+            expect(sprite.model!.subModels[0].subMesh).toBe(asset.mesh!.renderingSubMeshes[0]);
+        } finally {
+            sprite.spriteFrame = null;
+            target.destroy();
+        }
+    });
+
+    test('a deferred borrowed override survives identical shared assignment and falls back if its owner is destroyed', () => {
+        const owner = renderer(), receiver = renderer(false), shared = material();
+        owner.setSharedMaterial(shared, 0);
+        owner.spriteFrame = frame();
+        const instance = owner.getMaterialInstance(0)!;
+        receiver.setSharedMaterial(shared, 0);
+        receiver.material = instance;
+        receiver.spriteFrame = frame();
+        receiver.setSharedMaterial(shared, 0);
+        expect(receiver.getRenderMaterial(0)).toBe(instance);
+        owner.node.destroy();
+        CCObject._deferredDestroy();
+        receiver.node.active = true;
+        expect(receiver.model!.subModels[0].passes[0]).toBe((receiver as any)._getBuiltinMaterial().passes[0]);
+        receiver.setSharedMaterial(material(), 0);
+        expect(receiver.model!.subModels[0].passes[0]).toBe(receiver.sharedMaterial!.passes[0]);
     });
 
     test('legacy inactive color/flip fields do not suddenly change an existing scene', () => {
@@ -478,6 +815,13 @@ describe('SpriteRenderer resources and lifecycle', () => {
         expect(component.getRenderMaterial(0)).not.toBe(external);
         expect(external.getProperty('spriteColor')).toEqual(before);
         const owned = component.getRenderMaterial(0)!;
+        expect(component.material).toBe(owned);
+        const pass = component.model!.subModels[0].passes[0];
+        expect(pass).toBe(owned.passes[0]);
+        expect(pass.getUniform(pass.getHandle('spriteColor'), new Vec4())).toEqual(new Vec4(1, 0, 0, 1));
+        component.flipX = true;
+        expect(component.model!.subModels[0].passes[0]).toBe(pass);
+        expect(pass.getUniform(pass.getHandle('spriteFlip'), new Vec4())).toEqual(new Vec4(-1, 1, 1, 1));
         const release = jest.spyOn(owned, 'destroy');
         const releaseExternal = jest.spyOn(external, 'destroy');
         component.node.destroy();
@@ -485,6 +829,35 @@ describe('SpriteRenderer resources and lifecycle', () => {
         expect(release).toHaveBeenCalledTimes(1);
         expect(releaseExternal).not.toHaveBeenCalled();
         external.destroy();
+    });
+
+    test('replacing or clearing a borrowed material before binding a frame preserves its owner', () => {
+        const owner = renderer();
+        owner.setSharedMaterial(material(), 0);
+        owner.spriteFrame = frame();
+        owner.color = Color.RED;
+        const borrowed = owner.material!;
+        const pass = borrowed.passes[0];
+        const release = jest.spyOn(borrowed, 'destroy');
+        const borrower = renderer();
+        borrower.material = borrowed;
+        const shared = material();
+        borrower.setSharedMaterial(shared, 0);
+        expect(borrower.getRenderMaterial(0)).toBe(shared);
+        borrower.material = borrowed;
+        borrower.material = null;
+        expect(borrower.getRenderMaterial(0)).toBeNull();
+        borrower.material = borrowed;
+        borrower.sharedMaterials = [];
+        expect(borrower.material).toBeNull();
+        borrower.material = borrowed;
+        borrower.node.destroy();
+        CCObject._deferredDestroy();
+        expect(release).not.toHaveBeenCalled();
+        expect(owner.model!.subModels[0].passes[0]).toBe(pass);
+        expect(borrowed.passes[0]).toBe(pass);
+        owner.flipY = true;
+        expect(pass.getUniform(pass.getHandle('spriteFlip'), new Vec4())).toEqual(new Vec4(1, -1, 1, 1));
     });
 
     test('releases its generated material instance when another instance replaces it', () => {
