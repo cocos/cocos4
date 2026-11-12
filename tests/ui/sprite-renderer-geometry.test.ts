@@ -99,6 +99,58 @@ describe('SpriteRenderer sliced and tiled', () => {
         c.size = new Vec2(2, 1); expect(c.model).not.toBeNull();
     });
 
+    test.each([SpriteDrawMode.SLICED, SpriteDrawMode.TILED])(
+        'mode %s follows the current frame size until an explicit size is assigned', (mode) => {
+            const first = frame();
+            const second = frame();
+            second.rect = new Rect(0, 0, 200, 40);
+            const component = renderer();
+            component.drawMode = mode;
+
+            function expectSize (width: number, height: number): void {
+                expect(component.size).toEqual(new Vec2(width, height));
+                const { halfExtents } = component.model!.modelBounds!;
+                expect(2 * halfExtents.x).toBeCloseTo(width);
+                expect(2 * halfExtents.y).toBeCloseTo(height);
+            }
+
+            component.spriteFrame = first;
+            expectSize(1, 0.6);
+            component.spriteFrame = second;
+            expectSize(2, 0.4);
+
+            // Assigning even the current natural dimensions makes the target size explicit.
+            component.size = new Vec2(2, 0.4);
+            component.spriteFrame = first;
+            expectSize(2, 0.4);
+        },
+    );
+
+    test.each([SpriteDrawMode.SLICED, SpriteDrawMode.TILED])(
+        'the shared Simple mesh is retained until the last mode %s consumer detaches', (mode) => {
+            const asset = frame();
+            const textureRefsBefore = asset.texture.refCount;
+            const simple = renderer();
+            simple.spriteFrame = asset;
+            const shared = asset.mesh!;
+            const sized = renderer();
+            sized.drawMode = mode;
+            sized.spriteFrame = asset;
+            const ownedSubMesh = sized.model!.subModels[0].subMesh;
+            expect(ownedSubMesh).not.toBe(shared.renderingSubMeshes[0]);
+
+            simple.spriteFrame = null;
+            expect(asset.mesh).toBe(shared);
+            expect(isValid(shared, true)).toBe(true);
+            expect(sized.model!.subModels[0].subMesh).toBe(ownedSubMesh);
+
+            sized.spriteFrame = null;
+            expect(asset.mesh).toBeNull();
+            expect(isValid(shared, true)).toBe(false);
+            expect(asset.texture.refCount).toBe(textureRefsBefore);
+        },
+    );
+
     test('owns independent geometry and leaves Simple and UI source data unchanged', () => {
         const f = frame(); f.insetLeft = f.insetRight = 10; f.insetTop = f.insetBottom = 10;
         const a = sliced(f), b = sliced(f), simple = renderer(); simple.spriteFrame = f;
