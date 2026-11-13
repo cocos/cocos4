@@ -1,3 +1,4 @@
+#pragma define-meta USE_NORMAL_MAP default(false)
 #pragma define-meta CC_RENDER_MODE range([0, 4])
 #pragma define RENDER_MODE_BILLBOARD 0
 #pragma define RENDER_MODE_STRETCHED_BILLBOARD 1

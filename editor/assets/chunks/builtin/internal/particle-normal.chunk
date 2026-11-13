@@ -1,8 +1,9 @@
+#pragma define-meta USE_NORMAL_MAP default(false)
 #pragma extension([GL_OES_standard_derivatives, __VERSION__ < 300])
 
-#if USE_NORMAL_MAP
-  #include <builtin/uniforms/cc-global>
+#include <builtin/uniforms/cc-global>
 
+#if USE_NORMAL_MAP
   in highp vec3 particlePositionWS;
   #if CC_RENDER_MODE == 4
     in highp vec3 particleNormalWS;
@@ -12,10 +13,8 @@
   uniform ParticleNormalConstants {
     vec4 particleNormalParams;
   };
-#endif
 
-vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
-  #if USE_NORMAL_MAP
+  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
     // Derive the tangent frame from the animated UVs and final world position.
     // This also handles billboard rotation and meshes without tangent attributes.
     highp vec3 dpdx = dFdx(particlePositionWS);
@@ -46,6 +45,10 @@ vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
       lighting += cc_mainLitColor.rgb * cc_mainLitColor.w * max(dot(n, -cc_mainLitDir.xyz), 0.0);
     #endif
     col.rgb *= lighting;
-  #endif
-  return col;
-}
+    return col;
+  }
+#else
+  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
+    return col;
+  }
+#endif

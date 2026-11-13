@@ -61,6 +61,7 @@ const RENDER_MODE_MESH = 4;
 
 const COLOR_OVER_TIME_MODULE_ENABLE = 'COLOR_OVER_TIME_MODULE_ENABLE';
 const ROTATION_OVER_TIME_MODULE_ENABLE = 'ROTATION_OVER_TIME_MODULE_ENABLE';
+const USE_NORMAL_MAP = 'USE_NORMAL_MAP';
 const SIZE_OVER_TIME_MODULE_ENABLE = 'SIZE_OVER_TIME_MODULE_ENABLE';
 const VELOCITY_OVER_TIME_MODULE_ENABLE = 'VELOCITY_OVER_TIME_MODULE_ENABLE';
 const FORCE_OVER_TIME_MODULE_ENABLE = 'FORCE_OVER_TIME_MODULE_ENABLE';
@@ -229,7 +230,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         this.initShaderUniform(mat);
         mat.recompileShaders(this._defines);
         if (this._model) {
-            this._model.setSubModelMaterial(0, mat);
+            this._model.updateMaterial(mat);
         }
     }
 
@@ -390,6 +391,10 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         if (!pass) {
             return;
         }
+
+        // Explicitly clear the override when the material omits the disabled macro.
+        const materialDefines = (this._particleSystem?.sharedMaterial || mat.parent || mat).passes[0]?.defines;
+        this._defines[USE_NORMAL_MAP] = !!materialDefines?.[USE_NORMAL_MAP];
 
         this._uTimeHandle = pass.getHandle('u_timeDelta');
         this._uRotHandle = pass.getHandle('u_worldRot');

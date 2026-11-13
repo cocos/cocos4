@@ -69,6 +69,7 @@ const CC_USE_EMBEDDED_ALPHA = 'CC_USE_EMBEDDED_ALPHA';
 
 const CC_RENDER_MODE = 'CC_RENDER_MODE';
 const ROTATION_OVER_TIME_MODULE_ENABLE = 'ROTATION_OVER_TIME_MODULE_ENABLE';
+const USE_NORMAL_MAP = 'USE_NORMAL_MAP';
 const INSTANCE_PARTICLE = 'CC_INSTANCE_PARTICLE';
 const RENDER_MODE_BILLBOARD = 0;
 const RENDER_MODE_STRETCHED_BILLBOARD = 1;
@@ -762,6 +763,10 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         const roationModule = this._particleSystem._rotationOvertimeModule;
         enable = roationModule ? roationModule.enable : false;
         this._defines[ROTATION_OVER_TIME_MODULE_ENABLE] = enable;
+        // Explicitly clear the override when the material omits the disabled macro.
+        const materialDefines = (shareMaterial || mat.parent || mat).passes[0]?.defines;
+        this._defines[USE_NORMAL_MAP] = !!materialDefines?.[USE_NORMAL_MAP];
+
         this._defines[INSTANCE_PARTICLE] = this._useInstance;
 
         const matIns: MaterialInstance | null = ps.getMaterialInstance(0);
