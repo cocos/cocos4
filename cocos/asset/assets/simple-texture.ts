@@ -26,7 +26,7 @@ import { ccclass } from 'cc.decorator';
 import { DEV } from 'internal:constants';
 import { TextureFlagBit, TextureUsageBit, API, Texture, TextureInfo, TextureViewInfo, Device, BufferTextureCopy } from '../../gfx';
 import { assertID, error, js, macro, cclegacy } from '../../core';
-import { TextureFilter } from './asset-enum';
+import { GFX_TEXTURE_CHANGED, TextureFilter } from './asset-enum';
 import { ImageAsset } from './image-asset';
 import { TextureBase } from './texture-base';
 import dependUtil from '../asset-manager/depend-util';
@@ -109,7 +109,9 @@ export class SimpleTexture extends TextureBase {
     public destroy (): boolean {
         this._tryDestroyTextureView();
         this._tryDestroyTexture();
-        return super.destroy();
+        const destroyed = super.destroy();
+        if (destroyed) this.emit(GFX_TEXTURE_CHANGED);
+        return destroyed;
     }
 
     /**
@@ -265,6 +267,7 @@ export class SimpleTexture extends TextureBase {
         const textureView = this._createTextureView(device);
         this._tryDestroyTextureView();
         this._gfxTextureView = textureView;
+        this.emit(GFX_TEXTURE_CHANGED);
     }
 
     /**
@@ -296,15 +299,12 @@ export class SimpleTexture extends TextureBase {
     protected _tryReset (): void {
         this._tryDestroyTextureView();
         this._tryDestroyTexture();
-        if (this._mipmapLevel === 0) {
-            return;
-        }
         const device = this._getGFXDevice();
-        if (!device) {
-            return;
+        if (this._mipmapLevel !== 0 && device) {
+            this._createTexture(device);
+            this._gfxTextureView = this._createTextureView(device);
         }
-        this._createTexture(device);
-        this._gfxTextureView = this._createTextureView(device);
+        this.emit(GFX_TEXTURE_CHANGED);
     }
 
     /**

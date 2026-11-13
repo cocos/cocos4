@@ -24,6 +24,9 @@
 
 import { Address, Filter, Format } from '../../gfx';
 
+/** @engineInternal The bindable texture view or sampler has changed. */
+export const GFX_TEXTURE_CHANGED = 'gfx-texture-changed';
+
 // define a specified number for the pixel format which gfx do not have a standard definition.
 enum CustomPixelFormat {
     VALUE = 1024,

@@ -25,7 +25,7 @@
 import { TEST, EDITOR, NODEJS } from 'internal:constants';
 import { deviceManager } from '../../gfx';
 import { cclegacy } from '../../core';
-import { TextureFilter, PixelFormat, WrapMode } from './asset-enum';
+import { GFX_TEXTURE_CHANGED, TextureFilter, PixelFormat, WrapMode } from './asset-enum';
 import './asset';
 import { patch_cc_TextureBase } from '../../native-binding/decorators';
 import type { TextureBase as JsbTextureBase } from './texture-base';
@@ -134,8 +134,10 @@ textureBaseProto.destroy = function () {
 };
 
 textureBaseProto._onGFXSamplerUpdated = function (gfxSampler, samplerInfo) {
+    const changed = this._gfxSampler !== gfxSampler;
     this._gfxSampler = gfxSampler;
     this._samplerInfo = samplerInfo;
+    if (changed) this.emit(GFX_TEXTURE_CHANGED);
 };
 
 cclegacy.TextureBase = jsb.TextureBase;
