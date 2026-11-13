@@ -1,3 +1,5 @@
+#pragma extension([GL_OES_standard_derivatives, __VERSION__ < 300])
+
 #if USE_NORMAL_MAP
   #include <builtin/uniforms/cc-global>
 
