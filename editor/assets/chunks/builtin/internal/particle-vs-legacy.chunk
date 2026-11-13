@@ -108,6 +108,14 @@ vec4 lpvs_main () {
     uv = computeUV(a_texCoord4.w, a_texCoord.xy, frameTile_velLenScale.xy) * mainTiling_Offset.xy + mainTiling_Offset.zw;
   #endif
 
+  #if USE_NORMAL_MAP
+    particlePositionWS = pos.xyz;
+    #if CC_RENDER_MODE == RENDER_MODE_MESH
+      // Inverse-transpose of particle rotation and scale, including mirrored scale.
+      highp vec3 safeScale = mix(vec3(-1.0), vec3(1.0), step(vec3(0.0), compScale)) * max(abs(compScale), vec3(0.000001));
+      particleNormalWS = mat3(xformNoScale) * (a_normal / safeScale);
+    #endif
+  #endif
   pos = cc_matViewProj * pos;
 
   return pos;

@@ -26,6 +26,8 @@ CCEffect %{
     r1: &r1 { cullMode: none }
     p1: &p1
       mainTexture:            { value: grey }
+      normalMap:              { value: normal, editor: { parent: USE_NORMAL_MAP } }
+      normalStrength:         { value: 1.0, target: particleNormalParams.x, editor: { parent: USE_NORMAL_MAP, slide: true, range: [0, 5], step: 0.01 } }
       mainTiling_Offset:      { value: [1, 1, 0, 0]  }
     p2: &p2
       <<: *p1
@@ -119,6 +121,8 @@ CCProgram tinted-fs %{
   in vec2 uv;
   in vec4 color;
 
+  #include <builtin/internal/particle-normal>
+
   uniform sampler2D mainTexture;
   uniform FragConstants {
     vec4 tintColor;
@@ -126,14 +130,14 @@ CCProgram tinted-fs %{
 
   vec4 add () {
     vec4 col = 2.0 * color * tintColor * CCSampleWithAlphaSeparated(mainTexture, uv);
-    return CCFragOutput(col);
+    return CCFragOutput(applyParticleNormalLighting(col, uv));
   }
 
   vec4 multiply () {
     vec4 col;
     vec4 texColor = CCSampleWithAlphaSeparated(mainTexture, uv);
     col.rgb = tintColor.rgb * texColor.rgb * color.rgb * vec3(2.0);
-    return CCFragOutput(col);
+    return CCFragOutput(applyParticleNormalLighting(col, uv));
   }
 }%
 
@@ -145,16 +149,18 @@ CCProgram no-tint-fs %{
   in vec2 uv;
   in vec4 color;
 
+  #include <builtin/internal/particle-normal>
+
   uniform sampler2D mainTexture;
 
   vec4 addSmooth () {
     vec4 col = color * CCSampleWithAlphaSeparated(mainTexture, uv);
     col.rgb *= col.a;
-    return CCFragOutput(col);
+    return CCFragOutput(applyParticleNormalLighting(col, uv));
   }
 
   vec4 premultiplied () {
     vec4 col = color * CCSampleWithAlphaSeparated(mainTexture, uv) * color.a;
-    return CCFragOutput(col);
+    return CCFragOutput(applyParticleNormalLighting(col, uv));
   }
 }%
