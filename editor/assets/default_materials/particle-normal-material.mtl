@@ -1,8 +1,7 @@
 {
   "__type__": "cc.Material",
-  "_name": "",
+  "_name": "particle-normal-material",
   "_objFlags": 0,
-  "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
     "__uuid__": "d1346436-ac96-4271-b863-1f4fdead95b0",
@@ -12,19 +11,9 @@
   "_defines": [
     {
       "USE_NORMAL_MAP": true
-    },
-    {}
+    }
   ],
   "_states": [
-    {
-      "rasterizerState": {},
-      "depthStencilState": {},
-      "blendState": {
-        "targets": [
-          {}
-        ]
-      }
-    },
     {
       "rasterizerState": {},
       "depthStencilState": {},
@@ -36,17 +25,6 @@
     }
   ],
   "_props": [
-    {
-      "mainTexture": {
-        "__uuid__": "80aabd92-9942-4765-b685-8577a1c88b4e@6c48a",
-        "__expectedType__": "cc.Texture2D"
-      },
-      "normalMap": {
-        "__uuid__": "1a341c74-e0df-4fe1-b58f-73fcdabbad1a@07391",
-        "__expectedType__": "cc.Texture2D"
-      },
-      "normalStrength": 5
-    },
     {}
   ]
 }
