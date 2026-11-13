@@ -21,14 +21,15 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-import { ccclass, executeInEditMode, help, menu, playOnFocus, serializable, tooltip, type, visible } from 'cc.decorator';
+import { ccclass, displayName, executeInEditMode, help, menu, playOnFocus, serializable, tooltip, type, visible } from 'cc.decorator';
 import { EDITOR, EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
-import { CCBoolean, Color, screen, Enum, Vec3, warn, CCObjectFlags, v3 } from '../../core';
+import { CCBoolean, Color, screen, Enum, Vec3, warn, CCObjectFlags, v3, cclegacy, macro } from '../../core';
 
 import { TextureCube } from '../../asset/assets';
 import { scene } from '../../render-scene';
 import { CAMERA_DEFAULT_MASK } from '../../rendering/define';
 import { ReflectionProbeManager } from './reflection-probe-manager';
+import { PlanarReflectionMSAA } from './reflection-probe-enum';
 import { Component } from '../../scene-graph/component';
 import { Layers } from '../../scene-graph/layers';
 import { Camera } from '../../misc/camera-component';
@@ -82,6 +83,9 @@ export class ReflectionProbe extends Component {
 
     @serializable
     protected _probeType = ProbeType.CUBE;
+
+    @serializable
+    protected _planarMSAA = PlanarReflectionMSAA.X4;
 
     @serializable
     protected _cubemap: TextureCube | null = null;
@@ -171,6 +175,29 @@ export class ReflectionProbe extends Component {
     }
     get probeType (): ProbeType {
         return this._probeType;
+    }
+
+    /**
+     * @en MSAA sample count for planar reflection capture. Defaults to four samples.
+     * @zh 平面反射采集的 MSAA 采样数，默认每像素 4 个采样。
+     */
+    @type(Enum(PlanarReflectionMSAA))
+    @displayName('Planar MSAA')
+    @tooltip('i18n:reflection_probe.planarMSAA')
+    @visible(function (this: ReflectionProbe): boolean {
+        return this.probeType === ProbeType.PLANAR
+            && !!cclegacy.director?.root?.usesCustomPipeline
+            && macro.CUSTOM_PIPELINE_NAME === 'Builtin';
+    })
+    get planarMSAA (): PlanarReflectionMSAA {
+        return this._planarMSAA;
+    }
+
+    set planarMSAA (value: PlanarReflectionMSAA) {
+        this._planarMSAA = value;
+        if (this._probe) {
+            this._probe.planarMSAA = value as number;
+        }
     }
 
     /**
@@ -439,6 +466,7 @@ export class ReflectionProbe extends Component {
             this._probe.backgroundColor = this._backgroundColor;
             this._probe.visibility = this._visibility;
             this._probe.probeType = this._probeType;
+            this._probe.planarMSAA = this._planarMSAA as number;
             this._probe.size = this._size;
             this._probe.cubemap = this._cubemap!;
         }

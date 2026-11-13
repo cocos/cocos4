@@ -21,7 +21,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-import { ClearFlagBit } from '../../gfx';
+import { ClearFlagBit, SampleCount } from '../../gfx';
 import { SKYBOX_FLAG } from './camera';
 import type { ReflectionProbe as JsbReflectionProbe } from './reflection-probe';
 
@@ -42,4 +42,5 @@ export type ReflectionProbe = JsbReflectionProbe;
 const reflectionProbeProto: any = jsb.ReflectionProbe.prototype;
 reflectionProbeProto._ctor = function (id:number) {
     this._probeId = id;
+    this.planarMSAA = SampleCount.X4;
 };

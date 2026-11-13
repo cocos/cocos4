@@ -45,6 +45,47 @@ function forwardNeedClearColor(camera: renderer.scene.Camera): boolean {
     return !!(camera.clearFlag & (ClearFlagBit.COLOR | (ClearFlagBit.STENCIL << 1)));
 }
 
+function getPlanarReflectionSampleCounts(device: gfx.Device): readonly gfx.SampleCount[] {
+    if (device.gfxAPI === gfx.API.WEBGL) {
+        return [gfx.SampleCount.X1];
+    }
+
+    let requiredFeatures = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.RENDER_TARGET;
+    if (device.gfxAPI !== gfx.API.WEBGL2) {
+        requiredFeatures |= FormatFeatureBit.LINEAR_FILTER;
+    }
+    if ((device.getFormatFeatures(Format.RGBA16F) & requiredFeatures) !== requiredFeatures) {
+        return [gfx.SampleCount.X1];
+    }
+
+    if (device.gfxAPI === gfx.API.WEBGL2) {
+        // RGBA16F linear filtering is core in WebGL2. Keep capability queries local
+        // to reflection capture instead of changing the device's global format table.
+        const gl = (device as gfx.Device & { readonly gl?: WebGL2RenderingContext }).gl;
+        if (!gl || (!gl.getExtension('EXT_color_buffer_float') && !gl.getExtension('EXT_color_buffer_half_float'))) {
+            return [gfx.SampleCount.X1];
+        }
+        const colorSamples = gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA16F, gl.SAMPLES) as Int32Array | null;
+        const depthSamples = gl.getInternalformatParameter(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, gl.SAMPLES) as Int32Array | null;
+        if (colorSamples && depthSamples) {
+            // Avoid spreading typed arrays: the editor's loose Babel transform uses concat.
+            return [gfx.SampleCount.X4, gfx.SampleCount.X2, gfx.SampleCount.X1].filter(samples =>
+                samples === gfx.SampleCount.X1 || (colorSamples.indexOf(samples) >= 0 && depthSamples.indexOf(samples) >= 0));
+        }
+        return [gfx.SampleCount.X1];
+    }
+
+    if (device.gfxAPI === gfx.API.WEBGPU) {
+        return [gfx.SampleCount.X4, gfx.SampleCount.X1];
+    }
+    const maxSamples = Math.min(
+        device.getMaxSampleCount(Format.RGBA16F, gfx.TextureUsageBit.COLOR_ATTACHMENT, gfx.TextureFlagBit.NONE),
+        device.getMaxSampleCount(Format.DEPTH_STENCIL, gfx.TextureUsageBit.DEPTH_STENCIL_ATTACHMENT, gfx.TextureFlagBit.NONE),
+        gfx.SampleCount.X4,
+    );
+    return [gfx.SampleCount.X4, gfx.SampleCount.X2, gfx.SampleCount.X1].filter(samples => samples <= maxSamples);
+}
+
 function getCsmMainLightViewport(
     light: renderer.scene.DirectionalLight,
     w: number,
@@ -89,6 +130,7 @@ export class PipelineConfigs {
     usePlanarShadow = false;
     screenSpaceSignY = 1;
     supportDepthSample = false;
+    planarReflectionSampleCounts: readonly gfx.SampleCount[] = [gfx.SampleCount.X1];
     mobileMaxSpotLightShadowMaps = 1;
 
     platform = new Vec4(0, 0, 0, 0);
@@ -120,6 +162,7 @@ function setupPipelineConfigs(
     // Device
     configs.screenSpaceSignY = ppl.device.capabilities.screenSpaceSignY;
     configs.supportDepthSample = (ppl.device.getFormatFeatures(Format.DEPTH_STENCIL) & sampleFeature) === sampleFeature;
+    configs.planarReflectionSampleCounts = getPlanarReflectionSampleCounts(device);
     // Constants
     const screenSpaceSignY = device.capabilities.screenSpaceSignY;
     configs.platform.x = configs.isMobile ? 1.0 : 0.0;
@@ -526,6 +569,9 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         context: PipelineContext): rendering.BasicRenderPassBuilder | undefined {
         // Add global constants
         ppl.setVec4('g_platform', pplConfigs.platform);
+        const probeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager | undefined;
+        this._reflectionProbeInfo.set(probeManager ? probeManager.getMaxProbeId() + 1 : 0, 0, 0, 0);
+        ppl.setVec4('cc_probeInfo', this._reflectionProbeInfo);
 
         const id = camera.window.renderWindowId;
 
@@ -552,7 +598,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 ppl, camera, pplConfigs.mobileMaxSpotLightShadowMaps);
         }
 
-        this._tryAddReflectionProbePasses(ppl, cameraConfigs, id, mainLight, camera.scene, camera);
+        this._tryAddReflectionProbePasses(ppl, pplConfigs, cameraConfigs, id, mainLight, camera.scene, camera);
 
         if (cameraConfigs.remainingPasses > 0 || cameraConfigs.enableShadingScale) {
             context.colorName = cameraConfigs.enableShadingScale
@@ -627,6 +673,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
     }
     private _tryAddReflectionProbePasses(
         ppl: rendering.BasicPipeline,
+        pplConfigs: Readonly<PipelineConfigs>,
         cameraConfigs: Readonly<CameraConfigs & ForwardPassConfigs>,
         id: number,
         mainLight: renderer.scene.DirectionalLight | null,
@@ -634,7 +681,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         sourceCamera: renderer.scene.Camera,
     ): void {
         const reflectionProbeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager | undefined;
-        if (!reflectionProbeManager) {
+        if (!reflectionProbeManager || !scene) {
             return;
         }
         const ResourceResidency = rendering.ResourceResidency;
@@ -657,20 +704,56 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
                 if (EDITOR && sourceCamera.cameraUsage === CameraUsage.PREVIEW) {
                     reflectionCamera = probe.renderPreviewPlanarReflection(sourceCamera);
                 }
+                // Native scene queues require the capture camera to reference the rendered scene.
+                if (reflectionCamera.scene !== scene) {
+                    const enabled = reflectionCamera.enabled;
+                    reflectionCamera.attachToScene(scene);
+                    reflectionCamera.enabled = enabled;
+                }
                 const window: renderer.RenderWindow = probe.realtimePlanarTexture!.window!;
                 const colorName = `PlanarProbeRT${probeID}`;
                 const depthStencilName = `PlanarProbeDS${probeID}`;
                 // ProbeResource
                 ppl.addRenderWindow(colorName,
-                    cameraConfigs.radianceFormat, width, height, window);
-                ppl.addDepthStencil(depthStencilName,
-                    gfx.Format.DEPTH_STENCIL, width, height, ResourceResidency.MEMORYLESS);
+                    window.framebuffer.colorTextures[0]!.format, width, height, window);
+                const requestedSamples = probe.planarMSAA;
+                const sampleCount = pplConfigs.planarReflectionSampleCounts.find(samples => samples <= requestedSamples) ?? gfx.SampleCount.X1;
+                // Transient multisample attachments cannot preserve the previous capture.
+                if (sampleCount > gfx.SampleCount.X1 && forwardNeedClearColor(reflectionCamera)
+                    && (reflectionCamera.clearFlag & ClearFlagBit.DEPTH_STENCIL) === ClearFlagBit.DEPTH_STENCIL) {
+                    // Include the sample count: changing it must allocate different GPU textures.
+                    const suffix = `${id}_${probeID}_${sampleCount}`;
+                    const msaaColorName = `MsaaPlanarProbeRT${suffix}`;
+                    const msaaDepthName = `MsaaPlanarProbeDS${suffix}`;
+                    const resolvedColorName = `PlanarProbeRadiance${suffix}`;
+                    ppl.addTexture(msaaColorName, TextureType.TEX2D, Format.RGBA16F, width, height, 1, 1, 1,
+                        sampleCount, rendering.ResourceFlags.COLOR_ATTACHMENT, ResourceResidency.MEMORYLESS);
+                    ppl.addTexture(msaaDepthName, TextureType.TEX2D, Format.DEPTH_STENCIL, width, height, 1, 1, 1,
+                        sampleCount, rendering.ResourceFlags.DEPTH_STENCIL_ATTACHMENT, ResourceResidency.MEMORYLESS);
+                    ppl.addRenderTarget(resolvedColorName, Format.RGBA16F, width, height);
 
-                // Rendering
-                const probePass = ppl.addRenderPass(width, height, 'default');
-                probePass.name = `PlanarReflectionProbe${probeID}`;
-                this._buildReflectionProbePass(probePass, cameraConfigs, id, reflectionCamera, probe,
-                    colorName, depthStencilName, mainLight);
+                    const probePass = ppl.addMultisampleRenderPass(width, height, sampleCount, 0, 'default');
+                    probePass.name = `PlanarReflectionProbe${probeID}`;
+                    this._buildReflectionProbePass(probePass, cameraConfigs, id, reflectionCamera, probe,
+                        msaaColorName, msaaDepthName, mainLight, true);
+                    probePass.resolveRenderTarget(msaaColorName, resolvedColorName);
+
+                    // RGBE stores an exponent in alpha. Encode only after resolving linear radiance.
+                    assert(!!cameraConfigs.copyAndTonemapMaterial);
+                    const encodePass = ppl.addRenderPass(width, height, 'cc-tone-mapping');
+                    encodePass.name = `PlanarReflectionProbeEncode${probeID}`;
+                    encodePass.addRenderTarget(colorName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
+                    encodePass.addTexture(resolvedColorName, 'inputTexture');
+                    encodePass.addQueue(rendering.QueueHint.OPAQUE)
+                        .addFullscreenQuad(cameraConfigs.copyAndTonemapMaterial, 2);
+                } else {
+                    ppl.addDepthStencil(depthStencilName,
+                        Format.DEPTH_STENCIL, width, height, ResourceResidency.MEMORYLESS);
+                    const probePass = ppl.addRenderPass(width, height, 'default');
+                    probePass.name = `PlanarReflectionProbe${probeID}`;
+                    this._buildReflectionProbePass(probePass, cameraConfigs, id, reflectionCamera, probe,
+                        colorName, depthStencilName, mainLight);
+                }
             } else if (EDITOR) {
                 for (let faceIdx = 0; faceIdx < probe.bakedCubeTextures.length; faceIdx++) {
                     probe.updateCameraDir(faceIdx);
@@ -706,22 +789,32 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
         colorName: string,
         depthStencilName: string,
         mainLight: renderer.scene.DirectionalLight | null,
+        multisample = false,
     ): void {
         const QueueHint = rendering.QueueHint;
         const SceneFlags = rendering.SceneFlags;
-        // set viewport
-        const colorStoreOp = cameraConfigs.enableMSAA ? StoreOp.DISCARD : StoreOp.STORE;
+        const colorStoreOp = multisample ? StoreOp.DISCARD : StoreOp.STORE;
+        const probeManager = cclegacy.internal.reflectionProbeManager as ReflectionProbeManager;
+        this._reflectionProbeInfo.set(probeManager.getMaxProbeId() + 1, multisample ? 1 : 0, 0, 0);
+        pass.setVec4('cc_probeInfo', this._reflectionProbeInfo);
 
         // bind output render target
         if (forwardNeedClearColor(camera)) {
             this._reflectionProbeClearColor.x = camera.clearColor.x;
             this._reflectionProbeClearColor.y = camera.clearColor.y;
             this._reflectionProbeClearColor.z = camera.clearColor.z;
-            const clearColor = rendering.packRGBE(this._reflectionProbeClearColor);
+            const clearColor = multisample ? camera.clearColor : rendering.packRGBE(this._reflectionProbeClearColor);
             this._clearColor.x = clearColor.x;
             this._clearColor.y = clearColor.y;
             this._clearColor.z = clearColor.z;
-            this._clearColor.w = clearColor.w;
+            this._clearColor.w = multisample ? 1 : clearColor.w;
+            if (multisample && sys.isNative) {
+                // Native ReflectionProbe::packBackgroundColor has already encoded the camera clear color.
+                const scale = Math.pow(1.1, camera.clearColor.w * 255 - 128);
+                this._clearColor.x *= scale;
+                this._clearColor.y *= scale;
+                this._clearColor.z *= scale;
+            }
             pass.addRenderTarget(colorName, LoadOp.CLEAR, colorStoreOp, this._clearColor);
         } else {
             pass.addRenderTarget(colorName, LoadOp.LOAD, colorStoreOp);
@@ -988,6 +1081,7 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
     private readonly _viewport = new Viewport();
     private readonly _clearColor = new Color(0, 0, 0, 1);
     private readonly _reflectionProbeClearColor = new Vec3(0, 0, 0);
+    private readonly _reflectionProbeInfo = new Vec4(0, 0, 0, 0);
 }
 
 export interface BloomPassConfigs {

@@ -79,7 +79,7 @@ CCProgram sky-fs %{
 
     vec4 color = vec4(c * cc_ambientSky.w, 1.0);
     #if CC_USE_RGBE_OUTPUT
-      color = packRGBE(color.rgb);
+      color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
     #else
       color.rgb = HDRToLDR(color.rgb);
       color.rgb = LinearToSRGB(color.rgb);

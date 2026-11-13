@@ -26,7 +26,7 @@ import { Camera, CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, Cam
 import { Node } from '../../scene-graph/node';
 import { Color, Quat, Rect, toRadian, Vec2, Vec3, geometry, cclegacy, Vec4, Size, v3, quat } from '../../core';
 import { CAMERA_DEFAULT_MASK } from '../../rendering/define';
-import { ClearFlagBit, Framebuffer } from '../../gfx';
+import { ClearFlagBit, Framebuffer, SampleCount } from '../../gfx';
 import { TextureCube } from '../../asset/assets/texture-cube';
 import { RenderTexture } from '../../asset/assets/render-texture';
 
@@ -57,6 +57,12 @@ export class ReflectionProbe {
     public bakedCubeTextures: RenderTexture[] = [];
 
     public realtimePlanarTexture: RenderTexture | null = null;
+
+    /**
+     * @en Requested sample count for planar reflection capture.
+     * @zh 平面反射采集请求的采样数。
+     */
+    public planarMSAA: SampleCount = SampleCount.X4;
 
     protected _resolution = 256;
     protected _clearFlag: number = ProbeClearFlag.SKYBOX;

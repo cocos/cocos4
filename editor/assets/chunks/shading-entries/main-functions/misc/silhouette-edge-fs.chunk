@@ -8,7 +8,7 @@ void main () {
 
   // Color output
   #if CC_USE_RGBE_OUTPUT
-    color = packRGBE(color.rgb);
+    color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
   #elif !CC_USE_FLOAT_OUTPUT
     color.rgb = LinearToSRGB(color.rgb);
   #endif
