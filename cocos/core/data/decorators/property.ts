@@ -30,11 +30,22 @@ import { warnID, errorID } from '../../platform/debug';
 import { getFullFormOfProperty } from '../utils/preprocess-class';
 import { ClassStash, PropertyStash, PropertyStashInternalFlag } from '../class-stash';
 import { getClassName, mixin } from '../../utils/js-typed';
+import type { OneOfPropertyType } from './one-of';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export type SimplePropertyType = Function | string | typeof CCString | typeof CCInteger | typeof CCBoolean;
+export type SimplePropertyType
+    = SimplePropertyElementType
+      | OneOfPropertyType;
 
-export type PropertyType = SimplePropertyType | SimplePropertyType[];
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type SimplePropertyElementType
+    = Function
+      | string
+      | typeof CCString
+      | typeof CCInteger
+      | typeof CCBoolean;
+
+export type PropertyType = SimplePropertyType | SimplePropertyElementType[];
 
 /**
  * @zh CCClass 属性选项。
