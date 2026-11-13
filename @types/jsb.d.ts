@@ -26,6 +26,7 @@ declare namespace jsb {
         export function getDeviceOrientation(): number;
         export function getNetworkType(): number; // TODO: enum type
         export function getSafeAreaEdge(): NativeSafeAreaEdge;
+        export function setKeepScreenOn(enabled: boolean): void;
 
         export function setAccelerometerEnabled(isEnabled: boolean);
         export function setAccelerometerInterval(intervalInSeconds: number);

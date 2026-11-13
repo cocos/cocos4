@@ -26,6 +26,8 @@
 */
 
 import { screenAdapter, IScreenOptions } from 'pal/screen-adapter';
+import { systemInfo } from 'pal/system-info';
+import { OS } from '../../../pal/system-info/enum-type';
 import { legacyCC } from '../global-exports';
 import { Size } from '../math';
 import { settings, SettingsCategory } from '../settings';
@@ -99,6 +101,18 @@ export class Screen {
      */
     public get devicePixelRatio (): number {
         return screenAdapter.devicePixelRatio;
+    }
+
+    /**
+     * @en Controls whether the screen stays on while the app is in the foreground.
+     * Supported on native Android and iOS. Has no effect on other platforms.
+     * @zh 控制应用在前台时是否保持屏幕常亮。仅在 Android 和 iOS 原生平台生效。
+     * @param enabled @en Pass true to keep the screen on or false to restore normal screen timeout. @zh 传入 true 开启常亮，传入 false 恢复系统的自动熄屏行为。
+     */
+    public setKeepScreenOn (enabled: boolean): void {
+        if (systemInfo.isNative && (systemInfo.os === OS.ANDROID || systemInfo.os === OS.IOS)) {
+            jsb.device.setKeepScreenOn(enabled);
+        }
     }
 
     /**
