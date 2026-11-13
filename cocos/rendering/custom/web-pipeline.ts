@@ -28,7 +28,7 @@ import { DEBUG, EDITOR } from 'internal:constants';
 import { DescriptorSetLayout, Device, Feature, Format, FormatFeatureBit, Sampler, Swapchain, Texture, ClearFlagBit, DescriptorSet, deviceManager, Viewport, API, CommandBuffer, Type, SamplerInfo, Filter, Address, DescriptorSetInfo, LoadOp, StoreOp, ShaderStageFlagBit, BufferInfo, TextureInfo, TextureType, ResolveMode, SampleCount, Color, ComparisonFunc, Buffer } from '../../gfx';
 import { Vec4, macro, cclegacy, RecyclePool, Mat4, Quat, Vec2, assert } from '../../core';
 import { ResolveFlags, AccessType, AttachmentType, CopyPair, LightInfo, LightingMode, MovePair, QueueHint, RenderCommonObjectPool, ResolvePair, ResourceDimension, ResourceFlags, ResourceResidency, SceneFlags, UpdateFrequency, UploadPair } from './types';
-import { ComputePass, CopyPass, MovePass, RasterPass, RasterSubpass, RenderData, RenderGraph, RenderGraphComponent, RenderGraphValue, RenderQueue, RenderSwapchain, ResourceDesc, ResourceGraph, ResourceGraphValue, ResourceStates, ResourceTraits, SceneData, Subpass, PersistentBuffer, RenderGraphObjectPool, CullingFlags, ManagedResource, ManagedBuffer, BlitType } from './render-graph';
+import { ComputePass, CopyPass, MovePass, RasterPass, RasterSubpass, RenderData, RenderGraph, RenderGraphComponent, RenderGraphValue, RenderQueue, RenderSwapchain, ResourceDesc, ResourceGraph, ResourceGraphValue, ResourceStates, ResourceTraits, SceneData, Subpass, PersistentBuffer, PersistentTexture, RenderGraphObjectPool, CullingFlags, ManagedResource, ManagedBuffer, BlitType } from './render-graph';
 import { ComputePassBuilder, ComputeQueueBuilder, BasicPipeline, RenderQueueBuilder, RenderSubpassBuilder, PipelineType, BasicRenderPassBuilder, PipelineCapabilities, BasicMultisampleRenderPassBuilder, Setter, SceneBuilder } from './pipeline';
 import { PipelineSceneData } from '../pipeline-scene-data';
 import { Model, Camera, PCFType, ProbeType, DirectionalLight, PointLight, RangedDirectionalLight, SphereLight, SpotLight } from '../../render-scene/scene';
@@ -179,6 +179,58 @@ function getResourceDimension (type: TextureType): ResourceDimension {
         break;
     }
     return ResourceDimension.TEXTURE2D;
+}
+
+/** Writes the description implied by an external texture; returns whether anything changed. */
+function describeExternalTexture (desc: ResourceDesc, texture: Texture): boolean {
+    const info = texture.info;
+    const dimension = getResourceDimension(info.type);
+    const depthOrArraySize = dimension === ResourceDimension.TEXTURE3D ? info.depth : info.layerCount;
+    if (desc.dimension === dimension && desc.viewType === info.type && desc.format === texture.format
+        && desc.width === info.width && desc.height === info.height && desc.depthOrArraySize === depthOrArraySize
+        && desc.mipLevels === info.levelCount && desc.sampleCount === info.samples && desc.textureFlags === info.flags) {
+        return false;
+    }
+    desc.dimension = dimension;
+    desc.viewType = info.type;
+    desc.format = texture.format;
+    desc.width = info.width;
+    desc.height = info.height;
+    desc.depthOrArraySize = depthOrArraySize;
+    desc.mipLevels = info.levelCount;
+    desc.sampleCount = info.samples;
+    desc.textureFlags = info.flags;
+    return true;
+}
+
+/**
+ * Removes an unreferenced vertex. The TS ResourceGraph is generated without vertex removal and stores
+ * vertices in parallel arrays, so later descriptors shift down by one: the name index and edge targets are re-based.
+ * Passes address resources by name and the executor resolves them per frame, so no descriptor is cached across frames.
+ */
+function removeResourceVertex (graph: ResourceGraph, v: number): void {
+    const vert = graph.x[v];
+    assert(vert.o.length === 0 && vert.i.length === 0);
+    const name = graph._names[v];
+    graph.x.splice(v, 1);
+    graph._names.splice(v, 1);
+    graph._descs.splice(v, 1);
+    graph._traits.splice(v, 1);
+    graph._states.splice(v, 1);
+    graph._samplerInfo.splice(v, 1);
+    graph._valueIndex.delete(name);
+    for (let u = v; u < graph._names.length; ++u) {
+        graph._valueIndex.set(graph._names[u], u);
+    }
+    for (const other of graph.x) {
+        for (const e of other.o) {
+            if ((e.target as number) > v) e.target = (e.target as number) - 1;
+        }
+        for (const e of other.i) {
+            if ((e.target as number) > v) e.target = (e.target as number) - 1;
+        }
+    }
+    ++graph.version;
 }
 
 const emptyMaterial = new Material();
@@ -1142,12 +1194,93 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
         this.updateResource(name, Format.UNKNOWN, size, 0, 0, 0, 0, SampleCount.X1);
     }
 
+    /**
+     * Imports a user-owned texture. The user creates and destroys it; the pipeline only references it.
+     * Re-adding an existing name updates it, like NativePipeline.
+     */
     public addExternalTexture (name: string, texture: Texture, flags: ResourceFlags): number {
-        throw new Error('Method not implemented.');
+        const resID = this._resourceGraph.find(name);
+        if (resID !== 0xFFFFFFFF) {
+            this.updateExternalTexture(name, texture);
+            return resID;
+        }
+        const desc = new ResourceDesc();
+        describeExternalTexture(desc, texture);
+        desc.flags = flags;
+        return this._resourceGraph.addVertex<ResourceGraphValue.PersistentTexture>(
+            ResourceGraphValue.PersistentTexture,
+            new PersistentTexture(texture),
+            name,
+            desc,
+            new ResourceTraits(ResourceResidency.EXTERNAL),
+            new ResourceStates(),
+            new SamplerInfo(),
+        );
     }
 
+    /**
+     * Points `name` at `texture` (another instance or the same one with a new size).
+     * Objects the executor derived from the replaced texture are dropped right away; `name` now resolves to
+     * `texture`, so passes recorded this frame use it too. The replaced texture may be destroyed after this frame.
+     */
     public updateExternalTexture (name: string, texture: Texture): void {
-        throw new Error('Method not implemented.');
+        const resID = this._resourceGraph.find(name);
+        if (resID === 0xFFFFFFFF) {
+            return;
+        }
+        const pending = this._pendingRemovals.indexOf(name);
+        if (pending !== -1) {
+            this._pendingRemovals.splice(pending, 1);
+        }
+        const persistent = this._resourceGraph.value(ResourceGraphValue.PersistentTexture, resID);
+        const previous = persistent.texture;
+        persistent.texture = texture;
+        const descChanged = describeExternalTexture(this._resourceGraph.getDesc(resID), texture);
+        if (descChanged) {
+            ++this._resourceGraph.version;
+        }
+        if (previous && (previous !== texture || descChanged)) {
+            this._executor?.invalidateExternalTexture(name, previous);
+        }
+    }
+
+    /**
+     * WebPipeline extension (BasicPipeline / native support pending).
+     * Unregisters `name`. Inside a frame the removal takes effect at endFrame(), after the frame is submitted,
+     * so passes already recorded still run; outside a frame it takes effect immediately. Once it has taken
+     * effect the texture may be destroyed and the name registered again.
+     */
+    public removeExternalTexture (name: string): void {
+        const resID = this._resourceGraph.find(name);
+        if (resID === 0xFFFFFFFF || !this._resourceGraph.h(ResourceGraphValue.PersistentTexture, resID)) {
+            return;
+        }
+        if (this._inFrame) {
+            if (!this._pendingRemovals.includes(name)) {
+                this._pendingRemovals.push(name);
+            }
+        } else {
+            this._removeExternalTextureNow(name);
+        }
+    }
+
+    private _removeExternalTextureNow (name: string): void {
+        const resID = this._resourceGraph.find(name);
+        if (resID === 0xFFFFFFFF || !this._resourceGraph.h(ResourceGraphValue.PersistentTexture, resID)) {
+            return;
+        }
+        const texture = this._resourceGraph.value(ResourceGraphValue.PersistentTexture, resID).texture;
+        if (texture) {
+            this._executor?.invalidateExternalTexture(name, texture);
+        }
+        removeResourceVertex(this._resourceGraph, resID);
+    }
+
+    private _flushPendingRemovals (): void {
+        for (const name of this._pendingRemovals) {
+            this._removeExternalTextureNow(name);
+        }
+        this._pendingRemovals.length = 0;
     }
 
     public addTexture (name: string, textureType: TextureType, format: Format, width: number, height: number, depth: number, arraySize: number, mipLevels: number, sampleCount: SampleCount, flags: ResourceFlags, residency: ResourceResidency): number {
@@ -1647,6 +1780,9 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
         );
     }
     beginFrame (): void {
+        // A frame that threw before endFrame() will never run its passes: apply what it left pending.
+        this._flushPendingRemovals();
+        this._inFrame = true;
         const director: Director = cclegacy.director;
         director.buildRenderPipeline();
     }
@@ -1655,6 +1791,9 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
     }
     endFrame (): void {
         this.renderGraph?.clear();
+        this._inFrame = false;
+        // The frame is submitted: removals requested during it take effect now.
+        this._flushPendingRemovals();
     }
 
     compile (): void {
@@ -1835,6 +1974,10 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
     private _lightingMode = LightingMode.DEFAULT;
     private _profiler: Model | null = null;
     private _cameras: Camera[] = [];
+    /** External texture names removed during the current frame; applied once the frame is submitted. */
+    private readonly _pendingRemovals: string[] = [];
+    /** Between beginFrame() and endFrame(): passes recorded so far may still reference any resource. */
+    private _inFrame = false;
     private _resourceUses: string[] = [];
 
     private readonly _resourceGraph: ResourceGraph = new ResourceGraph();
