@@ -555,6 +555,9 @@ export class WebGPUDevice extends Device {
         // Compute limits are read from the device (not the adapter): no elevated
         // compute limits are requested, so these are the values validation enforces.
         const deviceLimits = device.limits;
+        // 使用实际 device 限制；默认的 0 会使需要 SSBO 的管线被误判为不支持。
+        this._caps.maxShaderStorageBufferBindings = deviceLimits.maxStorageBuffersPerShaderStage;
+        this._caps.maxShaderStorageBlockSize = deviceLimits.maxStorageBufferBindingSize;
         this._caps.maxComputeSharedMemorySize = deviceLimits.maxComputeWorkgroupStorageSize;
         this._caps.maxComputeWorkGroupInvocations = deviceLimits.maxComputeInvocationsPerWorkgroup;
         this._caps.maxComputeWorkGroupSize = new Size(

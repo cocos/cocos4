@@ -1,0 +1,64 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - compute: cluster-culling-comp
+      pass: cluster-culling
+}%
+
+CCProgram cluster-culling-comp %{
+  precision highp float;
+  precision highp int;
+  #include <pipeline/cluster/constants>
+  #include <pipeline/cluster/lights>
+  layout(local_size_x = 16, local_size_y = 8, local_size_z = 1) in;
+  #pragma rate b_clusters pass
+  layout(std430) readonly buffer b_clusters { vec4 b_clustersData[]; };
+  #pragma rate b_clusterLightGrid pass
+  layout(std430) writeonly buffer b_clusterLightGrid { uvec4 b_clusterLightGridData[]; };
+  #pragma rate b_clusterLightIndices pass
+  layout(std430) writeonly buffer b_clusterLightIndices { uint b_clusterLightIndicesData[]; };
+  #pragma rate b_globalIndex pass
+  layout(std430) buffer b_globalIndex { uint b_globalIndexData[]; };
+
+  bool intersectsCluster(CCClusterLight light, vec3 lo, vec3 hi) {
+    // 灯位置转到与 AABB 相同的相机空间。范围方向光（类型 4）用包围球保守收集，
+    // 片元阶段再用 direction、right 和半尺寸做精确盒内判断。
+    vec3 pos = (cc_clusterView * vec4(light.position.xyz, 1.0)).xyz;
+    float range = light.sizeRangeAngle.y;
+    if (light.position.w == 4.0) range = length(light.boundingSize.xyz);
+    vec3 delta = clamp(pos, lo, hi) - pos;
+    if (dot(delta, delta) > range * range) return false;
+    if (light.position.w != 2.0) return true;
+    // 聚光灯（类型 2）用 AABB 的包围球对光锥做保守测试，允许多收而不漏收。
+    // spotAngle 已是外锥半角余弦，不能再次调用 cos。
+    vec3 dir = normalize(mat3(cc_clusterView) * light.direction.xyz);
+    vec3 v = (lo + hi) * 0.5 - pos;
+    float radius = length(hi - lo) * 0.5;
+    float axial = dot(v, dir);
+    float cosAngle = clamp(light.sizeRangeAngle.z, -1.0, 1.0);
+    float sinAngle = sqrt(max(1.0 - cosAngle * cosAngle, 0.0));
+    float distanceToCone = cosAngle * sqrt(max(dot(v, v) - axial * axial, 0.0)) - axial * sinAngle;
+    return distanceToCone <= radius && axial <= range + radius && axial >= -radius;
+  }
+  void main() {
+    uvec3 id = gl_GlobalInvocationID;
+    uint cluster = id.x + 16u * (id.y + 8u * id.z);
+    vec3 lo = b_clustersData[cluster * 2u].xyz;
+    vec3 hi = b_clustersData[cluster * 2u + 1u].xyz;
+    uint indices[200];
+    uint count = 0u;
+    // 前 200 盏存紧凑列表，第 201 次命中标记溢出，片元改为遍历所有灯。
+    // 不能直接丢灯，否则灯跨 cluster 移动时会产生亮度跳变。
+    bool overflow = false;
+    for (uint i = 0u; i < uint(cc_clusterCamera.z); ++i) {
+      if (!intersectsCluster(ccGetClusterLight(i), lo, hi)) continue;
+      if (count == 200u) { overflow = true; break; }
+      indices[count++] = i;
+    }
+    uint offset = atomicAdd(b_globalIndexData[0], count);
+    // 原子操作分配互不重叠的连续片段；线程完成顺序不影响查表。
+    for (uint i = 0u; i < count; ++i) b_clusterLightIndicesData[offset + i] = indices[i];
+    // 空 cluster 也覆盖，避免旧光残留；每线程最多申请 200 槽，索引缓冲不会越界。
+    b_clusterLightGridData[cluster] = uvec4(offset, count, overflow ? 1u : 0u, 0u);
+  }
+}%
