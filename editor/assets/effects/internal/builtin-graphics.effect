@@ -5,8 +5,6 @@ CCEffect %{
   - passes:
     - vert: vs:vert
       frag: fs:frag
-      properties:
-        uiCascadeOpacity: { value: 1.0, target: graphicsParams.x, editor: { visible: false } }
       blendState:
         targets:
         - blend: true
@@ -27,10 +25,6 @@ CCProgram vs %{
   #include <builtin/uniforms/cc-global>
   #include <builtin/uniforms/cc-local>
 
-  uniform GraphicsParams {
-    vec4 graphicsParams;
-  };
-
   in vec3 a_position;
 
   in vec4 a_color;
@@ -44,7 +38,6 @@ CCProgram vs %{
     pos = cc_matViewProj * cc_matWorld * pos;
 
     v_color = a_color;
-    v_color.a *= graphicsParams.x;
     v_dist = a_dist;
 
     return pos;
