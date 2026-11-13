@@ -48,6 +48,7 @@ const attributes = vfmtPosColor.concat([
 ]);
 
 const componentPerVertex = getComponentPerVertex(attributes);
+const alphaOffset = 6; // position.xyz, color.rgba, distance
 
 const stride = getAttributeStride(attributes);
 
@@ -62,10 +63,10 @@ function growCapacity (needed: number, current: number, max: number): number {
 
 /**
  * @en
- * Graphics component.
+ * Each vertex color contains its fill or stroke alpha multiplied by the node's cascaded UI opacity.
  *
  * @zh
- * 自定义图形类。
+ * 自定义图形组件。提交绘制时，每个顶点的 alpha 为该笔填充或描边的透明度乘以节点的累计 UI 透明度。
  */
 @ccclass('cc.Graphics')
 @help('i18n:cc.Graphics')
@@ -205,11 +206,15 @@ export class Graphics extends UIRenderer {
     }
 
     set color (value) {
-        if (this._color === value) {
-            return;
+        if (this._color !== value) {
+            this._color.set(value);
         }
-
-        this._color.set(value);
+        // The getter exposes a mutable Color, so a caller can edit it and assign the same object back.
+        const rgba = Color.toUint32(this._color);
+        if (this.node && this._lastSyncedColor !== rgba) {
+            this._lastSyncedColor = rgba;
+            this._updateColor();
+        }
     }
 
     public static LineJoin = LineJoin;
@@ -236,6 +241,9 @@ export class Graphics extends UIRenderer {
     protected _isNeedUploadData = true;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
+    private _lastSyncedColor = -1;
+    private _uploadedOpacity = 1;
+    private _opacityVertices: Float32Array[] = [];
 
     //nativeObj
     protected declare _graphicsNativeProxy: NativeUIModelProxy;
@@ -275,7 +283,9 @@ export class Graphics extends UIRenderer {
 
     public onEnable (): void {
         super.onEnable();
-        this._updateMtlForGraphics();
+        // Deserialization writes _color directly, before the native entity is attached.
+        this._lastSyncedColor = Color.toUint32(this._color);
+        this.setEntityColor(this._color);
     }
 
     protected override get _keepRenderData (): boolean {
@@ -312,6 +322,7 @@ export class Graphics extends UIRenderer {
             this.impl.clear();
             this.impl = null;
         }
+        this._opacityVertices.length = 0;
 
         super.onDestroy();
     }
@@ -567,6 +578,7 @@ export class Graphics extends UIRenderer {
         }
 
         this.impl.clear();
+        this._opacityVertices.length = 0;
         this._isDrawing = false;
         if (JSB) {
             this._graphicsNativeProxy.clear();// need native
@@ -632,15 +644,31 @@ export class Graphics extends UIRenderer {
         (this._assembler as GraphicsAssembler).fill(this);
     }
 
-    private _updateMtlForGraphics (): void {
-        let mat;
-        if (this._customMaterial) {
-            mat = this.getMaterialInstance(0);
-        } else {
-            mat = builtinResMgr.get('ui-graphics-material');
-            this.setSharedMaterial(mat as Material, 0);
-            mat = this.getMaterialInstance(0);
-            mat.recompileShaders({ USE_LOCAL: true });
+    public override updateMaterial (): void {
+        this.setSharedMaterial(this._customMaterial || builtinResMgr.get<Material>('ui-graphics-material'), 0);
+        if (!this._customMaterial) {
+            this.getMaterialInstance(0)?.recompileShaders({ USE_LOCAL: true });
+        }
+    }
+
+    protected override _onMaterialModified (idx: number, material: Material | null): void {
+        super._onMaterialModified(idx, material);
+        if (idx !== 0 || !material) {
+            return;
+        }
+        if (material !== this._materialInstances[0]) {
+            // Instancing invokes this callback again with the material used by this Graphics.
+            this.getMaterialInstance(0);
+            return;
+        }
+        if (JSB) {
+            this.impl?.setRenderDataMaterial(material);
+        }
+        if (this.model) {
+            const count = this.model.subModels.length;
+            for (let i = 0; i < count; ++i) {
+                this.model.setSubModelMaterial(i, material);
+            }
         }
     }
 
@@ -676,38 +704,66 @@ export class Graphics extends UIRenderer {
         }
     }
 
-    protected _uploadData (): void {
-        const impl = this.impl;
-        if (!impl) {
+    protected _uploadData (opacity = this.node._uiProps.opacity): void {
+        if (!this.impl || !this.model) {
             return;
         }
 
-        const renderDataList = impl && impl.getRenderDataList();
-        if (renderDataList.length <= 0 || !this.model) {
-            return;
-        }
-
-        const subModelList = this.model.subModels;
+        const renderDataList = this.impl.getRenderDataList();
+        const opacityChanged = opacity !== this._uploadedOpacity;
         for (let i = 0; i < renderDataList.length; i++) {
             const renderData = renderDataList[i];
-            const ia = subModelList[i].inputAssembler;
-            if (renderData.lastFilledVertex === renderData.vertexStart) {
+            const vertexCount = renderData.vertexStart;
+            const indexCount = renderData.indexStart;
+            const verticesChanged = renderData.lastFilledVertex !== vertexCount;
+            const indicesChanged = renderData.lastFilledIndex !== indexCount;
+            const newSubModel = i >= this.model.subModels.length;
+            if (newSubModel) {
+                this.activeSubModel(i, vertexCount, indexCount);
+            }
+            if (!newSubModel && !verticesChanged && !indicesChanged && !opacityChanged) {
                 continue;
             }
 
-            // Buffer.update() does not grow the buffer on WebGL, reserve the capacity first.
-            this._ensureCapacity(renderData, ia);
-
-            const vb = new Float32Array(renderData.vData.buffer, 0, renderData.vertexStart * componentPerVertex);
-            ia.vertexBuffers[0].update(vb);
-            ia.vertexCount = renderData.vertexStart;
-            const ib = new Uint16Array(renderData.iData.buffer, 0, renderData.indexStart);
-            ia.indexBuffer!.update(ib);
-            ia.indexCount = renderData.indexStart;
-            renderData.lastFilledVertex = renderData.vertexStart;
-            renderData.lastFilledIndex = renderData.indexStart;
+            const ia = this.model.subModels[i].inputAssembler;
+            if (verticesChanged || indicesChanged) {
+                this._ensureCapacity(renderData, ia);
+            }
+            if (vertexCount > 0 && (newSubModel || verticesChanged || opacityChanged)) {
+                const raw = renderData.vData;
+                const length = vertexCount * componentPerVertex;
+                if (opacity === 1) {
+                    ia.vertexBuffers[0].update(raw.subarray(0, length));
+                } else {
+                    let output = this._opacityVertices[i];
+                    if (!output || output.length < length) {
+                        output = new Float32Array(ia.vertexBuffers[0].size / Float32Array.BYTES_PER_ELEMENT);
+                        this._opacityVertices[i] = output;
+                    }
+                    // At full opacity the raw mesh is uploaded directly. Refresh the copy on the next fade.
+                    if (newSubModel || verticesChanged || this._uploadedOpacity === 1) {
+                        output.set(raw.subarray(0, length));
+                    }
+                    for (let alpha = alphaOffset; alpha < length; alpha += componentPerVertex) {
+                        output[alpha] = raw[alpha] * opacity;
+                    }
+                    ia.vertexBuffers[0].update(output.subarray(0, length));
+                }
+            }
+            if (newSubModel || verticesChanged) {
+                ia.vertexCount = vertexCount;
+            }
+            if (newSubModel || indicesChanged) {
+                if (indexCount > 0) {
+                    ia.indexBuffer!.update(renderData.iData.subarray(0, indexCount));
+                }
+                ia.indexCount = indexCount;
+            }
+            renderData.lastFilledVertex = vertexCount;
+            renderData.lastFilledIndex = indexCount;
         }
 
+        this._uploadedOpacity = opacity;
         this._isNeedUploadData = false;
     }
 
@@ -733,20 +789,10 @@ export class Graphics extends UIRenderer {
     }
 
     protected _render (render: IBatcher): void {
-        if (this._isNeedUploadData) {
-            if (this.impl) {
-                const renderDataList = this.impl.getRenderDataList();
-                const len = this.model!.subModels.length;
-                if (renderDataList.length > len) {
-                    for (let i = len; i < renderDataList.length; i++) {
-                        const renderData = renderDataList[i];
-                        this.activeSubModel(i, renderData.vertexStart, renderData.indexStart);
-                    }
-                }
-            }
-            this._uploadData();
+        const opacity = this.node._uiProps.opacity;
+        if (this._isNeedUploadData || this._uploadedOpacity !== opacity) {
+            this._uploadData(opacity);
         }
-
         render.commitModel(this, this.model, this.getMaterialInstance(0));
     }
 

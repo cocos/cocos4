@@ -23,6 +23,7 @@
 */
 
 import { JSB } from 'internal:constants';
+import type { Material } from '../../../../asset/assets';
 import { Color, Vec2 } from '../../../../core';
 import { Graphics } from '../../../components/graphics';
 import { RenderData, MeshRenderData } from '../../../renderer/render-data';
@@ -220,6 +221,12 @@ export class Impl {
         }
 
         return this._renderDataList;
+    }
+
+    public setRenderDataMaterial (material: Material): void {
+        for (const data of this._renderDataList) {
+            data.material = material;
+        }
     }
 
     public addPoint (x: number, y: number, flags: PointFlags): void {

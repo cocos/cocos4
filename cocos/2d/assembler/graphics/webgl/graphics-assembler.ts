@@ -80,7 +80,7 @@ export class GraphicsAssembler implements IAssembler {
     }
 
     private getRenderData (graphics: Graphics, vertexCount: number): MeshRenderData | null {
-        if (!_impl) {
+        if (!_impl || vertexCount > MAX_VERTEX_COUNT) {
             return null;
         }
 
@@ -90,24 +90,21 @@ export class GraphicsAssembler implements IAssembler {
             return null;
         }
 
-        let meshBuffer = renderData;
-
-        const maxVertexCount = meshBuffer ? meshBuffer.vertexStart + vertexCount : 0;
-        if (maxVertexCount > MAX_VERTEX_COUNT) {
+        if (renderData.vertexStart + vertexCount > MAX_VERTEX_COUNT) {
             ++_impl.dataOffset;
 
             if (_impl.dataOffset < renderDataList.length) {
                 renderData = renderDataList[_impl.dataOffset];
             } else {
                 renderData = _impl.requestRenderData();
-                renderDataList[_impl.dataOffset] = renderData;
             }
-
-            meshBuffer = renderData;
         }
 
-        if (meshBuffer && meshBuffer.vertexCount < maxVertexCount) {
-            meshBuffer.request(vertexCount, vertexCount * INDICES_PER_VERTEX);
+        // Stroke reservation is an upper bound. Reuse unused capacity in the selected chunk.
+        const extraVertices = Math.max(0, renderData.vertexStart + vertexCount - renderData.vertexCount);
+        const extraIndices = Math.max(0, renderData.indexStart + vertexCount * INDICES_PER_VERTEX - renderData.indexCount);
+        if ((extraVertices || extraIndices) && !renderData.request(extraVertices, extraIndices)) {
+            return null;
         }
 
         return renderData;
