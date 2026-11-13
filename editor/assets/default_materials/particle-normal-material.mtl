@@ -38,14 +38,14 @@
   "_props": [
     {
       "mainTexture": {
-        "__uuid__": "52ef29ed-bd92-4e94-ab2f-0ebc91bf3a60@6c48a",
+        "__uuid__": "80aabd92-9942-4765-b685-8577a1c88b4e@6c48a",
         "__expectedType__": "cc.Texture2D"
       },
       "normalMap": {
-        "__uuid__": "1a341c74-e0df-4fe1-b58f-73fcdabbad1a@37284",
+        "__uuid__": "1a341c74-e0df-4fe1-b58f-73fcdabbad1a@07391",
         "__expectedType__": "cc.Texture2D"
       },
-      "normalStrength": 2.37
+      "normalStrength": 5
     },
     {}
   ]

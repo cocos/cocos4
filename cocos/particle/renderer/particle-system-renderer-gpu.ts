@@ -612,7 +612,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
             this._renderInfo!.mainTexture = shareMaterial.getProperty('mainTexture', 0) as Texture2D;
         }
 
-        if (ps.sharedMaterial == null && this._defaultMat == null) {
+        // Recreate the fallback if its passes have been destroyed.
+        if (ps.sharedMaterial == null && (!this._defaultMat || !this._defaultMat.passes.length)) {
             _matInsInfo.parent = builtinResMgr.get<Material>('default-particle-gpu-material');
             _matInsInfo.owner = ps;
             _matInsInfo.subModelIdx = 0;
@@ -625,7 +626,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat!;
-        // Material previews can arrive before their effect has usable passes.
+        // A custom material may still have an invalid or unavailable effect.
         if (!mat || !mat.passes.length) {
             warn('Particle material has no render passes. Check its effect import and selected technique.');
             return;

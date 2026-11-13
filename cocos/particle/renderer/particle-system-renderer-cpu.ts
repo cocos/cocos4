@@ -697,7 +697,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             this._renderInfo!.mainTexture = shareMaterial.getProperty('mainTexture', 0) as Texture2D;
         }
 
-        if (ps.sharedMaterial == null && this._defaultMat == null) {
+        // Renderer can destroy the cached instance when replacing a preview material.
+        if (ps.sharedMaterial == null && (!this._defaultMat || !this._defaultMat.passes.length)) {
             _matInsInfo.parent = builtinResMgr.get<Material>('default-particle-material');
             _matInsInfo.owner = this._particleSystem;
             _matInsInfo.subModelIdx = 0;
@@ -710,7 +711,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material = ps.getMaterialInstance(0) || this._defaultMat!;
-        // Material previews can arrive before their effect has usable passes.
+        // A custom material may still have an invalid or unavailable effect.
         if (!mat || !mat.passes.length) {
             warn('Particle material has no render passes. Check its effect import and selected technique.');
             return;
@@ -788,7 +789,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 this._trailDefines[CC_USE_WORLD_SPACE] = false;
             }
             let mat: Material | null = ps.getMaterialInstance(1);
-            if (mat === null && this._defaultTrailMat === null) {
+            if (mat === null && (!this._defaultTrailMat || !this._defaultTrailMat.passes.length)) {
                 _matInsInfo.parent = builtinResMgr.get<Material>('default-trail-material');
                 _matInsInfo.owner = this._particleSystem;
                 _matInsInfo.subModelIdx = 1;
