@@ -372,6 +372,9 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         }
 
         const pass = mat.passes[0];
+        if (!pass) {
+            return;
+        }
         _tempVec4.x = this._particleSystem.time;
         _tempVec4.y = dt;
         pass.setUniform(this._uTimeHandle, _tempVec4);
@@ -384,6 +387,9 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
 
     public initShaderUniform (mat: Material): void {
         const pass = mat.passes[0];
+        if (!pass) {
+            return;
+        }
 
         this._uTimeHandle = pass.getHandle('u_timeDelta');
         this._uRotHandle = pass.getHandle('u_worldRot');
@@ -619,6 +625,11 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat!;
+        // Material previews can arrive before their effect has usable passes.
+        if (!mat || !mat.passes.length) {
+            warn('Particle material has no render passes. Check its effect import and selected technique.');
+            return;
+        }
 
         ps.node.getWorldMatrix(_tempWorldTrans);
 

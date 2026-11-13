@@ -402,9 +402,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         }
         ps.node.getWorldMatrix(_tempWorldTrans);
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat;
-        const pass = mat!.passes[0];
-        this.doUpdateScale(pass);
-        this.doUpdateRotation(pass);
+        const pass = mat?.passes[0];
+        if (pass) {
+            this.doUpdateScale(pass);
+            this.doUpdateRotation(pass);
+        }
 
         this._updateList.forEach((value: IParticleModule, key: string): void => {
             // TODO(cjh): Bug here? _updateList is a Map, the old code uses `this._updateList['some_key'] = some_value;`
@@ -708,6 +710,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material = ps.getMaterialInstance(0) || this._defaultMat!;
+        // Material previews can arrive before their effect has usable passes.
+        if (!mat || !mat.passes.length) {
+            warn('Particle material has no render passes. Check its effect import and selected technique.');
+            return;
+        }
         if (ps.simulationSpace === ParticleSpace.World) {
             this._defines[CC_USE_WORLD_SPACE] = true;
         } else {
