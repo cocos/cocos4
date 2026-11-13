@@ -85,7 +85,7 @@ function stableRemoveInactive (iterator, flagToClear): void {
     }
 }
 
-export type InvokeFunc = (...args: unknown[]) => void;
+export type InvokeFunc = (iterator: any, dt?: any, directorFrame?: any) => void;
 
 // This class contains some queues used to invoke life-cycle methods by script execution order
 export class LifeCycleInvoker {
@@ -205,15 +205,15 @@ class ReusableInvoker extends LifeCycleInvoker {
         }
     }
 
-    public invoke (dt: number): void {
+    public invoke (dt: number, directorFrame?: number): void {
         if (this._neg.array.length > 0) {
-            this._invoke(this._neg, dt);
+            this._invoke(this._neg, dt, directorFrame);
         }
 
-        this._invoke(this._zero, dt);
+        this._invoke(this._zero, dt, directorFrame);
 
         if (this._pos.array.length > 0) {
-            this._invoke(this._pos, dt);
+            this._invoke(this._pos, dt, directorFrame);
         }
     }
 }
@@ -228,7 +228,7 @@ function enableInEditor (comp): void {
 }
 
 // return function to simply call each component with try catch protection
-export function createInvokeImplJit (code: string, useDt?, ensureFlag?): (iterator: any, dt: any) => void {
+export function createInvokeImplJit (code: string, useDt?, ensureFlag?): (iterator: any, dt?: any, directorFrame?: any) => void {
     // function (it) {
     //     let a = it.array;
     //     for (it.i = 0; it.i < a.length; ++it.i) {
@@ -245,10 +245,10 @@ export function createInvokeImplJit (code: string, useDt?, ensureFlag?): (iterat
     const singleInvoke = Function('c', 'dt', code);
     return createInvokeImpl(singleInvoke, fastPath, ensureFlag);
 }
-export function createInvokeImpl (singleInvoke, fastPath, ensureFlag?): (iterator: any, dt: any) => void {
-    return (iterator, dt: number): void => {
+export function createInvokeImpl (singleInvoke, fastPath, ensureFlag?): (iterator: any, dt?: any, directorFrame?: any) => void {
+    return (iterator, dt: number, directorFrame?: number): void => {
         try {
-            fastPath(iterator, dt);
+            fastPath(iterator, dt, directorFrame);
         } catch (e) {
             // slow path
             legacyCC._throw(e);
@@ -259,7 +259,7 @@ export function createInvokeImpl (singleInvoke, fastPath, ensureFlag?): (iterato
             ++iterator.i;   // invoke next callback
             for (; iterator.i < array.length; ++iterator.i) {
                 try {
-                    singleInvoke(array[iterator.i], dt);
+                    singleInvoke(array[iterator.i], dt, directorFrame);
                 } catch (e) {
                     legacyCC._throw(e);
                     if (ensureFlag) {
@@ -314,6 +314,18 @@ const invokeLateUpdate = SUPPORT_JIT ? createInvokeImplJit('c.lateUpdate(dt)', t
         },
     );
 
+const invokeCoroutineUpdate = createInvokeImpl(
+    (c, dt: number, directorFrame: number): void => {
+        c._invokeCoroutineUpdate(dt, directorFrame);
+    },
+    (iterator, dt: number, directorFrame: number): void => {
+        const array = iterator.array;
+        for (iterator.i = 0; iterator.i < array.length; ++iterator.i) {
+            array[iterator.i]._invokeCoroutineUpdate(dt, directorFrame);
+        }
+    },
+);
+
 export const invokeOnEnable = EDITOR ? (iterator): void => {
     const compScheduler = legacyCC.director._compScheduler;
     const array = iterator.array;
@@ -364,9 +376,16 @@ export class ComponentScheduler {
      * @zh `lateUpdate` 回调的调度器
      */
     public declare lateUpdateInvoker: ReusableInvoker;
+    /**
+     * @en The invoker of component coroutine callbacks
+     * @zh 组件协程回调的调度器
+     */
+    public declare coroutineInvoker: ReusableInvoker;
     // components deferred to schedule
     private _deferredComps: any[] = [];
+    private _deferredCoroutineComps: Component[] = [];
     private declare _updating: boolean;
+    private _invokingCoroutines = false;
 
     constructor () {
         this.unscheduleAll();
@@ -381,9 +400,12 @@ export class ComponentScheduler {
         this.startInvoker = new OneOffInvoker(invokeStart);
         this.updateInvoker = new ReusableInvoker(invokeUpdate);
         this.lateUpdateInvoker = new ReusableInvoker(invokeLateUpdate);
+        this.coroutineInvoker = new ReusableInvoker(invokeCoroutineUpdate);
 
         // during a loop
         this._updating = false;
+        this._invokingCoroutines = false;
+        this._deferredCoroutineComps.length = 0;
     }
 
     /**
@@ -505,6 +527,55 @@ export class ComponentScheduler {
     }
 
     /**
+     * @en Process coroutine phase for registered components
+     * @zh 为当前注册的组件执行协程阶段任务
+     * @param dt @en Time passed after the last frame in seconds @zh 距离上一帧的时间，以秒计算
+     * @param directorFrame @en Current director frame @zh 当前导演帧号
+     */
+    public coroutineUpdatePhase (dt: number, directorFrame: number): void {
+        this._invokingCoroutines = true;
+        try {
+            this.coroutineInvoker.invoke(dt, directorFrame);
+        } finally {
+            this._invokingCoroutines = false;
+            this._deferredScheduleCoroutine();
+        }
+    }
+
+    /**
+     * @engineInternal
+     */
+    public getCoroutineResumeFrame (): number {
+        return legacyCC.director.getTotalFrames() + (this._updating ? 1 : 0);
+    }
+
+    /**
+     * @engineInternal
+     */
+    public enableCoroutine (comp: Component): void {
+        if (this._invokingCoroutines) {
+            if (this._deferredCoroutineComps.indexOf(comp) < 0) {
+                this._deferredCoroutineComps.push(comp);
+            }
+        } else {
+            this._scheduleCoroutineImmediate(comp);
+        }
+    }
+
+    /**
+     * @engineInternal
+     */
+    public disableCoroutine (comp: Component): void {
+        const index = this._deferredCoroutineComps.indexOf(comp);
+        if (index >= 0) {
+            fastRemoveAt(this._deferredCoroutineComps, index);
+            return;
+        }
+
+        this.coroutineInvoker.remove(comp);
+    }
+
+    /**
      * @en Process late update phase for registered components
      * @zh 为当前注册的组件执行 late update 阶段任务
      * @param dt @en Time passed after the last frame in seconds @zh 距离上一帧的时间，以秒计算
@@ -541,10 +612,22 @@ export class ComponentScheduler {
         }
     }
 
+    private _scheduleCoroutineImmediate (comp: Component): void {
+        this.coroutineInvoker.add(comp);
+    }
+
     private _deferredSchedule (): void {
         const comps = this._deferredComps;
         for (let i = 0, len = comps.length; i < len; i++) {
             this._scheduleImmediate(comps[i]);
+        }
+        comps.length = 0;
+    }
+
+    private _deferredScheduleCoroutine (): void {
+        const comps = this._deferredCoroutineComps;
+        for (let i = 0, len = comps.length; i < len; i++) {
+            this._scheduleCoroutineImmediate(comps[i]);
         }
         comps.length = 0;
     }
