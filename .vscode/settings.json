@@ -34,4 +34,5 @@
         "istream": "c"
     },
     "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "G:/projects/cocos/cocos4/native",
 }
