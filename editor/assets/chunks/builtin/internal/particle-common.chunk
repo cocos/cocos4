@@ -19,6 +19,13 @@ uniform Constants {
 out mediump vec2 uv;
 out mediump vec4 color;
 
+#if USE_NORMAL_MAP
+  out highp vec3 particlePositionWS;
+  #if CC_RENDER_MODE == RENDER_MODE_MESH
+    out highp vec3 particleNormalWS;
+  #endif
+#endif
+
 void computeVertPos (inout vec4 pos, vec2 vertOffset, vec4 q, vec3 s
 #if CC_RENDER_MODE == RENDER_MODE_BILLBOARD || CC_RENDER_MODE == RENDER_MODE_VERTICAL_BILLBOARD
   , mat4 viewInv
