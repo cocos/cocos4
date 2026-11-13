@@ -56,6 +56,28 @@ import type { Game } from '../game';
 
 const localWinSize = size();
 
+/**
+ * A pair of equal lengths measured in the two coordinate spaces:
+ * `pixels` device pixels cover the same distance as `units` UI units, so `scale = pixels / units`.
+ * Converting between the spaces with those two lengths directly avoids the extra rounding of
+ * `pixels / scale`, which is off by one ULP in the common case
+ * (e.g. `1532 / (1532 / 1920) === 1919.9999999999998`).
+ */
+export interface ScaleRatio {
+    /** A length in device pixels (the container). */
+    readonly pixels: number;
+    /** The same length in UI units (the design resolution). */
+    readonly units: number;
+}
+
+export function toUISpace (value: number, ratio: ScaleRatio): number {
+    return (value * ratio.units) / ratio.pixels;
+}
+
+export function toPixelSpace (value: number, ratio: ScaleRatio): number {
+    return (value * ratio.pixels) / ratio.units;
+}
+
 const orientationMap = {
     [macro.ORIENTATION_AUTO]: Orientation.AUTO,
     [macro.ORIENTATION_LANDSCAPE]: Orientation.LANDSCAPE,
@@ -69,8 +91,8 @@ export class View extends Eventify(System) {
      */
     public _designResolutionSize: Size = size(0, 0); // resolution size, it is the size appropriate for the app resources.
 
-    private _scaleX: number = 1;
-    private _scaleY: number = 1;
+    private _ratioX: ScaleRatio = { pixels: 1, units: 1 };
+    private _ratioY: ScaleRatio = { pixels: 1, units: 1 };
     private _viewportRect: Rect = rect(); // Viewport is the container's rect related to content's coordinates in pixel
     private _visibleRect: Rect = rect(); // The visible rect in content's coordinate in point
     private _autoFullScreen: boolean = false; // Auto full screen disabled by default
@@ -352,8 +374,8 @@ export class View extends Eventify(System) {
      */
     public getVisibleSizeInPixel (): Size {
         return new Size(
-            this._visibleRect.width * this._scaleX,
-            this._visibleRect.height * this._scaleY,
+            toPixelSpace(this._visibleRect.width, this._ratioX),
+            toPixelSpace(this._visibleRect.height, this._ratioY),
         );
     }
 
@@ -371,8 +393,8 @@ export class View extends Eventify(System) {
      */
     public getVisibleOriginInPixel (): Vec2 {
         return new Vec2(
-            this._visibleRect.x * this._scaleX,
-            this._visibleRect.y * this._scaleY,
+            toPixelSpace(this._visibleRect.x, this._ratioX),
+            toPixelSpace(this._visibleRect.y, this._ratioY),
         );
     }
 
@@ -451,9 +473,9 @@ export class View extends Eventify(System) {
 
         const result = policy.apply(this, this._designResolutionSize);
 
-        if (result.scale && result.scale.length === 2) {
-            this._scaleX = result.scale[0];
-            this._scaleY = result.scale[1];
+        if (result.ratioX && result.ratioY) {
+            this._ratioX = result.ratioX;
+            this._ratioY = result.ratioY;
         }
 
         if (result.viewport) {
@@ -468,8 +490,8 @@ export class View extends Eventify(System) {
 
             vb.x = 0;
             vb.y = 0;
-            vb.width = rv.width / this._scaleX;
-            vb.height = rv.height / this._scaleY;
+            vb.width = toUISpace(rv.width, this._ratioX);
+            vb.height = toUISpace(rv.height, this._ratioY);
         }
 
         policy.postApply(this);
@@ -534,7 +556,7 @@ export class View extends Eventify(System) {
      * @zh 返回横轴的缩放比，这个缩放比是将画布像素分辨率放到设计分辨率的比例。
      */
     public getScaleX (): number {
-        return this._scaleX;
+        return this._ratioX.pixels / this._ratioX.units;
     }
 
     /**
@@ -542,7 +564,31 @@ export class View extends Eventify(System) {
      * @zh 返回纵轴的缩放比，这个缩放比是将画布像素分辨率缩放到设计分辨率的比例。
      */
     public getScaleY (): number {
-        return this._scaleY;
+        return this._ratioY.pixels / this._ratioY.units;
+    }
+
+    /**
+     * @en Returns the exact ratio behind `getScaleX()`, use it with `toUISpace()` / `toPixelSpace()`
+     * to convert lengths without the rounding error of `pixels / getScaleX()`.
+     * @zh 返回 `getScaleX()` 背后的精确比例，配合 `toUISpace()` / `toPixelSpace()` 换算长度，
+     * 以避免 `像素 / getScaleX()` 带来的舍入误差。
+     * @engineInternal
+     * @mangle
+     */
+    public getRatioX (): ScaleRatio {
+        return this._ratioX;
+    }
+
+    /**
+     * @en Returns the exact ratio behind `getScaleY()`, use it with `toUISpace()` / `toPixelSpace()`
+     * to convert lengths without the rounding error of `pixels / getScaleY()`.
+     * @zh 返回 `getScaleY()` 背后的精确比例，配合 `toUISpace()` / `toPixelSpace()` 换算长度，
+     * 以避免 `像素 / getScaleY()` 带来的舍入误差。
+     * @engineInternal
+     * @mangle
+     */
+    public getRatioY (): ScaleRatio {
+        return this._ratioY;
     }
 
     /**
@@ -579,14 +625,15 @@ export class View extends Eventify(System) {
     }
 
     /**
-     * Convert location in Cocos screen coordinate to location in UI space
+     * @en Converts a length from device pixels to UI units, preferring the exact scale ratio.
+     * @zh 将像素长度换算为 UI 单位长度，优先使用精确比例。
      * @engineInternal
      * @mangle
      */
     public _convertToUISpace (point: Vec2): void {
         const viewport = this._viewportRect;
-        point.x = (point.x - viewport.x) / this._scaleX;
-        point.y = (point.y - viewport.y) / this._scaleY;
+        point.x = toUISpace(point.x - viewport.x, this._ratioX);
+        point.y = toUISpace(point.y - viewport.y, this._ratioY);
     }
 
     private _updateAdaptResult (width: number, height: number, windowId?: number): void {
@@ -617,8 +664,9 @@ export class View extends Eventify(System) {
  */
 
 interface AdaptResult {
-    scale: number[];
     viewport?: null | Rect;
+    ratioX: ScaleRatio;
+    ratioY: ScaleRatio;
 }
 
 /**
@@ -699,8 +747,9 @@ class ContentStrategy {
     public name = 'ContentStrategy';
 
     private _result: AdaptResult = {
-        scale: [1, 1],
         viewport: null,
+        ratioX: { pixels: 1, units: 1 },
+        ratioY: { pixels: 1, units: 1 },
     };
     protected _strategy = ResolutionPolicy.UNKNOWN;
 
@@ -722,13 +771,13 @@ class ContentStrategy {
 
     /**
      * @en Function to apply this strategy
-     * The return value is {scale: [scaleX, scaleY], viewport: {new Rect}},
+     * The return value is {ratioX, ratioY, viewport: {new Rect}},
      * The target view can then apply these value to itself, it's preferred not to modify directly its private variables
      * @zh 调用策略方法
-     * @return The result scale and viewport rect
+     * @return The exact ratios and the viewport rect
      */
     public apply (_view: View, designedResolution: Size): AdaptResult {
-        return { scale: [1, 1] };
+        return this._result;
     }
 
     /**
@@ -743,7 +792,14 @@ class ContentStrategy {
     /**
      * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
      */
-    public _buildResult (containerW: number, containerH: number, contentW: number, contentH: number, scaleX: number, scaleY: number): AdaptResult {
+    public _buildResult (
+        containerW: number,
+        containerH: number,
+        contentW: number,
+        contentH: number,
+        ratioX: ScaleRatio,
+        ratioY: ScaleRatio,
+    ): AdaptResult {
         // Makes content fit better the canvas
         if (Math.abs(containerW - contentW) < 2) {
             contentW = containerW;
@@ -760,8 +816,9 @@ class ContentStrategy {
         );
 
         const result = this._result;
-        result.scale = [scaleX, scaleY];
         result.viewport = viewport;
+        result.ratioX = ratioX;
+        result.ratioY = ratioY;
         return result;
     }
 }
@@ -819,10 +876,15 @@ class ExactFit extends ContentStrategy {
         const windowSize = screen.windowSize;
         const containerW = windowSize.width;
         const containerH = windowSize.height;
-        const scaleX = containerW / designedResolution.width;
-        const scaleY = containerH / designedResolution.height;
 
-        return this._buildResult(containerW, containerH, containerW, containerH, scaleX, scaleY);
+        return this._buildResult(
+            containerW,
+            containerH,
+            containerW,
+            containerH,
+            { pixels: containerW, units: designedResolution.width },
+            { pixels: containerH, units: designedResolution.height },
+        );
     }
 }
 
@@ -842,21 +904,21 @@ class ShowAll extends ContentStrategy {
         const designH = designedResolution.height;
         const scaleX = containerW / designW;
         const scaleY = containerH / designH;
-        let scale = 0;
         let contentW: number;
         let contentH: number;
 
+        let ratio: ScaleRatio;
         if (scaleX < scaleY) {
-            scale = scaleX;
+            ratio = { pixels: containerW, units: designW };
             contentW = containerW;
-            contentH = designH * scale;
+            contentH = toPixelSpace(designH, ratio);
         } else {
-            scale = scaleY;
-            contentW = designW * scale;
+            ratio = { pixels: containerH, units: designH };
+            contentW = toPixelSpace(designW, ratio);
             contentH = containerH;
         }
 
-        return this._buildResult(containerW, containerH, contentW, contentH, scale, scale);
+        return this._buildResult(containerW, containerH, contentW, contentH, ratio, ratio);
     }
 }
 
@@ -868,7 +930,7 @@ class NoBorder extends ContentStrategy {
         this._strategy = ResolutionPolicy.NO_BORDER;
     }
 
-    public apply (_view, designedResolution): AdaptResult {
+    public apply (_view: View, designedResolution: Size): AdaptResult {
         const windowSize = screen.windowSize;
         const containerW = windowSize.width;
         const containerH = windowSize.height;
@@ -876,21 +938,21 @@ class NoBorder extends ContentStrategy {
         const designH = designedResolution.height;
         const scaleX = containerW / designW;
         const scaleY = containerH / designH;
-        let scale: number;
         let contentW: number;
         let contentH: number;
 
+        let ratio: ScaleRatio;
         if (scaleX < scaleY) {
-            scale = scaleY;
-            contentW = designW * scale;
+            ratio = { pixels: containerH, units: designH };
+            contentW = toPixelSpace(designW, ratio);
             contentH = containerH;
         } else {
-            scale = scaleX;
+            ratio = { pixels: containerW, units: designW };
             contentW = containerW;
-            contentH = designH * scale;
+            contentH = toPixelSpace(designH, ratio);
         }
 
-        return this._buildResult(containerW, containerH, contentW, contentH, scale, scale);
+        return this._buildResult(containerW, containerH, contentW, contentH, ratio, ratio);
     }
 }
 
@@ -907,11 +969,11 @@ class FixedHeight extends ContentStrategy {
         const containerW = windowSize.width;
         const containerH = windowSize.height;
         const designH = designedResolution.height;
-        const scale = containerH / designH;
         const contentW = containerW;
         const contentH = containerH;
+        const ratio: ScaleRatio = { pixels: containerH, units: designH };
 
-        return this._buildResult(containerW, containerH, contentW, contentH, scale, scale);
+        return this._buildResult(containerW, containerH, contentW, contentH, ratio, ratio);
     }
 }
 
@@ -928,11 +990,11 @@ class FixedWidth extends ContentStrategy {
         const containerW = windowSize.width;
         const containerH = windowSize.height;
         const designW = designedResolution.width;
-        const scale = containerW / designW;
         const contentW = containerW;
         const contentH = containerH;
+        const ratio: ScaleRatio = { pixels: containerW, units: designW };
 
-        return this._buildResult(containerW, containerH, contentW, contentH, scale, scale);
+        return this._buildResult(containerW, containerH, contentW, contentH, ratio, ratio);
     }
 }
 
@@ -1026,12 +1088,12 @@ export class ResolutionPolicy {
 
     /**
      * @en Function to apply this resolution policy
-     * The return value is {scale: [scaleX, scaleY], viewport: {new Rect}},
+     * The return value is {ratioX, ratioY, viewport: {new Rect}},
      * The target view can then apply these value to itself, it's preferred not to modify directly its private variables
      * @zh 调用策略方法
      * @param _view - The target view
      * @param designedResolution - The user defined design resolution
-     * @return An object contains the scale X/Y values and the viewport rect
+     * @return An object contains the exact ratios and the viewport rect
      */
     public apply (_view: View, designedResolution: Size): AdaptResult {
         this._containerStrategy.apply(_view, designedResolution);

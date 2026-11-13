@@ -29,7 +29,7 @@ import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
 import { Camera, CameraEvent } from '../../misc/camera-component';
 import { Widget } from '../../ui/widget';
 import { Vec3, screen, Enum, cclegacy, visibleRect } from '../../core';
-import { view } from '../../ui/view';
+import { toUISpace, view } from '../../ui/view';
 import { RenderRoot2D } from './render-root-2d';
 
 const _worldPos = new Vec3();
@@ -226,7 +226,7 @@ export class Canvas extends RenderRoot2D {
                 this._cameraComponent.orthoHeight = visibleRect.height / 2;
             } else {
                 const size = screen.windowSize;
-                this._cameraComponent.orthoHeight = size.height / view.getScaleY() / 2;
+                this._cameraComponent.orthoHeight = toUISpace(size.height, view.getRatioY()) / 2;
             }
 
             this.node.getWorldPosition(_worldPos);
