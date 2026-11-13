@@ -45,6 +45,7 @@ export * from './types';
 export * from './pipeline';
 export * from './archive';
 export * from './framework';
+export * from './forward-clustered-lighting';
 
 export const enableEffectImport = true;
 export const programLib: ProgramLibrary = new WebProgramLibrary(defaultLayoutGraph);
