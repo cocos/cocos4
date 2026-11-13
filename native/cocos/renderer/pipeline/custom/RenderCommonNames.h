@@ -71,6 +71,7 @@ inline const char* getName(ResourceResidency e) noexcept {
         case ResourceResidency::PERSISTENT: return "PERSISTENT";
         case ResourceResidency::EXTERNAL: return "EXTERNAL";
         case ResourceResidency::BACKBUFFER: return "BACKBUFFER";
+        case ResourceResidency::CUSTOM: return "CUSTOM";
     }
     return "";
 }
