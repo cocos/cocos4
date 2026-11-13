@@ -23,7 +23,7 @@
 */
 
 import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
-import { CCString, Enum, error, murmurhash2_32_gc } from '../core';
+import { CCString, Enum, error, isValid, murmurhash2_32_gc } from '../core';
 import SkeletonCache from './skeleton-cache';
 import { Skeleton } from './skeleton';
 import spine from './lib/spine-core';
@@ -197,6 +197,7 @@ export class SkeletonData extends Asset {
      *              @zh 值为 false 时，当发生错误时将打印出反馈信息。
      */
     public getRuntimeData (quiet?: boolean): spine.SkeletonData | null {
+        if (!isValid(this, true)) return null;
         if (this._skeletonCache) {
             return this._skeletonCache;
         }
@@ -220,6 +221,7 @@ export class SkeletonData extends Asset {
                 textureUUIDs.push(tex.uuid || tex.getId());
             }
             if (this._skeletonJson) {
+                /* eslint-disable-next-line max-len */
                 this._skeletonCache = spine.wasmUtil.createSpineSkeletonDataWithJson(this.skeletonJsonStr, this._atlasText, this.textureNames, textureUUIDs);
                 spine.wasmUtil.registerSpineSkeletonDataWithUUID(this._skeletonCache, uuid);
             } else {
@@ -295,8 +297,10 @@ export class SkeletonData extends Asset {
      * @zh 销毁 skeleton data。
      */
     public destroy (): boolean {
+        if (!isValid(this, true)) return false;
         SkeletonCache.sharedCache.destroyCachedAnimations(this._uuid);
         spine.wasmUtil.destroySpineSkeletonDataWithUUID(this.mergedUUID());
+        this._skeletonCache = null;
         return super.destroy();
     }
 
