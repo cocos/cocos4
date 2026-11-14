@@ -30,6 +30,8 @@ option(USE_OCCLUSION_QUERY      "Use Occlusion Query"                   ON)
 option(USE_DEBUG_RENDERER       "Use Debug Renderer"                    ON)
 option(USE_GEOMETRY_RENDERER    "Use Geometry Renderer"                 ON)
 option(USE_WEBP                 "Use Webp"                              ON)
+option(USE_ANDROID_FRAME_PACER     "Enable experimental Android frame pacing" OFF)
+option(USE_ANDROID_FRAME_PACER_LOG "Enable Android frame pacing diagnostics" OFF)
 
 if(NOT RES_DIR)
     message(FATAL_ERROR "RES_DIR is not set!")
