@@ -226,6 +226,10 @@ export class RenderDrawInfo {
         }
     }
 
+    public get vertDirty (): boolean {
+        return JSB ? !!this._uint8SharedBuffer[AttrUInt8ArrayView.VertDirty] : this._vertDirty;
+    }
+
     public setVertDirty (val: boolean): void {
         if (JSB) {
             this._uint8SharedBuffer[AttrUInt8ArrayView.VertDirty] = val ? 1 : 0;

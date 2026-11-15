@@ -243,6 +243,9 @@ export class Graphics extends UIRenderer {
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
     private _lastSyncedColor = -1;
     private _uploadedOpacity = 1;
+    // Fresh chunks share one upload buffer. Older retained chunks keep their own copy once they fade.
+    private _opacityScratch: Float32Array | null = null;
+    private _scratchSource: MeshRenderData | null = null;
     private _opacityVertices: Float32Array[] = [];
 
     //nativeObj
@@ -288,6 +291,14 @@ export class Graphics extends UIRenderer {
         this.setEntityColor(this._color);
     }
 
+    public onDisable (): void {
+        super.onDisable();
+        if (!this._isDrawing) {
+            this._opacityScratch = null;
+            if (JSB) this._uploadNativeGeometry();
+        }
+    }
+
     protected override get _keepRenderData (): boolean {
         // Graphics is a retained-mode renderer: its MeshRenderData is the result of the
         // user's previous fill()/stroke() calls. Destroying it here would leave Impl's
@@ -323,6 +334,8 @@ export class Graphics extends UIRenderer {
             this.impl = null;
         }
         this._opacityVertices.length = 0;
+        this._opacityScratch = null;
+        this._scratchSource = null;
 
         super.onDestroy();
     }
@@ -579,9 +592,15 @@ export class Graphics extends UIRenderer {
 
         this.impl.clear();
         this._opacityVertices.length = 0;
-        this._isDrawing = false;
+        this._scratchSource = null;
+        if (!this.enabledInHierarchy) {
+            this._opacityScratch = null;
+        }
         if (JSB) {
-            this._graphicsNativeProxy.clear();// need native
+            if (this._isDrawing) {
+                this._graphicsNativeProxy.clear();
+                this._isNeedUploadData = true;
+            }
         } else if (this.model) {
             for (let i = 0; i < this.model.subModels.length; i++) {
                 const subModel = this.model.subModels[i];
@@ -591,6 +610,8 @@ export class Graphics extends UIRenderer {
             }
         }
 
+        this._isDrawing = false;
+        if (JSB && !this.enabledInHierarchy) this._uploadNativeGeometry();
         this._markForUpdateRenderData();
     }
 
@@ -735,19 +756,7 @@ export class Graphics extends UIRenderer {
                 if (opacity === 1) {
                     ia.vertexBuffers[0].update(raw.subarray(0, length));
                 } else {
-                    let output = this._opacityVertices[i];
-                    if (!output || output.length < length) {
-                        output = new Float32Array(ia.vertexBuffers[0].size / Float32Array.BYTES_PER_ELEMENT);
-                        this._opacityVertices[i] = output;
-                    }
-                    // At full opacity the raw mesh is uploaded directly. Refresh the copy on the next fade.
-                    if (newSubModel || verticesChanged || this._uploadedOpacity === 1) {
-                        output.set(raw.subarray(0, length));
-                    }
-                    for (let alpha = alphaOffset; alpha < length; alpha += componentPerVertex) {
-                        output[alpha] = raw[alpha] * opacity;
-                    }
-                    ia.vertexBuffers[0].update(output.subarray(0, length));
+                    ia.vertexBuffers[0].update(this._getOpacityVertices(renderData, i, renderDataList.length, opacity));
                 }
             }
             if (newSubModel || verticesChanged) {
@@ -765,6 +774,43 @@ export class Graphics extends UIRenderer {
 
         this._uploadedOpacity = opacity;
         this._isNeedUploadData = false;
+    }
+
+    private _getOpacityVertices (data: MeshRenderData, index: number, chunks: number, opacity: number): Float32Array {
+        const length = data.vertexStart * componentPerVertex;
+        const geometryChanged = data.lastFilledVertex !== data.vertexStart;
+        // Across clear()/redraw all chunks are new. During later fades keep a copy for each
+        // earlier retained chunk so updating alpha does not recopy positions, RGB and distance.
+        const keepChunk = index < chunks - 1 && (!geometryChanged || !!this._opacityVertices[index]);
+        const previous = keepChunk ? this._opacityVertices[index] : this._opacityScratch;
+        const capacity = previous ? previous.buffer.byteLength / Float32Array.BYTES_PER_ELEMENT : 0;
+        let output: Float32Array;
+        // Allow a single small upload after a large one. Alternating sizes reuse the same allocation.
+        // Mixed-size chunks within one redraw also share the largest scratch without shrinking it.
+        const shrink = previous && chunks === 1 && length * 4 <= capacity && previous.length * 4 <= capacity;
+        if (!previous || capacity < length || shrink) {
+            const vertices = growCapacity(data.vertexStart, 0, MAX_VERTEX_COUNT);
+            output = new Float32Array(new ArrayBuffer(vertices * stride), 0, length);
+        } else if (previous.length !== length) {
+            output = new Float32Array(previous.buffer, 0, length);
+        } else {
+            output = previous;
+        }
+
+        const raw = data.vData;
+        if (geometryChanged || this._uploadedOpacity === 1 || output !== previous || (!keepChunk && this._scratchSource !== data)) {
+            output.set(raw.subarray(0, length));
+        }
+        for (let alpha = alphaOffset; alpha < length; alpha += componentPerVertex) {
+            output[alpha] = raw[alpha] * opacity;
+        }
+        if (keepChunk) {
+            this._opacityVertices[index] = output;
+        } else {
+            this._scratchSource = data;
+            this._opacityScratch = output;
+        }
+        return output;
     }
 
     /**
@@ -821,19 +867,28 @@ export class Graphics extends UIRenderer {
      */
     public updateRenderer (): void {
         super.updateRenderer();
-        if (JSB) {
-            if (this._isNeedUploadData) {
-                if (this.impl) {
-                    const renderDataList = this.impl.getRenderDataList();
-                    for (let i = 0; i < renderDataList.length; i++) {
-                        renderDataList[i].setRenderDrawInfoAttributes();
-                    }
-                    this._graphicsNativeProxy.activeSubModels();
-                }
-                this._graphicsNativeProxy.uploadData();
-                this._isNeedUploadData = false;
-            }
+        // A clear with no redraw never reaches _render, including below a zero-opacity parent.
+        if (!JSB && !this._isDrawing) {
+            this._opacityScratch = null;
         }
+        if (JSB) this._uploadNativeGeometry();
+    }
+
+    private _uploadNativeGeometry (): void {
+        if (!this._isNeedUploadData) return;
+        // An empty list releases clear()'s scratch. Do not allocate an empty
+        // RenderDrawInfo by requesting the render data list when there is no paint.
+        if (this._isDrawing && this.impl) {
+            const renderDataList = this.impl.getRenderDataList();
+            for (const data of renderDataList) {
+                if (data.renderDrawInfo.vertDirty) {
+                    data.setRenderDrawInfoAttributes();
+                }
+            }
+            this._graphicsNativeProxy.activeSubModels();
+        }
+        this._graphicsNativeProxy.uploadData();
+        this._isNeedUploadData = false;
     }
 
     protected createRenderEntity (): RenderEntity {

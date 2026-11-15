@@ -251,4 +251,92 @@ describe('Graphics cascaded vertex opacity', () => {
         game.step();
         uploads.expectGeometry(graphics, 0, replacement, 128 / 255, true);
     });
+
+    test('reuses the redraw buffer and sizes it for the current shape', () => {
+        const graphics = paint(canvasNode);
+        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
+        const opacity = graphics.node.addComponent(UIOpacity);
+        opacity.opacity = 128;
+        const redraw = (rectangles: number): void => {
+            graphics.clear();
+            for (let i = 0; i < rectangles; i++) graphics.rect(i, 0, 1, 1);
+            graphics.fill();
+            game.step();
+        };
+        redraw(256);
+        const large = owner._opacityScratch!.buffer;
+        expect(large.byteLength).toBe(1024 * 32);
+        redraw(8);
+        expect(owner._opacityScratch!.buffer).toBe(large);
+        redraw(256);
+        expect(owner._opacityScratch!.buffer).toBe(large);
+        redraw(8);
+        redraw(8);
+        const small = owner._opacityScratch!.buffer;
+        expect(small.byteLength).toBe(32 * 32);
+        expect(graphics.model!.subModels[0].inputAssembler.vertexBuffers[0].size).toBe(large.byteLength);
+        redraw(8);
+        expect(owner._opacityScratch!.buffer).toBe(small);
+
+        // Empty Graphics are skipped by the walker, including below a hidden ancestor.
+        canvasNode.addComponent(UIOpacity).opacity = 0;
+        graphics.clear();
+        game.step();
+        expect(owner._opacityScratch).toBeNull();
+        canvasNode.getComponent(UIOpacity)!.opacity = 255;
+        redraw(8);
+        graphics.clear();
+        graphics.enabled = false;
+        expect(owner._opacityScratch).toBeNull();
+        graphics.enabled = true;
+        redraw(8);
+        graphics.enabled = false;
+        graphics.clear();
+        expect(owner._opacityScratch).toBeNull();
+    });
+
+    test('shares scratch for new chunks and preserves independent paints on subsequent fades', () => {
+        const graphics = paint(canvasNode);
+        const owner = graphics as unknown as { _opacityScratch: Float32Array; _opacityVertices: Float32Array[] };
+        const opacity = graphics.node.addComponent(UIOpacity);
+        const uploads = trackUploads();
+        function redraw (seed: number): Float32Array[] {
+            graphics.clear();
+            for (let i = 0; i < 3; i++) {
+                if (i) {
+                    graphics.impl!.requestRenderData();
+                    graphics.impl!.dataOffset = i;
+                }
+                graphics.fillColor = new Color(seed, i * 60, 48, seed + i * 50);
+                graphics.fillRect(i * 8, seed, 6, 6);
+            }
+            return [0, 1, 2].map(i => rawVertices(graphics, i));
+        }
+        opacity.opacity = 128;
+        const first = redraw(32);
+        game.step();
+        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 128 / 255, true));
+        const backing = owner._opacityScratch.buffer;
+        expect(owner._opacityVertices).toHaveLength(0);
+
+        opacity.opacity = 64;
+        uploads.clear();
+        game.step();
+        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 64 / 255, false));
+        expect(owner._opacityVertices).toHaveLength(2);
+        expect(owner._opacityScratch.buffer).toBe(backing);
+        const retained = owner._opacityVertices.slice();
+        opacity.opacity = 160;
+        uploads.clear();
+        game.step();
+        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 160 / 255, false));
+        retained.forEach((view, i) => expect(owner._opacityVertices[i]).toBe(view));
+
+        const second = redraw(64);
+        uploads.clear();
+        game.step();
+        expect(owner._opacityVertices).toHaveLength(0);
+        expect(owner._opacityScratch.buffer).toBe(backing);
+        second.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 160 / 255, true));
+    });
 });

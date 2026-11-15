@@ -39,6 +39,8 @@ constexpr uint32_t MAX_INDEX_COUNT = MAX_VERTEX_COUNT * INDICES_PER_VERTEX;
 constexpr uint32_t FLOATS_PER_VERTEX = 8;
 constexpr uint32_t VERTEX_STRIDE = FLOATS_PER_VERTEX * sizeof(float);
 constexpr uint32_t ALPHA_OFFSET = 6;
+// After clear(), keep at most the float storage for one full, faded chunk.
+constexpr size_t MAX_CACHED_FLOATS = MAX_VERTEX_COUNT * (FLOATS_PER_VERTEX + 1U);
 
 inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap) {
     uint32_t cap = current > 1U ? current : 1U;
@@ -51,27 +53,40 @@ inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap)
 class GraphicsModel final : public scene::Model {
 public:
     void setGeometry(const ccstd::vector<RenderDrawInfo*>& drawInfos) {
+        // clear() kept scratch for an immediate repaint. The component reached
+        // its next update (or was disabled) with no new drawing.
+        if (drawInfos.empty()) {
+            _chunks.clear();
+            resetDrawCounts();
+            return;
+        }
         const auto& subModels = getSubModels();
         _chunks.resize(subModels.size());
         for (size_t i = 0; i < subModels.size(); ++i) {
-            const auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
+            auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
             auto* ia = subModels[i]->getInputAssembler();
             auto& chunk = _chunks[i];
             const auto vertexCount = drawInfo ? drawInfo->getVertexOffset() : 0U;
             const auto indexCount = drawInfo ? drawInfo->getIndexOffset() : 0U;
-            chunk.paintAlpha.clear();
             // The offsets are emitted counts. The JS mesh reserves vbCount/ibCount
             // before writing; a failed reservation must never become a buffer read.
             if (!vertexCount || !indexCount || vertexCount > MAX_VERTEX_COUNT || indexCount > MAX_INDEX_COUNT ||
                 vertexCount > drawInfo->getVbCount() || indexCount > drawInfo->getIbCount() ||
                 !drawInfo->getVDataBuffer() || !drawInfo->getIDataBuffer()) {
                 chunk.vertices.clear();
+                chunk.paintAlpha.clear();
+                chunk.appliedOpacity = -1.F;
                 ia->setVertexCount(0);
                 ia->setIndexCount(0);
                 continue;
             }
+            if (!drawInfo->getVertDirty() && chunk.vertices.size() == vertexCount * FLOATS_PER_VERTEX &&
+                ia->getDrawInfo().indexCount == indexCount) {
+                continue;
+            }
             ia->setVertexCount(vertexCount);
             ia->setIndexCount(indexCount);
+            chunk.paintAlpha.clear();
 
             // JS may replace its backing arrays before the draw. Copy the active
             // vertices and consume the indices while their owner is live.
@@ -88,18 +103,26 @@ public:
                 ib->resize(capacity * sizeof(uint16_t));
             }
             ib->update(drawInfo->getIDataBuffer(), indexBytes);
+            drawInfo->setVertDirty(false);
+            chunk.appliedOpacity = -1.F;
+            _lastOpacity = -1.F;
         }
-        _lastOpacity = -1.F;
     }
 
     void clearGeometry() {
-        _chunks.clear();
-        _lastOpacity = -1.F;
-        for (const auto& subModel : getSubModels()) {
-            auto* ia = subModel->getInputAssembler();
-            ia->setVertexCount(0);
-            ia->setIndexCount(0);
+        size_t remaining = MAX_CACHED_FLOATS;
+        for (auto& chunk : _chunks) {
+            const auto capacity = chunk.vertices.capacity() + chunk.paintAlpha.capacity();
+            if (capacity > remaining) {
+                chunk = Chunk{};
+            } else {
+                remaining -= capacity;
+                chunk.vertices.clear();
+                chunk.paintAlpha.clear();
+                chunk.appliedOpacity = -1.F;
+            }
         }
+        resetDrawCounts();
     }
 
     void updateUBOs(uint32_t stamp) override {
@@ -110,17 +133,32 @@ public:
         scene::Model::updateUBOs(stamp);
     }
 
+    void destroy() override {
+        _chunks.clear();
+        scene::Model::destroy();
+    }
+
 private:
     struct Chunk {
         ccstd::vector<float> vertices;
         ccstd::vector<float> paintAlpha;
+        float appliedOpacity{-1.F};
     };
+
+    void resetDrawCounts() {
+        _lastOpacity = -1.F;
+        for (const auto& subModel : getSubModels()) {
+            auto* ia = subModel->getInputAssembler();
+            ia->setVertexCount(0);
+            ia->setIndexCount(0);
+        }
+    }
 
     void updateVertexBuffers(float opacity) {
         const auto& subModels = getSubModels();
         for (size_t i = 0; i < _chunks.size(); ++i) {
             auto& chunk = _chunks[i];
-            if (chunk.vertices.empty()) continue;
+            if (chunk.vertices.empty() || chunk.appliedOpacity == opacity) continue;
             if (!chunk.paintAlpha.empty()) {
                 for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
                     chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET] = chunk.paintAlpha[v] * opacity;
@@ -136,6 +174,7 @@ private:
             }
             auto* vb = subModels[i]->getInputAssembler()->getVertexBuffers().front();
             vb->update(chunk.vertices.data(), static_cast<uint32_t>(chunk.vertices.size() * sizeof(float)));
+            chunk.appliedOpacity = opacity;
         }
         _lastOpacity = opacity;
     }
@@ -204,6 +243,7 @@ void UIModelProxy::activeSubModels() {
 }
 
 void UIModelProxy::uploadData() {
+    if (!_model) return;
     auto* entity = static_cast<RenderEntity*>(_node->getUserData());
     const auto& drawInfos = entity->getDynamicRenderDrawInfos();
     static_cast<GraphicsModel*>(_model.get())->setGeometry(drawInfos);
