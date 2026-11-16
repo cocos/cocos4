@@ -58,6 +58,7 @@ export enum ResourceResidency {
     PERSISTENT,
     EXTERNAL,
     BACKBUFFER,
+    CUSTOM,
 }
 
 export enum QueueHint {
