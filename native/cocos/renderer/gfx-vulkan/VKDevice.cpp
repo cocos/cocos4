@@ -1102,21 +1102,34 @@ static VkResult VKAPI_PTR vkCreateRenderPass2KHRFallback(
 }
 
 SampleCount CCVKDevice::getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const {
-    auto vkFormat = mapVkFormat(format, gpuDevice());
-    auto usages = mapVkImageUsageFlags(usage, flags);
+    return getSupportedSampleCounts(format, usage, flags).front();
+}
+
+ccstd::vector<SampleCount> CCVKDevice::getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const {
+    const auto vkFormat = mapVkFormat(format, gpuDevice());
+    const auto usages = mapVkImageUsageFlags(usage, flags);
 
     VkImageFormatProperties imageFormatProperties = {};
-    vkGetPhysicalDeviceImageFormatProperties(_gpuContext->physicalDevice, vkFormat, VK_IMAGE_TYPE_2D,
-                                             VK_IMAGE_TILING_OPTIMAL, usages, 0, &imageFormatProperties);
+    const auto result = vkGetPhysicalDeviceImageFormatProperties(_gpuContext->physicalDevice, vkFormat, VK_IMAGE_TYPE_2D,
+                                                                VK_IMAGE_TILING_OPTIMAL, usages, 0, &imageFormatProperties);
+    if (result != VK_SUCCESS) {
+        // An unsupported format/usage has no valid sample mask; retain the single-sample fallback.
+        return {SampleCount::X1};
+    }
 
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_64_BIT) return SampleCount::X64;
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_32_BIT) return SampleCount::X32;
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_16_BIT) return SampleCount::X16;
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_8_BIT) return SampleCount::X8;
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_4_BIT) return SampleCount::X4;
-    if (imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_2_BIT) return SampleCount::X2;
-
-    return SampleCount::X1;
+    // The mask is discrete; a supported higher count does not imply support for every lower count.
+    const SampleCount candidates[] = {
+        SampleCount::X64, SampleCount::X32, SampleCount::X16,
+        SampleCount::X8, SampleCount::X4, SampleCount::X2,
+    };
+    ccstd::vector<SampleCount> supported;
+    for (auto sampleCount : candidates) {
+        if (imageFormatProperties.sampleCounts & static_cast<VkSampleCountFlags>(sampleCount)) {
+            supported.emplace_back(sampleCount);
+        }
+    }
+    supported.emplace_back(SampleCount::X1);
+    return supported;
 }
 
 } // namespace gfx

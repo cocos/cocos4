@@ -33,6 +33,8 @@
 #include "gfx-gles3/GLES3GPUObjects.h"
 #include "gfx-gles3/states/GLES3Sampler.h"
 
+#include <algorithm>
+
 #define BUFFER_OFFSET(idx) (static_cast<char *>(0) + (idx))
 
 constexpr uint32_t USE_VAO = true;
@@ -3255,14 +3257,37 @@ void GLES3GPUFramebufferHub::update(GLES3GPUTexture *texture) {
 }
 
 GLint cmdFuncGLES3GetMaxSampleCount(const GLES3Device *device, Format format, TextureUsage usage, TextureFlags flags) {
+    return static_cast<GLint>(cmdFuncGLES3GetSupportedSampleCounts(device, format, usage, flags).front());
+}
+
+ccstd::vector<SampleCount> cmdFuncGLES3GetSupportedSampleCounts(const GLES3Device *device, Format format, TextureUsage usage, TextureFlags flags) {
     std::ignore = flags;
 
-    auto internalFormat = mapGLInternalFormat(format);
-    auto target = useRenderBuffer(device, format, usage) ? GL_RENDERBUFFER : GL_TEXTURE_2D_MULTISAMPLE;
+    const auto internalFormat = mapGLInternalFormat(format);
+    const auto target = useRenderBuffer(device, format, usage) ? GL_RENDERBUFFER : GL_TEXTURE_2D_MULTISAMPLE;
 
-    GLint maxSamples = 1;
-    GL_CHECK(glGetInternalformativ(target, internalFormat, GL_SAMPLES, 1, &maxSamples));
-    return maxSamples;
+    // Sample counts are discrete: the maximum alone cannot tell whether an intermediate count is supported.
+    // Read the full GL_SAMPLES list so callers can choose a supported count without rounding up.
+    GLint count = 0;
+    GL_CHECK(glGetInternalformativ(target, internalFormat, GL_NUM_SAMPLE_COUNTS, 1, &count));
+    if (count <= 0) {
+        return {SampleCount::X1};
+    }
+
+    ccstd::vector<GLint> samples(static_cast<size_t>(count));
+    GL_CHECK(glGetInternalformativ(target, internalFormat, GL_SAMPLES, count, samples.data()));
+    const SampleCount candidates[] = {
+        SampleCount::X64, SampleCount::X32, SampleCount::X16,
+        SampleCount::X8, SampleCount::X4, SampleCount::X2,
+    };
+    ccstd::vector<SampleCount> supported;
+    for (auto sampleCount : candidates) {
+        if (std::find(samples.begin(), samples.end(), static_cast<GLint>(sampleCount)) != samples.end()) {
+            supported.emplace_back(sampleCount);
+        }
+    }
+    supported.emplace_back(SampleCount::X1);
+    return supported;
 }
 
 } // namespace gfx

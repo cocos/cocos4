@@ -412,6 +412,17 @@ export abstract class Device {
     public getMaxSampleCount (format: Format, usage: TextureUsage, flags: TextureFlags): SampleCount {
         return SampleCount.X1;
     }
+
+    /**
+     * @en Get supported sample counts. The set may have gaps; a backend may conservatively report only X1.
+     * @zh 获取支持的采样数集合。集合可能不连续，后端可以保守地仅报告 X1。
+     * @param format The GFX texture format.
+     * @param usage The GFX texture usage.
+     * @param flags The GFX texture create flags.
+     */
+    public getSupportedSampleCounts (format: Format, usage: TextureUsage, flags: TextureFlags): SampleCount[] {
+        return [SampleCount.X1];
+    }
 }
 
 /** @mangle */

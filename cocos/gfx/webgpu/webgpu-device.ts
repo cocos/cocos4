@@ -226,8 +226,9 @@ export class WebGPUDevice extends Device {
         this._formatFeatures[Format.RGB10A2UI] = FormatFeatureBit.RENDER_TARGET | FormatFeatureBit.STORAGE_TEXTURE
             | FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;
 
+        // Half-float texture filtering is core WebGPU functionality, independent of shader-f16 arithmetic.
         tempFeature = FormatFeatureBit.RENDER_TARGET | FormatFeatureBit.SAMPLED_TEXTURE
-            | FormatFeatureBit.STORAGE_TEXTURE | FormatFeatureBit.VERTEX_ATTRIBUTE;
+            | FormatFeatureBit.STORAGE_TEXTURE | FormatFeatureBit.LINEAR_FILTER | FormatFeatureBit.VERTEX_ATTRIBUTE;
 
         this._formatFeatures[Format.R16F] = tempFeature;
         this._formatFeatures[Format.RG16F] = tempFeature;
@@ -312,6 +313,10 @@ export class WebGPUDevice extends Device {
         this._textureExclusive[Format.DEPTH] = false;
         this._textureExclusive[Format.DEPTH_STENCIL] = false;
 
+        this._textureExclusive[Format.R16F] = false;
+        this._textureExclusive[Format.RG16F] = false;
+        this._textureExclusive[Format.RGBA16F] = false;
+
         if (exts.has('float32-filterable')) {
             this._formatFeatures[Format.R32F] |= FormatFeatureBit.RENDER_TARGET;
             this._formatFeatures[Format.RG32F] |= FormatFeatureBit.RENDER_TARGET;
@@ -325,17 +330,6 @@ export class WebGPUDevice extends Device {
             this._formatFeatures[Format.RGBA32F] |= FormatFeatureBit.LINEAR_FILTER;
             this._formatFeatures[Format.R32F] |= FormatFeatureBit.LINEAR_FILTER;
             this._formatFeatures[Format.RG32F] |= FormatFeatureBit.LINEAR_FILTER;
-        }
-
-        if (exts.has('shader-f16')) {
-            this._textureExclusive[Format.R16F] = false;
-            this._textureExclusive[Format.RG16F] = false;
-            this._textureExclusive[Format.RGBA16F] = false;
-
-            this._formatFeatures[Format.RGB16F] |= FormatFeatureBit.LINEAR_FILTER;
-            this._formatFeatures[Format.RGBA16F] |= FormatFeatureBit.LINEAR_FILTER;
-            this._formatFeatures[Format.R16F] |= FormatFeatureBit.LINEAR_FILTER;
-            this._formatFeatures[Format.RG16F] |= FormatFeatureBit.LINEAR_FILTER;
         }
 
         const compressedFeature: FormatFeature = FormatFeatureBit.SAMPLED_TEXTURE | FormatFeatureBit.LINEAR_FILTER;

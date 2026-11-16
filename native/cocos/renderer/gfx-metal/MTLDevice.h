@@ -117,6 +117,7 @@ protected:
     void copyTextureToBuffers(Texture *src, uint8_t *const *buffers, const BufferTextureCopy *region, uint32_t count) override;
     void getQueryPoolResults(QueryPool *queryPool) override;
     SampleCount getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const override;
+    ccstd::vector<SampleCount> getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const override;
 
     void onMemoryWarning();
     void initFormatFeatures(uint32_t family);

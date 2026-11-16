@@ -456,7 +456,47 @@ void DeviceAgent::frameSync() {
 }
 
 SampleCount DeviceAgent::getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const {
-    return _actor->getMaxSampleCount(format, usage, flags);
+    if (!_mainMessageQueue || _mainMessageQueue->isImmediateMode()) {
+        return _actor->getMaxSampleCount(format, usage, flags);
+    }
+
+    // GLES capability queries need the GL context owned by the consumer thread.
+    // Querying on the logic thread can fail and incorrectly disable MSAA (X1).
+    // Wait here so the result is ready before returning and remains alive for the message.
+    SampleCount maxSamples = SampleCount::X1;
+    ENQUEUE_MESSAGE_5(
+        _mainMessageQueue, DeviceGetMaxSampleCount,
+        actor, _actor,
+        format, format,
+        usage, usage,
+        flags, flags,
+        result, &maxSamples,
+        {
+            *result = actor->getMaxSampleCount(format, usage, flags);
+        });
+    _mainMessageQueue->kickAndWait();
+    return maxSamples;
+}
+
+ccstd::vector<SampleCount> DeviceAgent::getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const {
+    if (!_mainMessageQueue || _mainMessageQueue->isImmediateMode()) {
+        return _actor->getSupportedSampleCounts(format, usage, flags);
+    }
+
+    // The exact sample-count query has the same GL context requirement as the maximum query.
+    ccstd::vector<SampleCount> samples;
+    ENQUEUE_MESSAGE_5(
+        _mainMessageQueue, DeviceGetSupportedSampleCounts,
+        actor, _actor,
+        format, format,
+        usage, usage,
+        flags, flags,
+        result, &samples,
+        {
+            *result = actor->getSupportedSampleCounts(format, usage, flags);
+        });
+    _mainMessageQueue->kickAndWait();
+    return samples;
 }
 
 } // namespace gfx

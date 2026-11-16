@@ -542,6 +542,14 @@ void CCMTLDevice::initFormatFeatures(uint32_t gpuFamily) {
 }
 
 SampleCount CCMTLDevice::getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const {
+    return getSupportedSampleCounts(format, usage, flags).front();
+}
+
+ccstd::vector<SampleCount> CCMTLDevice::getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const {
+    std::ignore = format;
+    std::ignore = usage;
+    std::ignore = flags;
+    // Query each count: some Metal devices support 4x but not 2x, so the maximum is insufficient.
     const SampleCount sampleCounts[] = {
         SampleCount::X64,
         SampleCount::X32,
@@ -550,12 +558,14 @@ SampleCount CCMTLDevice::getMaxSampleCount(Format format, TextureUsage usage, Te
         SampleCount::X4,
         SampleCount::X2,
     };
+    ccstd::vector<SampleCount> supported;
     for (auto sampleCount : sampleCounts) {
-        if  ([_mtlDevice supportsTextureSampleCount: static_cast<uint32_t>(sampleCount)]) {
-            return sampleCount;
+        if ([_mtlDevice supportsTextureSampleCount: static_cast<uint32_t>(sampleCount)]) {
+            supported.emplace_back(sampleCount);
         }
     }
-    return SampleCount::X1;
+    supported.emplace_back(SampleCount::X1);
+    return supported;
 }
 
 } // namespace gfx
