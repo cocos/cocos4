@@ -45,6 +45,12 @@ export function quoteFontFamily (name: string): CssFontFamily {
     return `${result}"` as CssFontFamily;
 }
 
+/** A simple generated alias is already a CSS identifier and cannot be a reserved family keyword. */
+export function serializeFontFamily (name: string): CssFontFamily {
+    // Some Canvas implementations only recognize the bare alias registered by the font loader.
+    return /^[A-Za-z_][A-Za-z0-9_-]*_LABEL$/.test(name) ? name as CssFontFamily : quoteFontFamily(name);
+}
+
 interface FontFamilySource {
     readonly useSystemFont: boolean;
     readonly fontFamily: string;
@@ -56,7 +62,7 @@ export function getCanvasFontFamily (source: FontFamilySource): CssFontFamily {
     const system = source.useSystemFont;
     const value = system ? source.fontFamily : source.font?._nativeAsset;
     const name = typeof value === 'string' && value ? value : DEFAULT_FONT_FAMILY;
-    return system ? name as CssFontFamily : quoteFontFamily(name);
+    return system ? name as CssFontFamily : serializeFontFamily(name);
 }
 
 /** Family is already serialized: changing size or style must never quote it again. */

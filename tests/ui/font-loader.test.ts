@@ -8,7 +8,10 @@ test.each([
     expect(getFontFamily(url)).toBe(expected);
 });
 
-test('Web registration and FontFaceSet loading share one CSS family and return a raw alias', async () => {
+test.each([
+    ['fonts/Web Family 3.0.ttf', '"Web Family 3.0_LABEL"'],
+    ['fonts/KenneyPixel.ttf', 'KenneyPixel_LABEL'],
+])('Web registration and FontFaceSet loading agree for %s', async (url, familyCss) => {
     jest.useFakeTimers();
     const faceDescriptor = Object.getOwnPropertyDescriptor(window, 'FontFace');
     const fontsDescriptor = Object.getOwnPropertyDescriptor(document, 'fonts');
@@ -29,7 +32,7 @@ test('Web registration and FontFaceSet loading share one CSS family and return a
 
     try {
         await new Promise<void>((resolve, reject) => {
-            loadFont('fonts/Web Family 3.0.ttf', {}, (error, family) => {
+            loadFont(url, {}, (error, family) => {
                 if (error) {
                     reject(error);
                     return;
@@ -40,11 +43,11 @@ test('Web registration and FontFaceSet loading share one CSS family and return a
         });
         const style = nodes.find((node) => node.tagName === 'STYLE')!;
         const preload = nodes.find((node) => node.tagName === 'DIV')!;
-        expect(style.textContent).toBe('@font-face { font-family:"Web Family 3.0_LABEL"; src:url("fonts/Web Family 3.0.ttf");}');
-        expect(preload.style.fontFamily).toBe('"Web Family 3.0_LABEL"');
-        expect(load).toHaveBeenCalledWith('40px "Web Family 3.0_LABEL"');
+        expect(style.textContent).toBe(`@font-face { font-family:${familyCss}; src:url("${url}");}`);
+        expect(preload.style.fontFamily).toBe(familyCss);
+        expect(load).toHaveBeenCalledWith(`40px ${familyCss}`);
         expect(callback).toHaveBeenCalledTimes(1);
-        expect(callback).toHaveBeenCalledWith('Web Family 3.0_LABEL');
+        expect(callback).toHaveBeenCalledWith(getFontFamily(url));
         expect(jest.getTimerCount()).toBe(0);
     } finally {
         create.mockRestore();
