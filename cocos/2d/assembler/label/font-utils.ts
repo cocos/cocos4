@@ -163,12 +163,18 @@ class LetterTexture {
             this.offsetY = -(this.labelInfo.fontSize * BASELINE_RATIO) * fontScale / 2;
         }
 
-        if (this.canvas.width !== this.width) {
-            this.canvas.width = this.width;
+        // Same rule as `TextProcessing._updateLabelDimensions`: the canvas size must be an integer
+        // computed by the engine, not by the host. Otherwise a host that rounds instead of
+        // truncating gets a different texture size for the same glyph.
+        const canvasWidth = Math.max(0, Math.floor(this.width));
+        const canvasHeight = Math.max(0, Math.floor(this.height));
+
+        if (this.canvas.width !== canvasWidth) {
+            this.canvas.width = canvasWidth;
         }
 
-        if (this.canvas.height !== this.height) {
-            this.canvas.height = this.height;
+        if (this.canvas.height !== canvasHeight) {
+            this.canvas.height = canvasHeight;
         }
 
         if (!this.image) {

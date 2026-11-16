@@ -438,8 +438,13 @@ export class TextProcessing {
         const canvas = this._canvas!;
         const context = this._context!;
 
-        canvas.width = canvasSize.width;
-        canvas.height = canvasSize.height;
+        // `canvas.width/height` are declared as `unsigned long`: the spec says the fractional
+        // part is truncated, but some host implementations round it instead. The quad still uses
+        // the fractional `canvasSize`, so a host that rounds produces one extra texture row and
+        // stretches the text, moving the baseline by up to ~0.7px. Truncate here so the produced
+        // texture is identical on every host.
+        canvas.width = Math.max(0, Math.floor(canvasSize.width));
+        canvas.height = Math.max(0, Math.floor(canvasSize.height));
 
         context.font = style.fontDesc;
         // align
