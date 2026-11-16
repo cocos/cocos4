@@ -38,6 +38,7 @@ import { Material, RenderingSubMesh } from '../../asset/assets';
 import { Format, PrimitiveMode, Attribute, Device, BufferUsageBit, BufferInfo, MemoryUsageBit, deviceManager } from '../../gfx';
 import { vfmtPosColor, getAttributeStride, getComponentPerVertex } from '../renderer/vertex-format';
 import { NativeUIModelProxy } from '../renderer/native-2d';
+import { Stage } from '../renderer/stencil-manager';
 import { RenderEntity, RenderEntityType } from '../renderer/render-entity';
 import type { GraphicsAssembler } from '../assembler/graphics/webgl/graphics-assembler';
 import type { MeshRenderData } from '../renderer/render-data';
@@ -293,7 +294,7 @@ export class Graphics extends UIRenderer {
 
     public onDisable (): void {
         super.onDisable();
-        if (!this._isDrawing) {
+        if (!this.impl?.hasGeometry) {
             this._opacityScratch = null;
             if (JSB) this._uploadNativeGeometry();
         }
@@ -685,7 +686,7 @@ export class Graphics extends UIRenderer {
         if (JSB) {
             this.impl?.setRenderDataMaterial(material);
         }
-        if (this.model) {
+        if (this.model && material.passes.length > 0) {
             const count = this.model.subModels.length;
             for (let i = 0; i < count; ++i) {
                 this.model.setSubModelMaterial(i, material);
@@ -734,8 +735,8 @@ export class Graphics extends UIRenderer {
         const opacityChanged = opacity !== this._uploadedOpacity;
         for (let i = 0; i < renderDataList.length; i++) {
             const renderData = renderDataList[i];
-            const vertexCount = renderData.vertexStart;
             const indexCount = renderData.indexStart;
+            const vertexCount = indexCount ? renderData.vertexStart : 0;
             const verticesChanged = renderData.lastFilledVertex !== vertexCount;
             const indicesChanged = renderData.lastFilledIndex !== indexCount;
             const newSubModel = i >= this.model.subModels.length;
@@ -835,11 +836,19 @@ export class Graphics extends UIRenderer {
     }
 
     protected _render (render: IBatcher): void {
+        const material = this.getMaterialInstance(0);
+        if (material && material.passes.length === 0) {
+            // The mask clear must still push a stencil level for its children.
+            if (this.stencilStage === Stage.ENTER_LEVEL || this.stencilStage === Stage.ENTER_LEVEL_INVERTED) {
+                render.commitModel(this, this.model, material);
+            }
+            return;
+        }
         const opacity = this.node._uiProps.opacity;
         if (this._isNeedUploadData || this._uploadedOpacity !== opacity) {
             this._uploadData(opacity);
         }
-        render.commitModel(this, this.model, this.getMaterialInstance(0));
+        render.commitModel(this, this.model, material);
     }
 
     protected _flushAssembler (): void {
@@ -867,8 +876,8 @@ export class Graphics extends UIRenderer {
      */
     public updateRenderer (): void {
         super.updateRenderer();
-        // A clear with no redraw never reaches _render, including below a zero-opacity parent.
-        if (!JSB && !this._isDrawing) {
+        // An empty paint can still submit a stencil model, but needs no opacity buffer.
+        if (!JSB && !this.impl?.hasGeometry) {
             this._opacityScratch = null;
         }
         if (JSB) this._uploadNativeGeometry();
@@ -879,13 +888,16 @@ export class Graphics extends UIRenderer {
         // An empty list releases clear()'s scratch. Do not allocate an empty
         // RenderDrawInfo by requesting the render data list when there is no paint.
         if (this._isDrawing && this.impl) {
+            const hasPasses = !!this.getRenderMaterial(0)?.passes.length;
+            // New submodels need a pass layout. Keep their geometry pending until a pass is available.
+            if (!hasPasses && this.impl.hasGeometry) return;
             const renderDataList = this.impl.getRenderDataList();
             for (const data of renderDataList) {
                 if (data.renderDrawInfo.vertDirty) {
                     data.setRenderDrawInfoAttributes();
                 }
             }
-            this._graphicsNativeProxy.activeSubModels();
+            if (hasPasses) this._graphicsNativeProxy.activeSubModels();
         }
         this._graphicsNativeProxy.uploadData();
         this._isNeedUploadData = false;

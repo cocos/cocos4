@@ -62,6 +62,7 @@ public:
         }
         const auto& subModels = getSubModels();
         _chunks.resize(subModels.size());
+        bool hasGeometry = false;
         for (size_t i = 0; i < subModels.size(); ++i) {
             auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
             auto* ia = subModels[i]->getInputAssembler();
@@ -80,6 +81,7 @@ public:
                 ia->setIndexCount(0);
                 continue;
             }
+            hasGeometry = true;
             if (!drawInfo->getVertDirty() && chunk.vertices.size() == vertexCount * FLOATS_PER_VERTEX &&
                 ia->getDrawInfo().indexCount == indexCount) {
                 continue;
@@ -107,6 +109,8 @@ public:
             chunk.appliedOpacity = -1.F;
             _lastOpacity = -1.F;
         }
+        // A fill or stroke can create draw infos without emitting any triangles.
+        if (!hasGeometry) _chunks.clear();
     }
 
     void clearGeometry() {

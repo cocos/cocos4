@@ -71,6 +71,8 @@ export class Path {
 export class Impl {
     public dataOffset = 0;
     public updatePathOffset = false;
+    // Retained triangles survive later empty fill()/stroke() calls until clear().
+    public hasGeometry = false;
 
     public pathLength = 0;
     public pathOffset = 0;
@@ -172,6 +174,7 @@ export class Impl {
     }
 
     public clear (): void {
+        this.hasGeometry = false;
         this.pathLength = 0;
         this.pathOffset = 0;
         this.pointsOffset = 0;

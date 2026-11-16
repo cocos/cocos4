@@ -309,6 +309,7 @@ export class GraphicsAssembler implements IAssembler {
             }
 
             meshBuffer.indexStart = indicesOffset;
+            if (indicesOffset > 0) _impl.hasGeometry = true;
         }
         _renderData = null;
         _impl = null;
@@ -388,6 +389,7 @@ export class GraphicsAssembler implements IAssembler {
             meshBuffer.indexStart = indicesOffset;
         }
 
+        if (meshBuffer.indexStart > 0) _impl.hasGeometry = true;
         _renderData = null;
         _impl = null;
     }

@@ -1,7 +1,7 @@
 import { Canvas, UIOpacity } from '../../cocos/2d';
 import { Batcher2D } from '../../cocos/2d/renderer/batcher-2d';
-import { Stage } from '../../cocos/2d/renderer/stencil-manager';
-import { Material } from '../../cocos/asset/assets';
+import { Stage, StencilManager } from '../../cocos/2d/renderer/stencil-manager';
+import { EffectAsset, Material } from '../../cocos/asset/assets';
 import { Color } from '../../cocos/core';
 import { EmptyBuffer } from '../../cocos/gfx/empty/empty-buffer';
 import type { Buffer } from '../../cocos/gfx';
@@ -25,6 +25,15 @@ function paint (parent: Node): Graphics {
 function rawVertices (graphics: Graphics, block: number): Float32Array {
     const data = graphics.impl!.getRenderDataList()[block];
     return data.vData.slice(0, data.vertexStart * 8);
+}
+
+function makeSwitchedOffMaterial (source: Material): Material {
+    const effect = new EffectAsset();
+    effect.techniques = [{ passes: [{ ...source.effectAsset.techniques[0].passes[0], switch: 'DRAW_GRAPHICS' }] }];
+    const material = new Material();
+    material.initialize({ effectAsset: effect, defines: { DRAW_GRAPHICS: false } });
+    expect(material.passes).toHaveLength(0);
+    return material;
 }
 
 // Snapshot the bytes at the device boundary while each write is made. The renderer can reuse
@@ -110,6 +119,46 @@ describe('Graphics cascaded vertex opacity', () => {
         rootAccess()._batcher = previousBatcher;
     });
 
+    test('defers a first draw with no passes and resumes retained geometry after a material switch', () => {
+        const graphics = paint(canvasNode);
+        const enabled = graphics.getSharedMaterial(0)!;
+        const off = makeSwitchedOffMaterial(enabled);
+        const commits = jest.spyOn(batcher, 'commitModel');
+        const uploads = trackUploads();
+        graphics.customMaterial = off;
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+        expect(graphics.model!.subModels).toHaveLength(0);
+
+        graphics.customMaterial = enabled;
+        game.step();
+        expect(commits).toHaveBeenCalledTimes(1);
+        const input = graphics.model!.subModels[0].inputAssembler;
+        const indexCount = input.indexCount;
+        expect(indexCount).toBeGreaterThan(0);
+        commits.mockClear();
+        uploads.clear();
+        graphics.customMaterial = off;
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+        graphics.customMaterial = enabled;
+        game.step();
+        expect(commits).toHaveBeenCalledTimes(1);
+        expect(uploads.count(input.vertexBuffers[0])).toBe(0);
+        expect(uploads.count(input.indexBuffer!)).toBe(0);
+
+        graphics.customMaterial = off;
+        graphics.fillRect(32, 32, 8, 8);
+        game.step();
+        expect(input.indexCount).toBe(indexCount);
+        graphics.customMaterial = null;
+        game.step();
+        expect(input.indexCount).toBe(indexCount + 6);
+        expect(uploads.count(input.vertexBuffers[0])).toBe(1);
+        expect(uploads.count(input.indexBuffer!)).toBe(1);
+        off.destroy();
+    });
+
     test('fades all retained paint blocks from their original alpha and skips unchanged buffers', () => {
         const group = new Node('Fade group');
         canvasNode.addChild(group);
@@ -190,6 +239,30 @@ describe('Graphics cascaded vertex opacity', () => {
             game.step();
             expect(stencil.stencilStage).toBe(Stage.ENTER_LEVEL_INVERTED);
             expect(uploads.count(masked.model!.subModels[0].inputAssembler.vertexBuffers[0])).toBe(0);
+
+            // A passless inner mask must push and pop its own cleared stencil level.
+            const inner = new Node('Inner mask');
+            maskNode.addChild(inner);
+            inner.addComponent(Mask);
+            const innerStencil = inner.getComponent(Graphics)!;
+            const off = makeSwitchedOffMaterial(innerStencil.getSharedMaterial(0)!);
+            innerStencil.customMaterial = off;
+            paint(inner);
+            const manager = StencilManager.sharedManager!;
+            const depths: number[] = [];
+            const exitMask = manager.exitMask.bind(manager);
+            jest.spyOn(manager, 'exitMask').mockImplementation(() => {
+                depths.push(manager.getMaskStackSize());
+                exitMask();
+            });
+            game.step();
+            expect(depths).toEqual([2, 1]);
+            expect(manager.getMaskStackSize()).toBe(0);
+            expect(innerStencil.model!.subModels).toHaveLength(0);
+            innerStencil.customMaterial = null;
+            game.step();
+            expect(innerStencil.model!.subModels).toHaveLength(1);
+            off.destroy();
         } finally {
             faded.customMaterial = null;
             custom.destroy();
@@ -293,6 +366,60 @@ describe('Graphics cascaded vertex opacity', () => {
         graphics.enabled = false;
         graphics.clear();
         expect(owner._opacityScratch).toBeNull();
+    });
+
+    test.each(['fill', 'stroke', 'degenerate fill'])('releases scratch after clear followed by an empty %s', (paintType) => {
+        const graphics = paint(canvasNode);
+        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
+        graphics.node.addComponent(UIOpacity).opacity = 128;
+        function emptyPaint (): void {
+            graphics.clear();
+            if (paintType === 'stroke') {
+                graphics.stroke();
+            } else {
+                if (paintType === 'degenerate fill') {
+                    graphics.moveTo(0, 0);
+                    graphics.lineTo(4, 0);
+                }
+                graphics.fill();
+            }
+        }
+        game.step();
+        expect(owner._opacityScratch).not.toBeNull();
+        emptyPaint();
+        game.step();
+        const ia = graphics.model!.subModels[0].inputAssembler;
+        expect([ia.vertexCount, ia.indexCount]).toEqual([0, 0]);
+        expect(owner._opacityScratch).toBeNull();
+        // Empty Graphics can still drive stencil state for a mask.
+        expect(graphics.renderEntity.enabled).toBe(true);
+
+        graphics.fillRect(0, 0, 8, 8);
+        game.step();
+        expect(ia.indexCount).toBe(6);
+        expect(owner._opacityScratch).not.toBeNull();
+        emptyPaint();
+        graphics.enabled = false;
+        expect(owner._opacityScratch).toBeNull();
+    });
+
+    test('keeps retained triangles when a later block contains only an untriangulated path', () => {
+        const graphics = paint(canvasNode);
+        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
+        graphics.node.addComponent(UIOpacity).opacity = 128;
+        game.step();
+        const scratch = owner._opacityScratch;
+        const before = graphics.model!.subModels[0].inputAssembler.indexCount;
+        expect(scratch).not.toBeNull();
+        graphics.impl!.requestRenderData();
+        graphics.impl!.dataOffset = 1;
+        graphics.moveTo(4, 4);
+        graphics.lineTo(8, 8);
+        graphics.fill();
+        game.step();
+        const counts = graphics.model!.subModels.map((sub) => sub.inputAssembler.indexCount);
+        expect(counts).toEqual([before, 0]);
+        expect(owner._opacityScratch).toBe(scratch);
     });
 
     test('shares scratch for new chunks and preserves independent paints on subsequent fades', () => {
