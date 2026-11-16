@@ -85,6 +85,12 @@ export class StaticVBAccessor extends BufferAccessor {
     private _id = 0;
     get id (): number { return this._id; }
 
+    /** Per-chunk capacity; allocateChunk refuses requests above these. */
+    get maxVertexCount (): number { return this._vCount; }
+
+    /** Per-chunk index capacity; allocateChunk refuses requests above these. */
+    get maxIndexCount (): number { return this._iCount; }
+
     public constructor (device: Device, attributes: Attribute[], vCount?: number, iCount?: number) {
         super(device, attributes);
         this._vCount = vCount || Math.floor(macro.BATCHER2D_MEM_INCREMENT * 1024 / this._vertexFormatBytes);
