@@ -383,14 +383,6 @@ CC_FORCE_INLINE void Batcher2d::handleModelDraw(RenderEntity* entity, RenderDraw
     Material* renderMat = drawInfo->getMaterial();
 
     bool isMask = entity->getIsMask();
-    if (renderMat && renderMat->getPasses()->empty()) {
-        // MODEL chunks share a single Graphics mask. Its children still need the cleared stencil level.
-        if (isMask && drawInfo == entity->getRenderDrawInfoAt(0)) {
-            insertMaskBatch(entity);
-            _stencilManager->enableMask();
-        }
-        return;
-    }
     if (isMask) {
         // Mask Comp
         insertMaskBatch(entity);

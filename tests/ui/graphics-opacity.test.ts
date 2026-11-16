@@ -1,536 +1,162 @@
-import { Canvas, Sprite, SpriteFrame, UIOpacity } from '../../cocos/2d';
+import { Canvas, UIOpacity } from '../../cocos/2d';
 import { Batcher2D } from '../../cocos/2d/renderer/batcher-2d';
-import { Stage, StencilManager } from '../../cocos/2d/renderer/stencil-manager';
-import { EffectAsset, Material, Texture2D } from '../../cocos/asset/assets';
 import { Color } from '../../cocos/core';
-import { EmptyBuffer } from '../../cocos/gfx/empty/empty-buffer';
 import type { Buffer } from '../../cocos/gfx';
+import { EmptyBuffer } from '../../cocos/gfx/empty/empty-buffer';
 import { Camera, Node, Scene, director, game } from '../../exports/base';
 import { Graphics } from '../../exports/graphics';
-import { Mask } from '../../exports/mask';
 
-function paint (parent: Node): Graphics {
-    const node = new Node('Paint');
-    parent.addChild(node);
-    const graphics = node.addComponent(Graphics);
-    graphics.fillColor = new Color(255, 0, 0, 64);
-    graphics.fillRect(0, 0, 16, 16);
-    graphics.strokeColor = new Color(0, 255, 0, 192);
-    graphics.moveTo(20, 0);
-    graphics.lineTo(20, 16);
-    graphics.stroke();
-    return graphics;
-}
+// Graphics uploads position.xyz, color.rgba, and distance for each vertex.
+const vertexStride = 8;
+const alphaOffset = 6;
 
-function rawVertices (graphics: Graphics, block: number): Float32Array {
+function vertices (graphics: Graphics, block = 0): Float32Array {
     const data = graphics.impl!.getRenderDataList()[block];
-    return data.vData.slice(0, data.vertexStart * 8);
+    return data.vData.slice(0, data.vertexStart * vertexStride);
 }
 
-function makeSwitchedOffMaterial (source: Material): Material {
-    const effect = new EffectAsset();
-    effect.techniques = [{ passes: [{ ...source.effectAsset.techniques[0].passes[0], switch: 'DRAW_GRAPHICS' }] }];
-    const material = new Material();
-    material.initialize({ effectAsset: effect, defines: { DRAW_GRAPHICS: false } });
-    expect(material.passes).toHaveLength(0);
-    return material;
-}
-
-// Snapshot the bytes at the device boundary while each write is made. The renderer can reuse
-// the typed array on later frames, so keeping only the mock's argument would lose earlier states.
-function trackUploads () {
+function recordUploads () {
     const writes = new Map<Buffer, (Float32Array | Uint16Array)[]>();
-    const originalUpdate = EmptyBuffer.prototype.update;
+    const update = EmptyBuffer.prototype.update;
     jest.spyOn(EmptyBuffer.prototype, 'update').mockImplementation(function (this: EmptyBuffer, data, size) {
         if (data instanceof Float32Array || data instanceof Uint16Array) {
-            const calls = writes.get(this) || [];
+            const calls = writes.get(this) ?? [];
+            // The next upload can reuse the source array, including for another block in this frame.
             calls.push(data.slice(0, size === undefined ? data.length : size / data.BYTES_PER_ELEMENT));
             writes.set(this, calls);
         }
-        originalUpdate.call(this, data, size);
+        update.call(this, data, size);
     });
-    return {
-        clear: () => writes.clear(),
-        count: (buffer: Buffer) => writes.get(buffer)?.length || 0,
-        expectGeometry (graphics: Graphics, block: number, raw: Float32Array, factor: number, indexChanged: boolean) {
-            const input = graphics.model!.subModels[block].inputAssembler;
-            const expected = raw.slice();
-            for (let alpha = 6; alpha < expected.length; alpha += 8) {
-                expected[alpha] = raw[alpha] * factor;
-            }
-            expect(writes.get(input.vertexBuffers[0])).toEqual([expected]);
-            const data = graphics.impl!.getRenderDataList()[block];
-            if (indexChanged) {
-                expect(writes.get(input.indexBuffer!)).toEqual([data.iData.slice(0, data.indexStart)]);
-            } else {
-                expect(writes.has(input.indexBuffer!)).toBe(false);
-            }
-            expect(rawVertices(graphics, block)).toEqual(raw);
-        },
-    };
+    return writes;
 }
 
-describe('Graphics cascaded vertex opacity', () => {
-    let canvasNode: Node;
+function expectUpload (writes: ReturnType<typeof recordUploads>, graphics: Graphics, block: number,
+    raw: Float32Array, opacity: number, geometryChanged: boolean): void {
+    const input = graphics.model!.subModels[block].inputAssembler;
+    const expected = raw.slice();
+    for (let i = alphaOffset; i < expected.length; i += vertexStride) {
+        expected[i] = raw[i] * opacity;
+    }
+    expect(writes.get(input.vertexBuffers[0])).toEqual([expected]);
+    const data = graphics.impl!.getRenderDataList()[block];
+    expect(writes.get(input.indexBuffer!)).toEqual(geometryChanged ? [data.iData.slice(0, data.indexStart)] : undefined);
+    expect(vertices(graphics, block)).toEqual(raw);
+}
+
+describe('Graphics cascaded opacity', () => {
     let batcher: Batcher2D;
     let previousBatcher: Batcher2D | null;
-
-    function rootAccess () {
-        return director.root as unknown as { _batcher: Batcher2D | null };
-    }
-
-    test('a failed reservation preserves retained paints and the next successful append', () => {
-        const graphics = paint(canvasNode);
-        const data = graphics.impl!.getRenderDataList()[0];
-        const raw = rawVertices(graphics, 0);
-        const indices = data.indexStart;
-        const request = jest.spyOn(data, 'request').mockReturnValue(false);
-        // Exhaust any spare capacity from the initial stroke's conservative estimate.
-        for (let i = 0; i < data.vertexCount + 1; i++) graphics.rect(i, 0, 1, 1);
-        graphics.fill();
-        expect(request).toHaveBeenCalled();
-        expect(rawVertices(graphics, 0)).toEqual(raw);
-        expect(data.indexStart).toBe(indices);
-        request.mockRestore();
-        graphics.fillRect(0, 24, 8, 8);
-        expect(data.vertexStart).toBeGreaterThan(raw.length / 8);
-        game.step();
-    });
+    let parentOpacity: UIOpacity;
+    let graphics: Graphics;
+    const root = () => director.root as unknown as { _batcher: Batcher2D | null };
 
     beforeEach(() => {
         const scene = new Scene('Graphics opacity');
         director.runSceneImmediate(scene);
-        previousBatcher = rootAccess()._batcher;
+        previousBatcher = root()._batcher;
         batcher = new Batcher2D(director.root!);
-        rootAccess()._batcher = batcher;
+        root()._batcher = batcher;
         batcher.initialize();
-        canvasNode = new Node('Canvas');
+        const canvasNode = new Node('Canvas');
         scene.addChild(canvasNode);
         const canvas = canvasNode.addComponent(Canvas);
         const camera = new Node('Camera');
         canvasNode.addChild(camera);
         canvas.cameraComponent = camera.addComponent(Camera);
+        const group = new Node('Fade group');
+        canvasNode.addChild(group);
+        parentOpacity = group.addComponent(UIOpacity);
+        const node = new Node('Graphics');
+        group.addChild(node);
+        graphics = node.addComponent(Graphics);
     });
 
     afterEach(() => {
         jest.restoreAllMocks();
         director.runSceneImmediate(new Scene('Cleanup'));
         batcher.destroy();
-        rootAccess()._batcher = previousBatcher;
+        root()._batcher = previousBatcher;
     });
 
-    test('observes alpha edits to the retained color and skips RGB-only cascade updates', () => {
-        const graphics = paint(canvasNode);
-        const tint = graphics.color;
-        const child = new Node('Child sprite');
-        graphics.node.addChild(child);
-        const sprite = child.addComponent(Sprite);
-        const texture = new Texture2D();
-        const frame = new SpriteFrame();
-        frame.texture = texture;
-        sprite.spriteFrame = frame;
-        game.step();
-        const commits = jest.spyOn(batcher, 'commitModel');
-        const childColorUpdates = jest.spyOn(sprite, 'getFillColorType');
-
-        graphics.color = new Color(12, 34, 56, 255);
-        game.step();
-        expect(childColorUpdates).not.toHaveBeenCalled();
-        expect(commits).toHaveBeenCalledTimes(1);
-        commits.mockClear();
-        graphics.color = new Color(12, 34, 56, 0);
-        game.step();
-        expect(commits).not.toHaveBeenCalled();
-
-        tint.a = 255;
-        game.step();
-        expect(commits).toHaveBeenCalledTimes(1);
-        expect(sprite.renderData!.chunk.vb[8]).toBe(1);
-        tint.a = 128;
-        game.step();
-        expect(sprite.renderData!.chunk.vb[8]).toBeCloseTo(128 / 255);
-        graphics.enabled = false;
-        tint.a = 255;
-        commits.mockClear();
-        game.step();
-        expect(commits).not.toHaveBeenCalled();
-        expect(sprite.renderData!.chunk.vb[8]).toBe(1);
-        frame.destroy();
-        texture.destroy();
-    });
-
-    test('defers a first draw with no passes and resumes retained geometry after a material switch', () => {
-        const graphics = paint(canvasNode);
-        const enabled = graphics.getSharedMaterial(0)!;
-        const off = makeSwitchedOffMaterial(enabled);
-        const commits = jest.spyOn(batcher, 'commitModel');
-        const uploads = trackUploads();
-        graphics.customMaterial = off;
-        game.step();
-        expect(commits).not.toHaveBeenCalled();
-        expect(graphics.model!.subModels).toHaveLength(0);
-
-        graphics.customMaterial = enabled;
-        game.step();
-        expect(commits).toHaveBeenCalledTimes(1);
-        const input = graphics.model!.subModels[0].inputAssembler;
-        const indexCount = input.indexCount;
-        expect(indexCount).toBeGreaterThan(0);
-        commits.mockClear();
-        uploads.clear();
-        graphics.customMaterial = off;
-        game.step();
-        expect(commits).not.toHaveBeenCalled();
-        graphics.customMaterial = enabled;
-        game.step();
-        expect(commits).toHaveBeenCalledTimes(1);
-        expect(uploads.count(input.vertexBuffers[0])).toBe(0);
-        expect(uploads.count(input.indexBuffer!)).toBe(0);
-
-        graphics.customMaterial = off;
-        graphics.fillRect(32, 32, 8, 8);
-        game.step();
-        expect(input.indexCount).toBe(indexCount);
-        graphics.customMaterial = null;
-        game.step();
-        expect(input.indexCount).toBe(indexCount + 6);
-        expect(uploads.count(input.vertexBuffers[0])).toBe(1);
-        expect(uploads.count(input.indexBuffer!)).toBe(1);
-        off.destroy();
-    });
-
-    test('fades all retained paint blocks from their original alpha and skips unchanged buffers', () => {
-        const group = new Node('Fade group');
-        canvasNode.addChild(group);
-        const parentOpacity = group.addComponent(UIOpacity);
-        const faded = paint(group);
-        const selfOpacity = faded.node.addComponent(UIOpacity);
-        const sibling = paint(canvasNode);
-        // Exercise the same chunk allocation as the 64K split with a small second shape.
-        faded.impl!.requestRenderData();
-        faded.impl!.dataOffset = 1;
-        faded.fillRect(32, 0, 8, 8);
-        const raw = [rawVertices(faded, 0), rawVertices(faded, 1)];
-        const alphas = raw[0].filter((_, i) => i % 8 === 6);
-        expect(alphas).toContain(Math.fround(64 / 255));
-        expect(alphas).toContain(Math.fround(192 / 255));
-        const uploads = trackUploads();
-        game.step();
-        expect(faded.model!.subModels).toHaveLength(2);
-        raw.forEach((vertices, block) => uploads.expectGeometry(faded, block, vertices, 1, true));
-        const siblingVB = sibling.model!.subModels[0].inputAssembler.vertexBuffers[0];
-
-        const custom = new Material();
-        custom.initialize({ effectName: 'builtin-sprite' });
-        try {
-            faded.customMaterial = custom;
-            const customPass = faded.getMaterialInstance(0)!.passes[0];
-            expect(faded.model!.subModels.every(sub => sub.passes[0] === customPass)).toBe(true);
-            parentOpacity.opacity = 128;
-            selfOpacity.opacity = 192;
-            faded.color = new Color(255, 255, 255, 128);
-            const factor = (128 / 255) * ((128 / 255) * (192 / 255));
-            uploads.clear();
-            game.step();
-            raw.forEach((vertices, block) => uploads.expectGeometry(faded, block, vertices, factor, false));
-            expect(uploads.count(siblingVB)).toBe(0);
-
-            uploads.clear();
-            faded.customMaterial = null;
-            game.step();
-            const checkUnchanged = () => {
-                for (const sub of faded.model!.subModels) {
-                    expect(uploads.count(sub.inputAssembler.vertexBuffers[0])).toBe(0);
-                    expect(uploads.count(sub.inputAssembler.indexBuffer!)).toBe(0);
-                }
-            };
-            checkUnchanged();
-            const tint = faded.color;
-            tint.a = 0;
-            faded.color = tint;
-            game.step();
-            expect(faded.node._uiProps.opacity).toBe(0);
-            checkUnchanged();
-
-            // Restore using the same mutable Color object. No stale or compounded alpha survives.
-            tint.a = 255;
-            faded.color = tint;
-            selfOpacity.opacity = 255;
-            parentOpacity.opacity = 255;
-            game.step();
-            raw.forEach((vertices, block) => uploads.expectGeometry(faded, block, vertices, 1, false));
-
-            const maskNode = new Node('Mask');
-            group.addChild(maskNode);
-            const mask = maskNode.addComponent(Mask);
-            const masked = paint(maskNode);
-            const maskedRaw = rawVertices(masked, 0);
-            parentOpacity.opacity = 128;
-            uploads.clear();
-            game.step();
-            uploads.expectGeometry(masked, 0, maskedRaw, 128 / 255, true);
-            const stencil = maskNode.getComponent(Graphics)!;
-            const stencilRaw = rawVertices(stencil, 0);
-            for (let i = 6; i < stencilRaw.length; i += 8) {
-                expect(stencilRaw[i]).toBe(0);
-            }
-            mask.inverted = true;
-            uploads.clear();
-            game.step();
-            expect(stencil.stencilStage).toBe(Stage.ENTER_LEVEL_INVERTED);
-            expect(uploads.count(masked.model!.subModels[0].inputAssembler.vertexBuffers[0])).toBe(0);
-
-            // A passless inner mask must push and pop its own cleared stencil level.
-            const inner = new Node('Inner mask');
-            maskNode.addChild(inner);
-            inner.addComponent(Mask);
-            const innerStencil = inner.getComponent(Graphics)!;
-            const off = makeSwitchedOffMaterial(innerStencil.getSharedMaterial(0)!);
-            innerStencil.customMaterial = off;
-            paint(inner);
-            const manager = StencilManager.sharedManager!;
-            const depths: number[] = [];
-            const exitMask = manager.exitMask.bind(manager);
-            jest.spyOn(manager, 'exitMask').mockImplementation(() => {
-                depths.push(manager.getMaskStackSize());
-                exitMask();
-            });
-            game.step();
-            expect(depths).toEqual([2, 1]);
-            expect(manager.getMaskStackSize()).toBe(0);
-            expect(innerStencil.model!.subModels).toHaveLength(0);
-            innerStencil.customMaterial = null;
-            game.step();
-            expect(innerStencil.model!.subModels).toHaveLength(1);
-            off.destroy();
-        } finally {
-            faded.customMaterial = null;
-            custom.destroy();
-        }
-    });
-
-    test('refreshes paint data on growth and on a same-size redraw while hidden', () => {
-        const graphics = paint(canvasNode);
-        const opacity = graphics.node.addComponent(UIOpacity);
-        opacity.opacity = 128;
-        const uploads = trackUploads();
-        game.step();
-        const input = graphics.model!.subModels[0].inputAssembler;
-        const originalSize = input.vertexBuffers[0].size;
-        const initialVertices = rawVertices(graphics, 0);
-        uploads.expectGeometry(graphics, 0, initialVertices, 128 / 255, true);
-
-        opacity.opacity = 255;
-        uploads.clear();
-        graphics.fillColor = new Color(10, 50, 150, 129);
-        // Grow beyond the initial GPU capacity at full opacity.
-        for (let i = 0; i < 24; i++) {
-            graphics.fillRect(i * 5, 20, 4, 4);
-        }
-        const grown = rawVertices(graphics, 0);
-        game.step();
-        expect(input.vertexBuffers[0].size).toBeGreaterThan(originalSize);
-        uploads.expectGeometry(graphics, 0, grown, 1, true);
-
-        opacity.opacity = 128;
-        uploads.clear();
-        game.step();
-        uploads.expectGeometry(graphics, 0, grown, 128 / 255, false);
-
-        // Append to an existing faded block at the same opacity.
-        uploads.clear();
-        graphics.fillRect(0, 30, 8, 4);
-        const appended = rawVertices(graphics, 0);
-        game.step();
-        uploads.expectGeometry(graphics, 0, appended, 128 / 255, true);
-
-        graphics.clear();
-        graphics.fillRect(0, 0, 8, 8);
-        uploads.clear();
-        game.step();
-        const beforeClear = rawVertices(graphics, 0);
-        uploads.expectGeometry(graphics, 0, beforeClear, 128 / 255, true);
-        opacity.opacity = 0;
-        graphics.clear();
-        graphics.fillColor = new Color(12, 20, 220, 48);
-        graphics.fillRect(32, 32, 8, 8);
-        const replacement = rawVertices(graphics, 0);
-        expect(replacement.length).toBe(beforeClear.length);
-        expect(replacement).not.toEqual(beforeClear);
-        uploads.clear();
-        game.step();
-        expect(uploads.count(input.vertexBuffers[0])).toBe(0);
-        opacity.opacity = 128;
-        game.step();
-        uploads.expectGeometry(graphics, 0, replacement, 128 / 255, true);
-    });
-
-    test('reuses the redraw buffer and sizes it for the current shape', () => {
-        const graphics = paint(canvasNode);
-        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
-        const opacity = graphics.node.addComponent(UIOpacity);
-        opacity.opacity = 128;
-        const redraw = (rectangles: number): void => {
-            graphics.clear();
-            for (let i = 0; i < rectangles; i++) graphics.rect(i, 0, 1, 1);
-            graphics.fill();
-            game.step();
-        };
-        redraw(256);
-        const large = owner._opacityScratch!.buffer;
-        expect(large.byteLength).toBe(1024 * 32);
-        redraw(8);
-        expect(owner._opacityScratch!.buffer).toBe(large);
-        redraw(256);
-        expect(owner._opacityScratch!.buffer).toBe(large);
-        redraw(8);
-        redraw(8);
-        const small = owner._opacityScratch!.buffer;
-        expect(small.byteLength).toBe(32 * 32);
-        expect(graphics.model!.subModels[0].inputAssembler.vertexBuffers[0].size).toBe(large.byteLength);
-        redraw(8);
-        expect(owner._opacityScratch!.buffer).toBe(small);
-
-        // Opaque paints upload raw vertices, but still take part in the size policy.
-        redraw(256);
-        const faded = owner._opacityScratch!.buffer;
-        opacity.opacity = 255;
-        redraw(8);
-        opacity.opacity = 128;
-        redraw(256);
-        expect(owner._opacityScratch!.buffer).toBe(faded);
-        opacity.opacity = 255;
-        redraw(8);
-        redraw(8);
-        expect(owner._opacityScratch).toBeNull();
-        opacity.opacity = 128;
-        redraw(256);
-        opacity.opacity = 255;
-        redraw(8);
-        game.step();
-        expect(owner._opacityScratch).toBeNull();
-        opacity.opacity = 128;
-        redraw(256);
-        opacity.opacity = 255;
-        redraw(8);
-        graphics.enabled = false;
-        expect(owner._opacityScratch).toBeNull();
-        graphics.enabled = true;
-        opacity.opacity = 128;
-
-        // Empty Graphics are skipped by the walker, including below a hidden ancestor.
-        canvasNode.addComponent(UIOpacity).opacity = 0;
-        graphics.clear();
-        game.step();
-        expect(owner._opacityScratch).toBeNull();
-        canvasNode.getComponent(UIOpacity)!.opacity = 255;
-        redraw(8);
-        graphics.clear();
-        graphics.enabled = false;
-        expect(owner._opacityScratch).toBeNull();
-        graphics.enabled = true;
-        redraw(8);
-        graphics.enabled = false;
-        graphics.clear();
-        expect(owner._opacityScratch).toBeNull();
-    });
-
-    test.each(['fill', 'stroke', 'degenerate fill'])('releases scratch after clear followed by an empty %s', (paintType) => {
-        const graphics = paint(canvasNode);
-        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
-        graphics.node.addComponent(UIOpacity).opacity = 128;
-        function emptyPaint (): void {
-            graphics.clear();
-            if (paintType === 'stroke') {
-                graphics.stroke();
-            } else {
-                if (paintType === 'degenerate fill') {
-                    graphics.moveTo(0, 0);
-                    graphics.lineTo(4, 0);
-                }
-                graphics.fill();
-            }
-        }
-        game.step();
-        expect(owner._opacityScratch).not.toBeNull();
-        emptyPaint();
-        game.step();
-        const ia = graphics.model!.subModels[0].inputAssembler;
-        expect([ia.vertexCount, ia.indexCount]).toEqual([0, 0]);
-        expect(owner._opacityScratch).toBeNull();
-        // Empty Graphics can still drive stencil state for a mask.
-        expect(graphics.renderEntity.enabled).toBe(true);
-
-        graphics.fillRect(0, 0, 8, 8);
-        game.step();
-        expect(ia.indexCount).toBe(6);
-        expect(owner._opacityScratch).not.toBeNull();
-        emptyPaint();
-        graphics.enabled = false;
-        expect(owner._opacityScratch).toBeNull();
-    });
-
-    test('keeps retained triangles when a later block contains only an untriangulated path', () => {
-        const graphics = paint(canvasNode);
-        const owner = graphics as unknown as { _opacityScratch: Float32Array | null };
-        graphics.node.addComponent(UIOpacity).opacity = 128;
-        game.step();
-        const scratch = owner._opacityScratch;
-        const before = graphics.model!.subModels[0].inputAssembler.indexCount;
-        expect(scratch).not.toBeNull();
+    test('fades retained fills and strokes from their own alpha and restores them without redrawing', () => {
+        graphics.fillColor = new Color(255, 0, 0, 64);
+        graphics.fillRect(0, 0, 16, 16);
+        graphics.strokeColor = new Color(0, 255, 0, 192);
+        graphics.moveTo(20, 0);
+        graphics.lineTo(20, 16);
+        graphics.stroke();
+        // Place a second fill in a separate draw buffer to verify both uploads on a fade.
         graphics.impl!.requestRenderData();
         graphics.impl!.dataOffset = 1;
-        graphics.moveTo(4, 4);
-        graphics.lineTo(8, 8);
-        graphics.fill();
+        graphics.fillRect(32, 0, 8, 8);
+        const raw = [vertices(graphics), vertices(graphics, 1)];
+        const alpha = raw[0].filter((_, i) => i % vertexStride === alphaOffset);
+        expect(alpha).toContain(Math.fround(64 / 255));
+        expect(alpha).toContain(Math.fround(192 / 255));
+        const writes = recordUploads();
         game.step();
-        const counts = graphics.model!.subModels.map((sub) => sub.inputAssembler.indexCount);
-        expect(counts).toEqual([before, 0]);
-        expect(owner._opacityScratch).toBe(scratch);
+        raw.forEach((original, block) => expectUpload(writes, graphics, block, original, 1, true));
+        const localOpacity = graphics.node.addComponent(UIOpacity);
+        localOpacity.opacity = 192;
+        for (const value of [128, 64]) {
+            writes.clear();
+            parentOpacity.opacity = value;
+            game.step();
+            raw.forEach((original, block) => expectUpload(writes, graphics, block, original, (value / 255) * (192 / 255), false));
+        }
+
+        writes.clear();
+        game.step();
+        for (const sub of graphics.model!.subModels) {
+            expect(writes.has(sub.inputAssembler.vertexBuffers[0])).toBe(false);
+            expect(writes.has(sub.inputAssembler.indexBuffer!)).toBe(false);
+        }
+        const commits = jest.spyOn(batcher, 'commitModel');
+        parentOpacity.opacity = 0;
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+
+        writes.clear();
+        const tint = graphics.color;
+        graphics.color = new Color(255, 255, 255, 0);
+        parentOpacity.opacity = 255;
+        localOpacity.opacity = 255;
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+        tint.a = 255;
+        game.step();
+        expect(commits).toHaveBeenCalledTimes(1);
+        raw.forEach((original, block) => expectUpload(writes, graphics, block, original, 1, false));
     });
 
-    test('shares scratch for new chunks and preserves independent paints on subsequent fades', () => {
-        const graphics = paint(canvasNode);
-        const owner = graphics as unknown as { _opacityScratch: Float32Array; _opacityVertices: Float32Array[] };
-        const opacity = graphics.node.addComponent(UIOpacity);
-        const uploads = trackUploads();
-        function redraw (seed: number): Float32Array[] {
-            graphics.clear();
-            for (let i = 0; i < 3; i++) {
-                if (i) {
-                    graphics.impl!.requestRenderData();
-                    graphics.impl!.dataOffset = i;
-                }
-                graphics.fillColor = new Color(seed, i * 60, 48, seed + i * 50);
-                graphics.fillRect(i * 8, seed, 6, 6);
-            }
-            return [0, 1, 2].map(i => rawVertices(graphics, i));
-        }
-        opacity.opacity = 128;
-        const first = redraw(32);
+    test('applies current opacity when appending paint or replacing paint of the same size while hidden', () => {
+        parentOpacity.opacity = 128;
+        graphics.fillColor = new Color(10, 50, 150, 192);
+        graphics.fillRect(0, 0, 8, 8);
+        const writes = recordUploads();
+        const first = vertices(graphics);
         game.step();
-        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 128 / 255, true));
-        const backing = owner._opacityScratch.buffer;
-        expect(owner._opacityVertices).toHaveLength(0);
+        expectUpload(writes, graphics, 0, first, 128 / 255, true);
 
-        opacity.opacity = 64;
-        uploads.clear();
+        writes.clear();
+        graphics.fillColor = new Color(180, 20, 5, 64);
+        graphics.fillRect(10, 0, 8, 8);
+        const appended = vertices(graphics);
         game.step();
-        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 64 / 255, false));
-        expect(owner._opacityVertices).toHaveLength(2);
-        expect(owner._opacityScratch.buffer).toBe(backing);
-        const retained = owner._opacityVertices.slice();
-        opacity.opacity = 160;
-        uploads.clear();
-        game.step();
-        first.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 160 / 255, false));
-        retained.forEach((view, i) => expect(owner._opacityVertices[i]).toBe(view));
+        expectUpload(writes, graphics, 0, appended, 128 / 255, true);
 
-        const second = redraw(64);
-        uploads.clear();
+        parentOpacity.opacity = 0;
+        graphics.clear();
+        graphics.fillColor = new Color(20, 220, 10, 48);
+        graphics.fillRect(32, 0, 8, 8);
+        graphics.fillRect(42, 0, 8, 8);
+        const replacement = vertices(graphics);
+        expect(replacement.length).toBe(appended.length);
+        expect(replacement).not.toEqual(appended);
         game.step();
-        expect(owner._opacityVertices).toHaveLength(0);
-        expect(owner._opacityScratch.buffer).toBe(backing);
-        second.forEach((raw, i) => uploads.expectGeometry(graphics, i, raw, 160 / 255, true));
+        writes.clear();
+        parentOpacity.opacity = 128;
+        game.step();
+        expectUpload(writes, graphics, 0, replacement, 128 / 255, true);
     });
 });

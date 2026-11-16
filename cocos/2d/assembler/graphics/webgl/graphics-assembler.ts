@@ -30,7 +30,7 @@ import { Graphics } from '../../../components/graphics';
 import { LineCap, LineJoin, PointFlags } from '../types';
 import { MAX_VERTEX_COUNT, INDICES_PER_VERTEX } from '../constants';
 import { earcut as Earcut } from './earcut';
-import { Impl, Path, Point } from './impl';
+import { Impl, Point } from './impl';
 
 const PI = Math.PI;
 const min = Math.min;
@@ -66,46 +66,6 @@ function clamp (v: number, minNum: number, maxNum: number): number {
     return v;
 }
 
-function roundJoinAngle (point: Point, left: boolean): number {
-    return left ? atan2(point.dx, -point.dy) : atan2(-point.dx, point.dy);
-}
-
-function roundJoinSweep (start: number, point: Point, left: boolean): number {
-    let end = roundJoinAngle(point, left);
-    if (left && end > start) end -= PI * 2;
-    if (!left && end < start) end += PI * 2;
-    return end - start;
-}
-
-function roundJoinSteps (sweep: number, nCap: number): number {
-    return clamp(ceil(Math.abs(sweep) / PI) * nCap, 2, nCap);
-}
-
-function strokeVertexCount (path: Path, lineCap: LineCap, lineJoin: LineJoin, nCap: number): number {
-    const points = path.points;
-    const joins = path.closed ? points.length : max(0, points.length - 2);
-    // A closed strip repeats its first pair. An open strip emits two end caps.
-    const ends = path.closed ? 2 : lineCap === LineCap.ROUND ? 4 * nCap + 4 : 4;
-    if (!joins) return ends;
-    if (lineJoin !== LineJoin.ROUND) return ends + 2 * (joins + path.bevel);
-
-    const upperBound = ends + joins * (4 + 2 * nCap);
-    if (upperBound <= MAX_VERTEX_COUNT) return upperBound;
-    // Straight segments need fewer subdivisions. Only count the individual arcs
-    // when the upper bound would exclude an otherwise drawable single path.
-    let count = ends;
-    let previous = path.closed ? points[points.length - 1] : points[0];
-    const start = path.closed ? 0 : 1;
-    for (let i = start; i < start + joins && count <= MAX_VERTEX_COUNT; ++i) {
-        const point = points[i];
-        const left = (point.flags & PointFlags.PT_LEFT) !== 0;
-        const sweep = roundJoinSweep(roundJoinAngle(previous, left), point, left);
-        count += 4 + 2 * roundJoinSteps(sweep, nCap);
-        previous = point;
-    }
-    return count;
-}
-
 /**
  * graphics 组装器
  * 可通过 `UI.graphicsAssembler` 获取该组装器。
@@ -120,7 +80,7 @@ export class GraphicsAssembler implements IAssembler {
     }
 
     private getRenderData (graphics: Graphics, vertexCount: number): MeshRenderData | null {
-        if (!_impl || vertexCount > MAX_VERTEX_COUNT) {
+        if (!_impl) {
             return null;
         }
 
@@ -130,26 +90,26 @@ export class GraphicsAssembler implements IAssembler {
             return null;
         }
 
-        if (renderData.vertexStart + vertexCount > MAX_VERTEX_COUNT) {
+        let meshBuffer = renderData;
+
+        const maxVertexCount = meshBuffer ? meshBuffer.vertexStart + vertexCount : 0;
+        if (maxVertexCount > MAX_VERTEX_COUNT) {
             ++_impl.dataOffset;
 
             if (_impl.dataOffset < renderDataList.length) {
                 renderData = renderDataList[_impl.dataOffset];
             } else {
                 renderData = _impl.requestRenderData();
+                renderDataList[_impl.dataOffset] = renderData;
             }
+
+            meshBuffer = renderData;
         }
 
-        // Stroke reservation is an upper bound. Reuse unused capacity in the selected chunk.
-        const extraVertices = Math.max(0, renderData.vertexStart + vertexCount - renderData.vertexCount);
-        const extraIndices = Math.max(0, renderData.indexStart + vertexCount * INDICES_PER_VERTEX - renderData.indexCount);
-        if ((extraVertices || extraIndices) && !renderData.request(extraVertices, extraIndices)) {
-            return null;
+        if (meshBuffer && meshBuffer.vertexCount < maxVertexCount) {
+            meshBuffer.request(vertexCount, vertexCount * INDICES_PER_VERTEX);
         }
 
-        if (JSB) {
-            renderData.renderDrawInfo.setVertDirty(true);
-        }
         return renderData;
     }
 
@@ -202,24 +162,37 @@ export class GraphicsAssembler implements IAssembler {
 
         const paths = _impl.paths;
 
-        // Reserve the whole stroke when it fits. Otherwise independent subpaths
-        // can use different chunks without changing their caps or joins.
+        // Calculate max vertex usage.
         let vertexCount = 0;
-        for (let i = _impl.pathOffset; i < _impl.pathLength && vertexCount <= MAX_VERTEX_COUNT; i++) {
-            vertexCount += strokeVertexCount(paths[i], lineCap, lineJoin, nCap);
+        for (let i = _impl.pathOffset, l = _impl.pathLength; i < l; i++) {
+            const path = paths[i];
+            const pointsLength = path.points.length;
+
+            if (lineJoin === LineJoin.ROUND) {
+                vertexCount += (pointsLength + path.bevel * (nCap + 2) + 1) * 2;
+            } else {
+                vertexCount += (pointsLength + path.bevel * 5 + 1) * 2;
+            } // plus one for loop
+
+            if (!path.closed) {
+                // space for caps
+                if (lineCap === LineCap.ROUND) {
+                    vertexCount += (nCap * 2 + 2) * 2;
+                } else {
+                    vertexCount += (3 + 3) * 2;
+                }
+            }
         }
-        const split = vertexCount > MAX_VERTEX_COUNT;
-        const batch = split ? null : this.getRenderData(graphics, vertexCount);
-        if (!split && !batch) return;
+
+        const meshBuffer: MeshRenderData | null = _renderData = this.getRenderData(graphics, vertexCount);
+        if (!meshBuffer) {
+            return;
+        }
+        const vData = meshBuffer.vData;
+        const iData = meshBuffer.iData;
 
         for (let i = _impl.pathOffset, l = _impl.pathLength; i < l; i++) {
             const path = paths[i];
-            // Leave an individually oversized strip undrawn. Later subpaths can still fit.
-            const meshBuffer = batch || this.getRenderData(graphics, strokeVertexCount(path, lineCap, lineJoin, nCap));
-            if (!meshBuffer) continue;
-            _renderData = meshBuffer;
-            const vData = meshBuffer.vData;
-            const iData = meshBuffer.iData;
             const pts = path.points;
             const pointsLength = pts.length;
             const offset = meshBuffer.vertexStart;
@@ -309,7 +282,6 @@ export class GraphicsAssembler implements IAssembler {
             }
 
             meshBuffer.indexStart = indicesOffset;
-            if (indicesOffset > 0) _impl.hasGeometry = true;
         }
         _renderData = null;
         _impl = null;
@@ -389,7 +361,6 @@ export class GraphicsAssembler implements IAssembler {
             meshBuffer.indexStart = indicesOffset;
         }
 
-        if (meshBuffer.indexStart > 0) _impl.hasGeometry = true;
         _renderData = null;
         _impl = null;
     }
@@ -460,8 +431,7 @@ export class GraphicsAssembler implements IAssembler {
                     }
                 }
 
-                if ((path.closed || (j > 0 && j < ptsLength - 1))
-                    && (p1.flags & (PointFlags.PT_BEVEL | PointFlags.PT_INNERBEVEL)) !== 0) {
+                if ((p1.flags & (PointFlags.PT_BEVEL | PointFlags.PT_INNERBEVEL)) !== 0) {
                     path.bevel++;
                 }
 
@@ -587,23 +557,24 @@ export class GraphicsAssembler implements IAssembler {
         const p1x = p1.x;
         const p1y = p1.y;
 
-        const left = (p1.flags & PointFlags.PT_LEFT) !== 0;
-        const a0 = roundJoinAngle(p0, left);
-        const sweep = roundJoinSweep(a0, p1, left);
-        const n = roundJoinSteps(sweep, nCap);
-        if (left) {
+        if ((p1.flags & PointFlags.PT_LEFT) !== 0) {
             const out = this._chooseBevel(p1.flags & PointFlags.PT_INNERBEVEL, p0, p1, lw);
             const lx0 = out[0];
             const ly0 = out[1];
             const lx1 = out[2];
             const ly1 = out[3];
 
+            const a0 = atan2(-dly0, -dlx0);
+            let a1 = atan2(-dly1, -dlx1);
+            if (a1 > a0) { a1 -= PI * 2; }
+
             this._vSet(lx0, ly0, 1);
             this._vSet(p1x - dlx0 * rw, p1.y - dly0 * rw, -1);
 
+            const n = clamp(ceil((a0 - a1) / PI) * nCap, 2, nCap);
             for (let i = 0; i < n; i++) {
                 const u = i / (n - 1);
-                const a = a0 + u * sweep;
+                const a = a0 + u * (a1 - a0);
                 const rx = p1x + cos(a) * rw;
                 const ry = p1y + sin(a) * rw;
                 this._vSet(p1x, p1y, 0);
@@ -619,12 +590,17 @@ export class GraphicsAssembler implements IAssembler {
             const rx1 = out[2];
             const ry1 = out[3];
 
+            const a0 = atan2(dly0, dlx0);
+            let a1 = atan2(dly1, dlx1);
+            if (a1 < a0) { a1 += PI * 2; }
+
             this._vSet(p1x + dlx0 * rw, p1y + dly0 * rw, 1);
             this._vSet(rx0, ry0, -1);
 
+            const n = clamp(ceil((a1 - a0) / PI) * nCap, 2, nCap);
             for (let i = 0; i < n; i++) {
                 const u = i / (n - 1);
-                const a = a0 + u * sweep;
+                const a = a0 + u * (a1 - a0);
                 const lx = p1x + cos(a) * lw;
                 const ly = p1y + sin(a) * lw;
                 this._vSet(lx, ly, 1);

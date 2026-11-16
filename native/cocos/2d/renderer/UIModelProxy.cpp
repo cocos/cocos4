@@ -35,12 +35,11 @@ namespace {
 constexpr uint32_t MAX_VERTEX_COUNT = 65536;
 constexpr uint32_t INDICES_PER_VERTEX = 3;
 constexpr uint32_t MAX_INDEX_COUNT = MAX_VERTEX_COUNT * INDICES_PER_VERTEX;
-// Graphics vertex format: position.xyz, color.rgba, distance.
+
+// Graphics vertex layout: position.xyz, color.rgba, distance.
 constexpr uint32_t FLOATS_PER_VERTEX = 8;
 constexpr uint32_t VERTEX_STRIDE = FLOATS_PER_VERTEX * sizeof(float);
 constexpr uint32_t ALPHA_OFFSET = 6;
-// After clear(), keep at most the float storage for one full, faded chunk.
-constexpr size_t MAX_CACHED_FLOATS = MAX_VERTEX_COUNT * (FLOATS_PER_VERTEX + 1U);
 
 inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap) {
     uint32_t cap = current > 1U ? current : 1U;
@@ -52,93 +51,49 @@ inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap)
 
 class GraphicsModel final : public scene::Model {
 public:
-    void setGeometry(const ccstd::vector<RenderDrawInfo*>& drawInfos) {
-        // clear() kept scratch for an immediate repaint. The component reached
-        // its next update (or was disabled) with no new drawing.
-        if (drawInfos.empty()) {
-            _chunks.clear();
-            resetDrawCounts();
-            return;
-        }
-        const auto& subModels = getSubModels();
-        _chunks.resize(subModels.size());
-        bool hasGeometry = false;
-        for (size_t i = 0; i < subModels.size(); ++i) {
-            auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
-            auto* ia = subModels[i]->getInputAssembler();
-            auto& chunk = _chunks[i];
-            const auto vertexCount = drawInfo ? drawInfo->getVertexOffset() : 0U;
-            const auto indexCount = drawInfo ? drawInfo->getIndexOffset() : 0U;
-            // The offsets are emitted counts. The JS mesh reserves vbCount/ibCount
-            // before writing; a failed reservation must never become a buffer read.
-            if (!vertexCount || !indexCount || vertexCount > MAX_VERTEX_COUNT || indexCount > MAX_INDEX_COUNT ||
-                vertexCount > drawInfo->getVbCount() || indexCount > drawInfo->getIbCount() ||
-                !drawInfo->getVDataBuffer() || !drawInfo->getIDataBuffer()) {
-                chunk.vertices.clear();
-                chunk.paintAlpha.clear();
-                chunk.appliedOpacity = -1.F;
-                ia->setVertexCount(0);
-                ia->setIndexCount(0);
-                continue;
-            }
-            hasGeometry = true;
-            if (!drawInfo->getVertDirty() && chunk.vertices.size() == vertexCount * FLOATS_PER_VERTEX &&
-                ia->getDrawInfo().indexCount == indexCount) {
-                continue;
-            }
-            ia->setVertexCount(vertexCount);
-            ia->setIndexCount(indexCount);
-            chunk.paintAlpha.clear();
-
-            // JS may replace its backing arrays before the draw. Copy the active
-            // vertices and consume the indices while their owner is live.
-            const auto* vertices = drawInfo->getVDataBuffer();
-            chunk.vertices.assign(vertices, vertices + vertexCount * FLOATS_PER_VERTEX);
-            auto* vb = ia->getVertexBuffers().front();
-            if (vertexCount * VERTEX_STRIDE > vb->getSize()) {
-                vb->resize(growCapacity(vertexCount, vb->getSize() / VERTEX_STRIDE, MAX_VERTEX_COUNT) * VERTEX_STRIDE);
-            }
-            auto* ib = ia->getIndexBuffer();
-            const auto indexBytes = static_cast<uint32_t>(indexCount * sizeof(uint16_t));
-            if (indexBytes > ib->getSize()) {
-                const auto capacity = growCapacity(indexCount, ib->getSize() / sizeof(uint16_t), MAX_INDEX_COUNT);
-                ib->resize(capacity * sizeof(uint16_t));
-            }
-            ib->update(drawInfo->getIDataBuffer(), indexBytes);
-            drawInfo->setVertDirty(false);
-            chunk.appliedOpacity = -1.F;
-            _lastOpacity = -1.F;
-        }
-        // A fill or stroke can create draw infos without emitting any triangles.
-        if (!hasGeometry) _chunks.clear();
+    void resizeGeometry(size_t size) {
+        _geometry.resize(size);
+        _lastOpacity = -1.F;
     }
 
-    void clearGeometry() {
-        size_t remaining = MAX_CACHED_FLOATS;
-        for (auto& chunk : _chunks) {
-            const auto capacity = chunk.vertices.capacity() + chunk.paintAlpha.capacity();
-            if (capacity > remaining) {
-                chunk = Chunk{};
-            } else {
-                remaining -= capacity;
-                chunk.vertices.clear();
-                chunk.paintAlpha.clear();
-                chunk.appliedOpacity = -1.F;
-            }
+    void setVertices(size_t index, const float* source, uint32_t count) {
+        auto& chunk = _geometry[index];
+        chunk.paintAlpha.clear();
+        if (count) {
+            // JS can replace its arrays after updateRenderer and before the native UI walk.
+            chunk.vertices.assign(source, source + count * FLOATS_PER_VERTEX);
+        } else {
+            chunk.vertices.clear();
         }
-        resetDrawCounts();
     }
 
     void updateUBOs(uint32_t stamp) override {
         const auto* node = getNode();
         if (node && node->_getFinalOpacity() != _lastOpacity) {
-            updateVertexBuffers(node->_getFinalOpacity());
+            // The UI walk resolves this node's opacity immediately before submitting the model.
+            const float opacity = node->_getFinalOpacity();
+            for (size_t i = 0; i < _geometry.size(); ++i) {
+                auto& chunk = _geometry[i];
+                if (chunk.vertices.empty()) continue;
+                if (opacity != 1.F && chunk.paintAlpha.empty()) {
+                    chunk.paintAlpha.resize(chunk.vertices.size() / FLOATS_PER_VERTEX);
+                    for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
+                        chunk.paintAlpha[v] = chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET];
+                    }
+                }
+                for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
+                    chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET] = chunk.paintAlpha[v] * opacity;
+                }
+                auto* vb = getSubModels()[i]->getInputAssembler()->getVertexBuffers().front();
+                vb->update(chunk.vertices.data(), static_cast<uint32_t>(chunk.vertices.size() * sizeof(float)));
+            }
+            _lastOpacity = opacity;
         }
         scene::Model::updateUBOs(stamp);
     }
 
     void destroy() override {
-        _chunks.clear();
+        _geometry.clear();
         scene::Model::destroy();
     }
 
@@ -146,44 +101,8 @@ private:
     struct Chunk {
         ccstd::vector<float> vertices;
         ccstd::vector<float> paintAlpha;
-        float appliedOpacity{-1.F};
     };
-
-    void resetDrawCounts() {
-        _lastOpacity = -1.F;
-        for (const auto& subModel : getSubModels()) {
-            auto* ia = subModel->getInputAssembler();
-            ia->setVertexCount(0);
-            ia->setIndexCount(0);
-        }
-    }
-
-    void updateVertexBuffers(float opacity) {
-        const auto& subModels = getSubModels();
-        for (size_t i = 0; i < _chunks.size(); ++i) {
-            auto& chunk = _chunks[i];
-            if (chunk.vertices.empty() || chunk.appliedOpacity == opacity) continue;
-            if (!chunk.paintAlpha.empty()) {
-                for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
-                    chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET] = chunk.paintAlpha[v] * opacity;
-                }
-            } else if (opacity != 1.F) {
-                // Opaque geometry needs no alpha backup until its first fade.
-                chunk.paintAlpha.resize(chunk.vertices.size() / FLOATS_PER_VERTEX);
-                for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
-                    auto& alpha = chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET];
-                    chunk.paintAlpha[v] = alpha;
-                    alpha *= opacity;
-                }
-            }
-            auto* vb = subModels[i]->getInputAssembler()->getVertexBuffers().front();
-            vb->update(chunk.vertices.data(), static_cast<uint32_t>(chunk.vertices.size() * sizeof(float)));
-            chunk.appliedOpacity = opacity;
-        }
-        _lastOpacity = opacity;
-    }
-
-    ccstd::vector<Chunk> _chunks;
+    ccstd::vector<Chunk> _geometry;
     float _lastOpacity{-1.F};
 };
 
@@ -217,10 +136,9 @@ void UIModelProxy::activeSubModels() {
                     return;
                 }
 
-                // An unindexed chunk can precede a drawable one. Its submodel needs only the minimum buffer.
-                const uint32_t indexCount = drawInfo->getIndexOffset();
-                const uint32_t vertexCapacity = growCapacity(indexCount ? drawInfo->getVertexOffset() : 0U, 0, MAX_VERTEX_COUNT);
-                const uint32_t indexCapacity = growCapacity(indexCount, 0, MAX_INDEX_COUNT);
+                // Allocate exactly for the data of this chunk, rounded up to a power of two.
+                const uint32_t vertexCapacity = growCapacity(drawInfo->getVertexOffset(), 0, MAX_VERTEX_COUNT);
+                const uint32_t indexCapacity = growCapacity(drawInfo->getIndexOffset(), 0, MAX_INDEX_COUNT);
 
                 auto* vertexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
@@ -251,7 +169,44 @@ void UIModelProxy::uploadData() {
     if (!_model) return;
     auto* entity = static_cast<RenderEntity*>(_node->getUserData());
     const auto& drawInfos = entity->getDynamicRenderDrawInfos();
-    static_cast<GraphicsModel*>(_model.get())->setGeometry(drawInfos);
+    const auto& subModelList = _model->getSubModels();
+    auto* model = static_cast<GraphicsModel*>(_model.get());
+    model->resizeGeometry(subModelList.size());
+    for (size_t i = 0; i < subModelList.size(); i++) {
+        auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
+        auto* ia = subModelList.at(i)->getInputAssembler();
+        const uint32_t vertexCount = drawInfo ? drawInfo->getVertexOffset() : 0U;
+        const uint32_t indexCount = drawInfo ? drawInfo->getIndexOffset() : 0U;
+        const auto& vBuffers = ia->getVertexBuffers();
+        if (!vertexCount || !indexCount || vBuffers.empty() || vertexCount > MAX_VERTEX_COUNT || indexCount > MAX_INDEX_COUNT ||
+            vertexCount > drawInfo->getVbCount() || indexCount > drawInfo->getIbCount() ||
+            !drawInfo->getVDataBuffer() || !drawInfo->getIDataBuffer()) {
+            model->setVertices(i, nullptr, 0);
+            ia->setVertexCount(0);
+            ia->setIndexCount(0);
+            continue;
+        }
+
+        gfx::Buffer* vBuffer = vBuffers[0];
+        const uint32_t neededVBytes = vertexCount * VERTEX_STRIDE;
+        if (neededVBytes > vBuffer->getSize()) {
+            const uint32_t capacity = growCapacity(vertexCount, vBuffer->getSize() / VERTEX_STRIDE, MAX_VERTEX_COUNT);
+            vBuffer->resize(capacity * VERTEX_STRIDE);
+        }
+        model->setVertices(i, drawInfo->getVDataBuffer(), vertexCount);
+        ia->setVertexCount(vertexCount); // count
+
+        gfx::Buffer* iBuffer = ia->getIndexBuffer();
+        const auto neededIBytes = static_cast<uint32_t>(indexCount * sizeof(uint16_t));
+        if (neededIBytes > iBuffer->getSize()) {
+            const uint32_t capacity = growCapacity(indexCount, static_cast<uint32_t>(iBuffer->getSize() / sizeof(uint16_t)),
+                                                   MAX_INDEX_COUNT);
+            iBuffer->resize(static_cast<uint32_t>(capacity * sizeof(uint16_t)));
+        }
+        iBuffer->update(drawInfo->getIDataBuffer(), neededIBytes); // idata
+        ia->setIndexCount(indexCount);                             // indexCount
+        // drawInfo->setModel(_model); // hack, render by model
+    }
 
     if (!drawInfos.empty() && drawInfos[0]) {
         drawInfos[0]->setModel(_model);
@@ -274,8 +229,15 @@ void UIModelProxy::destroy() {
 }
 
 void UIModelProxy::clear() {
-    if (_model) {
-        static_cast<GraphicsModel*>(_model.get())->clearGeometry();
+    if (_model == nullptr) {
+        return;
+    }
+    static_cast<GraphicsModel*>(_model.get())->resizeGeometry(0);
+    const auto& subModels = _model->getSubModels();
+    for (const auto& subModel : subModels) {
+        auto* ia = subModel->getInputAssembler();
+        ia->setVertexCount(0);
+        ia->setIndexCount(0);
     }
 }
 
