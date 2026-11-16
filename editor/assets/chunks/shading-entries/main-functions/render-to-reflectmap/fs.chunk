@@ -1,3 +1,5 @@
+#include <builtin/functionalities/reflection-probe-output>
+
 layout(location = 0) out vec4 fragColorX;
 
 #if CC_PIPELINE_TYPE == CC_PIPELINE_TYPE_DEFERRED && !CC_FORCE_FORWARD_SHADING
@@ -49,6 +51,6 @@ layout(location = 0) out vec4 fragColorX;
     #endif
 
     // Color output (linear HDR capture or RGBE)
-    fragColorX = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
+    fragColorX = CCReflectionProbeOutput(color.rgb);
   }
 #endif

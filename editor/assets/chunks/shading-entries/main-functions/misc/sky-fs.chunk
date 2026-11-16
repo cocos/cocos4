@@ -1,3 +1,5 @@
+#include <builtin/functionalities/reflection-probe-output>
+
 // default functions
 #ifndef CC_SURFACES_FRAGMENT_MODIFY_BASECOLOR_AND_TRANSPARENCY
 vec4 SurfacesFragmentModifyBaseColorAndTransparency()
@@ -24,7 +26,7 @@ void main() {
   #endif
 
   #if CC_USE_RGBE_OUTPUT
-    color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
+    color = CCReflectionProbeOutput(color.rgb);
   #else//todo: change to #elif !CC_USE_FLOAT_OUTPUT when sky render queue has been fixed with custom pipeline
     color.rgb = HDRToLDR(color.rgb);
     color.rgb = LinearToSRGB(color.rgb);

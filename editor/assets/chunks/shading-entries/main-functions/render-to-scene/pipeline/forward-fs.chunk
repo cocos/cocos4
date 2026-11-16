@@ -1,3 +1,5 @@
+#include <builtin/functionalities/reflection-probe-output>
+
 layout(location = 0) out vec4 fragColorX;
 
 void main()  {
@@ -142,7 +144,7 @@ void main()  {
 
   // Color output
   #if CC_USE_RGBE_OUTPUT
-    color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb); // for reflection-map
+    color = CCReflectionProbeOutput(color.rgb); // for reflection-map
   #else
     color = CCSurfacesDebugDisplayInvalidNumber(color);
     #if !CC_USE_FLOAT_OUTPUT

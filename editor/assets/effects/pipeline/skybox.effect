@@ -64,6 +64,7 @@ CCProgram sky-fs %{
   #include <common/color/gamma>
   #include <common/color/tone-mapping>
   #include <legacy/output-standard>
+  #include <builtin/functionalities/reflection-probe-output>
   #include <common/math/coordinates>
 
   in mediump vec4 viewDir;
@@ -79,7 +80,7 @@ CCProgram sky-fs %{
 
     vec4 color = vec4(c * cc_ambientSky.w, 1.0);
     #if CC_USE_RGBE_OUTPUT
-      color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
+      color = CCReflectionProbeOutput(color.rgb);
     #else
       color.rgb = HDRToLDR(color.rgb);
       color.rgb = LinearToSRGB(color.rgb);

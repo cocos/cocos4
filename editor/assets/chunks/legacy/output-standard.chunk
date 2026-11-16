@@ -3,10 +3,11 @@
 #include <common/color/aces>
 #include <common/color/gamma>
 #include <common/data/unpack>
+#include <builtin/functionalities/reflection-probe-output>
 
 vec4 CCFragOutput (vec4 color) {
   #if CC_USE_RGBE_OUTPUT
-    color = cc_probeInfo.y > 0.5 ? vec4(color.rgb, 1.0) : packRGBE(color.rgb);
+    color = CCReflectionProbeOutput(color.rgb);
   #elif !CC_USE_FLOAT_OUTPUT
     #if CC_USE_HDR && CC_TONE_MAPPING_TYPE == TONE_MAPPING_ACES
       color.rgb = ACESToneMap(color.rgb);
