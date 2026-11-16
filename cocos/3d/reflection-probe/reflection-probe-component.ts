@@ -85,7 +85,7 @@ export class ReflectionProbe extends Component {
     protected _probeType = ProbeType.CUBE;
 
     @serializable
-    protected _planarMSAA = PlanarReflectionMSAA.X4;
+    protected _planarMSAA = PlanarReflectionMSAA.OFF;
 
     @serializable
     protected _cubemap: TextureCube | null = null;
@@ -178,8 +178,8 @@ export class ReflectionProbe extends Component {
     }
 
     /**
-     * @en MSAA sample count for planar reflection capture. Defaults to four samples.
-     * @zh 平面反射采集的 MSAA 采样数，默认每像素 4 个采样。
+     * @en MSAA sample count for planar reflection capture. Disabled by default.
+     * @zh 平面反射采集的 MSAA 采样数，默认关闭。
      */
     @type(Enum(PlanarReflectionMSAA))
     @displayName('Planar MSAA')

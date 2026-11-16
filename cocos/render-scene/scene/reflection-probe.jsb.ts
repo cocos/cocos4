@@ -42,5 +42,5 @@ export type ReflectionProbe = JsbReflectionProbe;
 const reflectionProbeProto: any = jsb.ReflectionProbe.prototype;
 reflectionProbeProto._ctor = function (id:number) {
     this._probeId = id;
-    this.planarMSAA = SampleCount.X4;
+    this.planarMSAA = SampleCount.X1;
 };

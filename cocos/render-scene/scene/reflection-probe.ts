@@ -62,7 +62,7 @@ export class ReflectionProbe {
      * @en Requested sample count for planar reflection capture.
      * @zh 平面反射采集请求的采样数。
      */
-    public planarMSAA: SampleCount = SampleCount.X4;
+    public planarMSAA: SampleCount = SampleCount.X1;
 
     protected _resolution = 256;
     protected _clearFlag: number = ProbeClearFlag.SKYBOX;
