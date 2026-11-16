@@ -621,9 +621,5 @@ SampleCount GLES3Device::getMaxSampleCount(Format format, TextureUsage usage, Te
     return static_cast<SampleCount>(cmdFuncGLES3GetMaxSampleCount(this, format, usage, flags));
 }
 
-ccstd::vector<SampleCount> GLES3Device::getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const {
-    return cmdFuncGLES3GetSupportedSampleCounts(this, format, usage, flags);
-}
-
 } // namespace gfx
 } // namespace cc

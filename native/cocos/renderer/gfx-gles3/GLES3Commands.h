@@ -318,7 +318,6 @@ void cmdFuncGLES3PushGroupMarker(GLES3Device *device, GLsizei length, const char
 void cmdFuncGLES3PopGroupMarker(GLES3Device *device);
 
 GLint cmdFuncGLES3GetMaxSampleCount(const GLES3Device *device, Format format, TextureUsage usage, TextureFlags flags);
-ccstd::vector<SampleCount> cmdFuncGLES3GetSupportedSampleCounts(const GLES3Device *device, Format format, TextureUsage usage, TextureFlags flags);
 
 } // namespace gfx
 } // namespace cc

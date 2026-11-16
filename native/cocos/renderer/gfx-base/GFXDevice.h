@@ -129,15 +129,6 @@ public:
         return SampleCount::X1;
     };
 
-    // Sample counts are discrete: support for X4 does not imply support for X2.
-    // Backends without an exact capability query conservatively expose X1 only.
-    virtual ccstd::vector<SampleCount> getSupportedSampleCounts(Format format, TextureUsage usage, TextureFlags flags) const {
-        std::ignore = format;
-        std::ignore = usage;
-        std::ignore = flags;
-        return {SampleCount::X1};
-    }
-
 protected:
     static Device *instance;
     static bool isSupportDetachDeviceThread;

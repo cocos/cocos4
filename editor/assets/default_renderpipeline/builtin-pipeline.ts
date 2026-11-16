@@ -78,10 +78,12 @@ function getPlanarReflectionSampleCounts(device: gfx.Device): readonly gfx.Sampl
     if (device.gfxAPI === gfx.API.WEBGPU) {
         return [gfx.SampleCount.X4, gfx.SampleCount.X1];
     }
-    const colorSamples = device.getSupportedSampleCounts(Format.RGBA16F, gfx.TextureUsageBit.COLOR_ATTACHMENT, gfx.TextureFlagBit.NONE);
-    const depthSamples = device.getSupportedSampleCounts(Format.DEPTH_STENCIL, gfx.TextureUsageBit.DEPTH_STENCIL_ATTACHMENT, gfx.TextureFlagBit.NONE);
-    return [gfx.SampleCount.X4, gfx.SampleCount.X2, gfx.SampleCount.X1].filter(samples =>
-        samples === gfx.SampleCount.X1 || (colorSamples.indexOf(samples) >= 0 && depthSamples.indexOf(samples) >= 0));
+    const maxSamples = Math.min(
+        device.getMaxSampleCount(Format.RGBA16F, gfx.TextureUsageBit.COLOR_ATTACHMENT, gfx.TextureFlagBit.NONE),
+        device.getMaxSampleCount(Format.DEPTH_STENCIL, gfx.TextureUsageBit.DEPTH_STENCIL_ATTACHMENT, gfx.TextureFlagBit.NONE),
+        gfx.SampleCount.X4,
+    );
+    return [gfx.SampleCount.X4, gfx.SampleCount.X2, gfx.SampleCount.X1].filter(samples => samples <= maxSamples);
 }
 
 function getCsmMainLightViewport(
