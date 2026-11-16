@@ -203,6 +203,10 @@ export class Graphics extends UIRenderer {
     @override
     @visible(false)
     get color (): Color {
+        // The Web UI walk reads this mutable color before testing visibility.
+        if (!JSB && this._lastSyncedAlpha !== this._color.a) {
+            this._syncColor();
+        }
         return this._color;
     }
 
@@ -210,11 +214,16 @@ export class Graphics extends UIRenderer {
         if (this._color !== value) {
             this._color.set(value);
         }
-        // The getter exposes a mutable Color, so a caller can edit it and assign the same object back.
-        const rgba = Color.toUint32(this._color);
-        if (this.node && this._lastSyncedColor !== rgba) {
-            this._lastSyncedColor = rgba;
+        this._syncColor();
+    }
+
+    private _syncColor (): void {
+        const alpha = this._color.a;
+        if (alpha !== this._lastSyncedAlpha && this.node?.activeInHierarchy) {
+            this._lastSyncedAlpha = alpha;
             this._updateColor();
+        } else if (JSB) {
+            this.setEntityColor(this._color);
         }
     }
 
@@ -242,10 +251,11 @@ export class Graphics extends UIRenderer {
     protected _isNeedUploadData = true;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
-    private _lastSyncedColor = -1;
+    private _lastSyncedAlpha = -1;
     private _uploadedOpacity = 1;
     // Fresh chunks share one upload buffer. Older retained chunks keep their own copy once they fade.
     private _opacityScratch: Float32Array | null = null;
+    private _smallScratchUpload = false;
     private _scratchSource: MeshRenderData | null = null;
     private _opacityVertices: Float32Array[] = [];
 
@@ -288,14 +298,14 @@ export class Graphics extends UIRenderer {
     public onEnable (): void {
         super.onEnable();
         // Deserialization writes _color directly, before the native entity is attached.
-        this._lastSyncedColor = Color.toUint32(this._color);
+        this._lastSyncedAlpha = this._color.a;
         this.setEntityColor(this._color);
     }
 
     public onDisable (): void {
         super.onDisable();
-        if (!this.impl?.hasGeometry) {
-            this._opacityScratch = null;
+        if (!this.impl?.hasGeometry || (this._smallScratchUpload && !this._isNeedUploadData)) {
+            this._releaseOpacityScratch();
             if (JSB) this._uploadNativeGeometry();
         }
     }
@@ -335,8 +345,7 @@ export class Graphics extends UIRenderer {
             this.impl = null;
         }
         this._opacityVertices.length = 0;
-        this._opacityScratch = null;
-        this._scratchSource = null;
+        this._releaseOpacityScratch();
 
         super.onDestroy();
     }
@@ -595,7 +604,7 @@ export class Graphics extends UIRenderer {
         this._opacityVertices.length = 0;
         this._scratchSource = null;
         if (!this.enabledInHierarchy) {
-            this._opacityScratch = null;
+            this._releaseOpacityScratch();
         }
         if (JSB) {
             if (this._isDrawing) {
@@ -733,6 +742,14 @@ export class Graphics extends UIRenderer {
 
         const renderDataList = this.impl.getRenderDataList();
         const opacityChanged = opacity !== this._uploadedOpacity;
+        // Keep the large allocation for one small paint, in case draw sizes alternate.
+        const small = this._opacityScratch !== null && renderDataList.length === 1
+            && renderDataList[0].vertexStart * stride * 4 <= this._opacityScratch.buffer.byteLength;
+        if (small && this._smallScratchUpload) {
+            this._releaseOpacityScratch();
+        } else {
+            this._smallScratchUpload = small;
+        }
         for (let i = 0; i < renderDataList.length; i++) {
             const renderData = renderDataList[i];
             const indexCount = renderData.indexStart;
@@ -777,6 +794,12 @@ export class Graphics extends UIRenderer {
         this._isNeedUploadData = false;
     }
 
+    private _releaseOpacityScratch (): void {
+        this._opacityScratch = null;
+        this._scratchSource = null;
+        this._smallScratchUpload = false;
+    }
+
     private _getOpacityVertices (data: MeshRenderData, index: number, chunks: number, opacity: number): Float32Array {
         const length = data.vertexStart * componentPerVertex;
         const geometryChanged = data.lastFilledVertex !== data.vertexStart;
@@ -786,10 +809,7 @@ export class Graphics extends UIRenderer {
         const previous = keepChunk ? this._opacityVertices[index] : this._opacityScratch;
         const capacity = previous ? previous.buffer.byteLength / Float32Array.BYTES_PER_ELEMENT : 0;
         let output: Float32Array;
-        // Allow a single small upload after a large one. Alternating sizes reuse the same allocation.
-        // Mixed-size chunks within one redraw also share the largest scratch without shrinking it.
-        const shrink = previous && chunks === 1 && length * 4 <= capacity && previous.length * 4 <= capacity;
-        if (!previous || capacity < length || shrink) {
+        if (!previous || capacity < length) {
             const vertices = growCapacity(data.vertexStart, 0, MAX_VERTEX_COUNT);
             output = new Float32Array(new ArrayBuffer(vertices * stride), 0, length);
         } else if (previous.length !== length) {
@@ -847,6 +867,9 @@ export class Graphics extends UIRenderer {
         const opacity = this.node._uiProps.opacity;
         if (this._isNeedUploadData || this._uploadedOpacity !== opacity) {
             this._uploadData(opacity);
+        } else if (this._smallScratchUpload) {
+            // A retained small paint needs no new upload to release the oversized scratch.
+            this._releaseOpacityScratch();
         }
         render.commitModel(this, this.model, material);
     }
@@ -878,7 +901,7 @@ export class Graphics extends UIRenderer {
         super.updateRenderer();
         // An empty paint can still submit a stencil model, but needs no opacity buffer.
         if (!JSB && !this.impl?.hasGeometry) {
-            this._opacityScratch = null;
+            this._releaseOpacityScratch();
         }
         if (JSB) this._uploadNativeGeometry();
     }
@@ -888,16 +911,17 @@ export class Graphics extends UIRenderer {
         // An empty list releases clear()'s scratch. Do not allocate an empty
         // RenderDrawInfo by requesting the render data list when there is no paint.
         if (this._isDrawing && this.impl) {
-            const hasPasses = !!this.getRenderMaterial(0)?.passes.length;
+            const hasGeometry = this.impl.hasGeometry;
             // New submodels need a pass layout. Keep their geometry pending until a pass is available.
-            if (!hasPasses && this.impl.hasGeometry) return;
+            if (hasGeometry && !this.getRenderMaterial(0)?.passes.length) return;
             const renderDataList = this.impl.getRenderDataList();
             for (const data of renderDataList) {
                 if (data.renderDrawInfo.vertDirty) {
                     data.setRenderDrawInfoAttributes();
                 }
             }
-            if (hasPasses) this._graphicsNativeProxy.activeSubModels();
+            // Empty paints still submit draw infos for cache release and stencil masks.
+            if (hasGeometry) this._graphicsNativeProxy.activeSubModels();
         }
         this._graphicsNativeProxy.uploadData();
         this._isNeedUploadData = false;

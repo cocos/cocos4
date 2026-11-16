@@ -1,7 +1,7 @@
-import { Canvas, UIOpacity } from '../../cocos/2d';
+import { Canvas, Sprite, SpriteFrame, UIOpacity } from '../../cocos/2d';
 import { Batcher2D } from '../../cocos/2d/renderer/batcher-2d';
 import { Stage, StencilManager } from '../../cocos/2d/renderer/stencil-manager';
-import { EffectAsset, Material } from '../../cocos/asset/assets';
+import { EffectAsset, Material, Texture2D } from '../../cocos/asset/assets';
 import { Color } from '../../cocos/core';
 import { EmptyBuffer } from '../../cocos/gfx/empty/empty-buffer';
 import type { Buffer } from '../../cocos/gfx';
@@ -117,6 +117,46 @@ describe('Graphics cascaded vertex opacity', () => {
         director.runSceneImmediate(new Scene('Cleanup'));
         batcher.destroy();
         rootAccess()._batcher = previousBatcher;
+    });
+
+    test('observes alpha edits to the retained color and skips RGB-only cascade updates', () => {
+        const graphics = paint(canvasNode);
+        const tint = graphics.color;
+        const child = new Node('Child sprite');
+        graphics.node.addChild(child);
+        const sprite = child.addComponent(Sprite);
+        const texture = new Texture2D();
+        const frame = new SpriteFrame();
+        frame.texture = texture;
+        sprite.spriteFrame = frame;
+        game.step();
+        const commits = jest.spyOn(batcher, 'commitModel');
+        const childColorUpdates = jest.spyOn(sprite, 'getFillColorType');
+
+        graphics.color = new Color(12, 34, 56, 255);
+        game.step();
+        expect(childColorUpdates).not.toHaveBeenCalled();
+        expect(commits).toHaveBeenCalledTimes(1);
+        commits.mockClear();
+        graphics.color = new Color(12, 34, 56, 0);
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+
+        tint.a = 255;
+        game.step();
+        expect(commits).toHaveBeenCalledTimes(1);
+        expect(sprite.renderData!.chunk.vb[8]).toBe(1);
+        tint.a = 128;
+        game.step();
+        expect(sprite.renderData!.chunk.vb[8]).toBeCloseTo(128 / 255);
+        graphics.enabled = false;
+        tint.a = 255;
+        commits.mockClear();
+        game.step();
+        expect(commits).not.toHaveBeenCalled();
+        expect(sprite.renderData!.chunk.vb[8]).toBe(1);
+        frame.destroy();
+        texture.destroy();
     });
 
     test('defers a first draw with no passes and resumes retained geometry after a material switch', () => {
@@ -350,6 +390,33 @@ describe('Graphics cascaded vertex opacity', () => {
         expect(graphics.model!.subModels[0].inputAssembler.vertexBuffers[0].size).toBe(large.byteLength);
         redraw(8);
         expect(owner._opacityScratch!.buffer).toBe(small);
+
+        // Opaque paints upload raw vertices, but still take part in the size policy.
+        redraw(256);
+        const faded = owner._opacityScratch!.buffer;
+        opacity.opacity = 255;
+        redraw(8);
+        opacity.opacity = 128;
+        redraw(256);
+        expect(owner._opacityScratch!.buffer).toBe(faded);
+        opacity.opacity = 255;
+        redraw(8);
+        redraw(8);
+        expect(owner._opacityScratch).toBeNull();
+        opacity.opacity = 128;
+        redraw(256);
+        opacity.opacity = 255;
+        redraw(8);
+        game.step();
+        expect(owner._opacityScratch).toBeNull();
+        opacity.opacity = 128;
+        redraw(256);
+        opacity.opacity = 255;
+        redraw(8);
+        graphics.enabled = false;
+        expect(owner._opacityScratch).toBeNull();
+        graphics.enabled = true;
+        opacity.opacity = 128;
 
         // Empty Graphics are skipped by the walker, including below a hidden ancestor.
         canvasNode.addComponent(UIOpacity).opacity = 0;

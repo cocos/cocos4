@@ -217,9 +217,10 @@ void UIModelProxy::activeSubModels() {
                     return;
                 }
 
-                // Allocate exactly for the data of this chunk, rounded up to a power of two.
-                const uint32_t vertexCapacity = growCapacity(drawInfo->getVertexOffset(), 0, MAX_VERTEX_COUNT);
-                const uint32_t indexCapacity = growCapacity(drawInfo->getIndexOffset(), 0, MAX_INDEX_COUNT);
+                // An unindexed chunk can precede a drawable one. Its submodel needs only the minimum buffer.
+                const uint32_t indexCount = drawInfo->getIndexOffset();
+                const uint32_t vertexCapacity = growCapacity(indexCount ? drawInfo->getVertexOffset() : 0U, 0, MAX_VERTEX_COUNT);
+                const uint32_t indexCapacity = growCapacity(indexCount, 0, MAX_INDEX_COUNT);
 
                 auto* vertexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
