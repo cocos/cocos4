@@ -307,6 +307,9 @@
         "worker-pool": {
             "modules": ["worker", "worker-pool"],
             "dependentModules": ["worker"]
+        },
+        "webassembly": {
+            "modules": ["webassembly"]
         }
     },
     "moduleOverrides": [{
