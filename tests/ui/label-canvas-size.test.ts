@@ -23,14 +23,17 @@
 */
 
 /**
- * Label 文字画布的尺寸必须由引擎取整成整数。
+ * Label 文字画布：尺寸必须由引擎取整成整数，且纹理与四边形必须严格 1:1。
  *
- * `HTMLCanvasElement.width/height` 是 `unsigned long`，规范要求截断小数，但宿主实现可能四舍五入。
- * 而 Label 的四边形一直使用浮点的排版尺寸（例如 56.7px），于是同一段文字在"四舍五入"的宿主上会多出
- * 一行纹理行，被拉长并整体偏移约 0.7px —— 这类差异只会出现在个别设备/宿主上，表现为截图比对失败。
+ * 1. `HTMLCanvasElement.width/height` 是 `unsigned long`，规范要求截断小数，但宿主实现可能四舍五入。
+ *    同一段文字因此在"四舍五入"的宿主上会多出一行纹理（例如 56.7px 画布 → 56 行 vs 57 行）。
+ * 2. 更根本的是：四边形一直使用浮点的 `nodeContentSize`，于是纹理到四边形存在 `k = 四边形高 / 行数`
+ *    的非 1 比例，文字被拉伸并整体偏移最多约 1px —— 这类差异只会在个别设备/宿主上暴露，
+ *    表现为像素比对失败，且和宿主实现相关。
  *
- * 因此 `TextProcessing`（TTF 路径）与 `LetterTexture`（CHAR 缓存路径）都在赋值前自行截断，
- * 让纹理尺寸与宿主实现无关。下面的用例用两种"宿主转换行为"跑同一条管线，结果必须一致。
+ * `TextProcessing._snapCanvasSize` 在排版结束后把画布尺寸取整，并把同样的差值带入内容尺寸，
+ * 使 `nodeContentSize * fontScale === canvas 行数`（k ≡ 1）；`LetterTexture`（CHAR 缓存路径）
+ * 也把画布尺寸取整。下面的用例分别验证：画布尺寸与宿主转换无关、纹理与四边形 1:1。
  */
 
 import { CanvasPool, LetterAtlas, shareLabelInfo } from '../../cocos/2d/assembler/label/font-utils';
@@ -43,6 +46,9 @@ import { DEFAULT_FONT_FAMILY } from '../../cocos/2d/utils/font-family';
 
 /** 模拟两种宿主对 `canvas.width/height = x.y` 的转换行为。 */
 type SizeConversion = 'truncate' | 'round';
+
+const FONT_SIZE = 25;
+const LINE_HEIGHT = 40;
 
 interface IFakeCanvas {
     canvas: { width: number; height: number };
@@ -115,13 +121,21 @@ function getTextProcessingCtor (): typeof TextProcessingSingleton {
     return textProcessingCtor;
 }
 
-/** 跑一遍 TTF 文本处理管线（cacheMode = NONE），返回画布尺寸相关数据。 */
-function renderTtfLabel (conversion: SizeConversion): {
+interface ITtfRenderResult {
+    canvasSizeWidth: number;
     canvasSizeHeight: number;
+    nodeContentHeight: number;
+    nodeContentWidth: number;
+    baselineY: number;
+    actualFontSize: number;
     assignedHeights: number[];
-    canvasHeights: number[];
     assignedWidths: number[];
-} {
+    canvasWidth: number;
+    canvasHeight: number;
+}
+
+/** 跑一遍 TTF 文本处理管线（cacheMode = NONE）。 */
+function renderTtfLabel (conversion: SizeConversion, fontScale = 1.125): ITtfRenderResult {
     const TextProcessing = getTextProcessingCtor();
     const fake = createFakeCanvas(conversion);
     const pool = jest.spyOn(CanvasPool, 'getInstance').mockReturnValue({
@@ -132,12 +146,12 @@ function renderTtfLabel (conversion: SizeConversion): {
     const processing = new TextProcessing();
     try {
         const style = new TextStyle();
-        style.fontSize = 25;
-        style.fontScale = 1.125; // view.getScaleX(): SHOW_ALL, 960x640 设计分辨率渲染到 1280x720
+        style.fontSize = FONT_SIZE;
+        style.fontScale = fontScale;
         style.fontFamily = DEFAULT_FONT_FAMILY;
 
         const layout = new TextLayout();
-        layout.lineHeight = 40;
+        layout.lineHeight = LINE_HEIGHT;
         layout.wrapping = false;
         layout.overFlow = Overflow.NONE;
         layout.horizontalAlign = HorizontalTextAlignment.CENTER;
@@ -151,10 +165,16 @@ function renderTtfLabel (conversion: SizeConversion): {
         processing.generateRenderInfo(false, style, layout, layoutData, renderData, text, () => {});
 
         return {
+            canvasSizeWidth: layoutData.canvasSize.width,
             canvasSizeHeight: layoutData.canvasSize.height,
+            nodeContentHeight: layoutData.nodeContentSize.height,
+            nodeContentWidth: layoutData.nodeContentSize.width,
+            baselineY: layoutData.startPosition.y,
+            actualFontSize: style.actualFontSize,
             assignedHeights: fake.assignedHeights,
-            canvasHeights: [fake.canvas.height],
             assignedWidths: fake.assignedWidths,
+            canvasWidth: fake.canvas.width,
+            canvasHeight: fake.canvas.height,
         };
     } finally {
         pool.mockRestore();
@@ -162,13 +182,13 @@ function renderTtfLabel (conversion: SizeConversion): {
 }
 
 describe('Label 文字画布尺寸由引擎取整', () => {
-    test('TTF 路径：画布高度等于 canvasSize 的整数部分（1.26 * 40 * 1.125 = 56.7 → 56）', () => {
+    test('TTF 路径：画布尺寸是整数（1.26 * 40 * 1.125 = 56.7 → 56 行）', () => {
         const result = renderTtfLabel('truncate');
 
-        expect(result.canvasSizeHeight).toBeCloseTo(56.7, 4);
         expect(result.assignedHeights).toEqual([56]);
-        expect(result.canvasHeights).toEqual([56]);
+        expect(result.canvasHeight).toBe(56);
         expect(result.assignedWidths.every((value) => Number.isInteger(value))).toBe(true);
+        expect(result.canvasSizeHeight).toBe(56);
     });
 
     test('TTF 路径：宿主把浮点四舍五入也拿不到 57，两种宿主结果完全一致', () => {
@@ -176,11 +196,38 @@ describe('Label 文字画布尺寸由引擎取整', () => {
         const rounding = renderTtfLabel('round');
 
         expect(rounding.assignedHeights).toEqual(truncating.assignedHeights);
-        expect(rounding.canvasHeights).toEqual(truncating.canvasHeights);
-        expect(rounding.canvasHeights).toEqual([56]);
+        expect(rounding.canvasHeight).toBe(truncating.canvasHeight);
+        expect(rounding.canvasHeight).toBe(56);
+    });
+});
+
+describe('Label 纹理与四边形严格 1:1（不再有亚像素拉伸）', () => {
+    test.each([1, 1.125, 1.5, 1.875, 2])('fontScale = %p 时 nodeContentHeight * fontScale === 纹理行数', (fontScale) => {
+        const result = renderTtfLabel('truncate', fontScale);
+
+        expect(result.canvasHeight).toBeGreaterThan(0);
+        expect(result.nodeContentHeight * fontScale).toBeCloseTo(result.canvasHeight, 6);
     });
 
-    test('CHAR 缓存路径：单个字形纹理的画布尺寸同样是整数，且与宿主实现无关', () => {
+    test.each([1, 1.125, 1.5, 1.875, 2])('fontScale = %p 时四舍五入的宿主也得到同样的 1:1 映射', (fontScale) => {
+        const truncating = renderTtfLabel('truncate', fontScale);
+        const rounding = renderTtfLabel('round', fontScale);
+
+        expect(rounding.nodeContentHeight).toBeCloseTo(truncating.nodeContentHeight, 6);
+        expect(rounding.nodeContentHeight * fontScale).toBeCloseTo(rounding.canvasHeight, 6);
+    });
+
+    test('基线相对节点中心恒为 0.37 * actualFontSize（与画布高度无关）', () => {
+        const result = renderTtfLabel('truncate');
+
+        // firstLinelabelY = actualFontSize * (1 - BASELINE_RATIO / 2) - (actualFontSize - canvasHeight) / 2
+        //                 = 0.37 * actualFontSize + canvasHeight / 2
+        expect(result.baselineY - result.canvasHeight / 2).toBeCloseTo(result.actualFontSize * 0.37, 6);
+    });
+});
+
+describe('CHAR 缓存路径', () => {
+    test('单个字形纹理的画布尺寸同样是整数，且与宿主实现无关', () => {
         const measure = (conversion: SizeConversion): { widths: number[]; heights: number[] } => {
             const fake = createFakeCanvas(conversion);
             const pool = jest.spyOn(CanvasPool, 'getInstance').mockReturnValue({
