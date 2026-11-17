@@ -795,11 +795,8 @@ export class Graphics extends UIRenderer {
             if (this._isNeedUploadData) {
                 if (this.impl) {
                     const renderDataList = this.impl.getRenderDataList();
-                    for (const data of renderDataList) {
-                        data.setRenderDrawInfoAttributes();
-                        // Native checks emitted counts against the backing arrays; reservations may be smaller.
-                        data.renderDrawInfo.setVBCount(data.vData.length / componentPerVertex);
-                        data.renderDrawInfo.setIBCount(data.iData.length);
+                    for (let i = 0; i < renderDataList.length; i++) {
+                        renderDataList[i].setRenderDrawInfoAttributes();
                     }
                     this._graphicsNativeProxy.activeSubModels();
                 }

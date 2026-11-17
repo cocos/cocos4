@@ -179,7 +179,6 @@ void UIModelProxy::uploadData() {
         const uint32_t indexCount = drawInfo ? drawInfo->getIndexOffset() : 0U;
         const auto& vBuffers = ia->getVertexBuffers();
         if (!vertexCount || !indexCount || vBuffers.empty() || vertexCount > MAX_VERTEX_COUNT || indexCount > MAX_INDEX_COUNT ||
-            vertexCount > drawInfo->getVbCount() || indexCount > drawInfo->getIbCount() ||
             !drawInfo->getVDataBuffer() || !drawInfo->getIDataBuffer()) {
             model->setVertices(i, nullptr, 0);
             ia->setVertexCount(0);
