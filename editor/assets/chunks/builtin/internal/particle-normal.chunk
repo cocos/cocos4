@@ -1,0 +1,54 @@
+#pragma define-meta USE_NORMAL_MAP default(false)
+#pragma extension([GL_OES_standard_derivatives, __VERSION__ < 300])
+
+#include <builtin/uniforms/cc-global>
+
+#if USE_NORMAL_MAP
+  in highp vec3 particlePositionWS;
+  #if CC_RENDER_MODE == 4
+    in highp vec3 particleNormalWS;
+  #endif
+
+  uniform sampler2D normalMap;
+  uniform ParticleNormalConstants {
+    vec4 particleNormalParams;
+  };
+
+  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
+    // Derive the tangent frame from the animated UVs and final world position.
+    // This also handles billboard rotation and meshes without tangent attributes.
+    highp vec3 dpdx = dFdx(particlePositionWS);
+    highp vec3 dpdy = dFdy(particlePositionWS);
+    highp vec2 duvdx = dFdx(texCoord);
+    highp vec2 duvdy = dFdy(texCoord);
+    #if CC_RENDER_MODE == 4
+      highp vec3 n = normalize(particleNormalWS);
+      n *= gl_FrontFacing ? 1.0 : -1.0;
+    #else
+      highp vec3 n = normalize(cross(dpdx, dpdy));
+      // Keep the two-sided billboard's surface normal facing the viewer.
+      n *= dot(n, cc_cameraPos.xyz - particlePositionWS) < 0.0 ? -1.0 : 1.0;
+    #endif
+    highp vec3 perpendicularY = cross(dpdy, n);
+    highp vec3 perpendicularX = cross(n, dpdx);
+    highp vec3 tangent = perpendicularY * duvdx.x + perpendicularX * duvdy.x;
+    highp vec3 bitangent = perpendicularY * duvdx.y + perpendicularX * duvdy.y;
+    highp float frameLength = max(dot(tangent, tangent), dot(bitangent, bitangent));
+    highp float inverseLength = inversesqrt(max(frameLength, 1e-20));
+    vec3 mappedNormal = texture(normalMap, texCoord).xyz * 2.0 - 1.0;
+    mappedNormal.xy *= particleNormalParams.x;
+    highp vec3 perturbedNormal = (tangent * mappedNormal.x + bitangent * mappedNormal.y) * inverseLength + n * mappedNormal.z;
+    n = dot(perturbedNormal, perturbedNormal) > 1e-12 ? normalize(perturbedNormal) : n;
+
+    vec3 lighting = mix(cc_ambientGround.rgb, cc_ambientSky.rgb, n.y * 0.5 + 0.5) * cc_ambientSky.w;
+    #if !CC_DISABLE_DIRECTIONAL_LIGHT
+      lighting += cc_mainLitColor.rgb * cc_mainLitColor.w * max(dot(n, -cc_mainLitDir.xyz), 0.0);
+    #endif
+    col.rgb *= lighting;
+    return col;
+  }
+#else
+  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
+    return col;
+  }
+#endif
