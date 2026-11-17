@@ -1,4 +1,6 @@
 #pragma define-meta USE_NORMAL_MAP default(false)
+// Both stages must declare the range: Mesh uses 4, beyond the inferred [0, 3].
+#pragma define-meta CC_RENDER_MODE range([0, 4])
 #pragma extension([GL_OES_standard_derivatives, __VERSION__ < 300])
 
 #include <builtin/uniforms/cc-global>
