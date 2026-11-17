@@ -87,11 +87,13 @@ describe('Label font consumers', () => {
     test.each([
         ['KenneyPixel_LABEL', 'KenneyPixel_LABEL'],
         ['AlibabaPuHuiTi-3-105-Heavy_LABEL', 'AlibabaPuHuiTi-3-105-Heavy_LABEL'],
+        ['sans-serif_LABEL', 'sans-serif_LABEL'],
+        ['中文字体_LABEL', '"中文字体_LABEL"'],
+        ['阿里普惠体-Heavy_LABEL', '"阿里普惠体-Heavy_LABEL"'],
         ['Alibaba PuHuiTi 3.0 105 Heavy', '"Alibaba PuHuiTi 3.0 105 Heavy"'],
         ['3Font_LABEL', '"3Font_LABEL"'],
         ['Font.3_LABEL', '"Font.3_LABEL"'],
         ['A,B_LABEL', '"A,B_LABEL"'],
-        ['sans-serif', '"sans-serif"'],
     ])('TTF and CHAR select the family for %p without modifying the asset', (raw, expected) => {
         const font = new TTFFont();
         font._nativeAsset = raw;
