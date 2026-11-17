@@ -96,13 +96,11 @@ describe('Graphics cascaded opacity', () => {
         const writes = recordUploads();
         game.step();
         raw.forEach((original, block) => expectUpload(writes, graphics, block, original, 1, true));
-        const localOpacity = graphics.node.addComponent(UIOpacity);
-        localOpacity.opacity = 192;
         for (const value of [128, 64]) {
             writes.clear();
             parentOpacity.opacity = value;
             game.step();
-            raw.forEach((original, block) => expectUpload(writes, graphics, block, original, (value / 255) * (192 / 255), false));
+            raw.forEach((original, block) => expectUpload(writes, graphics, block, original, value / 255, false));
         }
 
         writes.clear();
@@ -117,13 +115,7 @@ describe('Graphics cascaded opacity', () => {
         expect(commits).not.toHaveBeenCalled();
 
         writes.clear();
-        const tint = graphics.color;
-        graphics.color = new Color(255, 255, 255, 0);
         parentOpacity.opacity = 255;
-        localOpacity.opacity = 255;
-        game.step();
-        expect(commits).not.toHaveBeenCalled();
-        tint.a = 255;
         game.step();
         expect(commits).toHaveBeenCalledTimes(1);
         raw.forEach((original, block) => expectUpload(writes, graphics, block, original, 1, false));

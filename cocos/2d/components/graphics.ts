@@ -202,28 +202,15 @@ export class Graphics extends UIRenderer {
     @override
     @visible(false)
     get color (): Color {
-        // The Web UI walk reads this mutable color before testing visibility.
-        if (!JSB && this._lastSyncedAlpha !== this._color.a) {
-            this._syncColor();
-        }
         return this._color;
     }
 
     set color (value) {
-        if (this._color !== value) {
-            this._color.set(value);
+        if (this._color === value) {
+            return;
         }
-        this._syncColor();
-    }
 
-    private _syncColor (): void {
-        const alpha = this._color.a;
-        if (alpha !== this._lastSyncedAlpha && this.node?.activeInHierarchy) {
-            this._lastSyncedAlpha = alpha;
-            this._updateColor();
-        } else if (JSB) {
-            this.setEntityColor(this._color);
-        }
+        this._color.set(value);
     }
 
     public static LineJoin = LineJoin;
@@ -250,7 +237,6 @@ export class Graphics extends UIRenderer {
     protected _isNeedUploadData = true;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
-    private _lastSyncedAlpha = -1;
     private _uploadedOpacity = 1;
     private _opacityScratch: Float32Array | null = null;
 
@@ -293,9 +279,6 @@ export class Graphics extends UIRenderer {
     public onEnable (): void {
         super.onEnable();
         this._updateMtlForGraphics();
-        // Deserialization may write _color before the native entity is attached.
-        this._lastSyncedAlpha = this._color.a;
-        this.setEntityColor(this._color);
     }
 
     protected override get _keepRenderData (): boolean {
