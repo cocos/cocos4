@@ -130,14 +130,14 @@ CCProgram tinted-fs %{
 
   vec4 add () {
     vec4 col = 2.0 * color * tintColor * CCSampleWithAlphaSeparated(mainTexture, uv);
-    return CCFragOutput(applyParticleNormalLighting(col, uv));
+    return CCFragOutput(ApplyParticleNormalLighting(col, uv));
   }
 
   vec4 multiply () {
     vec4 col;
     vec4 texColor = CCSampleWithAlphaSeparated(mainTexture, uv);
     col.rgb = tintColor.rgb * texColor.rgb * color.rgb * vec3(2.0);
-    return CCFragOutput(applyParticleNormalLighting(col, uv));
+    return CCFragOutput(ApplyParticleNormalLighting(col, uv));
   }
 }%
 
@@ -156,11 +156,11 @@ CCProgram no-tint-fs %{
   vec4 addSmooth () {
     vec4 col = color * CCSampleWithAlphaSeparated(mainTexture, uv);
     col.rgb *= col.a;
-    return CCFragOutput(applyParticleNormalLighting(col, uv));
+    return CCFragOutput(ApplyParticleNormalLighting(col, uv));
   }
 
   vec4 premultiplied () {
     vec4 col = color * CCSampleWithAlphaSeparated(mainTexture, uv) * color.a;
-    return CCFragOutput(applyParticleNormalLighting(col, uv));
+    return CCFragOutput(ApplyParticleNormalLighting(col, uv));
   }
 }%

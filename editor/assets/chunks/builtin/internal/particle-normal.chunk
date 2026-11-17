@@ -14,7 +14,7 @@
     vec4 particleNormalParams;
   };
 
-  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
+  vec4 ApplyParticleNormalLighting (vec4 col, vec2 texCoord) {
     // Derive the tangent frame from the animated UVs and final world position.
     // This also handles billboard rotation and meshes without tangent attributes.
     highp vec3 dpdx = dFdx(particlePositionWS);
@@ -48,7 +48,7 @@
     return col;
   }
 #else
-  vec4 applyParticleNormalLighting (vec4 col, vec2 texCoord) {
+  vec4 ApplyParticleNormalLighting (vec4 col, vec2 texCoord) {
     return col;
   }
 #endif
