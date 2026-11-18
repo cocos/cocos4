@@ -23,14 +23,14 @@
 */
 
 import {
-    _decorator, Camera, CCBoolean, CCFloat, CCInteger, Component,
+    _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component,
     Material, rendering, Texture2D,
 } from 'cc';
 
 import { EDITOR } from 'cc/env';
 
 import {
-    BloomType,
+    BloomType, LightShaftQuality,
     fillRequiredPipelineSettings, makePipelineSettings, PipelineSettings,
 } from './builtin-pipeline-types';
 
@@ -293,6 +293,136 @@ export class BuiltinPipelineSettings extends Component {
     }
     get bloomIntensity(): number {
         return this._settings.bloom.intensity;
+    }
+
+    // Light Shaft
+    @property({
+        tooltip: 'Screen-space bloom around bright sun regions from the main directional light. Off-screen or hidden regions cannot produce shafts. Use Builtin MSAA to preserve anti-aliasing when rendering off-screen.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: CCBoolean,
+    })
+    set lightShaftEnable(value: boolean) {
+        this._settings.lightShaft.enabled = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftEnable(): boolean {
+        return this._settings.lightShaft.enabled;
+    }
+
+    @property({
+        tooltip: 'Select builtin-light-shaft-bloom.mtl or a compatible material. The effect is skipped when empty.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: Material,
+    })
+    set lightShaftMaterial(value: Material | null) {
+        if (this._settings.lightShaft.material === value) {
+            return;
+        }
+        this._settings.lightShaft.material = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftMaterial(): Material | null {
+        return this._settings.lightShaft.material;
+    }
+
+    @property({
+        tooltip: 'Brightness added by the light shafts.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: CCFloat,
+        min: 0,
+    })
+    set lightShaftIntensity(value: number) {
+        this._settings.lightShaft.intensity = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftIntensity(): number {
+        return this._settings.lightShaft.intensity;
+    }
+
+    @property({
+        tooltip: 'Minimum linear scene brightness included in the sun region.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: CCFloat,
+        min: 0,
+    })
+    set lightShaftThreshold(value: number) {
+        this._settings.lightShaft.threshold = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftThreshold(): number {
+        return this._settings.lightShaft.threshold;
+    }
+
+    @property({
+        tooltip: 'Radius of the bright region around the main directional light, relative to screen height.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: CCFloat,
+        range: [0.01, 1, 0.01],
+        slide: true,
+    })
+    set lightShaftRadius(value: number) {
+        this._settings.lightShaft.radius = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftRadius(): number {
+        return this._settings.lightShaft.radius;
+    }
+
+    @property({
+        tooltip: 'Radial blur length toward the main directional light.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: CCFloat,
+        range: [0, 1, 0.01],
+        slide: true,
+    })
+    set lightShaftLength(value: number) {
+        this._settings.lightShaft.length = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftLength(): number {
+        return this._settings.lightShaft.length;
+    }
+
+    @property({
+        tooltip: 'Color multiplier for the light shafts.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+        type: Color,
+    })
+    set lightShaftTint(value: Color) {
+        this._settings.lightShaft.tint.set(value);
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftTint(): Color {
+        return this._settings.lightShaft.tint;
+    }
+
+    @type(LightShaftQuality)
+    @property({
+        tooltip: 'Two radial blurs. Low: 1/8 resolution, 2 x 4 samples. Medium: 1/4, 2 x 8. High: 1/2, 2 x 16.',
+        group: { id: 'LightShaft', name: 'Light Shaft (Post Processing)', style: 'section' },
+    })
+    set lightShaftQuality(value: LightShaftQuality) {
+        this._settings.lightShaft.quality = value;
+        if (EDITOR) {
+            this._tryEnableEditorPreview();
+        }
+    }
+    get lightShaftQuality(): LightShaftQuality {
+        return this._settings.lightShaft.quality;
     }
 
     // Color Grading (LDR)

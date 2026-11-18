@@ -28,7 +28,7 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 /* eslint-disable max-len */
-import { Material, Texture2D, ccenum, gfx } from 'cc';
+import { Color, Material, Texture2D, ccenum, gfx } from 'cc';
 
 const { SampleCount } = gfx;
 
@@ -168,6 +168,69 @@ export function fillRequiredBloom(value: Bloom): void {
     }
 }
 
+export enum LightShaftQuality {
+    LOW = 0,
+    MEDIUM = 1,
+    HIGH = 2,
+}
+ccenum(LightShaftQuality);
+
+export interface LightShaft {
+    enabled: boolean; /* false */
+    /* refcount */ material: Material | null;
+    intensity: number; /* 1 */
+    threshold: number; /* 0.8 */
+    radius: number; /* 0.35 */
+    length: number; /* 0.8 */
+    tint: Color; /* Color.WHITE */
+    quality: LightShaftQuality; /* LightShaftQuality.MEDIUM */
+    [name: string]: unknown;
+}
+
+export function makeLightShaft(): LightShaft {
+    return {
+        enabled: false,
+        material: null,
+        intensity: 1,
+        threshold: 0.8,
+        radius: 0.35,
+        length: 0.8,
+        tint: Color.WHITE.clone(),
+        quality: LightShaftQuality.MEDIUM,
+    };
+}
+
+export function fillRequiredLightShaft(value: LightShaft): void {
+    if (value.enabled === undefined) {
+        value.enabled = false;
+    }
+    if (value.material === undefined) {
+        value.material = null;
+    }
+    if (value.intensity === undefined) {
+        value.intensity = 1;
+    }
+    if (value.threshold === undefined) {
+        value.threshold = 0.8;
+    }
+    if (value.radius === undefined) {
+        value.radius = 0.35;
+    }
+    if (value.length === undefined) {
+        value.length = 0.8;
+    }
+    if (!(value.tint instanceof Color)) {
+        // Older serialized settings may contain readable color channels instead of a Color instance.
+        const tint = value.tint as Partial<Color> | null | undefined;
+        value.tint = tint && typeof tint === 'object'
+            ? new Color(tint.r ?? 255, tint.g ?? 255, tint.b ?? 255, tint.a ?? 255)
+            : Color.WHITE.clone();
+    }
+    if (value.quality === undefined) {
+        value.quality = LightShaftQuality.MEDIUM;
+    }
+}
+
 export interface ColorGrading {
     enabled: boolean; /* false */
     /* refcount */ material: Material | null;
@@ -271,6 +334,7 @@ export interface PipelineSettings {
     enableShadingScale: boolean; /* false */
     shadingScale: number; /* 0.5 */
     readonly bloom: Bloom;
+    readonly lightShaft: LightShaft;
     readonly toneMapping: ToneMapping;
     readonly colorGrading: ColorGrading;
     readonly fsr: FSR;
@@ -284,6 +348,7 @@ export function makePipelineSettings(): PipelineSettings {
         enableShadingScale: false,
         shadingScale: 0.5,
         bloom: makeBloom(),
+        lightShaft: makeLightShaft(),
         toneMapping: makeToneMapping(),
         colorGrading: makeColorGrading(),
         fsr: makeFSR(),
@@ -307,6 +372,11 @@ export function fillRequiredPipelineSettings(value: PipelineSettings): void {
         (value.bloom as Bloom) = makeBloom();
     } else {
         fillRequiredBloom(value.bloom);
+    }
+    if (!value.lightShaft) {
+        (value.lightShaft as LightShaft) = makeLightShaft();
+    } else {
+        fillRequiredLightShaft(value.lightShaft);
     }
     if (!value.toneMapping) {
         (value.toneMapping as ToneMapping) = makeToneMapping();

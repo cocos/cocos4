@@ -32,6 +32,7 @@ import { DEBUG, EDITOR } from 'cc/env';
 
 import {
     BloomType,
+    LightShaftQuality,
     makePipelineSettings,
     PipelineSettings,
 } from './builtin-pipeline-types';
@@ -88,6 +89,9 @@ export class PipelineConfigs {
     shadowMapSize = new Vec2(1, 1);
     usePlanarShadow = false;
     screenSpaceSignY = 1;
+    clipSpaceSignY = 1;
+    supportLightShaftLDR = false;
+    supportLightShaftHDR = false;
     supportDepthSample = false;
     mobileMaxSpotLightShadowMaps = 1;
 
@@ -119,6 +123,10 @@ function setupPipelineConfigs(
     configs.usePlanarShadow = shadowInfo.enabled && shadowInfo.type === renderer.scene.ShadowType.Planar;
     // Device
     configs.screenSpaceSignY = ppl.device.capabilities.screenSpaceSignY;
+    configs.clipSpaceSignY = device.capabilities.clipSpaceSignY;
+    const lightShaftFeatures = sampleFeature | FormatFeatureBit.RENDER_TARGET;
+    configs.supportLightShaftLDR = (device.getFormatFeatures(Format.RGBA8) & lightShaftFeatures) === lightShaftFeatures;
+    configs.supportLightShaftHDR = (device.getFormatFeatures(Format.RGBA16F) & lightShaftFeatures) === lightShaftFeatures;
     configs.supportDepthSample = (ppl.device.getFormatFeatures(Format.DEPTH_STENCIL) & sampleFeature) === sampleFeature;
     // Constants
     const screenSpaceSignY = device.capabilities.screenSpaceSignY;
@@ -144,6 +152,7 @@ export class CameraConfigs {
     enableFullPipeline = false;
     enableProfiler = false;
     remainingPasses = 0;
+    enableLightShaft = false;
     // Shading Scale
     enableShadingScale = false;
     shadingScale = 1.0;
@@ -850,6 +859,17 @@ export class BuiltinForwardPassBuilder implements rendering.PipelinePassBuilder 
             const msaaDepthStencilName = `MsaaDepthStencil${id}`;
             const sampleCount = cameraConfigs.settings.msaa.sampleCount;
 
+            // A post effect can become active without a window resize (for example,
+            // the sun enters the view). Ensure the newly required MSAA attachments exist.
+            if (cameraConfigs.settings.lightShaft?.enabled) {
+                ppl.addTexture(msaaRadianceName, TextureType.TEX2D, cameraConfigs.radianceFormat,
+                    width, height, 1, 1, 1, sampleCount,
+                    rendering.ResourceFlags.COLOR_ATTACHMENT, rendering.ResourceResidency.MEMORYLESS);
+                ppl.addTexture(msaaDepthStencilName, TextureType.TEX2D, Format.DEPTH_STENCIL,
+                    width, height, 1, 1, 1, sampleCount,
+                    rendering.ResourceFlags.DEPTH_STENCIL_ATTACHMENT, rendering.ResourceResidency.MEMORYLESS);
+            }
+
             const msPass = ppl.addMultisampleRenderPass(width, height, sampleCount, 0, 'default');
             msPass.name = 'MsaaForwardPass';
 
@@ -1355,6 +1375,149 @@ export class BuiltinBloomPassBuilder implements rendering.PipelinePassBuilder {
     private _originalColorDesc: RenderTextureDesc = { name: '', width: 0, height: 0 };
 }
 
+export interface LightShaftPassConfigs {
+    enableLightShaft: boolean;
+}
+
+export class BuiltinLightShaftPassBuilder implements rendering.PipelinePassBuilder {
+    private readonly _lightPosition = new Vec4();
+    private readonly _source = new Vec4();
+    private readonly _params = new Vec4();
+    private readonly _tint = new Vec4();
+    private readonly _texelSize = new Vec4();
+
+    getConfigOrder(): number {
+        // Forward must know that its resolved color will be sampled by this effect.
+        return 0;
+    }
+    getRenderOrder(): number {
+        return 250;
+    }
+    configCamera(
+        camera: Readonly<renderer.scene.Camera>,
+        pplConfigs: Readonly<PipelineConfigs>,
+        cameraConfigs: CameraConfigs & LightShaftPassConfigs): void {
+        cameraConfigs.enableLightShaft = false;
+        const settings = cameraConfigs.settings.lightShaft;
+        const light = camera.scene?.mainLight;
+        const viewport = camera.viewport;
+        // Partial viewports and orthographic cameras need a different source projection.
+        // Keep their existing render path until those cases are supported.
+        if (!settings?.enabled || !settings.material || settings.material.passes.length < 3
+            || !cameraConfigs.enableFullPipeline || !light
+            || camera.projectionType !== renderer.scene.CameraProjection.PERSPECTIVE
+            || viewport.x !== 0 || viewport.y !== 0 || viewport.width !== 1 || viewport.height !== 1
+            || !(cameraConfigs.enableHDR ? pplConfigs.supportLightShaftHDR : pplConfigs.supportLightShaftLDR)
+            || !Number.isFinite(settings.intensity) || settings.intensity <= 0
+            || !Number.isFinite(settings.radius) || settings.radius <= 0
+            || !Number.isFinite(settings.length) || settings.length <= 0
+            || !Number.isFinite(settings.threshold)) {
+            return;
+        }
+
+        // A directional light points away from the sun. w=0 projects its direction
+        // at infinity, so translating the camera cannot move the light source.
+        const direction = light.direction;
+        this._lightPosition.set(-direction.x, -direction.y, -direction.z, 0);
+        Vec4.transformMat4(this._lightPosition, this._lightPosition, camera.matView);
+        if (this._lightPosition.z >= -0.001) {
+            return;
+        }
+        Vec4.transformMat4(this._lightPosition, this._lightPosition, camera.matProj);
+        const w = this._lightPosition.w;
+        if (w <= 0.001) {
+            return;
+        }
+        const x = this._lightPosition.x / w * 0.5 + 0.5;
+        // Match the full-screen quad's texture coordinates, including Vulkan's NDC flip.
+        const y = this._lightPosition.y / w * 0.5 * pplConfigs.screenSpaceSignY * pplConfigs.clipSpaceSignY + 0.5;
+        const aspect = cameraConfigs.width / cameraConfigs.height;
+        const radius = clamp(settings.radius, 0.001, 2);
+        const outsideX = Math.max(-x, x - 1, 0) * aspect;
+        const outsideY = Math.max(-y, y - 1, 0);
+        const visibility = clamp(1 - Math.sqrt(outsideX * outsideX + outsideY * outsideY) / radius, 0, 1);
+        if (!Number.isFinite(visibility) || visibility <= 0) {
+            return;
+        }
+
+        this._source.set(x, y, radius, aspect);
+        const samples = settings.quality === LightShaftQuality.LOW ? 4
+            : settings.quality === LightShaftQuality.HIGH ? 16 : 8;
+        // Two short blurs reduce the visible sample bands of a single long blur.
+        // Their combined reach is 1 - (1 - lengthPerPass)^2.
+        const lengthPerPass = 1 - Math.sqrt(1 - clamp(settings.length, 0, 1));
+        this._params.set(Math.max(settings.threshold, 0),
+            settings.intensity * visibility * visibility * (3 - 2 * visibility),
+            lengthPerPass, samples);
+        // Inspector colors are sRGB; both the prefilter and the combine use linear RGB.
+        const tint = settings.tint;
+        this._tint.set((tint.r / 255) ** 2, (tint.g / 255) ** 2, (tint.b / 255) ** 2, 0);
+        this._texelSize.set(1 / cameraConfigs.width, 1 / cameraConfigs.height, 0, 0);
+        cameraConfigs.enableLightShaft = true;
+        ++cameraConfigs.remainingPasses;
+    }
+    setup(
+        ppl: rendering.BasicPipeline,
+        pplConfigs: Readonly<PipelineConfigs>,
+        cameraConfigs: CameraConfigs & LightShaftPassConfigs,
+        camera: renderer.scene.Camera,
+        context: PipelineContext,
+        prevRenderPass?: rendering.BasicRenderPassBuilder): rendering.BasicRenderPassBuilder | undefined {
+        if (!cameraConfigs.enableLightShaft) {
+            return prevRenderPass;
+        }
+        --cameraConfigs.remainingPasses;
+        assert(cameraConfigs.remainingPasses >= 0);
+        const settings = cameraConfigs.settings.lightShaft;
+        const material = settings.material!;
+        const divisor = settings.quality === LightShaftQuality.LOW ? 8
+            : settings.quality === LightShaftQuality.HIGH ? 2 : 4;
+        const width = Math.max(Math.floor(cameraConfigs.width / divisor), 1);
+        const height = Math.max(Math.floor(cameraConfigs.height / divisor), 1);
+        const id = cameraConfigs.renderWindowId;
+        const sourceName = `LightShaftSource_${id}`;
+        const blurName = `LightShaftBlur_${id}`;
+        // Managed targets are reused. Register here because visibility and quality
+        // may change between frames without a resize event.
+        ppl.addRenderTarget(sourceName, cameraConfigs.radianceFormat, width, height);
+        ppl.addRenderTarget(blurName, cameraConfigs.radianceFormat, width, height);
+
+        const prefilter = ppl.addRenderPass(width, height, 'cc-light-shaft-prefilter');
+        prefilter.addRenderTarget(sourceName, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
+        prefilter.addTexture(context.colorName, 'sceneColorMap');
+        this._setConstants(prefilter);
+        prefilter.addQueue(rendering.QueueHint.OPAQUE).addFullscreenQuad(material, 0);
+
+        for (let i = 0; i < 2; ++i) {
+            const blur = ppl.addRenderPass(width, height, 'cc-light-shaft-blur');
+            blur.addRenderTarget(i === 0 ? blurName : sourceName,
+                LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
+            blur.addTexture(i === 0 ? sourceName : blurName, 'lightShaftMap');
+            this._setConstants(blur);
+            blur.addQueue(rendering.QueueHint.OPAQUE).addFullscreenQuad(material, 1);
+        }
+
+        const lastPass = cameraConfigs.remainingPasses === 0;
+        const output = lastPass ? cameraConfigs.colorName : getPingPongRenderTarget(context.colorName,
+            cameraConfigs.enableShadingScale ? 'ScaledRadiance' : 'Radiance', id);
+        const combine = ppl.addRenderPass(lastPass ? cameraConfigs.nativeWidth : cameraConfigs.width,
+            lastPass ? cameraConfigs.nativeHeight : cameraConfigs.height, 'cc-light-shaft-combine');
+        combine.addRenderTarget(output, LoadOp.CLEAR, StoreOp.STORE, sClearColorTransparentBlack);
+        combine.addTexture(context.colorName, 'sceneColorMap');
+        combine.addTexture(sourceName, 'lightShaftMap');
+        this._setConstants(combine);
+        combine.addQueue(rendering.QueueHint.OPAQUE).addFullscreenQuad(material, 2);
+        context.colorName = output;
+        return combine;
+    }
+    private _setConstants(pass: rendering.BasicRenderPassBuilder): void {
+        pass.setVec4('lightShaftSource', this._source);
+        pass.setVec4('lightShaftParams', this._params);
+        pass.setVec4('lightShaftTint', this._tint);
+        pass.setVec4('lightShaftTexelSize', this._texelSize);
+    }
+}
+
 export interface ToneMappingPassConfigs {
     enableToneMapping: boolean;
     enableColorGrading: boolean;
@@ -1722,6 +1885,7 @@ if (rendering) {
         private readonly _pipelineEvent: PipelineEventProcessor = cclegacy.director.root.pipelineEvent as PipelineEventProcessor;
         private readonly _forwardPass = new BuiltinForwardPassBuilder();
         private readonly _bloomPass = new BuiltinBloomPassBuilder();
+        private readonly _lightShaftPass = new BuiltinLightShaftPassBuilder();
         private readonly _toneMappingPass = new BuiltinToneMappingPassBuilder();
         private readonly _fxaaPass = new BuiltinFXAAPassBuilder();
         private readonly _fsrPass = new BuiltinFsrPassBuilder();
@@ -1779,6 +1943,10 @@ if (rendering) {
                 passBuilders.push(this._bloomPass);
             }
 
+            if (settings.lightShaft?.enabled) {
+                passBuilders.push(this._lightShaftPass);
+            }
+
             passBuilders.push(this._toneMappingPass);
 
             if (settings.fxaa.enabled) {
@@ -1813,6 +1981,7 @@ if (rendering) {
             cameraConfigs.enableFullPipeline = (camera.visibility & (Layers.Enum.DEFAULT)) !== 0;
             cameraConfigs.enableProfiler = ppl.profiler && isGameView;
             cameraConfigs.remainingPasses = 0;
+            cameraConfigs.enableLightShaft = false;
 
             // Shading scale
             cameraConfigs.shadingScale = cameraConfigs.settings.shadingScale;
