@@ -36,13 +36,75 @@ constexpr uint32_t MAX_VERTEX_COUNT = 65536;
 constexpr uint32_t INDICES_PER_VERTEX = 3;
 constexpr uint32_t MAX_INDEX_COUNT = MAX_VERTEX_COUNT * INDICES_PER_VERTEX;
 
+// Graphics vertex layout: position.xyz, color.rgba, distance.
+constexpr uint32_t FLOATS_PER_VERTEX = 8;
+constexpr uint32_t VERTEX_STRIDE = FLOATS_PER_VERTEX * sizeof(float);
+constexpr uint32_t ALPHA_OFFSET = 6;
+
 inline uint32_t growCapacity(uint32_t needed, uint32_t current, uint32_t maxCap) {
     uint32_t cap = current > 1U ? current : 1U;
-    while (cap < needed) {
+    while (cap < needed && cap < maxCap) {
         cap *= 2;
     }
     return cap < maxCap ? cap : maxCap;
 }
+
+class GraphicsModel final : public scene::Model {
+public:
+    void resizeGeometry(size_t size) {
+        _geometry.resize(size);
+        _lastOpacity = -1.F;
+    }
+
+    void setVertices(size_t index, const float* source, uint32_t count) {
+        auto& chunk = _geometry[index];
+        chunk.paintAlpha.clear();
+        if (count) {
+            // JS can replace its arrays after updateRenderer and before the native UI walk.
+            chunk.vertices.assign(source, source + count * FLOATS_PER_VERTEX);
+        } else {
+            chunk.vertices.clear();
+        }
+    }
+
+    void updateUBOs(uint32_t stamp) override {
+        const auto* node = getNode();
+        if (node && node->_getFinalOpacity() != _lastOpacity) {
+            // The UI walk resolves this node's opacity immediately before submitting the model.
+            const float opacity = node->_getFinalOpacity();
+            for (size_t i = 0; i < _geometry.size(); ++i) {
+                auto& chunk = _geometry[i];
+                if (chunk.vertices.empty()) continue;
+                if (opacity != 1.F && chunk.paintAlpha.empty()) {
+                    chunk.paintAlpha.resize(chunk.vertices.size() / FLOATS_PER_VERTEX);
+                    for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
+                        chunk.paintAlpha[v] = chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET];
+                    }
+                }
+                for (size_t v = 0; v < chunk.paintAlpha.size(); ++v) {
+                    chunk.vertices[v * FLOATS_PER_VERTEX + ALPHA_OFFSET] = chunk.paintAlpha[v] * opacity;
+                }
+                auto* vb = getSubModels()[i]->getInputAssembler()->getVertexBuffers().front();
+                vb->update(chunk.vertices.data(), static_cast<uint32_t>(chunk.vertices.size() * sizeof(float)));
+            }
+            _lastOpacity = opacity;
+        }
+        scene::Model::updateUBOs(stamp);
+    }
+
+    void destroy() override {
+        _geometry.clear();
+        scene::Model::destroy();
+    }
+
+private:
+    struct Chunk {
+        ccstd::vector<float> vertices;
+        ccstd::vector<float> paintAlpha;
+    };
+    ccstd::vector<Chunk> _geometry;
+    float _lastOpacity{-1.F};
+};
 
 } // namespace
 
@@ -55,7 +117,7 @@ UIModelProxy::~UIModelProxy() {
 }
 
 void UIModelProxy::initModel(Node* node) {
-    _model = Root::getInstance()->createModel<scene::Model>();
+    _model = Root::getInstance()->createModel<GraphicsModel>();
     _model->setNode(node);
     _model->setTransform(node);
     _node = node;
@@ -81,8 +143,8 @@ void UIModelProxy::activeSubModels() {
                 auto* vertexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::VERTEX | gfx::BufferUsageBit::TRANSFER_DST,
                     gfx::MemoryUsageBit::DEVICE,
-                    vertexCapacity * _stride,
-                    _stride,
+                    vertexCapacity * VERTEX_STRIDE,
+                    VERTEX_STRIDE,
                 });
                 auto* indexBuffer = _device->createBuffer({
                     gfx::BufferUsageBit::INDEX | gfx::BufferUsageBit::TRANSFER_DST,
@@ -104,27 +166,33 @@ void UIModelProxy::activeSubModels() {
 }
 
 void UIModelProxy::uploadData() {
+    if (!_model) return;
     auto* entity = static_cast<RenderEntity*>(_node->getUserData());
     const auto& drawInfos = entity->getDynamicRenderDrawInfos();
     const auto& subModelList = _model->getSubModels();
-    for (size_t i = 0; i < drawInfos.size(); i++) {
-        auto* drawInfo = drawInfos[i];
+    auto* model = static_cast<GraphicsModel*>(_model.get());
+    model->resizeGeometry(subModelList.size());
+    for (size_t i = 0; i < subModelList.size(); i++) {
+        auto* drawInfo = i < drawInfos.size() ? drawInfos[i] : nullptr;
         auto* ia = subModelList.at(i)->getInputAssembler();
-        const uint32_t vertexCount = drawInfo->getVertexOffset();
-        const uint32_t indexCount = drawInfo->getIndexOffset();
-        if (vertexCount == 0 || indexCount == 0) continue;
-
-        gfx::BufferList vBuffers = ia->getVertexBuffers();
-        if (!vBuffers.empty()) {
-            gfx::Buffer* vBuffer = vBuffers[0];
-            const uint32_t neededVBytes = vertexCount * _stride;
-            if (neededVBytes > vBuffer->getSize()) {
-                const uint32_t capacity = growCapacity(vertexCount, vBuffer->getSize() / _stride, MAX_VERTEX_COUNT);
-                vBuffer->resize(capacity * _stride);
-            }
-            // pass the valid size explicitly, update(ptr) uploads the whole capacity
-            vBuffer->update(drawInfo->getVDataBuffer(), neededVBytes); // vdata
+        const uint32_t vertexCount = drawInfo ? drawInfo->getVertexOffset() : 0U;
+        const uint32_t indexCount = drawInfo ? drawInfo->getIndexOffset() : 0U;
+        const auto& vBuffers = ia->getVertexBuffers();
+        if (!vertexCount || !indexCount || vBuffers.empty() || vertexCount > MAX_VERTEX_COUNT || indexCount > MAX_INDEX_COUNT ||
+            !drawInfo->getVDataBuffer() || !drawInfo->getIDataBuffer()) {
+            model->setVertices(i, nullptr, 0);
+            ia->setVertexCount(0);
+            ia->setIndexCount(0);
+            continue;
         }
+
+        gfx::Buffer* vBuffer = vBuffers[0];
+        const uint32_t neededVBytes = vertexCount * VERTEX_STRIDE;
+        if (neededVBytes > vBuffer->getSize()) {
+            const uint32_t capacity = growCapacity(vertexCount, vBuffer->getSize() / VERTEX_STRIDE, MAX_VERTEX_COUNT);
+            vBuffer->resize(capacity * VERTEX_STRIDE);
+        }
+        model->setVertices(i, drawInfo->getVDataBuffer(), vertexCount);
         ia->setVertexCount(vertexCount); // count
 
         gfx::Buffer* iBuffer = ia->getIndexBuffer();
@@ -139,7 +207,7 @@ void UIModelProxy::uploadData() {
         // drawInfo->setModel(_model); // hack, render by model
     }
 
-    if (!drawInfos.empty()) {
+    if (!drawInfos.empty() && drawInfos[0]) {
         drawInfos[0]->setModel(_model);
     }
 }
@@ -163,6 +231,7 @@ void UIModelProxy::clear() {
     if (_model == nullptr) {
         return;
     }
+    static_cast<GraphicsModel*>(_model.get())->resizeGeometry(0);
     const auto& subModels = _model->getSubModels();
     for (const auto& subModel : subModels) {
         auto* ia = subModel->getInputAssembler();
