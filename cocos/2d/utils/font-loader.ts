@@ -23,7 +23,7 @@
 */
 
 import { warnID } from '../../core';
-import { buildFontDesc, quoteFontFamily } from './font-family';
+import { buildFontDesc, serializeFontFamily } from './font-family';
 import downloader from '../../asset/asset-manager/downloader';
 import factory from '../../asset/asset-manager/factory';
 import { TTFFont } from '../assets/ttf-font';
@@ -169,7 +169,7 @@ export function loadFont (url: string, options: Record<string, any>, onComplete:
     }
 
     // Default width reference to test whether new font is loaded correctly
-    const familyCss = quoteFontFamily(fontFamilyName);
+    const familyCss = serializeFontFamily(fontFamilyName);
     const fontDesc = buildFontDesc(40, familyCss);
 
     // Setup font face style
