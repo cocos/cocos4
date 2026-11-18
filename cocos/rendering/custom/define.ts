@@ -446,6 +446,7 @@ export function getDescBindingFromName (bindingName: string): number {
     return -1;
 }
 
+const uploadedUniforms = new WeakMap<Buffer, Float32Array>();
 function isUniformChanged (cached: Float32Array, values: number[]): boolean {
     return cached.length !== values.length || values.some((v, i) => !Object.is(Math.fround(v), cached[i]));
 }
@@ -474,13 +475,25 @@ class DescBuffManager {
     }
     updateBuffer (binding: number, descriptorSet: DescriptorSet, values: number[]): void {
         if (!this.lastUploadedBuffer || isUniformChanged(this.currUniform, values)) {
+            if (this.lastUploadedBuffer) {
+                uploadedUniforms.delete(this.lastUploadedBuffer);
+            }
             const buffer = this.buffers[this.currBuffIdx];
             this.currBuffIdx = (this.currBuffIdx + 1) % this.buffers.length;
             this.currUniform.set(values);
             buffer.update(this.currUniform);
+            uploadedUniforms.set(buffer, this.currUniform);
             this.lastUploadedBuffer = buffer;
         }
         descriptorSet.bindBuffer(binding, this.lastUploadedBuffer);
+    }
+    destroy (): void {
+        for (const buffer of this.buffers) {
+            uploadedUniforms.delete(buffer);
+            buffer.destroy();
+        }
+        this.buffers.length = 0;
+        this.lastUploadedBuffer = null;
     }
 }
 
@@ -490,16 +503,34 @@ interface LayoutUBOCache {
     constantBlockMap: Map<number, ConstantBlockInfo>;
 }
 
-const buffsMap: Map<string, DescBuffManager> = new Map();
+const pipelineCaches = new WeakMap<WebPipeline, { buffsMap: Map<string, DescBuffManager>; layouts: Map<string, LayoutUBOCache> }>();
 const pendingBlocks: Map<number, number[]> = new Map();
 
-const layouts: Map<string, LayoutUBOCache> = new Map();
+function getUBOCache (webPip: WebPipeline): { buffsMap: Map<string, DescBuffManager>; layouts: Map<string, LayoutUBOCache> } {
+    let cache = pipelineCaches.get(webPip);
+    if (!cache) {
+        cache = { buffsMap: new Map(), layouts: new Map() };
+        pipelineCaches.set(webPip, cache);
+    }
+    return cache;
+}
+
+export function destroyUBOCache (webPip: WebPipeline): void {
+    const cache = pipelineCaches.get(webPip);
+    if (!cache) { return; }
+    for (const manager of cache.buffsMap.values()) {
+        manager.destroy();
+    }
+    pipelineCaches.delete(webPip);
+}
+
 function getLayoutUBOCache (layoutName: string): LayoutUBOCache | undefined {
+    const webPip = cclegacy.director.root.pipeline as WebPipeline;
+    const { layouts } = getUBOCache(webPip);
     const descLayout = layouts.get(layoutName);
     if (descLayout) {
         return descLayout;
     }
-    const webPip = cclegacy.director.root.pipeline as WebPipeline;
     const stageId = webPip.layoutGraph.locateChild(webPip.layoutGraph.N, layoutName);
     const layout = webPip.layoutGraph.getLayout(stageId);
     const layoutData = layout.getSet(UpdateFrequency.PER_PASS);
@@ -583,6 +614,7 @@ function updateConstantBlock (block: ConstantBlockInfo, data: number[]): void {
 export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number, user: RenderData): void {
     const { constants, samplers, textures, buffers } = user;
     const webPip = cclegacy.director.root.pipeline as WebPipeline;
+    const { buffsMap } = getUBOCache(webPip);
     const lg = webPip.layoutGraph;
     const { descriptorSetData, uniformBlockMap, constantBlockMap } = getLayoutUBOCache(layout)!;
     pendingBlocks.clear();
@@ -638,7 +670,12 @@ export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number
     for (const [blockId, values] of pendingBlocks) {
         const binding = getDescBinding(blockId, descriptorSetData);
         if (binding === -1) { continue; }
-        const key = `${layout}:${blockId}:${idxRD}:${sceneId}`;
+        const boundBuffer = descriptorSet.getBuffer(binding);
+        const boundValues = boundBuffer ? uploadedUniforms.get(boundBuffer) : undefined;
+        if (boundValues && !isUniformChanged(boundValues, values)) {
+            continue;
+        }
+        const key = `${layout}:${blockId}:${sceneId}`;
         let manager = buffsMap.get(key);
         if (!manager) {
             manager = new DescBuffManager(values.length * 4);

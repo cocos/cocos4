@@ -414,4 +414,53 @@ describe('Custom pipeline per-pass UBO upload', () => {
             tracker.restore();
         }
     });
+
+    test('reuses bound GPU buffer across 128 queues writing identical 32-byte UBO and frees buffers on pipeline.destroy()', () => {
+        const tracker = trackUniformBuffers();
+        const { ppl, stageA, cleanup } = createUBOTestPipeline(true, false, '-4');
+        const dummyCam = { viewport: new Rect(0, 0, 1, 1) } as any;
+        const executor = new Executor(ppl, ppl.device, ppl.resourceGraph, ppl.layoutGraph, 64, 64);
+        const baselineBytes = tracker.liveBytes;
+
+        const runFrameWithQueues = (queueCount: number, distinctPerQueue = false): void => {
+            ppl.beginSetup();
+            const pass = ppl.addRenderPass(64, 64, stageA);
+            pass.addRenderTarget('Color0', LoadOp.CLEAR, StoreOp.STORE);
+            for (let i = 0; i < queueCount; ++i) {
+                const q = pass.addQueue(QueueHint.NONE);
+                q.setVec4('bugParam', new Vec4(distinctPerQueue ? i : 1, 2, 3, 4));
+                q.setVec4('bugExtra', new Vec4(5, 6, 7, 8));
+                q.addDraw3D(dummyCam, []);
+            }
+            ppl.endSetup();
+            ppl.compile();
+            executor.execute(ppl.renderGraph!);
+            ppl.endFrame();
+        };
+
+        try {
+            // 1 queue writing 32-byte UBO -> 1 DescBuffManager = 2 * 32 = 64 bytes
+            runFrameWithQueues(1, false);
+            expect(tracker.liveBytes - baselineBytes).toBe(64);
+
+            // 128 queues writing the SAME 32-byte UBO -> 0 extra bytes (NOT +8128 bytes)
+            runFrameWithQueues(128, false);
+            expect(tracker.liveBytes - baselineBytes).toBe(64);
+
+            // Recover to 1 queue -> still 64 bytes
+            runFrameWithQueues(1, false);
+            expect(tracker.liveBytes - baselineBytes).toBe(64);
+
+            // Even if 128 temporary queues write DISTINCT 32-byte UBOs, pipeline.destroy() frees all buffers
+            runFrameWithQueues(128, true);
+            expect(tracker.liveBytes - baselineBytes).toBe(64 + 8128);
+
+            // Destroying pipeline frees all UBO GPU buffers
+            ppl.destroy();
+            expect(tracker.liveBytes - baselineBytes).toBe(0);
+        } finally {
+            cleanup();
+            tracker.restore();
+        }
+    });
 });

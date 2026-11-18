@@ -45,7 +45,7 @@ import { GeometryRenderer } from '../geometry-renderer';
 import { Material } from '../../asset/assets';
 import { decideProfilerCamera } from '../pipeline-funcs';
 import { DebugViewCompositeType } from '../debug-view';
-import { buildReflectionProbePass, genHashValue, resetPassMGState } from './define';
+import { buildReflectionProbePass, destroyUBOCache, genHashValue, resetPassMGState } from './define';
 import { createGfxDescriptorSetsAndPipelines } from './layout-graph-utils';
 import { Root } from '../../root';
 import { Scene } from '../../scene-graph';
@@ -1360,6 +1360,7 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
         return true;
     }
     public destroy (): boolean {
+        destroyUBOCache(this);
         this._pipelineSceneData?.destroy();
         return true;
     }
