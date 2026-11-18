@@ -307,21 +307,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
     }
 
     private doUpdateScale (pass): void {
-        const ps = this._particleSystem;
-        if (ps) {
-            ps.getParticleWorldMatrix(_tempWorldTrans);
-            const handle = pass.getHandle('particleWorldMatrix');
-            if (handle) {
-                pass.setUniform(handle, _tempWorldTrans);
-            }
-            const trailMaterial = ps.getMaterialInstance(1) || this.getDefaultTrailMaterial();
-            for (const trailPass of trailMaterial?.passes || []) {
-                const trailHandle = trailPass.getHandle('particleWorldMatrix');
-                if (trailHandle) {
-                    trailPass.setUniform(trailHandle, _tempWorldTrans);
-                }
-            }
-        }
+        this.updateWorldTransform(pass);
         const nodeScale = this._node_scale;
         switch (this._particleSystem?.scaleSpace) {
         case ParticleSpace.Local:

@@ -11,7 +11,6 @@ uniform Constants {
   vec4 frameTile_velLenScale;
   vec4 scale;
   vec4 nodeRotation;
-  highp mat4 particleWorldMatrix;
 };
 
 #include <builtin/uniforms/cc-global>

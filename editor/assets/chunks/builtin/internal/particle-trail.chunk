@@ -1,6 +1,7 @@
 
 precision mediump float;
 #include <builtin/internal/particle-common>
+#include <builtin/internal/particle-transform>
 in vec3 a_position; // center position
 in vec4 a_texCoord;  // x:index y:size zw:texcoord
 in vec3 a_texCoord1; // xyz:velocity
@@ -16,8 +17,8 @@ vec4 vs_main() {
   vec4 velocity = vec4(a_texCoord1.xyz, 0);
 
   #if !CC_USE_WORLD_SPACE
-    pos = particleWorldMatrix * pos;
-    velocity = particleWorldMatrix * velocity;
+    pos = ParticleToWorld(pos);
+    velocity = ParticleToWorld(velocity);
   #endif
 
   float vertOffset = (a_texCoord.x - 0.5) * a_texCoord.y;

@@ -1329,6 +1329,8 @@ export class ParticleSystem extends ModelRenderer {
             self._needAttach = true;
         }
 
+        // Refresh even while paused, after late node transform changes.
+        thisProcessor.updateWorldTransform();
         if (!self._isPlaying) return;
 
         // update render data
