@@ -69,6 +69,7 @@ const CC_USE_EMBEDDED_ALPHA = 'CC_USE_EMBEDDED_ALPHA';
 
 const CC_RENDER_MODE = 'CC_RENDER_MODE';
 const ROTATION_OVER_TIME_MODULE_ENABLE = 'ROTATION_OVER_TIME_MODULE_ENABLE';
+const USE_NORMAL_MAP = 'USE_NORMAL_MAP';
 const INSTANCE_PARTICLE = 'CC_INSTANCE_PARTICLE';
 const RENDER_MODE_BILLBOARD = 0;
 const RENDER_MODE_STRETCHED_BILLBOARD = 1;
@@ -402,9 +403,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         }
         ps.node.getWorldMatrix(_tempWorldTrans);
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat;
-        const pass = mat!.passes[0];
-        this.doUpdateScale(pass);
-        this.doUpdateRotation(pass);
+        const pass = mat?.passes[0];
+        if (pass) {
+            this.doUpdateScale(pass);
+            this.doUpdateRotation(pass);
+        }
 
         this._updateList.forEach((value: IParticleModule, key: string): void => {
             // TODO(cjh): Bug here? _updateList is a Map, the old code uses `this._updateList['some_key'] = some_value;`
@@ -695,7 +698,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             this._renderInfo!.mainTexture = shareMaterial.getProperty('mainTexture', 0) as Texture2D;
         }
 
-        if (ps.sharedMaterial == null && this._defaultMat == null) {
+        // Renderer can destroy the cached instance when replacing a preview material.
+        if (ps.sharedMaterial == null && (!this._defaultMat || !this._defaultMat.passes.length)) {
             _matInsInfo.parent = builtinResMgr.get<Material>('default-particle-material');
             _matInsInfo.owner = this._particleSystem;
             _matInsInfo.subModelIdx = 0;
@@ -708,6 +712,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material = ps.getMaterialInstance(0) || this._defaultMat!;
+        // A custom material may still have an invalid or unavailable effect.
+        if (!mat || !mat.passes.length) {
+            warn('Particle material has no render passes. Check its effect import and selected technique.');
+            return;
+        }
         if (ps.simulationSpace === ParticleSpace.World) {
             this._defines[CC_USE_WORLD_SPACE] = true;
         } else {
@@ -754,6 +763,10 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         const roationModule = this._particleSystem._rotationOvertimeModule;
         enable = roationModule ? roationModule.enable : false;
         this._defines[ROTATION_OVER_TIME_MODULE_ENABLE] = enable;
+        // Explicitly clear the override when the material omits the disabled macro.
+        const materialDefines = (shareMaterial || mat.parent || mat).passes[0]?.defines;
+        this._defines[USE_NORMAL_MAP] = !!materialDefines?.[USE_NORMAL_MAP];
+
         this._defines[INSTANCE_PARTICLE] = this._useInstance;
 
         const matIns: MaterialInstance | null = ps.getMaterialInstance(0);
@@ -781,7 +794,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 this._trailDefines[CC_USE_WORLD_SPACE] = false;
             }
             let mat: Material | null = ps.getMaterialInstance(1);
-            if (mat === null && this._defaultTrailMat === null) {
+            if (mat === null && (!this._defaultTrailMat || !this._defaultTrailMat.passes.length)) {
                 _matInsInfo.parent = builtinResMgr.get<Material>('default-trail-material');
                 _matInsInfo.owner = this._particleSystem;
                 _matInsInfo.subModelIdx = 1;
