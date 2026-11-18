@@ -39,10 +39,10 @@ vec4 lpvs_main () {
   #endif
 
   #if !CC_USE_WORLD_SPACE
-    // simulate in world space. apply cc_matWorld matrix on CPU side.
-    pos = cc_matWorld * pos;
+    // Convert local simulation coordinates using the selected scaling space.
+    pos = particleWorldMatrix * pos;
     #if CC_RENDER_MODE == RENDER_MODE_STRETCHED_BILLBOARD
-      velocity = cc_matWorld * velocity;
+      velocity = particleWorldMatrix * velocity;
     #endif
   #endif
 

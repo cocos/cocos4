@@ -16,8 +16,8 @@ vec4 vs_main() {
   vec4 velocity = vec4(a_texCoord1.xyz, 0);
 
   #if !CC_USE_WORLD_SPACE
-    pos = cc_matWorld * pos;
-    velocity = cc_matWorld * velocity;
+    pos = particleWorldMatrix * pos;
+    velocity = particleWorldMatrix * velocity;
   #endif
 
   float vertOffset = (a_texCoord.x - 0.5) * a_texCoord.y;

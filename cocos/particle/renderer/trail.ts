@@ -475,7 +475,7 @@ export default class TrailModule {
         this._trailLifetime = this.lifeTime.evaluate(this._particleSystem!.time, 1)!;
         if (this.space === ParticleSpace.World && this._particleSystem!.simulationSpace === ParticleSpace.Local) {
             this._needTransform = true;
-            this._particleSystem!.node.getWorldMatrix(this._psTransform);
+            this._particleSystem!.getParticleWorldMatrix(this._psTransform);
             this._particleSystem!.node.getWorldRotation(_temp_quat);
         } else {
             this._needTransform = false;

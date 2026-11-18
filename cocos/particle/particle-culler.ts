@@ -129,7 +129,7 @@ export class ParticleCuller {
 
         node.invalidateChildren(TransformBit.POSITION);
         if (ps.simulationSpace === ParticleSpace.World) {
-            node.getWorldMatrix(_nodeMat);
+            ps.getParticleWorldMatrix(_nodeMat);
             node.getWorldRotation(_nodeRol);
         }
 
@@ -188,7 +188,7 @@ export class ParticleCuller {
 
     private _updateParticles (dt: number, particleLst: Particle[]): void {
         const ps = this._particleSystem;
-        ps.node.getWorldMatrix(_nodeMat);
+        ps.getParticleWorldMatrix(_nodeMat);
 
         switch (ps.scaleSpace) {
         case ParticleSpace.Local:
@@ -216,8 +216,8 @@ export class ParticleCuller {
         }
 
         if (ps.node.parent) {
-            ps.node.parent.getWorldMatrix(_nodeParentInv);
-            _nodeParentInv.invert();
+            Mat4.fromQuat(_nodeParentInv, ps.node.parent.worldRotation);
+            _nodeParentInv.transpose();
         }
 
         for (let i = 0; i < particleLst.length; ++i) {
@@ -278,7 +278,7 @@ export class ParticleCuller {
             }
         }
 
-        const worldMat = this._particleSystem.node.worldMatrix;
+        const worldMat = this._particleSystem.getParticleWorldMatrix(_nodeMat);
         for (let i = 0; i < this._particlesAll.length; ++i) {
             const p: Particle = this._particlesAll[i];
             Vec3.multiply(size, _nodeScale, p.size);
