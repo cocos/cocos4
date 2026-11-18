@@ -306,7 +306,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         }
     }
 
-    private doUpdateScale (pass): void {
+    private doUpdateScale (pass: Pass): void {
         this.updateWorldTransform(pass);
         const nodeScale = this._node_scale;
         switch (this._particleSystem?.scaleSpace) {

@@ -110,7 +110,10 @@ export abstract class ParticleSystemRendererBase {
     public setVertexAttributes (): void {
         if (this._model) {
             this.updateVertexAttrib();
-            this._model.setVertexAttributes(this._renderInfo!.renderMode === ParticleRenderMode.Mesh ? this._renderInfo!.mesh : null, this._vertAttrs);
+            this._model.setVertexAttributes(
+                this._renderInfo!.renderMode === ParticleRenderMode.Mesh ? this._renderInfo!.mesh : null,
+                this._vertAttrs,
+            );
         }
     }
 
