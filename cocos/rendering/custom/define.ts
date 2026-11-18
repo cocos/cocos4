@@ -26,7 +26,6 @@
 import { BufferInfo, Buffer, BufferUsageBit, ClearFlagBit, Color, DescriptorSet, LoadOp,
     Format, Rect, Sampler, StoreOp, Texture, Viewport, MemoryUsageBit,
     UniformBlock,
-    Device,
 } from '../../gfx';
 import { ReflectionProbe } from '../../render-scene/scene/reflection-probe';
 import { Camera, SkyBoxFlagValue } from '../../render-scene/scene/camera';
@@ -454,52 +453,59 @@ function isUniformChanged (cached: Float32Array, values: number[]): boolean {
 class DescBuffManager {
     private buffers: Buffer[] = [];
     private currBuffIdx: number = 0;
-    private device: Device;
     private currUniform: Float32Array;
     private lastUploadedBuffer: Buffer | null = null;
-    private _root;
     constructor (bufferSize: number, numBuffers: number = 2) {
-        const root = this._root = cclegacy.director.root;
+        const root = cclegacy.director.root;
         const device = (root.pipeline as WebPipeline)?.device || root.device;
-        this.device = device;
+        const { buffers } = this;
+        const bufferInfo = new BufferInfo(
+            BufferUsageBit.UNIFORM | BufferUsageBit.TRANSFER_DST,
+            MemoryUsageBit.HOST | MemoryUsageBit.DEVICE,
+            bufferSize,
+            bufferSize,
+        );
         this.currUniform = new Float32Array(bufferSize / 4);
         for (let i = 0; i < numBuffers; i++) {
-            const bufferInfo: BufferInfo = new BufferInfo(
-                BufferUsageBit.UNIFORM | BufferUsageBit.TRANSFER_DST,
-                MemoryUsageBit.HOST | MemoryUsageBit.DEVICE,
-                bufferSize,
-                bufferSize,
-            );
-            this.buffers.push(this.device.createBuffer(bufferInfo));
+            buffers.push(device.createBuffer(bufferInfo));
         }
     }
     updateBuffer (binding: number, descriptorSet: DescriptorSet, values: number[]): void {
-        if (!this.lastUploadedBuffer || isUniformChanged(this.currUniform, values)) {
-            if (this.lastUploadedBuffer) {
-                uploadedUniforms.delete(this.lastUploadedBuffer);
+        const { buffers, currUniform } = this;
+        let lastBuf = this.lastUploadedBuffer;
+        if (!lastBuf || isUniformChanged(currUniform, values)) {
+            if (lastBuf) {
+                uploadedUniforms.delete(lastBuf);
             }
-            const buffer = this.buffers[this.currBuffIdx];
-            this.currBuffIdx = (this.currBuffIdx + 1) % this.buffers.length;
-            this.currUniform.set(values);
-            buffer.update(this.currUniform);
-            uploadedUniforms.set(buffer, this.currUniform);
-            this.lastUploadedBuffer = buffer;
+            lastBuf = buffers[this.currBuffIdx];
+            this.currBuffIdx = (this.currBuffIdx + 1) % buffers.length;
+            currUniform.set(values);
+            lastBuf.update(currUniform);
+            uploadedUniforms.set(lastBuf, currUniform);
+            this.lastUploadedBuffer = lastBuf;
         }
-        descriptorSet.bindBuffer(binding, this.lastUploadedBuffer);
+        descriptorSet.bindBuffer(binding, lastBuf);
     }
     destroy (): void {
-        for (const buffer of this.buffers) {
+        const { buffers } = this;
+        for (const buffer of buffers) {
             uploadedUniforms.delete(buffer);
             buffer.destroy();
         }
-        this.buffers.length = 0;
+        buffers.length = 0;
         this.lastUploadedBuffer = null;
     }
 }
 
+interface ConstantBlockInfo {
+    offset: number;
+    buffer: number[];
+    blockId: number;
+}
+
 interface LayoutUBOCache {
     descriptorSetData: DescriptorSetData;
-    uniformBlockMap: Map<string, number[]>;
+    uniformBlockMap: Map<number, number[]>;
     constantBlockMap: Map<number, ConstantBlockInfo>;
 }
 
@@ -531,9 +537,9 @@ function getLayoutUBOCache (layoutName: string): LayoutUBOCache | undefined {
     if (descLayout) {
         return descLayout;
     }
-    const stageId = webPip.layoutGraph.locateChild(webPip.layoutGraph.N, layoutName);
-    const layout = webPip.layoutGraph.getLayout(stageId);
-    const layoutData = layout.getSet(UpdateFrequency.PER_PASS);
+    const lg = webPip.layoutGraph;
+    const stageId = lg.locateChild(lg.N, layoutName);
+    const layoutData = lg.getLayout(stageId).getSet(UpdateFrequency.PER_PASS);
     if (!layoutData) { return undefined; }
     const cache: LayoutUBOCache = { descriptorSetData: layoutData, uniformBlockMap: new Map(), constantBlockMap: new Map() };
     layouts.set(layoutName, cache);
@@ -551,96 +557,67 @@ export function getDescriptorSetDataFromLayoutId (id: number): DescriptorSetData
     return layoutData;
 }
 
-export function updateGlobalDescBinding (data: RenderData, sceneId: number, idxRD: number, layoutName = 'default'): void {
-    updatePerPassUBO(layoutName, sceneId, idxRD, data);
-}
-
-function getUniformBlock (block: string, layoutName: string): UniformBlock | undefined {
-    const webPip = cclegacy.director.root.pipeline as WebPipeline;
-    const lg = webPip.layoutGraph;
-    const nodeId = lg.locateChild(0xFFFFFFFF, layoutName);
-    const ppl = lg.getLayout(nodeId);
-    const layout = ppl.getSet(UpdateFrequency.PER_PASS)!.descriptorSetLayoutData;
-    const nameID: number = lg.attributeIndex.get(block)!;
-    return layout.uniformBlocks.get(nameID);
-}
-
-function getUniformOffset (uniform: string, block: string, layout: string): number {
-    const uniformBlock = getUniformBlock(block, layout);
-    if (!uniformBlock) return -1;
+function getUniformOffset (uniform: string, uniformBlock: UniformBlock): number {
     let offset = 0;
     for (const currUniform of uniformBlock.members) {
-        const currCount = getUBOTypeCount(currUniform.type);
         if (currUniform.name === uniform) {
             return offset;
         }
-        offset += currCount * currUniform.count;
+        offset += getUBOTypeCount(currUniform.type) * currUniform.count;
     }
     return -1;
 }
 
-class ConstantBlockInfo {
-    offset: number = -1;
-    buffer: number[] = [];
-    blockId: number = -1;
-}
-
-function addConstantBuffer (block: string, layout: string, uniformBlockMap: Map<string, number[]>): number[] | null {
-    let buffers = uniformBlockMap.get(block);
+function addConstantBuffer (blockId: number, currBlock: UniformBlock, uniformBlockMap: Map<number, number[]>): number[] {
+    let buffers = uniformBlockMap.get(blockId);
     if (buffers) {
         return buffers;
     }
-    buffers = [];
     let currCount = 0;
-    const currBlock = getUniformBlock(block, layout);
-    if (!currBlock) return null;
     for (const uniform of currBlock.members) {
         currCount += getUBOTypeCount(uniform.type) * uniform.count;
     }
-    buffers.length = currCount;
-    buffers.fill(0);
-    uniformBlockMap.set(block, buffers);
+    buffers = new Array<number>(currCount).fill(0);
+    uniformBlockMap.set(blockId, buffers);
     return buffers;
 }
 
-function updateConstantBlock (block: ConstantBlockInfo, data: number[]): void {
-    const length = Math.min(data.length, block.buffer.length - block.offset);
+function updateConstantBlock ({ buffer, blockId, offset }: ConstantBlockInfo, data: number[]): void {
+    const length = Math.min(data.length, buffer.length - offset);
     for (let i = 0; i < length; ++i) {
-        block.buffer[block.offset + i] = data[i];
+        buffer[offset + i] = data[i];
     }
-    pendingBlocks.set(block.blockId, block.buffer);
+    pendingBlocks.set(blockId, buffer);
 }
 
-export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number, user: RenderData): void {
+export function updateGlobalDescBinding (user: RenderData, sceneId: number, layout = 'default'): void {
     const { constants, samplers, textures, buffers } = user;
     const webPip = cclegacy.director.root.pipeline as WebPipeline;
     const { buffsMap } = getUBOCache(webPip);
     const lg = webPip.layoutGraph;
     const { descriptorSetData, uniformBlockMap, constantBlockMap } = getLayoutUBOCache(layout)!;
+    const descriptorSet = descriptorSetData.descriptorSet!;
+    const uniformBlocks = descriptorSetData.descriptorSetLayoutData.uniformBlocks;
     pendingBlocks.clear();
     for (const [key, data] of constants) {
         let constantBlock = constantBlockMap.get(key);
         if (!constantBlock) {
             const currMemKey = Array.from(lg.constantIndex).find(([_, v]) => v === key)![0];
-            for (const [block, blockId] of lg.attributeIndex) {
-                const constantBuff = addConstantBuffer(block, layout, uniformBlockMap);
-                if (!constantBuff) continue;
-                const offset = getUniformOffset(currMemKey, block, layout);
+            for (const [blockId, uniformBlock] of uniformBlocks) {
+                const constantBuff = addConstantBuffer(blockId, uniformBlock, uniformBlockMap);
+                const offset = getUniformOffset(currMemKey, uniformBlock);
                 // not found
                 if (offset === -1) {
                     // Although the current uniformMem does not belong to the current uniform block,
                     // it does not mean that it should not be bound to the corresponding descriptor.
                     const binding = getDescBinding(blockId, descriptorSetData);
-                    if (binding !== -1 && !descriptorSetData.descriptorSet?.getBuffer(binding)) {
+                    if (binding !== -1 && !descriptorSet.getBuffer(binding)) {
                         pendingBlocks.set(blockId, constantBuff);
                     }
                     continue;
                 }
-                constantBlockMap.set(key, new ConstantBlockInfo());
-                constantBlock = constantBlockMap.get(key)!;
-                constantBlock.buffer = constantBuff;
-                constantBlock.blockId = blockId;
-                constantBlock.offset = offset;
+                constantBlock = { buffer: constantBuff, blockId, offset };
+                constantBlockMap.set(key, constantBlock);
                 updateConstantBlock(constantBlock, data);
             }
         } else {
@@ -648,7 +625,6 @@ export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number
         }
     }
 
-    const descriptorSet = descriptorSetData.descriptorSet!;
     for (const [key, value] of textures) {
         const bindId = getDescBinding(key, descriptorSetData);
         if (bindId === -1) { continue; }
