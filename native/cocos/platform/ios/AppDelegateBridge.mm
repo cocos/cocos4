@@ -35,7 +35,7 @@ cc::IOSPlatform *_platform = nullptr;
     CC_ASSERT_NOT_NULL(_platform);
     
     // Create main system window
-    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect bounds = application.delegate.window.rootViewController.view.bounds;
     cc::ISystemWindowInfo info;
     info.width  = static_cast<int32_t>(bounds.size.width);
     info.height = static_cast<int32_t>(bounds.size.height);

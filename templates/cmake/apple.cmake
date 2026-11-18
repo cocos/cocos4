@@ -69,6 +69,14 @@ macro(cc_ios_before_target _target_name)
         ${CC_PROJECT_DIR}/ViewController.h
     )
 
+    # Existing exported projects may still use the AppDelegate-only template.
+    if(EXISTS ${CC_PROJECT_DIR}/SceneDelegate.mm)
+        list(APPEND CC_PROJ_SOURCES
+            ${CC_PROJECT_DIR}/SceneDelegate.mm
+            ${CC_PROJECT_DIR}/SceneDelegate.h
+        )
+    endif()
+
     list(APPEND CC_ALL_SOURCES ${CC_PROJ_SOURCES} ${CC_ASSET_FILES} ${CC_COMMON_SOURCES})
     cc_common_before_target(${CC_EXECUTABLE_NAME})
 endmacro()
