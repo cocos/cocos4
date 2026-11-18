@@ -446,15 +446,20 @@ export function getDescBindingFromName (bindingName: string): number {
     return -1;
 }
 
+function isUniformChanged (cached: Float32Array, values: number[]): boolean {
+    return cached.length !== values.length || values.some((v, i) => !Object.is(Math.fround(v), cached[i]));
+}
+
 class DescBuffManager {
     private buffers: Buffer[] = [];
     private currBuffIdx: number = 0;
     private device: Device;
-    public currUniform: Float32Array;
+    private currUniform: Float32Array;
+    private lastUploadedBuffer: Buffer | null = null;
     private _root;
     constructor (bufferSize: number, numBuffers: number = 2) {
         const root = this._root = cclegacy.director.root;
-        const device = root.device;
+        const device = (root.pipeline as WebPipeline)?.device || root.device;
         this.device = device;
         this.currUniform = new Float32Array(bufferSize / 4);
         for (let i = 0; i < numBuffers; i++) {
@@ -467,27 +472,29 @@ class DescBuffManager {
             this.buffers.push(this.device.createBuffer(bufferInfo));
         }
     }
-    getCurrentBuffer (): Buffer {
-        const { director } = cclegacy;
-        this.currBuffIdx = director.getTotalFrames() % this.buffers.length;
-        return this.buffers[this.currBuffIdx];
-    }
-    updateData (vals: number[]): void {
-        this.currUniform.set(vals);
-    }
-    updateBuffer (bindId: number, setData: DescriptorSetData): void {
-        const descriptorSet = setData.descriptorSet!;
-        const buffer = this.getCurrentBuffer();
-        buffer.update(this.currUniform);
-        bindGlobalDesc(descriptorSet, bindId, buffer);
+    updateBuffer (binding: number, descriptorSet: DescriptorSet, values: number[]): void {
+        if (!this.lastUploadedBuffer || isUniformChanged(this.currUniform, values)) {
+            const buffer = this.buffers[this.currBuffIdx];
+            this.currBuffIdx = (this.currBuffIdx + 1) % this.buffers.length;
+            this.currUniform.set(values);
+            buffer.update(this.currUniform);
+            this.lastUploadedBuffer = buffer;
+        }
+        descriptorSet.bindBuffer(binding, this.lastUploadedBuffer);
     }
 }
 
-const buffsMap: Map<string, DescBuffManager> = new Map();
-const currBindBuffs: Map<string, number> = new Map();
+interface LayoutUBOCache {
+    descriptorSetData: DescriptorSetData;
+    uniformBlockMap: Map<string, number[]>;
+    constantBlockMap: Map<number, ConstantBlockInfo>;
+}
 
-const layouts: Map<string, DescriptorSetData> = new Map();
-export function getDescriptorSetDataFromLayout (layoutName: string): DescriptorSetData | undefined {
+const buffsMap: Map<string, DescBuffManager> = new Map();
+const pendingBlocks: Map<number, number[]> = new Map();
+
+const layouts: Map<string, LayoutUBOCache> = new Map();
+function getLayoutUBOCache (layoutName: string): LayoutUBOCache | undefined {
     const descLayout = layouts.get(layoutName);
     if (descLayout) {
         return descLayout;
@@ -496,8 +503,14 @@ export function getDescriptorSetDataFromLayout (layoutName: string): DescriptorS
     const stageId = webPip.layoutGraph.locateChild(webPip.layoutGraph.N, layoutName);
     const layout = webPip.layoutGraph.getLayout(stageId);
     const layoutData = layout.getSet(UpdateFrequency.PER_PASS);
-    layouts.set(layoutName, layoutData!);
-    return layoutData;
+    if (!layoutData) { return undefined; }
+    const cache: LayoutUBOCache = { descriptorSetData: layoutData, uniformBlockMap: new Map(), constantBlockMap: new Map() };
+    layouts.set(layoutName, cache);
+    return cache;
+}
+
+export function getDescriptorSetDataFromLayout (layoutName: string): DescriptorSetData | undefined {
+    return getLayoutUBOCache(layoutName)?.descriptorSetData;
 }
 
 export function getDescriptorSetDataFromLayoutId (id: number): DescriptorSetData | undefined {
@@ -535,37 +548,18 @@ function getUniformOffset (uniform: string, block: string, layout: string): numb
     return -1;
 }
 
-const uniformBlockMap: Map<string, number[]> = new Map();
 class ConstantBlockInfo {
     offset: number = -1;
     buffer: number[] = [];
     blockId: number = -1;
 }
-const constantBlockMap: Map<number, ConstantBlockInfo> = new Map();
-function copyToConstantBuffer (target: number[], val: number[], offset: number): boolean {
-    let isImparity = false;
-    if (offset < 0 || offset > target.length) {
-        return isImparity;
-    }
-    const length = Math.min(val.length, target.length - offset);
 
-    for (let i = 0; i < length; i++) {
-        if (target[offset + i] !== val[i]) {
-            target[offset + i] = val[i];
-            isImparity = true;
-        }
-    }
-    return isImparity;
-}
-
-function addConstantBuffer (block: string, layout: string): number[] | null {
+function addConstantBuffer (block: string, layout: string, uniformBlockMap: Map<string, number[]>): number[] | null {
     let buffers = uniformBlockMap.get(block);
     if (buffers) {
         return buffers;
     }
     buffers = [];
-    const webPip = cclegacy.director.root.pipeline as WebPipeline;
-    const lg = webPip.layoutGraph;
     let currCount = 0;
     const currBlock = getUniformBlock(block, layout);
     if (!currBlock) return null;
@@ -578,61 +572,36 @@ function addConstantBuffer (block: string, layout: string): number[] | null {
     return buffers;
 }
 
-function updateGlobalDescBuffer (descKey: string, vals: number[]): void {
-    let currDescBuff = buffsMap.get(descKey);
-    if (!currDescBuff) {
-        buffsMap.set(descKey, new DescBuffManager(vals.length * 4, 2));
-        currDescBuff = buffsMap.get(descKey);
+function updateConstantBlock (block: ConstantBlockInfo, data: number[]): void {
+    const length = Math.min(data.length, block.buffer.length - block.offset);
+    for (let i = 0; i < length; ++i) {
+        block.buffer[block.offset + i] = data[i];
     }
-    currDescBuff!.updateData(vals);
-}
-
-function updateConstantBlock (
-    constantBuff: ConstantBlockInfo,
-    data: number[],
-    descriptorSetData: DescriptorSetData,
-    sceneId: number,
-    idxRD: number,
-): void {
-    const blockId = constantBuff.blockId;
-    const buffer = constantBuff.buffer;
-    const isImparity = copyToConstantBuffer(buffer, data, constantBuff.offset);
-    const bindId = getDescBinding(blockId, descriptorSetData);
-    const desc = descriptorSetData.descriptorSet!;
-    if (isImparity || !desc.getBuffer(bindId) && bindId !== -1) {
-        const descKey = `${blockId}${bindId}${idxRD}${sceneId}`;
-        currBindBuffs.set(descKey, bindId);
-        updateGlobalDescBuffer(descKey, buffer);
-    }
-}
-
-function updateDefaultConstantBlock (blockId: number, sceneId: number, idxRD: number, vals: number[], setData: DescriptorSetData): void {
-    const bindId = getDescBinding(blockId, setData);
-    if (bindId === -1) { return; }
-    const descKey = `${blockId}${bindId}${idxRD}${sceneId}`;
-    currBindBuffs.set(descKey, bindId);
-    updateGlobalDescBuffer(descKey, vals);
+    pendingBlocks.set(block.blockId, block.buffer);
 }
 
 export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number, user: RenderData): void {
     const { constants, samplers, textures, buffers } = user;
     const webPip = cclegacy.director.root.pipeline as WebPipeline;
     const lg = webPip.layoutGraph;
-    const descriptorSetData = getDescriptorSetDataFromLayout(layout)!;
-    currBindBuffs.clear();
+    const { descriptorSetData, uniformBlockMap, constantBlockMap } = getLayoutUBOCache(layout)!;
+    pendingBlocks.clear();
     for (const [key, data] of constants) {
         let constantBlock = constantBlockMap.get(key);
         if (!constantBlock) {
             const currMemKey = Array.from(lg.constantIndex).find(([_, v]) => v === key)![0];
             for (const [block, blockId] of lg.attributeIndex) {
-                const constantBuff = addConstantBuffer(block, layout);
+                const constantBuff = addConstantBuffer(block, layout, uniformBlockMap);
                 if (!constantBuff) continue;
                 const offset = getUniformOffset(currMemKey, block, layout);
                 // not found
                 if (offset === -1) {
                     // Although the current uniformMem does not belong to the current uniform block,
                     // it does not mean that it should not be bound to the corresponding descriptor.
-                    updateDefaultConstantBlock(blockId, sceneId, idxRD, constantBuff, descriptorSetData);
+                    const binding = getDescBinding(blockId, descriptorSetData);
+                    if (binding !== -1 && !descriptorSetData.descriptorSet?.getBuffer(binding)) {
+                        pendingBlocks.set(blockId, constantBuff);
+                    }
                     continue;
                 }
                 constantBlockMap.set(key, new ConstantBlockInfo());
@@ -640,10 +609,10 @@ export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number
                 constantBlock.buffer = constantBuff;
                 constantBlock.blockId = blockId;
                 constantBlock.offset = offset;
-                updateConstantBlock(constantBlock, data, descriptorSetData, sceneId, idxRD);
+                updateConstantBlock(constantBlock, data);
             }
         } else {
-            updateConstantBlock(constantBlock, data, descriptorSetData, sceneId, idxRD);
+            updateConstantBlock(constantBlock, data);
         }
     }
 
@@ -666,15 +635,22 @@ export function updatePerPassUBO (layout: string, sceneId: number, idxRD: number
             bindGlobalDesc(descriptorSet, bindId, value);
         }
     }
-    for (const [key, value] of currBindBuffs) {
-        const buffManager = buffsMap.get(key)!;
-        buffManager.updateBuffer(value, descriptorSetData);
+    for (const [blockId, values] of pendingBlocks) {
+        const binding = getDescBinding(blockId, descriptorSetData);
+        if (binding === -1) { continue; }
+        const key = `${layout}:${blockId}:${idxRD}:${sceneId}`;
+        let manager = buffsMap.get(key);
+        if (!manager) {
+            manager = new DescBuffManager(values.length * 4);
+            buffsMap.set(key, manager);
+        }
+        manager.updateBuffer(binding, descriptorSet, values);
     }
     for (const [key, value] of buffers) {
         const bindId = getDescBinding(key, descriptorSetData);
         if (bindId === -1) { continue; }
         const buffer = descriptorSet.getBuffer(bindId);
-        if (!buffer) {
+        if (buffer !== value) {
             bindGlobalDesc(descriptorSet, bindId, value);
         }
     }
