@@ -651,7 +651,7 @@ void setLegacyTextureUBOView(
 
 namespace {
 
-float kLightMeterScale{10000.0F};
+constexpr float kLightMeterScale = scene::Camera::getStandardLightMeterScale();
 
 } // namespace
 

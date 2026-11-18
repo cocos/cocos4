@@ -701,7 +701,7 @@ export function bool (val): boolean {
 export function AlignUp (value: number, alignment: number): number {
     return (value + (alignment - 1)) & ~(alignment - 1);
 }
-const kLightMeterScale = 10000;
+const kLightMeterScale = Camera.standardLightMeterScale;
 export function SetLightUBO (
     light: Light | null,
     bHDR: boolean,

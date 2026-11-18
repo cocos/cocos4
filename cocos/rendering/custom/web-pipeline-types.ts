@@ -674,7 +674,7 @@ export class WebSetter implements Setter {
         this.setVec4('cc_lightSizeRangeAngle', _uboVec);
 
         const isHDR = sceneData.isHDR;
-        const lightMeterScale = 10000.0;
+        const lightMeterScale = Camera.standardLightMeterScale;
         _uboVec.set(light.color.x, light.color.y, light.color.z, 0);
         if (light.useColorTemperature) {
             const finalColor = light.finalColor;
@@ -707,7 +707,7 @@ export class WebSetter implements Setter {
         _uboVec.set(light.direction.x, light.direction.y, light.direction.z, 0);
         this.setVec4('cc_lightDir', _uboVec);
         const isHDR = sceneData.isHDR;
-        const lightMeterScale = 10000.0;
+        const lightMeterScale = Camera.standardLightMeterScale;
         _uboVec.set(light.color.x, light.color.y, light.color.z, 0);
         if (light.useColorTemperature) {
             const finalColor = light.finalColor;
@@ -733,7 +733,7 @@ export class WebSetter implements Setter {
         _uboVec.set(0.0, light.range, 0.0, 0.0);
         this.setVec4('cc_lightSizeRangeAngle', _uboVec);
         const isHDR = sceneData.isHDR;
-        const lightMeterScale = 10000.0;
+        const lightMeterScale = Camera.standardLightMeterScale;
         if (light.useColorTemperature) {
             const finalColor = light.finalColor;
             _uboVec.x = finalColor.x;
