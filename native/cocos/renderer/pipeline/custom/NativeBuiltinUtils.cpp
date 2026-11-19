@@ -651,7 +651,7 @@ void setLegacyTextureUBOView(
 
 namespace {
 
-constexpr float kLightMeterScale = scene::Camera::getStandardLightMeterScale();
+constexpr float LIGHT_METER_SCALE = scene::Camera::getStandardLightMeterScale();
 
 } // namespace
 
@@ -725,7 +725,7 @@ void setLightUBO(
     }
 
     if (bHDR) {
-        lightBufferData[index] = luminanceHDR * exposure * kLightMeterScale;
+        lightBufferData[index] = luminanceHDR * exposure * LIGHT_METER_SCALE;
     } else {
         lightBufferData[index] = luminanceLDR;
     }
