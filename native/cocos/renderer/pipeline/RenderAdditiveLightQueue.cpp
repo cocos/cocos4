@@ -63,6 +63,7 @@ RenderAdditiveLightQueue::RenderAdditiveLightQueue(RenderPipeline *pipeline) : _
     _dynamicOffsets.resize(1, 0);
     _phaseID = getPhaseID("forward-add");
     _shadowUBO.fill(0.F);
+    _lightMeterScale = scene::Camera::getStandardLightMeterScale();
 }
 
 void RenderAdditiveLightQueue::recordCommandBuffer(gfx::Device *device, scene::Camera *camera, gfx::RenderPass *renderPass, gfx::CommandBuffer *cmdBuffer) {

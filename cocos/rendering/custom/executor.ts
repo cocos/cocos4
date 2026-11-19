@@ -374,7 +374,7 @@ class BlitDesc {
     private _stageDesc: DescriptorSet | undefined;
     // If VOLUMETRIC_LIGHTING is turned on, it needs to be assigned
     private _lightVolumeBuffer: Buffer | null = null;
-    private _lightMeterScale = 10000.0;
+    private _lightMeterScale = Camera.standardLightMeterScale;
     private _lightBufferData!: Float32Array;
 
     get screenQuad (): PipelineInputAssemblerData | null { return this._screenQuad; }

@@ -169,7 +169,7 @@ public:
      * luminance unit scale used by area lights
      */
     static constexpr float getStandardLightMeterScale() {
-        return 10000.F;
+        return 1.F;
     }
 
     bool initialize(const ICameraInfo &info);

@@ -419,7 +419,7 @@ export class Camera {
      * @zh 默认局部光源使用的亮度单位缩放。
      */
     public static get standardLightMeterScale (): number {
-        return 10000.0;
+        return 1.0;
     }
 
     /**

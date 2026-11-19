@@ -50,6 +50,7 @@ framegraph::StringHandle fgStrHandleClusterBuildPass = framegraph::FrameGraph::s
 framegraph::StringHandle fgStrHandleClusterCullingPass = framegraph::FrameGraph::stringToHandle("clusterCullingPass");
 
 ClusterLightCulling::ClusterLightCulling(RenderPipeline *pipeline) : _pipeline(pipeline) {
+    _lightMeterScale = scene::Camera::getStandardLightMeterScale();
 }
 
 ClusterLightCulling::~ClusterLightCulling() = default;

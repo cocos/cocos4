@@ -139,7 +139,7 @@ void NativeSetter::setBuiltinSpotLightFrustumConstants(const scene::SpotLight *l
 
 namespace {
 
-constexpr float LIGHT_METER_SCALE = 10000.0F;
+constexpr float LIGHT_METER_SCALE = scene::Camera::getStandardLightMeterScale();
 constexpr bool ENABLE_NEW_MULTI_LIGHT = false;
 
 } // namespace
