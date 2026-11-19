@@ -33,6 +33,7 @@ import { scene } from '../render-scene';
 import ColorOverLifetimeModule from './animator/color-overtime';
 import CurveRange, { Mode } from './animator/curve-range';
 import ForceOvertimeModule from './animator/force-overtime';
+import { ForceFieldModule } from './animator/force-field';
 import GradientRange from './animator/gradient-range';
 import LimitVelocityOvertimeModule from './animator/limit-velocity-overtime';
 import RotationOvertimeModule from './animator/rotation-overtime';
@@ -716,6 +717,34 @@ export class ParticleSystem extends ModelRenderer {
         this._textureAnimationModule = val;
     }
 
+    @type(ForceFieldModule)
+    @serializable
+    public _forceFieldModule: ForceFieldModule | null = null;
+
+    /** Spherical force field, supported only by the CPU particle renderer. */
+    @type(ForceFieldModule)
+    @displayOrder(24)
+    @visible(function (this: ParticleSystem) { return !this.renderer.useGPU; })
+    @tooltip('i18n:particle_system.forceFieldModule')
+    public get forceFieldModule (): ForceFieldModule | null {
+        if (EDITOR && !this._forceFieldModule) {
+            this._forceFieldModule = new ForceFieldModule();
+            this._forceFieldModule.bindTarget(this.processor);
+        }
+        return this._forceFieldModule;
+    }
+
+    public set forceFieldModule (value: ForceFieldModule | null) {
+        if (!value || value === this._forceFieldModule) return;
+        if (this._forceFieldModule) {
+            this.processor?.enableModule(this._forceFieldModule.name, false, this._forceFieldModule);
+            this._forceFieldModule.target = null;
+        }
+        this._forceFieldModule = value;
+        value.bindTarget(this.processor);
+        this.processor?.enableModule(value.name, value.enable, value);
+    }
+
     // noise module
     /**
      * @en Noise module which can add some interesting effects.
@@ -947,6 +976,7 @@ export class ParticleSystem extends ModelRenderer {
         if (this._velocityOvertimeModule) this._velocityOvertimeModule.bindTarget(this.processor);
         if (this._textureAnimationModule) this._textureAnimationModule.bindTarget(this.processor);
         if (this._noiseModule) this._noiseModule.bindTarget(this.processor);
+        if (this._forceFieldModule) this._forceFieldModule.bindTarget(this.processor);
     }
 
     // TODO: Fast forward current particle system by simulating particles over given period of time, then pause it.

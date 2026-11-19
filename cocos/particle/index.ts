@@ -41,6 +41,7 @@ export {
     Burst,
 };
 
+export { ForceFieldModule } from './animator/force-field';
 export * from './deprecated';
 
 cclegacy.ParticleUtils = ParticleUtils;

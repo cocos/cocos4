@@ -365,6 +365,13 @@ module.exports = link(mixin({
         fit_height: '自动缩放 Canvas 使设计分辨率的高度充满设备屏幕的高度',
         fit_width: '自动缩放 Canvas 使设计分辨率的宽度充满设备屏幕的宽度',
     },
+    forceFieldModule: {
+        space: '力场坐标空间。',
+        center: '所选空间中的力场中心。',
+        radius: '力场半径，零表示不施加力。',
+        strength: '加速度强度：正值排斥，负值吸引。',
+        falloff: '距离衰减指数：零为恒定，一为线性衰减。',
+    },
     forceOvertimeModule: {
         x: 'X 轴方向上的加速度分量',
         y: 'Y 轴方向上的加速度分量',
@@ -743,6 +750,7 @@ module.exports = link(mixin({
         shapeModule: '粒子发射器模块',
         sizeOvertimeModule: '粒子大小模块',
         velocityOvertimeModule: '粒子速度模块',
+        forceFieldModule: '球形力场模块（仅支持 CPU 粒子）',
         forceOvertimeModule: '粒子加速度模块',
         limitVelocityOvertimeModule: '粒子限制速度模块（只支持 CPU 粒子）',
         rotationOvertimeModule: '粒子旋转模块',
