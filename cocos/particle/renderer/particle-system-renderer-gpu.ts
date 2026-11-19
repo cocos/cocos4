@@ -306,7 +306,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         }
     }
 
-    private doUpdateScale (pass): void {
+    private doUpdateScale (pass: Pass): void {
+        this.updateWorldTransform(pass);
         const nodeScale = this._node_scale;
         switch (this._particleSystem?.scaleSpace) {
         case ParticleSpace.Local:
@@ -384,6 +385,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         pass.setUniform(this._uRotHandle, _world_rot);
 
         this.doUpdateRotation(pass);
+        this.doUpdateScale(pass);
     }
 
     public initShaderUniform (mat: Material): void {

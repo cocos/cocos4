@@ -106,14 +106,25 @@ export class ParticleSystem extends ModelRenderer {
     public startColor = new GradientRange();
 
     /**
-     * @en The space of particle scaling.
-     * @zh 计算粒子缩放的空间。
+     * @en Scaling for particle size and simulation offsets. Local excludes ancestor scale; World includes it.
+     * @zh 粒子尺寸和模拟偏移的缩放空间。Local 仅使用自身缩放，World 包含祖先节点缩放。
      */
     @type(ParticleSpace)
     @serializable
     @displayOrder(9)
     @tooltip('i18n:particle_system.scaleSpace')
     public scaleSpace = ParticleSpace.Local;
+
+    /**
+     * Simulation-to-world transform, retaining the emitter's world position and rotation.
+     * @engineInternal
+     */
+    public getParticleWorldMatrix (out: Mat4): Mat4 {
+        if (this.scaleSpace === ParticleSpace.Local) {
+            return Mat4.fromRTS(out, this.node.worldRotation, this.node.worldPosition, this.node.scale);
+        }
+        return this.node.getWorldMatrix(out);
+    }
 
     /**
      * @en Whether to modify particle size on XYZ axis.
@@ -1318,6 +1329,8 @@ export class ParticleSystem extends ModelRenderer {
             self._needAttach = true;
         }
 
+        // Refresh even while paused, after late node transform changes.
+        thisProcessor.updateWorldTransform();
         if (!self._isPlaying) return;
 
         // update render data
@@ -1354,7 +1367,7 @@ export class ParticleSystem extends ModelRenderer {
         }
 
         if (self._simulationSpace === ParticleSpace.World) {
-            node.getWorldMatrix(_world_mat);
+            self.getParticleWorldMatrix(_world_mat);
             node.getWorldRotation(_world_rol);
         }
 
