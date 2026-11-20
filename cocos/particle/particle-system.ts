@@ -724,7 +724,7 @@ export class ParticleSystem extends ModelRenderer {
     /** Spherical force field, supported only by the CPU particle renderer. */
     @type(ForceFieldModule)
     @displayOrder(24)
-    @visible(function (this: ParticleSystem) { return !this.renderer.useGPU; })
+    @visible(function isForceFieldVisible (this: ParticleSystem) { return !this.renderer.useGPU; })
     @tooltip('i18n:particle_system.forceFieldModule')
     public get forceFieldModule (): ForceFieldModule | null {
         if (EDITOR && !this._forceFieldModule) {

@@ -100,7 +100,7 @@ export class ForceFieldModule extends ParticleModuleBase {
         Vec3.subtract(offset, offset, this.center);
         const distance = offset.length();
         if (distance <= 1e-8 || distance >= this.radius) return;
-        const attenuation = Math.pow(1 - distance / this.radius, Math.max(0, this.falloff));
+        const attenuation = (1 - distance / this.radius) ** Math.max(0, this.falloff);
         Vec3.multiplyScalar(offset, offset, this.strength * attenuation / distance);
         if (this._transform) Vec3.transformMat4Normal(offset, offset, this._toSimulation);
         Vec3.scaleAndAdd(p.velocity, p.velocity, offset, dt);
