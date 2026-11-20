@@ -171,12 +171,12 @@ export class AnimationCache {
         const iUint16Buf = new Uint16Array(ic);
 
         const HEAPU8: Uint8Array = spine.wasmUtil.wasm.HEAPU8;
-        const vPtr = model.vPtr;
+        const vPtr: number = model.vPtr;
         const vLength = vc * Float32Array.BYTES_PER_ELEMENT * floatStride;
         // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
         vUint8Buf.set(HEAPU8.subarray(vPtr, vPtr + vLength));
 
-        const iPtr = model.iPtr;
+        const iPtr: number = model.iPtr;
         const iLength = Uint16Array.BYTES_PER_ELEMENT * ic;
         // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
         const iUint8Buf = new Uint8Array(iUint16Buf.buffer);
@@ -468,6 +468,11 @@ class SkeletonCache {
                 }
             }
             const skeletonInfo = this._skeletonCache[uuid];
+            if (skeletonInfo) {
+                for (const animationName in skeletonInfo.animationsCache) {
+                    skeletonInfo.animationsCache[animationName]?.destroy();
+                }
+            }
             const skeleton = skeletonInfo && skeletonInfo.skeleton;
             if (skeleton) {
                 spine.wasmUtil.destroySpineSkeleton(skeleton);
@@ -475,6 +480,7 @@ class SkeletonCache {
             if (skeletonInfo) {
                 delete this._skeletonCache[uuid];
             }
+            this._sharedCacheMap.delete(uuid);
         } else {
             const animationPool = this._animationPool;
             for (const key in animationPool) {

@@ -7,6 +7,7 @@ public:
     static void initMeshMemory();
     static void releaseMeshMemory();
     static void reset();
+    static bool hasSpace(uint32_t vertexCount, uint32_t indexCount, uint32_t byteStride);
     static void moveVB(uint32_t count);
     static void moveIB(uint32_t count);
     static uint8_t *queryVBuffer();
