@@ -34,7 +34,8 @@
     "pack:npm": "node scripts/npm/pack-engine-npm.js",
     "pack:npm:web": "node scripts/npm/pack-engine-npm.js --kind web",
     "pack:npm:editor": "node scripts/npm/pack-engine-npm.js --kind editor",
-    "test:npm": "node --test scripts/npm/test/*.test.cjs"
+    "test:npm": "node --test scripts/npm/test/*.test.cjs",
+    "pack:npm:artifacts": "node scripts/npm/pack-artifacts.cjs"
   },
   "repository": {
     "type": "git",
