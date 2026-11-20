@@ -53,7 +53,8 @@ int Screen::getDPI() const {
 }
 
 float Screen::getDevicePixelRatio() const {
-    return [[UIScreen mainScreen] nativeScale];
+    UIScreen *screen = UIApplication.sharedApplication.delegate.window.screen;
+    return (screen ?: UIScreen.mainScreen).nativeScale;
 }
 
 void Screen::setKeepScreenOn(bool value) {
@@ -61,29 +62,80 @@ void Screen::setKeepScreenOn(bool value) {
 }
 
 Screen::Orientation Screen::getDeviceOrientation() const {
-    Orientation orientation = Orientation::PORTRAIT;
-    switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+    UIApplication *application = UIApplication.sharedApplication;
+    UIWindow *window = application.delegate.window;
+    UIInterfaceOrientation interfaceOrientation = UIInterfaceOrientationUnknown;
+    BOOL hasWindowScene = NO;
+    if (@available(iOS 13.0, *)) {
+        hasWindowScene = window.windowScene != nil;
+        // Older Xcode SDKs do not declare effectiveGeometry.
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 160000
+        if (@available(iOS 16.0, *)) {
+            interfaceOrientation = window.windowScene.effectiveGeometry.interfaceOrientation;
+        } else
+#endif
+        {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            interfaceOrientation = window.windowScene.interfaceOrientation;
+#pragma clang diagnostic pop
+        }
+    }
+    if (!hasWindowScene) {
+        // Preserve compatibility with existing projects using the legacy template.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        interfaceOrientation = application.statusBarOrientation;
+#pragma clang diagnostic pop
+    }
+
+    if (interfaceOrientation == UIInterfaceOrientationUnknown) {
+        if (_hasValidOrientation) {
+            return _lastOrientation;
+        }
+        // A scene may not have an orientation yet during startup. Choose an
+        // allowed orientation rather than aborting or forcing landscape games to portrait.
+        UIInterfaceOrientationMask supported = [application supportedInterfaceOrientationsForWindow:window];
+        if (window.rootViewController) {
+            supported &= window.rootViewController.supportedInterfaceOrientations;
+        }
+        if (supported & UIInterfaceOrientationMaskPortrait) {
+            return Orientation::PORTRAIT;
+        }
+        if (supported & UIInterfaceOrientationMaskLandscapeRight) {
+            return Orientation::LANDSCAPE_RIGHT;
+        }
+        if (supported & UIInterfaceOrientationMaskLandscapeLeft) {
+            return Orientation::LANDSCAPE_LEFT;
+        }
+        if (supported & UIInterfaceOrientationMaskPortraitUpsideDown) {
+            return Orientation::PORTRAIT_UPSIDE_DOWN;
+        }
+        return _lastOrientation;
+    }
+
+    switch (interfaceOrientation) {
         case UIInterfaceOrientationLandscapeRight:
-            orientation = Orientation::LANDSCAPE_RIGHT;
+            _lastOrientation = Orientation::LANDSCAPE_RIGHT;
             break;
 
         case UIInterfaceOrientationLandscapeLeft:
-            orientation = Orientation::LANDSCAPE_LEFT;
+            _lastOrientation = Orientation::LANDSCAPE_LEFT;
             break;
 
         case UIInterfaceOrientationPortraitUpsideDown:
-            orientation = Orientation::PORTRAIT_UPSIDE_DOWN;
+            _lastOrientation = Orientation::PORTRAIT_UPSIDE_DOWN;
             break;
 
         case UIInterfaceOrientationPortrait:
-            orientation = Orientation::PORTRAIT;
+            _lastOrientation = Orientation::PORTRAIT;
             break;
         default:
-            CC_ABORT();
-            break;
+            return _lastOrientation;
     }
 
-    return orientation;
+    _hasValidOrientation = true;
+    return _lastOrientation;
 }
 
 Vec4 Screen::getSafeAreaEdge() const {

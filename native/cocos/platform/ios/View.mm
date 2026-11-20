@@ -86,6 +86,18 @@ namespace {
     return self;
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+#ifdef CC_USE_METAL
+    if (self.window) {
+        self.contentScaleFactor = self.window.screen.nativeScale;
+    }
+    CAMetalLayer *layer = (CAMetalLayer *)self.layer;
+    layer.drawableSize = CGSizeMake(static_cast<int>(self.bounds.size.width * self.contentScaleFactor),
+                                    static_cast<int>(self.bounds.size.height * self.contentScaleFactor));
+#endif
+}
+
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     if (self.preventTouch)
         return;
