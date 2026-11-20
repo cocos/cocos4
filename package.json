@@ -30,7 +30,11 @@
     "test:dts": "npx tsc ./scripts/test-declarations/test.d.ts",
     "update:engine-version": "node ./scripts/checkout-engine-version.js",
     "update:native-external": "node ./native/utils/update-external.js",
-    "verify:engine-version": "node ./scripts/verify-engine-version.js"
+    "verify:engine-version": "node ./scripts/verify-engine-version.js",
+    "pack:npm": "node scripts/npm/pack-engine-npm.js",
+    "pack:npm:web": "node scripts/npm/pack-engine-npm.js --kind web",
+    "pack:npm:editor": "node scripts/npm/pack-engine-npm.js --kind editor",
+    "test:npm": "node --test scripts/npm/test/*.test.cjs"
   },
   "repository": {
     "type": "git",

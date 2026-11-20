@@ -1,0 +1,45 @@
+name: <Web> npm packaging
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/npm/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'cc.config.json'
+      - '.github/workflows/web-npm-packaging.yml'
+  push:
+    branches: [v4.0.0]
+    paths:
+      - 'scripts/npm/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'cc.config.json'
+      - '.github/workflows/web-npm-packaging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaging-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install packaging dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test package generation and standalone dependencies
+        run: npm run test:npm
