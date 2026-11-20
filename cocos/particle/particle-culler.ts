@@ -43,6 +43,7 @@ const _animModule = [
     '_sizeOvertimeModule',
     '_velocityOvertimeModule',
     '_forceOvertimeModule',
+    '_forceFieldModule',
     '_limitVelocityOvertimeModule',
     '_rotationOvertimeModule',
     '_textureAnimationModule',
@@ -99,7 +100,10 @@ export class ParticleCuller {
     }
 
     private _initModuleList (): void {
+        this._updateList.clear();
+        this._animateList.clear();
         _animModule.forEach((val: string): void => {
+            if (val === '_forceFieldModule' && this._particleSystem.renderer.useGPU) return;
             const pm = this._particleSystem[val] as IParticleModule;
             if (pm && pm.enable) {
                 if (pm.needUpdate) {
@@ -209,6 +213,12 @@ export class ParticleCuller {
             // value.update(ps.simulationSpace, _node_mat);
         });
 
+        // Match the CPU renderer without changing the legacy update behavior of other modules.
+        const forceField = ps._forceFieldModule;
+        if (!ps.renderer.useGPU && forceField?.enable) {
+            forceField.update(ps.simulationSpace, _nodeMat);
+        }
+
         if (ps.simulationSpace === ParticleSpace.Local) {
             const r: Quat = ps.node.getRotation();
             Mat4.fromQuat(this._localMat, r);
@@ -300,12 +310,27 @@ export class ParticleCuller {
     }
 
     public calculatePositions (): void {
+        this.clear();
+        this._processor = this._particleSystem.processor;
+        this._initModuleList();
         this._emit(this._particleSystem.capacity, 0, this._particlesAll);
         const rand = isCurveTwoValues(this._particleSystem.startLifetime) ? pseudoRandom(randomRangeInt(0, bits.INT_MAX)) : 0;
         this._updateParticles(0, this._particlesAll);
         this._calculateBounding(true);
-        this._updateParticles(this._particleSystem.startLifetime.evaluate(0, rand), this._particlesAll);
-        this._calculateBounding(false);
+        if (!this._particleSystem.renderer.useGPU && this._particleSystem._forceFieldModule?.enable) {
+            // Spatial forces depend on the path, not just the emitter position. Sample the
+            // whole lifetime, including intermediate extrema and each particle's own lifetime.
+            let alive = this._particlesAll.filter((p): boolean => p.remainingLifetime > 0 && Number.isFinite(p.remainingLifetime));
+            while (alive.length > 0) {
+                const dt = alive.reduce((step, p): number => Math.min(step, p.remainingLifetime), 1 / 60);
+                this._updateParticles(dt, alive);
+                this._calculateBounding(false);
+                alive = alive.filter((p): boolean => p.remainingLifetime > 0);
+            }
+        } else {
+            this._updateParticles(this._particleSystem.startLifetime.evaluate(0, rand), this._particlesAll);
+            this._calculateBounding(false);
+        }
         this._updateBoundingNode();
     }
 

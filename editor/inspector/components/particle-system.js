@@ -103,6 +103,7 @@ exports.template = /* html*/`
             <ui-prop type="dump" key="shapeModule.value.randomPositionAmount"></ui-prop>
         </ui-section>
         <ui-section key="velocityOvertimeModule" autoflag="true" cache-expand="particle-system-velocityOvertimeModule"></ui-section>
+        <ui-section key="forceFieldModule" showflag="!renderer.value.useGPU" autoflag="true" cache-expand="particle-system-forceFieldModule"></ui-section>
         <ui-section key="forceOvertimeModule" autoflag="true" cache-expand="particle-system-forceOvertimeModule"></ui-section>
         <ui-section empty="true" key="sizeOvertimeModule"
             cache-expand="particle-system-sizeOvertimeModule">
@@ -189,7 +190,7 @@ const excludeList = [
     'startRotation3D', 'startRotationX', 'startRotationY',
     'startRotationZ', 'gravityModifier', 'rateOverTime',
     'rateOverDistance', 'bursts', 'shapeModule',
-    'velocityOvertimeModule', 'forceOvertimeModule', 'sizeOvertimeModule',
+    'velocityOvertimeModule', 'forceOvertimeModule', 'forceFieldModule', 'sizeOvertimeModule',
     'rotationOvertimeModule', 'colorOverLifetimeModule', 'textureAnimationModule',
     'trailModule', 'renderer', 'renderCulling', 'limitVelocityOvertimeModule', 'cullingMode',
     'aabbHalfX', 'aabbHalfY', 'aabbHalfZ', 'noiseModule',

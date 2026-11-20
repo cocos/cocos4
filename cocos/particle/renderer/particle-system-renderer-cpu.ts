@@ -51,6 +51,7 @@ const _animModule = [
     '_sizeOvertimeModule',
     '_velocityOvertimeModule',
     '_forceOvertimeModule',
+    '_forceFieldModule',
     '_limitVelocityOvertimeModule',
     '_rotationOvertimeModule',
     '_textureAnimationModule',
@@ -419,6 +420,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         });
 
         const trailModule = ps._trailModule;
+        const forceField = ps._forceFieldModule;
+        if (forceField?.enable) {
+            ps.getParticleWorldMatrix(_tempWorldTrans);
+            forceField.update(ps.simulationSpace, _tempWorldTrans);
+        }
         const trailEnable = trailModule && trailModule.enable;
         if (trailEnable) {
             trailModule.update();

@@ -374,6 +374,13 @@ module.exports = link(mixin({
         fit_height: 'Canvas allows designers to automatically scale the resolution to the full height of devices screen',
         fit_width: 'Canvas allows designers to automatically scale the resolution to the full width of devices screen',
     },
+    forceFieldModule: {
+        space: 'Coordinate space of the field.',
+        center: 'Field center in the selected space.',
+        radius: 'Field radius; zero disables the force.',
+        strength: 'Acceleration: positive repels, negative attracts.',
+        falloff: 'Distance falloff exponent: zero is constant, one is linear.',
+    },
     forceOvertimeModule: {
         x: 'Acceleration component along X-axis',
         y: 'Acceleration component along Y-axis',
@@ -762,6 +769,7 @@ module.exports = link(mixin({
         shapeModule: 'Particle emitter module',
         sizeOvertimeModule: 'Particle size module',
         velocityOvertimeModule: 'Particle velocity module',
+        forceFieldModule: 'Spherical force field (CPU only)',
         forceOvertimeModule: 'Particle acceleration module',
         limitVelocityOvertimeModule: 'Particle velocity limitation module (only support on CPU)',
         rotationOvertimeModule: 'Particle rotation module',

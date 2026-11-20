@@ -30,7 +30,7 @@ import { Mat4, Vec2, Vec4, Quat, Vec3, warn } from '../../core';
 import { MaterialInstance, IMaterialInstanceInfo } from '../../render-scene/core/material-instance';
 import { getBindingFromHandle, MacroRecord } from '../../render-scene/core/pass-utils';
 import { ParticleAlignmentSpace, ParticleRenderMode, ParticleSpace } from '../enum';
-import { Particle, IParticleModule } from '../particle';
+import { Particle, IParticleModule, PARTICLE_MODULE_NAME } from '../particle';
 import { packGradientRange } from '../animator/gradient-range';
 import { Pass } from '../../render-scene/core/pass';
 import { packCurveRangeXYZ, packCurveRangeZ, packCurveRangeXYZW, packCurveRangeN, packCurveRangeXY } from '../animator/curve-range';
@@ -223,6 +223,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
     }
 
     public enableModule (name: string, val: boolean, pm: IParticleModule): void {
+        // Force fields are CPU-only, including when enabled from scripts.
+        if (name === PARTICLE_MODULE_NAME.FORCE_FIELD) return;
         const mat: Material | null = this._particleSystem?.getMaterialInstance(0) || this._defaultMat;
         if (!mat) {
             return;
