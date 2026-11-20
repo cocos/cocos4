@@ -456,7 +456,27 @@ void DeviceAgent::frameSync() {
 }
 
 SampleCount DeviceAgent::getMaxSampleCount(Format format, TextureUsage usage, TextureFlags flags) const {
-    return _actor->getMaxSampleCount(format, usage, flags);
+    if (!_mainMessageQueue || _mainMessageQueue->isImmediateMode()) {
+        return _actor->getMaxSampleCount(format, usage, flags);
+    }
+
+    // GLES queries must run on the consumer thread that owns the GL context.
+    // Querying from the logic thread may fail and incorrectly report X1.
+    // This method is called from the logic (producer) thread. Wait for completion
+    // before returning so the stack-allocated result remains valid.
+    SampleCount maxSamples = SampleCount::X1;
+    ENQUEUE_MESSAGE_5(
+        _mainMessageQueue, DeviceGetMaxSampleCount,
+        actor, _actor,
+        format, format,
+        usage, usage,
+        flags, flags,
+        result, &maxSamples,
+        {
+            *result = actor->getMaxSampleCount(format, usage, flags);
+        });
+    _mainMessageQueue->kickAndWait();
+    return maxSamples;
 }
 
 } // namespace gfx

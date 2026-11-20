@@ -1,0 +1,9 @@
+// Copyright (c) 2026 Xiamen Yaji Software Co., Ltd.
+
+#include <builtin/uniforms/cc-global>
+#include <common/data/unpack>
+
+vec4 CCReflectionProbeOutput (vec3 color) {
+  // MSAA captures must resolve linear HDR before RGBE encoding.
+  return cc_probeInfo.y > 0.5 ? vec4(color, 1.0) : packRGBE(color);
+}
