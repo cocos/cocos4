@@ -1,0 +1,539 @@
+{
+  "techniques": [
+    {
+      "name": "default",
+      "passes": [
+        {
+          "blendState": {
+            "targets": [
+              {
+                "blend": true,
+                "blendSrc": 2,
+                "blendDst": 4,
+                "blendDstAlpha": 4
+              }
+            ]
+          },
+          "rasterizerState": {
+            "cullMode": 0
+          },
+          "program": "builtin-sprite-renderer|spriteRender-vs:vert|spriteRender-fs:frag",
+          "depthStencilState": {
+            "depthTest": true,
+            "depthWrite": false
+          },
+          "properties": {
+            "mainColor": {
+              "value": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "editor": {
+                "type": "color"
+              },
+              "type": 16
+            },
+            "spriteColor": {
+              "value": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "editor": {
+                "visible": false
+              },
+              "type": 16
+            },
+            "spriteFlip": {
+              "value": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "editor": {
+                "visible": false
+              },
+              "type": 16
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "name": "builtin-sprite-renderer",
+  "shaders": [
+    {
+      "blocks": [
+        {
+          "name": "SpriteParams",
+          "members": [
+            {
+              "name": "mainColor",
+              "type": 16,
+              "count": 1
+            },
+            {
+              "name": "spriteColor",
+              "type": 16,
+              "count": 1
+            },
+            {
+              "name": "spriteFlip",
+              "type": 16,
+              "count": 1
+            }
+          ],
+          "defines": [],
+          "stageFlags": 17,
+          "binding": 0
+        }
+      ],
+      "samplerTextures": [],
+      "samplers": [],
+      "textures": [],
+      "buffers": [],
+      "images": [],
+      "subpassInputs": [],
+      "attributes": [
+        {
+          "name": "a_position",
+          "defines": [],
+          "format": 32,
+          "location": 0
+        },
+        {
+          "name": "a_texCoord",
+          "defines": [],
+          "format": 21,
+          "location": 1
+        }
+      ],
+      "varyings": [
+        {
+          "name": "uv0",
+          "type": 14,
+          "count": 1,
+          "defines": [],
+          "stageFlags": 17,
+          "location": 0
+        }
+      ],
+      "fragColors": [
+        {
+          "name": "cc_FragColor",
+          "typename": "vec4",
+          "type": 16,
+          "count": 1,
+          "defines": [],
+          "stageFlags": 16,
+          "location": 0
+        }
+      ],
+      "descriptors": [
+        {
+          "rate": 0,
+          "blocks": [
+            {
+              "tags": {
+                "builtin": "local"
+              },
+              "name": "CCLocal",
+              "members": [
+                {
+                  "name": "cc_matWorld",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matWorldIT",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_lightingMapUVParam",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_localShadowBias",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_reflectionProbeData1",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_reflectionProbeData2",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_reflectionProbeBlendData1",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_reflectionProbeBlendData2",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                }
+              ],
+              "defines": [],
+              "stageFlags": 1
+            }
+          ],
+          "samplerTextures": [
+            {
+              "tags": {
+                "builtin": "local"
+              },
+              "name": "cc_spriteTexture",
+              "typename": "sampler2D",
+              "type": 28,
+              "count": 1,
+              "defines": [],
+              "stageFlags": 16,
+              "sampleType": 0
+            }
+          ],
+          "samplers": [],
+          "textures": [],
+          "buffers": [],
+          "images": [],
+          "subpassInputs": []
+        },
+        {
+          "rate": 1,
+          "blocks": [
+            {
+              "name": "SpriteParams",
+              "members": [
+                {
+                  "name": "mainColor",
+                  "type": 16,
+                  "count": 1
+                },
+                {
+                  "name": "spriteColor",
+                  "type": 16,
+                  "count": 1
+                },
+                {
+                  "name": "spriteFlip",
+                  "type": 16,
+                  "count": 1
+                }
+              ],
+              "defines": [],
+              "stageFlags": 17,
+              "binding": 0
+            }
+          ],
+          "samplerTextures": [],
+          "samplers": [],
+          "textures": [],
+          "buffers": [],
+          "images": [],
+          "subpassInputs": []
+        },
+        {
+          "rate": 2,
+          "blocks": [],
+          "samplerTextures": [],
+          "samplers": [],
+          "textures": [],
+          "buffers": [],
+          "images": [],
+          "subpassInputs": []
+        },
+        {
+          "rate": 3,
+          "blocks": [
+            {
+              "tags": {
+                "builtin": "global"
+              },
+              "name": "CCGlobal",
+              "members": [
+                {
+                  "name": "cc_time",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_screenSize",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_nativeSize",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_probeInfo",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_debug_view_mode",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                }
+              ],
+              "defines": [],
+              "stageFlags": 1
+            },
+            {
+              "tags": {
+                "builtin": "global"
+              },
+              "name": "CCCamera",
+              "members": [
+                {
+                  "name": "cc_matView",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matViewInv",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matProj",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matProjInv",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matViewProj",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_matViewProjInv",
+                  "typename": "mat4",
+                  "type": 25,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_cameraPos",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "highp "
+                },
+                {
+                  "name": "cc_surfaceTransform",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_screenScale",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_exposure",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_mainLitDir",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_mainLitColor",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_ambientSky",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_ambientGround",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_fogColor",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_fogBase",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_fogAdd",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_nearFar",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                },
+                {
+                  "name": "cc_viewPort",
+                  "typename": "vec4",
+                  "type": 16,
+                  "count": 1,
+                  "precision": "mediump "
+                }
+              ],
+              "defines": [],
+              "stageFlags": 1
+            }
+          ],
+          "samplerTextures": [],
+          "samplers": [],
+          "textures": [],
+          "buffers": [],
+          "images": [],
+          "subpassInputs": []
+        }
+      ],
+      "hash": 3097470380,
+      "glsl4": {
+        "vert": "\nprecision highp float;\nlayout(set = 0, binding = 0) uniform CCGlobal {\n  highp   vec4 cc_time;\n  mediump vec4 cc_screenSize;\n  mediump vec4 cc_nativeSize;\n  mediump vec4 cc_probeInfo;\n  mediump vec4 cc_debug_view_mode;\n};\nlayout(set = 0, binding = 1) uniform CCCamera {\n  highp   mat4 cc_matView;\n  highp   mat4 cc_matViewInv;\n  highp   mat4 cc_matProj;\n  highp   mat4 cc_matProjInv;\n  highp   mat4 cc_matViewProj;\n  highp   mat4 cc_matViewProjInv;\n  highp   vec4 cc_cameraPos;\n  mediump vec4 cc_surfaceTransform;\n  mediump vec4 cc_screenScale;\n  mediump vec4 cc_exposure;\n  mediump vec4 cc_mainLitDir;\n  mediump vec4 cc_mainLitColor;\n  mediump vec4 cc_ambientSky;\n  mediump vec4 cc_ambientGround;\n  mediump vec4 cc_fogColor;\n  mediump vec4 cc_fogBase;\n  mediump vec4 cc_fogAdd;\n  mediump vec4 cc_nearFar;\n  mediump vec4 cc_viewPort;\n};\nlayout(set = 2, binding = 0) uniform CCLocal {\n  highp mat4 cc_matWorld;\n  highp mat4 cc_matWorldIT;\n  highp vec4 cc_lightingMapUVParam;\n  highp vec4 cc_localShadowBias;\n  highp vec4 cc_reflectionProbeData1;\n  highp vec4 cc_reflectionProbeData2;\n  highp vec4 cc_reflectionProbeBlendData1;\n  highp vec4 cc_reflectionProbeBlendData2;\n};\nlayout(location = 0) in vec3 a_position;\nlayout(location = 1) in vec2 a_texCoord;\nlayout(location = 0) out vec2 uv0;\nlayout(set = 1, binding = 0) uniform SpriteParams {\n  vec4 mainColor;\n  vec4 spriteColor;\n  vec4 spriteFlip;\n};\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  pos.xy *= spriteFlip.xy;\n  pos = cc_matViewProj * cc_matWorld * pos;\n  uv0 = vec2(a_texCoord.x, 1.0 - a_texCoord.y);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nlayout(location = 0) in vec2 uv0;\nlayout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;\nvec4 CCSampleWithAlphaSeparated(sampler2D tex, vec2 uv) {\n#if CC_USE_EMBEDDED_ALPHA\n  return vec4(texture(tex, uv).rgb, texture(tex, uv + vec2(0.0, 0.5)).r);\n#else\n  return texture(tex, uv);\n#endif\n}\nlayout(set = 1, binding = 0) uniform SpriteParams {\n  vec4 mainColor;\n  vec4 spriteColor;\n  vec4 spriteFlip;\n};\nvec4 frag () {\n  return CCSampleWithAlphaSeparated(cc_spriteTexture, uv0) * mainColor * spriteColor;\n}\nlayout(location = 0) out vec4 cc_FragColor;\nvoid main() { cc_FragColor = frag(); }"
+      },
+      "glsl3": {
+        "vert": "\nprecision highp float;\nlayout(std140) uniform CCGlobal {\n  highp   vec4 cc_time;\n  mediump vec4 cc_screenSize;\n  mediump vec4 cc_nativeSize;\n  mediump vec4 cc_probeInfo;\n  mediump vec4 cc_debug_view_mode;\n};\nlayout(std140) uniform CCCamera {\n  highp   mat4 cc_matView;\n  highp   mat4 cc_matViewInv;\n  highp   mat4 cc_matProj;\n  highp   mat4 cc_matProjInv;\n  highp   mat4 cc_matViewProj;\n  highp   mat4 cc_matViewProjInv;\n  highp   vec4 cc_cameraPos;\n  mediump vec4 cc_surfaceTransform;\n  mediump vec4 cc_screenScale;\n  mediump vec4 cc_exposure;\n  mediump vec4 cc_mainLitDir;\n  mediump vec4 cc_mainLitColor;\n  mediump vec4 cc_ambientSky;\n  mediump vec4 cc_ambientGround;\n  mediump vec4 cc_fogColor;\n  mediump vec4 cc_fogBase;\n  mediump vec4 cc_fogAdd;\n  mediump vec4 cc_nearFar;\n  mediump vec4 cc_viewPort;\n};\nlayout(std140) uniform CCLocal {\n  highp mat4 cc_matWorld;\n  highp mat4 cc_matWorldIT;\n  highp vec4 cc_lightingMapUVParam;\n  highp vec4 cc_localShadowBias;\n  highp vec4 cc_reflectionProbeData1;\n  highp vec4 cc_reflectionProbeData2;\n  highp vec4 cc_reflectionProbeBlendData1;\n  highp vec4 cc_reflectionProbeBlendData2;\n};\nin vec3 a_position;\nin vec2 a_texCoord;\nout vec2 uv0;\nlayout(std140) uniform SpriteParams {\n  vec4 mainColor;\n  vec4 spriteColor;\n  vec4 spriteFlip;\n};\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  pos.xy *= spriteFlip.xy;\n  pos = cc_matViewProj * cc_matWorld * pos;\n  uv0 = vec2(a_texCoord.x, 1.0 - a_texCoord.y);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nin vec2 uv0;\nuniform sampler2D cc_spriteTexture;\nvec4 CCSampleWithAlphaSeparated(sampler2D tex, vec2 uv) {\n#if CC_USE_EMBEDDED_ALPHA\n  return vec4(texture(tex, uv).rgb, texture(tex, uv + vec2(0.0, 0.5)).r);\n#else\n  return texture(tex, uv);\n#endif\n}\nlayout(std140) uniform SpriteParams {\n  vec4 mainColor;\n  vec4 spriteColor;\n  vec4 spriteFlip;\n};\nvec4 frag () {\n  return CCSampleWithAlphaSeparated(cc_spriteTexture, uv0) * mainColor * spriteColor;\n}\nlayout(location = 0) out vec4 cc_FragColor;\nvoid main() { cc_FragColor = frag(); }"
+      },
+      "glsl1": {
+        "vert": "\nprecision highp float;\nuniform highp mat4 cc_matViewProj;\nuniform highp mat4 cc_matWorld;\nattribute vec3 a_position;\nattribute vec2 a_texCoord;\nvarying vec2 uv0;\n   uniform vec4 spriteFlip;\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  pos.xy *= spriteFlip.xy;\n  pos = cc_matViewProj * cc_matWorld * pos;\n  uv0 = vec2(a_texCoord.x, 1.0 - a_texCoord.y);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nvarying vec2 uv0;\nuniform sampler2D cc_spriteTexture;\nvec4 CCSampleWithAlphaSeparated(sampler2D tex, vec2 uv) {\n#if CC_USE_EMBEDDED_ALPHA\n  return vec4(texture2D(tex, uv).rgb, texture2D(tex, uv + vec2(0.0, 0.5)).r);\n#else\n  return texture2D(tex, uv);\n#endif\n}\n    uniform vec4 mainColor;\n    uniform vec4 spriteColor;\nvec4 frag () {\n  return CCSampleWithAlphaSeparated(cc_spriteTexture, uv0) * mainColor * spriteColor;\n}\nvoid main() { gl_FragColor = frag(); }"
+      },
+      "builtins": {
+        "globals": {
+          "blocks": [
+            {
+              "name": "CCGlobal",
+              "defines": []
+            },
+            {
+              "name": "CCCamera",
+              "defines": []
+            }
+          ],
+          "samplerTextures": [],
+          "buffers": [],
+          "images": []
+        },
+        "locals": {
+          "blocks": [
+            {
+              "name": "CCLocal",
+              "defines": []
+            }
+          ],
+          "samplerTextures": [
+            {
+              "name": "cc_spriteTexture",
+              "defines": []
+            }
+          ],
+          "buffers": [],
+          "images": []
+        },
+        "statistics": {
+          "CC_EFFECT_USED_VERTEX_UNIFORM_VECTORS": 59,
+          "CC_EFFECT_USED_FRAGMENT_UNIFORM_VECTORS": 3
+        }
+      },
+      "defines": [
+        {
+          "name": "CC_USE_EMBEDDED_ALPHA",
+          "type": "boolean",
+          "defines": []
+        }
+      ],
+      "record": {},
+      "name": "builtin-sprite-renderer|spriteRender-vs:vert|spriteRender-fs:frag"
+    }
+  ],
+  "dependencies": [
+    "spriteRender-vs",
+    "builtin/uniforms/cc-global",
+    "builtin/uniforms/cc-local",
+    "spriteRender-fs",
+    "builtin/internal/embedded-alpha"
+  ]
+}

@@ -114,7 +114,8 @@ function checkCircularReference (asset: Asset): number {
 
 export class ReleaseManager {
     private _persistNodeDeps = new Cache<string[]>();
-    private _toDelete = new Cache<Asset>();
+    // Imported assets have a UUID. Runtime assets such as generated meshes can only be keyed by identity.
+    private _toDelete = new Map<string | Asset, Asset>();
     private _eventListener = false;
     private _dontDestroyAssets: string[] = [];
 
@@ -212,7 +213,7 @@ export class ReleaseManager {
             return;
         }
 
-        this._toDelete.add(asset._uuid, asset);
+        this._toDelete.set(asset._uuid || asset, asset);
         if (TEST) return;
         if (!this._eventListener) {
             this._eventListener = true;
@@ -230,7 +231,7 @@ export class ReleaseManager {
 
     private _free (asset: Asset, force = false): void {
         const uuid = asset._uuid;
-        this._toDelete.remove(uuid);
+        this._toDelete.delete(uuid || asset);
 
         if (!isValid(asset, true) || this._dontDestroyAssets.indexOf(uuid) !== -1) { return; }
 

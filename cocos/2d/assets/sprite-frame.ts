@@ -27,12 +27,14 @@
 
 import { ccclass } from 'cc.decorator';
 import { EDITOR, NODEJS, TEST, BUILD } from 'internal:constants';
-import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, js, v3, mat4, rect, v4, v2, size } from '../../core';
+import { Rect, Size, Vec2, Vec3, Vec4, cclegacy, errorID, warnID, js, v3, mat4, rect, v4, v2, size, isValid, warn } from '../../core';
 import { Asset } from '../../asset/assets/asset';
 import { TextureBase } from '../../asset/assets/texture-base';
+import { GFX_TEXTURE_CHANGED } from '../../asset/assets/asset-enum';
 import { ImageAsset, ImageSource } from '../../asset/assets/image-asset';
 import { Texture2D } from '../../asset/assets/texture-2d';
 import { dynamicAtlasManager } from '../utils/dynamic-atlas/atlas-manager';
+import type { Atlas } from '../utils/dynamic-atlas/atlas';
 import { Mesh } from '../../3d/assets/mesh';
 import { createMesh } from '../../3d/misc';
 import { Attribute, AttributeName, Format, PrimitiveMode, Sampler, SamplerInfo, Texture } from '../../gfx';
@@ -47,6 +49,16 @@ const temp_matrix = mat4();
 
 const vec3TransformMat4 = Vec3.transformMat4;
 const vec3ToArray = Vec3.toArray;
+
+function releaseCachedMesh (mesh: Mesh | null, texture?: TextureBase): void {
+    if (mesh) {
+        mesh.decRef(false);
+        if (mesh.refCount === 0) {
+            mesh.destroy();
+        }
+    }
+    texture?.decRef(false);
+}
 
 enum MeshType {
     RECT = 0,
@@ -169,9 +181,35 @@ export interface ISpriteFrameInitInfo {
 }
 
 const temp_uvs: IUV[] = [{ u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }];
+// Scratch space for checking a cached mesh; never retained or exposed to a consumer.
+const comparisonUVs: number[] = [];
+
+function sameUVs (a: readonly number[], b: readonly number[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
+interface WorldGeometryInputs {
+    width: number;
+    height: number;
+    pixelsToUnit: number;
+    pivotX: number;
+    pivotY: number;
+    uvs: number[];
+}
 
 export enum SpriteFrameEvent {
     UV_UPDATED = 'uv_updated',
+    /** @engineInternal The cached world mesh is invalid; consumers must rebind before the old mesh is released. */
+    MESH_CHANGED = 'mesh_changed',
+    /** @engineInternal The source view or sampler changed without changing geometry. */
+    TEXTURE_CHANGED = 'world_texture_changed',
+    BORDER_CHANGED = 'border_changed',
+    /** @engineInternal Stop submitting and release world mesh references. */
+    MESH_DESTROYED = 'mesh_destroyed',
 }
 
 /**
@@ -281,14 +319,7 @@ export class SpriteFrame extends Asset {
     }
 
     set insetTop (value) {
-        if (this._capInsets[INSET_TOP] === value) {
-            return;
-        }
-
-        this._capInsets[INSET_TOP] = value;
-        if (this._texture) {
-            this._calculateSlicedUV();
-        }
+        if (this._setInset(INSET_TOP, value)) this._onBorderChange();
     }
 
     /**
@@ -300,14 +331,7 @@ export class SpriteFrame extends Asset {
     }
 
     set insetBottom (value) {
-        if (this._capInsets[INSET_BOTTOM] === value) {
-            return;
-        }
-
-        this._capInsets[INSET_BOTTOM] = value;
-        if (this._texture) {
-            this._calculateSlicedUV();
-        }
+        if (this._setInset(INSET_BOTTOM, value)) this._onBorderChange();
     }
 
     /**
@@ -319,14 +343,7 @@ export class SpriteFrame extends Asset {
     }
 
     set insetLeft (value) {
-        if (this._capInsets[INSET_LEFT] === value) {
-            return;
-        }
-
-        this._capInsets[INSET_LEFT] = value;
-        if (this._texture) {
-            this._calculateSlicedUV();
-        }
+        if (this._setInset(INSET_LEFT, value)) this._onBorderChange();
     }
 
     /**
@@ -338,14 +355,13 @@ export class SpriteFrame extends Asset {
     }
 
     set insetRight (value) {
-        if (this._capInsets[INSET_RIGHT] === value) {
-            return;
-        }
+        if (this._setInset(INSET_RIGHT, value)) this._onBorderChange();
+    }
 
-        this._capInsets[INSET_RIGHT] = value;
-        if (this._texture) {
-            this._calculateSlicedUV();
-        }
+    private _setInset (side: number, value: number | undefined): boolean {
+        if (value === undefined || this._capInsets[side] === value) return false;
+        this._capInsets[side] = value;
+        return true;
     }
 
     /**
@@ -359,15 +375,22 @@ export class SpriteFrame extends Asset {
     }
 
     set rect (value) {
+        // Assigning the current placeholder (even 1x1) makes the rect explicit.
+        this._cancelPendingFullRect();
         if (this._rect.equals(value)) {
             return;
         }
 
+        if (this._original) {
+            // Public rect coordinates remain relative to the current (possibly dynamic) texture.
+            this._original._x += value.x - this._rect.x;
+            this._original._y += value.y - this._rect.y;
+        }
         this._rect.set(value);
+        this._calcTrimmedBorder();
         if (this._texture) {
             this._calculateUV();
         }
-        this._calcTrimmedBorder();
     }
 
     /**
@@ -379,15 +402,16 @@ export class SpriteFrame extends Asset {
     }
 
     set originalSize (value) {
+        if (this._pendingFullRect) this._pendingFullRect.useTextureOriginalSize = false;
         if (this._originalSize.equals(value)) {
             return;
         }
 
         this._originalSize.set(value);
-        if (this._texture) {
-            this._calculateUV();
-        }
         this._calcTrimmedBorder();
+        if (this._texture) {
+            this.emit(SpriteFrameEvent.UV_UPDATED, this);
+        }
     }
 
     /**
@@ -478,14 +502,21 @@ export class SpriteFrame extends Asset {
      * @deprecated since v3.7.0, this is an engine private interface that will be removed in the future.
      */
     set _textureSource (value: TextureBase) {
+        if (value !== this._texture) this._cancelPendingFullRect();
         // Optimization for build
         if (globalThis.Build) {
             this._texture = value;
             return;
         }
         if (value) {
-            this._refreshTexture(value);
-            this._calculateUV();
+            const retired = this._detachFromDynamicAtlas(value);
+            try {
+                this._refreshTexture(value);
+                this._calcTrimmedBorder();
+                this._calculateUV();
+            } finally {
+                retired?.forEach((page) => page.destroy());
+            }
         }
     }
 
@@ -498,6 +529,7 @@ export class SpriteFrame extends Asset {
     }
 
     set flipUVX (value) {
+        if (this._isFlipUVX === value) return;
         this._isFlipUVX = value;
         this._calculateUV();
     }
@@ -511,6 +543,7 @@ export class SpriteFrame extends Asset {
     }
 
     set flipUVY (value) {
+        if (this._isFlipUVY === value) return;
         this._isFlipUVY = value;
         this._calculateUV();
     }
@@ -556,7 +589,9 @@ export class SpriteFrame extends Asset {
 
     /**
      * @en mesh information, you should call the [[ensureMeshData]] function before using it.
+     * Call addRef() to keep the mesh across frame changes or renderer detachment, and decRef() when finished.
      * @zh mesh 信息，你应该在使用它之前调用 [[ensureMeshData]] 函数来确保其可用。
+     * 如需在帧变更或渲染组件解绑后继续使用该 Mesh，请先调用 addRef()，使用完后调用 decRef()。
      */
     get mesh (): Mesh | null {
         return this._mesh;
@@ -643,6 +678,17 @@ export class SpriteFrame extends Asset {
 
     // Mesh api
     protected _mesh: Mesh | null = null;
+    // No per-frame bookkeeping is allocated until a world renderer actually uses this frame.
+    private declare _meshUsers?: number;
+    private declare _meshTexture?: TextureBase;
+    // Only authored corners need a snapshot: UI packing rewrites the public arrays in page coordinates.
+    private declare _relocatedSourceUV?: number[];
+    private declare _worldGeometryInputs?: WorldGeometryInputs;
+    private declare _observedTexture?: TextureBase;
+    private declare _observedWidth?: number;
+    private declare _observedHeight?: number;
+    // Allocated only for a runtime texture assignment whose default rect cannot be resolved yet.
+    private declare _pendingFullRect?: { width: number; height: number; useTextureOriginalSize: boolean };
     protected _minPos = v3();
     protected _maxPos = v3();
 
@@ -813,22 +859,55 @@ export class SpriteFrame extends Asset {
      * @param clearData @en Clear Data before initialization. @zh 是否在初始化前清空原有数据。
      */
     public reset (info?: ISpriteFrameInitInfo, clearData = false): void {
+        const previousTexture = this._texture;
+        const retired = clearData || info?.texture ? this._detachFromDynamicAtlas(info?.texture) : null;
+        try {
+            this._resetFrameData(info, clearData, previousTexture);
+        } finally {
+            // Page teardown can call user code. Its old registration has already been removed.
+            retired?.forEach((page) => page.destroy());
+        }
+    }
+
+    private _resetFrameData (info: ISpriteFrameInitInfo | undefined, clearData: boolean, previousTexture: TextureBase): void {
         const self = this;
-        let calUV = false;
+        const pending = self._pendingFullRect;
+        if (pending) {
+            if (clearData || info?.texture || info?.rect) self._cancelPendingFullRect();
+            else if (info?.originalSize) pending.useTextureOriginalSize = false;
+        }
+        const keepsPackedTexture = !!self._original && info?.texture === self._texture;
+        const previousX = self._rect.x;
+        const previousY = self._rect.y;
+        const previousWidth = self._rect.width;
+        const previousHeight = self._rect.height;
+        const previousRotation = self._rotated;
+        const previousFlip = self._isFlipUVY;
+        let borderChanged = false;
         if (clearData) {
             self._originalSize.set(0, 0);
             self._rect.set(0, 0, 0, 0);
             self._offset.set(0, 0);
             self._capInsets = [0, 0, 0, 0];
             self._rotated = false;
-            calUV = true;
         }
 
         if (info) {
             if (info.texture) {
+                const useTextureOriginalSize = !info.originalSize && (pending && !clearData
+                    ? pending.useTextureOriginalSize && self._originalSize.width === pending.width && self._originalSize.height === pending.height
+                    : !self._originalSize.width || !self._originalSize.height);
                 self._rect.set(0, 0, info.texture.width, info.texture.height);
                 self._refreshTexture(info.texture);
                 self.checkRect(self._texture);
+                if (!info.rect && !self._original && !info.texture.getGFXTexture() && isValid(info.texture, true)) {
+                    self._pendingFullRect = {
+                        width: self._rect.width,
+                        height: self._rect.height,
+                        useTextureOriginalSize,
+                    };
+                    self._syncTextureObserver();
+                }
             }
 
             if (info.originalSize) {
@@ -836,6 +915,11 @@ export class SpriteFrame extends Asset {
             }
 
             if (info.rect) {
+                if (self._original) {
+                    // reset may have changed _rect while reusing the packed texture.
+                    self._original._x += info.rect.x - (keepsPackedTexture ? previousX : self._rect.x);
+                    self._original._y += info.rect.y - (keepsPackedTexture ? previousY : self._rect.y);
+                }
                 self._rect.set(info.rect);
             }
 
@@ -843,22 +927,11 @@ export class SpriteFrame extends Asset {
                 self._offset.set(info.offset);
             }
 
-            const thisCapInsets = self._capInsets;
-            if (info.borderTop !== undefined) {
-                thisCapInsets[INSET_TOP] = info.borderTop;
-            }
-
-            if (info.borderBottom !== undefined) {
-                thisCapInsets[INSET_BOTTOM] = info.borderBottom;
-            }
-
-            if (info.borderLeft !== undefined) {
-                thisCapInsets[INSET_LEFT] = info.borderLeft;
-            }
-
-            if (info.borderRight !== undefined) {
-                thisCapInsets[INSET_RIGHT] = info.borderRight;
-            }
+            const topChanged = self._setInset(INSET_TOP, info.borderTop);
+            const bottomChanged = self._setInset(INSET_BOTTOM, info.borderBottom);
+            const leftChanged = self._setInset(INSET_LEFT, info.borderLeft);
+            const rightChanged = self._setInset(INSET_RIGHT, info.borderRight);
+            borderChanged = topChanged || bottomChanged || leftChanged || rightChanged;
 
             if (info.isRotate !== undefined) {
                 self._rotated = !!info.isRotate;
@@ -867,14 +940,19 @@ export class SpriteFrame extends Asset {
             if (info.isFlipUv !== undefined) {
                 self._isFlipUVY = !!info.isFlipUv;
             }
-
-            calUV = true;
         }
 
-        if (calUV && self.texture) {
-            self._calculateUV();
-        }
         self._calcTrimmedBorder();
+        if (info || clearData) {
+            const mappingChanged = clearData || self._texture !== previousTexture || self._rect.x !== previousX || self._rect.y !== previousY
+                || self._rect.width !== previousWidth || self._rect.height !== previousHeight
+                || self._rotated !== previousRotation || self._isFlipUVY !== previousFlip;
+            // A caller can mutate the public Rect and then pass the same object back to reset.
+            const refreshMapping = mappingChanged || (!!self._texture && !!(info?.rect || info?.texture) && !self._matchesPublishedRectUVs());
+            if (refreshMapping && self._texture) self._calculateUV();
+            else if (borderChanged) self._onBorderChange();
+            else if (self._texture) self.emit(SpriteFrameEvent.UV_UPDATED, self);
+        }
     }
 
     /**
@@ -933,17 +1011,212 @@ export class SpriteFrame extends Asset {
      * @zh 确保 mesh 可用，你应该在使用 mesh 之前调用它。
      */
     public ensureMeshData (): void {
-        if (this._mesh) return;
-        // If SpriteFrame from load, we need init vertices when use mesh
-        this._initVertices();
-        this._createMesh();
+        if (!isValid(this, true) || !this._texture) return;
+        const hadUsers = !!this._meshUsers;
+        this._validateWorldGeometry();
+        if (hadUsers && !this._meshUsers) return;
+        if (!this._mesh && isValid(this, true)) this._createMesh();
+    }
+
+    /** @engineInternal Check inputs that scripts can edit without calling a setter, before geometry is reused. */
+    public _validateWorldGeometry (): void {
+        const built = this._worldGeometryInputs;
+        if (!built || !isValid(this._getSourceTexture(), true)) return;
+        if (this._isRectMesh() && built.width === this._rect.width && built.height === this._rect.height
+            && built.pixelsToUnit === this._pixelsToUnit && built.pivotX === this._pivot.x && built.pivotY === this._pivot.y) {
+            const uvs = this._getSourceUVs(comparisonUVs);
+            if (sameUVs(uvs, built.uvs)) return;
+        }
+        this._updateMesh();
+    }
+
+    /** @engineInternal Share one input snapshot between consumers of a frame. UI-only frames never allocate it. */
+    public _recordWorldGeometry (uvs?: number[]): void {
+        if (!this._worldGeometryInputs) {
+            this._worldGeometryInputs = {
+                width: this._rect.width,
+                height: this._rect.height,
+                pixelsToUnit: this._pixelsToUnit,
+                pivotX: this._pivot.x,
+                pivotY: this._pivot.y,
+                uvs: uvs ?? this._getSourceUVs(),
+            };
+        }
+    }
+
+    /** @engineInternal Source texture before UI dynamic packing; may itself be a static atlas. */
+    public _getSourceTexture (): TextureBase {
+        return this._original ? this._original._texture : this._texture;
+    }
+
+    /** @engineInternal Whether rectangular world geometry is supported. */
+    public _isRectMesh (): boolean {
+        return this._meshType === MeshType.RECT;
+    }
+
+    /** @engineInternal Source corner UVs with the Sprite Effect V inversion; no cached UI data. */
+    public _getSourceUVs (out: number[] = []): number[] {
+        if (this._hasAuthoredUVs()) return this._decodePublicUVs(out);
+        if (this._relocatedSourceUV) {
+            out.length = this._relocatedSourceUV.length;
+            for (let i = 0; i < out.length; ++i) out[i] = this._relocatedSourceUV[i];
+            return out;
+        }
+        const original = this._original;
+        out.length = 8;
+        this._writeRectUVs(out, this._getSourceTexture(), original?._x ?? this._rect.x, original?._y ?? this._rect.y);
+        for (let i = 1; i < 8; i += 2) out[i] = 1 - out[i];
+        return out;
+    }
+
+    private _hasAuthoredUVs (): boolean {
+        return !sameUVs(this.uv, this.unbiasUV);
+    }
+
+    private _matchesPublishedRectUVs (): boolean {
+        comparisonUVs.length = 8;
+        this._writeRectUVs(comparisonUVs, this._texture, this._rect.x, this._rect.y);
+        return sameUVs(comparisonUVs, this.unbiasUV);
+    }
+
+    private _decodePublicUVs (out: number[] = []): number[] {
+        const original = this._original;
+        out.length = this.uv.length;
+        for (let i = 0; i < out.length; ++i) {
+            let v = this.uv[i];
+            const vertical = i % 2 !== 0;
+            if (original) {
+                const source = original._texture;
+                v = vertical
+                    ? (v * this._texture.height - (this._rect.y - original._y)) / source.height
+                    : (v * this._texture.width - (this._rect.x - original._x)) / source.width;
+            }
+            out[i] = vertical ? 1 - v : v;
+        }
+        return out;
+    }
+
+    private _preserveSourceUVsBeforeRelocation (): void {
+        if (this._hasAuthoredUVs()) this._relocatedSourceUV = this._decodePublicUVs();
+    }
+
+    private _writeRectUVs (uv: number[], texture: TextureBase, x: number, y: number): void {
+        const { width, height } = this._rect;
+        const texWidth = texture.width;
+        const texHeight = texture.height;
+        const left = texWidth === 0 ? 0 : x / texWidth;
+        const right = texWidth === 0 ? 1 : (x + (this._rotated ? height : width)) / texWidth;
+        const top = texHeight === 0 ? 0 : y / texHeight;
+        const bottom = texHeight === 0 ? 1 : (y + (this._rotated ? width : height)) / texHeight;
+        const l = this._isFlipUVX ? right : left;
+        const r = this._isFlipUVX ? left : right;
+        const t = this._isFlipUVY ? bottom : top;
+        const b = this._isFlipUVY ? top : bottom;
+        if (this._rotated) js.array.fillItems(uv, l, t, l, b, r, t, r, b);
+        else js.array.fillItems(uv, l, b, r, b, l, t, r, t);
+    }
+
+    private _detachFromDynamicAtlas (textureToKeep?: TextureBase): Atlas[] | undefined {
+        if (!this._original || textureToKeep === this._texture) return undefined;
+        const retired = dynamicAtlasManager?._unlinkAtlasSpriteFrame(this);
+        this._restoreAtlasSource();
+        return retired;
+    }
+
+    /** @engineInternal Retain derived geometry independently of the asset's UI users. */
+    public _retainMesh (): void {
+        this._meshUsers = (this._meshUsers || 0) + 1;
+        if (this._meshUsers === 1) this._syncTextureObserver();
+    }
+
+    private _cancelPendingFullRect (): void {
+        if (!this._pendingFullRect) return;
+        delete this._pendingFullRect;
+        this._syncTextureObserver();
+    }
+
+    private _syncTextureObserver (): void {
+        const texture = this._pendingFullRect || this._meshUsers || this._mesh ? this._getSourceTexture() : undefined;
+        const source = texture && isValid(texture, true) ? texture : undefined;
+        if (source === this._observedTexture) return;
+        this._observedTexture?.off(GFX_TEXTURE_CHANGED, this._onSourceTextureChanged, this);
+        if (source) {
+            this._observedTexture = source;
+            this._observedWidth = source.width;
+            this._observedHeight = source.height;
+            source.on(GFX_TEXTURE_CHANGED, this._onSourceTextureChanged, this);
+        } else {
+            delete this._observedTexture;
+            delete this._observedWidth;
+            delete this._observedHeight;
+        }
+    }
+
+    private _onSourceTextureChanged (): void {
+        const source = this._observedTexture!;
+        const pending = this._pendingFullRect;
+        if (pending) {
+            if (!isValid(source, true)) {
+                this._cancelPendingFullRect();
+                return;
+            }
+            if (!source.getGFXTexture()) return;
+            // A caller can also edit the Rect/Size objects in place while the image is loading.
+            const x = this._original?._x ?? this._rect.x;
+            const y = this._original?._y ?? this._rect.y;
+            if (x === 0 && y === 0 && this._rect.width === pending.width && this._rect.height === pending.height) {
+                this._rect.width = source.width;
+                this._rect.height = source.height;
+            }
+            if (pending.useTextureOriginalSize && this._originalSize.width === pending.width && this._originalSize.height === pending.height) {
+                this._originalSize.set(source.width, source.height);
+            }
+            this._observedWidth = source.width;
+            this._observedHeight = source.height;
+            this._cancelPendingFullRect();
+            this._calcTrimmedBorder();
+            this._calculateUV(true, true);
+            return;
+        }
+        if (source.width !== this._observedWidth || source.height !== this._observedHeight) {
+            this._observedWidth = source.width;
+            this._observedHeight = source.height;
+            this._updateMesh();
+        } else if (this._meshUsers) {
+            this.emit(SpriteFrameEvent.TEXTURE_CHANGED);
+        }
+    }
+
+    /** @engineInternal The caller must first detach its SubModels and unsubscribe. */
+    public _releaseMesh (): void {
+        if (!this._meshUsers) return;
+        if (--this._meshUsers === 0) {
+            delete this._meshUsers;
+            releaseCachedMesh(this._mesh, this._meshTexture);
+            this._mesh = null;
+            delete this._meshTexture;
+            delete this._worldGeometryInputs;
+            this._syncTextureObserver();
+        }
     }
 
     public destroy (): boolean {
+        if (!super.destroy()) return false;
+        delete this._pendingFullRect;
+        if (this._meshUsers) {
+            this.emit(SpriteFrameEvent.MESH_DESTROYED, this);
+        }
+        releaseCachedMesh(this._mesh, this._meshTexture);
+        this._mesh = null;
+        delete this._meshUsers;
+        delete this._meshTexture;
+        delete this._worldGeometryInputs;
+        delete this._relocatedSourceUV;
+        this._syncTextureObserver();
         if (this._packable && dynamicAtlasManager) {
             dynamicAtlasManager.deleteAtlasSpriteFrame(this);
         }
-        return super.destroy();
+        return true;
     }
 
     /**
@@ -953,6 +1226,17 @@ export class SpriteFrame extends Asset {
      * @mangle
      */
     public _calculateSlicedUV (): void {
+        this._writeSlicedUVs();
+        this.emit(SpriteFrameEvent.UV_UPDATED, this);
+    }
+
+    private _onBorderChange (): void {
+        if (this._texture) this._writeSlicedUVs();
+        if (this._meshUsers) this.emit(SpriteFrameEvent.BORDER_CHANGED, this);
+        if (this._texture) this.emit(SpriteFrameEvent.UV_UPDATED, this);
+    }
+
+    private _writeSlicedUVs (): void {
         const self = this;
         const rect = self._rect;
         // const texture = self._getCalculateTarget()!;
@@ -1010,10 +1294,6 @@ export class SpriteFrame extends Asset {
                 }
             }
         }
-
-        // UV update event for components to update uv buffer
-        // CalculateUV will trigger _calculateSlicedUV so it's enough to emit here
-        this.emit(SpriteFrameEvent.UV_UPDATED, this);
     }
 
     /**
@@ -1022,115 +1302,23 @@ export class SpriteFrame extends Asset {
      * @engineInternal
      * @mangle
      */
-    public _calculateUV (): void {
-        const arrayFill = js.array.fillItems;
+    public _calculateUV (sourceChanged = true, preserveAuthoredUV = false): void {
         const self = this;
-        const rect = self._rect;
-        const uv = self.uv;
-        const unbiasUV = self.unbiasUV;
-        const tex = self.texture;
-        const texw = tex.width;
-        const texh = tex.height;
-
-        if (self._rotated) {
-            const l = texw === 0 ? 0 : rect.x / texw;
-            const r = texw === 0 ? 1 : (rect.x + rect.height) / texw;
-            const t = texh === 0 ? 0 : rect.y / texh;
-            const b = texh === 0 ? 1 : (rect.y + rect.width) / texh;
-
-            if (self._isFlipUVX && self._isFlipUVY) {
-                /*
-                3 - 1
-                |   |
-                2 - 0
-                */
-                arrayFill(uv, r, b, r, t, l, b, l, t);
-            } else if (self._isFlipUVX) {
-                /*
-                2 - 0
-                |   |
-                3 - 1
-                */
-                arrayFill(uv, r, t, r, b, l, t, l, b);
-            } else if (self._isFlipUVY) {
-                /*
-                1 - 3
-                |   |
-                0 - 2
-                */
-                arrayFill(uv, l, b, l, t, r, b, r, t);
-            } else {
-                /*
-                0 - 2
-                |   |
-                1 - 3
-                */
-                arrayFill(uv, l, t, l, b, r, t, r, b);
-            }
-
-            const ul = texw === 0 ? 0 : rect.x / texw;
-            const ur = texw === 0 ? 1 : (rect.x + rect.height) / texw;
-            const ut = texh === 0 ? 0 : rect.y / texh;
-            const ub = texh === 0 ? 1 : (rect.y + rect.width) / texh;
-            if (self._isFlipUVX && self._isFlipUVY) {
-                arrayFill(unbiasUV, ur, ub, ur, ut, ul, ub, ul, ut);
-            } else if (self._isFlipUVX) {
-                arrayFill(unbiasUV, ur, ut, ur, ub, ul, ut, ul, ub);
-            } else if (self._isFlipUVY) {
-                arrayFill(unbiasUV, ul, ub, ul, ut, ur, ub, ur, ut);
-            } else {
-                arrayFill(unbiasUV, ul, ut, ul, ub, ur, ut, ur, ub);
-            }
+        if (sourceChanged && !preserveAuthoredUV && self._relocatedSourceUV) delete self._relocatedSourceUV;
+        if (preserveAuthoredUV && self._hasAuthoredUVs()) {
+            self._writeRectUVs(self.unbiasUV, self.texture, self._rect.x, self._rect.y);
         } else {
-            const l = texw === 0 ? 0 : rect.x / texw;
-            const r = texw === 0 ? 1 : (rect.x + rect.width) / texw;
-            const b = texh === 0 ? 1 : (rect.y + rect.height) / texh;
-            const t = texh === 0 ? 0 : rect.y / texh;
-            if (self._isFlipUVX && self._isFlipUVY) {
-                /*
-                1 - 0
-                |   |
-                3 - 2
-                */
-                arrayFill(uv, r, t, l, t, r, b, l, b);
-            } else if (self._isFlipUVX) {
-                /*
-                3 - 2
-                |   |
-                1 - 0
-                */
-                arrayFill(uv, r, b, l, b, r, t, l, t);
-            } else if (self._isFlipUVY) {
-                /*
-                0 - 1
-                |   |
-                2 - 3
-                */
-                arrayFill(uv, l, t, r, t, l, b, r, b);
-            } else {
-                /*
-                2 - 3
-                |   |
-                0 - 1
-                */
-                arrayFill(uv, l, b, r, b, l, t, r, t);
-            }
-            const ul = texw === 0 ? 0 : rect.x / texw;
-            const ur = texw === 0 ? 1 : (rect.x + rect.width) / texw;
-            const ub = texh === 0 ? 1 : (rect.y + rect.height) / texh;
-            const ut = texh === 0 ? 0 : rect.y / texh;
-            if (self._isFlipUVX && self._isFlipUVY) {
-                arrayFill(unbiasUV, ur, ut, ul, ut, ur, ub, ul, ub);
-            } else if (self._isFlipUVX) {
-                arrayFill(unbiasUV, ur, ub, ul, ub, ur, ut, ul, ut);
-            } else if (self._isFlipUVY) {
-                arrayFill(unbiasUV, ul, ut, ur, ut, ul, ub, ur, ub);
-            } else {
-                arrayFill(unbiasUV, ul, ub, ur, ub, ul, ut, ur, ut);
-            }
+            self._writeRectUVs(self.uv, self.texture, self._rect.x, self._rect.y);
+            for (let i = 0; i < 8; ++i) self.unbiasUV[i] = self.uv[i];
         }
 
-        self._calculateSlicedUV();
+        // UI relocation changes the public mapping, not the source used by world geometry.
+        self._writeSlicedUVs();
+        if (sourceChanged && (self._mesh || self._meshUsers)) {
+            self._syncTextureObserver();
+            self._updateMesh();
+        }
+        self.emit(SpriteFrameEvent.UV_UPDATED, self);
     }
 
     /**
@@ -1140,7 +1328,7 @@ export class SpriteFrame extends Asset {
      */
     public _setDynamicAtlasFrame (frame): void {
         if (!frame) return;
-
+        this._preserveSourceUVsBeforeRelocation();
         this._original = {
             _texture: this._texture,
             _x: this._rect.x,
@@ -1150,7 +1338,7 @@ export class SpriteFrame extends Asset {
         this._texture = frame.texture;
         this._rect.x = frame.x;
         this._rect.y = frame.y;
-        this._calculateUV();
+        this._calculateUV(false);
     }
 
     /**
@@ -1160,11 +1348,17 @@ export class SpriteFrame extends Asset {
      */
     public _resetDynamicAtlasFrame (): void {
         if (!this._original) return;
-        this._rect.x = this._original._x;
-        this._rect.y = this._original._y;
-        this._texture = this._original._texture;
+        this._preserveSourceUVsBeforeRelocation();
+        this._restoreAtlasSource();
+        this._calculateUV(false);
+    }
+
+    private _restoreAtlasSource (): void {
+        const original = this._original!;
+        this._rect.x = original._x;
+        this._rect.y = original._y;
+        this._texture = original._texture;
         this._original = null;
-        this._calculateUV();
     }
 
     /**
@@ -1256,6 +1450,7 @@ export class SpriteFrame extends Asset {
      */
     public _deserialize (serializeData: any, handle: any): void {
         const self = this;
+        self._cancelPendingFullRect();
         const data = serializeData as ISpriteFramesSerializeData;
         const rect = data.rect;
         if (rect) {
@@ -1275,12 +1470,12 @@ export class SpriteFrame extends Asset {
         self._name = data.name;
         self._packable = !!data.packable;
 
-        self._pixelsToUnit = data.pixelsToUnit;
+        self._pixelsToUnit = data.pixelsToUnit ?? 100;
         const pivot = data.pivot;
         if (pivot) {
             self._pivot = v2(pivot.x, pivot.y);
         }
-        self._meshType = data.meshType;
+        self._meshType = data.meshType ?? MeshType.RECT;
 
         const capInsets = data.capInsets;
         if (capInsets) {
@@ -1333,7 +1528,7 @@ export class SpriteFrame extends Asset {
         const sp = new SpriteFrame();
         const v = self.vertices;
         sp.vertices = v ? {
-            rawPosition: v.rawPosition.slice(0),
+            rawPosition: v.rawPosition.map((position) => position.clone()),
             positions: v.positions.slice(0),
             indexes: v.indexes.slice(0),
             uv: v.uv.slice(0),
@@ -1343,6 +1538,7 @@ export class SpriteFrame extends Asset {
         } : null as any;
         sp.uv.splice(0, sp.uv.length, ...self.uv);
         sp.unbiasUV.splice(0, sp.unbiasUV.length, ...self.unbiasUV);
+        if (self._relocatedSourceUV) sp._relocatedSourceUV = self._relocatedSourceUV.slice();
         sp.uvSliced.splice(0, sp.uvSliced.length, ...self.uvSliced);
         sp._rect.set(self._rect);
         sp._trimmedBorder.set(self._trimmedBorder);
@@ -1369,44 +1565,29 @@ export class SpriteFrame extends Asset {
         sp._meshType = self._meshType;
         sp._extrude = self._extrude;
         sp._customOutLine.splice(0, sp._customOutLine.length, ...self._customOutLine);
-        sp._minPos = self._minPos;
-        sp._maxPos = self._maxPos;
-        if (self._mesh) {
-            // Creates a new mesh, and 'this' creates the mesh in the same way. So we can make a copy like this.
-            // It must be placed last because the mesh will depend on some of its members when it is created.
-            sp._createMesh();
+        sp._minPos.set(self._minPos);
+        sp._maxPos.set(self._maxPos);
+        if (self._pendingFullRect) {
+            sp._pendingFullRect = { ...self._pendingFullRect };
+            sp._syncTextureObserver();
+            if (sp._observedTexture?.getGFXTexture()) sp._onSourceTextureChanged();
         }
+        // Derived world meshes are created by their consumers, never as a side effect of cloning an asset.
         return sp;
     }
 
     protected _refreshTexture (texture: TextureBase): void {
         const self = this;
         self._texture = texture;
-        const tex = self._texture;
-        const config: ISpriteFrameInitInfo = {};
-        let isReset = false;
-        if (self._rect.width === 0 || self._rect.height === 0 || !self.checkRect(tex)) {
-            config.rect = rect(0, 0, tex.width, tex.height);
-            isReset = true;
+        const resetRect = self._rect.width === 0 || self._rect.height === 0 || !self.checkRect(texture);
+        if (resetRect) self._rect.set(0, 0, texture.width, texture.height);
+        if (resetRect || self._originalSize.width === 0 || self._originalSize.height === 0) {
+            self._originalSize.set(texture.width, texture.height);
         }
 
-        // If original size is not set or rect check failed, we should reset the original size
-        if (self._originalSize.width === 0
-            || self._originalSize.height === 0
-            || isReset
-        ) {
-            config.originalSize = size(tex.width, tex.height);
-            isReset = true;
-        }
-
-        if (isReset) {
-            self.reset(config);
-        }
-
-        self._checkPackable();
-        if (self._mesh) {
-            self._updateMesh();
-        }
+        // Reusing a packed texture must not derive source eligibility from the larger atlas page.
+        if (!self._original) self._checkPackable();
+        // reset/_textureSource calculate the final UVs after all texture/rect changes are applied.
     }
 
     /**
@@ -1429,6 +1610,7 @@ export class SpriteFrame extends Asset {
         const texture = new Texture2D();
         texture.initDefault();
         this._refreshTexture(texture);
+        this._calcTrimmedBorder();
         this._calculateUV();
     }
 
@@ -1543,33 +1725,65 @@ export class SpriteFrame extends Asset {
     }
 
     protected _createMesh (): void {
+        const { width, height } = this._rect;
+        const ppu = this._pixelsToUnit;
+        if (!Number.isFinite(ppu) || ppu <= 0 || !Number.isFinite(width) || !Number.isFinite(height)
+            || !Number.isFinite(this._pivot.x) || !Number.isFinite(this._pivot.y)) {
+            warn('SpriteFrame: world geometry requires a positive finite PPU and finite rectangle/pivot.');
+            return;
+        }
+        if (width <= 0 || height <= 0 || this.uv.length !== 8) return;
+        if (this._meshType !== MeshType.RECT) {
+            warn('SpriteFrame: world SpriteRenderer currently supports Rect geometry only.');
+            return;
+        }
+
+        // Keep the existing asset pivot interpretation until an equivalent importer migration is available.
+        // These are derived data: never overwrite `vertices`, which may contain serialized/UI source geometry.
+        const left = -this._pivot.x * width / ppu;
+        const bottom = -this._pivot.y * height / ppu;
+        const right = left + width / ppu;
+        const top = bottom + height / ppu;
+        if (![left, bottom, right, top].every((v) => Number.isFinite(Math.fround(v)))) return;
+        const texture = this._getSourceTexture();
+        if (!isValid(texture, true) || !texture.width || !texture.height) return;
+        const uvs = this._getSourceUVs();
+        if (uvs.length !== 8 || !uvs.every((v) => Number.isFinite(Math.fround(v)))) return;
+        this._minPos.set(left, bottom, 0);
+        this._maxPos.set(right, top, 0);
         this._mesh = createMesh({
             primitiveMode: PrimitiveMode.TRIANGLE_LIST,
-            positions: this.vertices!.positions,
-            uvs: this.vertices!.nuv,
-            indices: this.vertices!.indexes,
+            positions: [left, bottom, 0, right, bottom, 0, left, top, 0, right, top, 0],
+            // Preserve the Sprite Effect's existing V inversion contract.
+            uvs,
+            indices: [0, 1, 2, 2, 1, 3],
             minPos: this._minPos,
             maxPos: this._maxPos,
-
-            // colors: [
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a,
-            //     Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, Color.WHITE.a],
             attributes: [
                 new Attribute(AttributeName.ATTR_POSITION, Format.RGB32F),
                 new Attribute(AttributeName.ATTR_TEX_COORD, Format.RG32F),
-                // new Attribute(AttributeName.ATTR_COLOR, Format.RGBA8UI, true),
             ],
         });
+        this._mesh.addRef();
+        this._recordWorldGeometry(uvs);
+        texture.addRef();
+        this._meshTexture = texture;
+        this._syncTextureObserver();
     }
 
     protected _updateMesh (): void {
-        if (this._mesh) {
-            this._mesh.destroy();
+        const previous = this._mesh;
+        const previousTexture = this._meshTexture;
+        this._mesh = null;
+        delete this._meshTexture;
+        delete this._worldGeometryInputs;
+        try {
+            // Active consumers lazily build the replacement once; inactive consumers only detach stale bindings.
+            if (this._meshUsers) this.emit(SpriteFrameEvent.MESH_CHANGED, this);
+        } finally {
+            releaseCachedMesh(previous, previousTexture);
+            if (!this._mesh && !this._meshUsers) this._syncTextureObserver();
         }
-        this._initVertices();
-        this._createMesh();
     }
 }
 

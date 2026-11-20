@@ -21,7 +21,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-import { TextureFilter, PixelFormat, WrapMode } from './asset-enum';
+import { GFX_TEXTURE_CHANGED, TextureFilter, PixelFormat, WrapMode } from './asset-enum';
 import dependUtil from '../asset-manager/depend-util';
 import { js, macro, cclegacy } from '../../core';
 import './texture-base';
@@ -71,6 +71,7 @@ simpleTextureProto.getGFXTexture = function () {
 
 simpleTextureProto._onGFXTextureUpdated = function (gfxTexture) {
     this._gfxTexture = gfxTexture;
+    this.emit(GFX_TEXTURE_CHANGED);
 };
 
 simpleTextureProto._onAfterAssignImage = function (image) {

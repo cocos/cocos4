@@ -26,10 +26,17 @@ import { PixelFormat } from '../../../asset/assets/asset-enum';
 import { ImageAsset } from '../../../asset/assets/image-asset';
 import { Texture2D } from '../../../asset/assets/texture-2d';
 import { BufferTextureCopy } from '../../../gfx';
-import { cclegacy, js, warnID } from '../../../core';
+import { cclegacy, warnID } from '../../../core';
 import { SpriteFrame } from '../../assets/sprite-frame';
 
 const space = 2;
+
+interface AtlasEntry {
+    x: number;
+    y: number;
+    texture: Texture2D;
+    frameCount: number;
+}
 
 function drawTextureAt (texture: DynamicAtlasTexture, image: ImageAsset, x: number, y: number): void {
     texture.drawTextureAt(image, x, y);
@@ -42,12 +49,8 @@ export class Atlas {
     private declare _x: number;
     private declare _y: number;
     private declare _nextY: number;
-    private _innerTextureInfos: Record<string, {
-            x: number,
-            y: number,
-            texture: Texture2D,
-        }> = {};
-    private _innerSpriteFrames: SpriteFrame[] = [];
+    private _innerTextureInfos: Record<string, AtlasEntry> = {};
+    private _innerSpriteFrames = new Map<SpriteFrame, AtlasEntry>();
     private _count: number = 0;
 
     constructor (width: number, height: number) {
@@ -81,7 +84,8 @@ export class Atlas {
         const rect = spriteFrame.rect;
         // Todo:No renderTexture
         const texture = spriteFrame.texture as Texture2D;
-        const info = this._innerTextureInfos[texture.getId()];
+        const textureId = texture.getId();
+        let info = this._innerTextureInfos[textureId];
 
         let sx = rect.x;
         let sy = rect.y;
@@ -126,10 +130,11 @@ export class Atlas {
 
             drawTextureAt(thisTexture, image, this._x, this._y);
 
-            this._innerTextureInfos[texture.getId()] = {
+            info = this._innerTextureInfos[textureId] = {
                 x: this._x,
                 y: this._y,
                 texture,
+                frameCount: 0,
             };
 
             this._count++;
@@ -146,13 +151,24 @@ export class Atlas {
             texture: this._texture,
         };
 
-        this._innerSpriteFrames.push(spriteFrame);
+        const previous = this._innerSpriteFrames.get(spriteFrame);
+        if (previous !== info) {
+            if (previous) this.removeSpriteFrame(spriteFrame);
+            this._innerSpriteFrames.set(spriteFrame, info);
+            ++info.frameCount;
+        }
 
         return frame;
     }
 
     public removeSpriteFrame (spriteFrame: SpriteFrame): void {
-        js.array.fastRemove(this._innerSpriteFrames, spriteFrame);
+        const entry = this._innerSpriteFrames.get(spriteFrame);
+        if (!entry) return;
+        this._innerSpriteFrames.delete(spriteFrame);
+        // Explicit texture eviction can leave old frames on the page after the source was packed again.
+        if (--entry.frameCount === 0 && this._innerTextureInfos[entry.texture.getId()] === entry) {
+            this.deleteInnerTexture(entry.texture);
+        }
     }
 
     /**
@@ -199,16 +215,16 @@ export class Atlas {
         this._y = space;
         this._nextY = space;
 
-        const frames = this._innerSpriteFrames;
-        for (let i = 0, l = frames.length; i < l; i++) {
-            const frame = frames[i];
-            if (!frame.isValid) {
+        for (const frame of this._innerSpriteFrames.keys()) {
+            // An earlier frame's UV callback can move this frame to a different page.
+            if (!frame.isValid || frame.texture !== this._texture) {
                 continue;
             }
             frame._resetDynamicAtlasFrame();
         }
-        this._innerSpriteFrames.length = 0;
+        this._innerSpriteFrames.clear();
         this._innerTextureInfos = {};
+        this._count = 0;
     }
 
     /**
