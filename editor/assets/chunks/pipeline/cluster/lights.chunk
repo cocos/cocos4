@@ -1,0 +1,22 @@
+#pragma rate b_ccLights pass
+layout(std430) readonly buffer b_ccLights { vec4 b_ccLightsData[]; };
+// std430 五个 vec4，80 字节/灯。灯数存在独立 UBO，不占第一盏灯字段。
+// position.w 是 LightType；color.w 已按 HDR/exposure 换算。
+// sizeRangeAngle 对范围方向光保存 right.xyz；boundingSize.xyz 保存半尺寸，w 保存聚光衰减强度。
+struct CCClusterLight {
+  vec4 position;
+  vec4 color;
+  vec4 sizeRangeAngle;
+  vec4 direction;
+  vec4 boundingSize;
+};
+CCClusterLight ccGetClusterLight(uint index) {
+  uint offset = index * 5u;
+  CCClusterLight light;
+  light.position = b_ccLightsData[offset];
+  light.color = b_ccLightsData[offset + 1u];
+  light.sizeRangeAngle = b_ccLightsData[offset + 2u];
+  light.direction = b_ccLightsData[offset + 3u];
+  light.boundingSize = b_ccLightsData[offset + 4u];
+  return light;
+}

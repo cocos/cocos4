@@ -33,6 +33,7 @@ export * from './types';
 export * from './pipeline';
 export * from './archive';
 export * from './framework';
+export * from './forward-clustered-lighting';
 
 let _pipeline: Pipeline | null = null;
 

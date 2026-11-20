@@ -1,0 +1,57 @@
+#include <pipeline/cluster/constants>
+#include <pipeline/cluster/lights>
+#pragma rate b_clusterLightGrid pass
+layout(std430) readonly buffer b_clusterLightGrid { uvec4 b_clusterLightGridData[]; };
+#pragma rate b_clusterLightIndices pass
+layout(std430) readonly buffer b_clusterLightIndices { uint b_clusterLightIndicesData[]; };
+
+uint ccForwardClusterIndex(vec3 worldPos) {
+  vec4 eye = cc_clusterView * vec4(worldPos, 1.0);
+  vec4 clip = cc_clusterProj * eye;
+  // 用与 build 同源的投影坐标查 XY，避开 gl_FragCoord 的视口偏移与后端 Y 轴差异。
+  // 深度按对数分层：近处精细、远处稀疏；clamp 防止 far 平面映射到第 24 层。
+  vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
+  float z = log(max(-eye.z, cc_clusterCamera.x) / cc_clusterCamera.x)
+    / log(cc_clusterCamera.y / cc_clusterCamera.x);
+  uvec3 id = uvec3(clamp(floor(vec3(uv, z) * vec3(16.0, 8.0, 24.0)), vec3(0.0), vec3(15.0, 7.0, 23.0)));
+  return id.x + 16u * (id.y + 8u * id.z);
+}
+
+vec3 ccForwardClusterShading(in SurfacesMaterialData surfaceData) {
+  vec3 worldPos;
+  HIGHP_VALUE_FROM_STRUCT_DEFINED(worldPos, surfaceData.worldPos);
+  uvec4 grid = b_clusterLightGridData[ccForwardClusterIndex(worldPos)];
+  LightingIntermediateData lightingData;
+  CCSurfacesInitializeLightingIntermediateData(lightingData, surfaceData);
+  vec3 diffuseColor, specularColor;
+  CCSurfacesLightingInitializeColorWithLighting(diffuseColor, specularColor, surfaceData, lightingData);
+  vec3 result = vec3(0.0);
+  // 溢出时保留全部贡献，距离和角度衰减会过滤不影响片元的灯。
+  // 极端密集区域牺牲性能，但不访问超过 200 槽的紧凑列表。
+  uint count = grid.z != 0u ? uint(cc_clusterCamera.z) : min(grid.y, 200u);
+  for (uint i = 0u; i < count; ++i) {
+    uint index = grid.z != 0u ? i : b_clusterLightIndicesData[grid.x + i];
+    if (index >= uint(cc_clusterCamera.z)) continue;
+    CCClusterLight light = ccGetClusterLight(index);
+    vec3 dir = IS_RANGED_DIRECTIONAL_LIGHT(light.position.w) ? -normalize(light.direction.xyz) : light.position.xyz - worldPos;
+    CCSurfacesLightingCalculateIntermediateData_PerLight(lightingData, surfaceData, dir);
+    CCSurfacesLightingCalculateColorWithLighting(diffuseColor, specularColor, surfaceData, lightingData);
+    vec3 diffuse, specular, directGF;
+    CCSurfacesLightingCalculateDirect(diffuse, specular, lightingData, light.color);
+    float attenuation;
+    if (IS_RANGED_DIRECTIONAL_LIGHT(light.position.w)) {
+      attenuation = GetOutOfRange(worldPos, light.position.xyz, light.direction.xyz, light.sizeRangeAngle.xyz, light.boundingSize.xyz);
+    } else {
+      attenuation = CCSurfacesLightingCalculateDistanceAttenuation(lightingData, light.sizeRangeAngle, light.position.w);
+    }
+    if (IS_SPOT_LIGHT(light.position.w)) {
+      attenuation *= CCSurfacesLightingCalculateAngleAttenuationWithStrength(lightingData, light.sizeRangeAngle, -light.direction.xyz, light.boundingSize.w);
+    }
+    CCSurfaceLightingCalculateDirectFresnel(directGF, lightingData, specularColor, vec3(1.0));
+    #if CC_SURFACES_LIGHTING_USE_FRESNEL
+      directGF *= CCSurfaceLightingCalculateExtraFresnel(lightingData);
+    #endif
+    result += (diffuse * diffuseColor + specular * specularColor * directGF) * attenuation;
+  }
+  return result;
+}
