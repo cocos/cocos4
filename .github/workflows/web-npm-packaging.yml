@@ -99,21 +99,21 @@ jobs:
       - name: Generate Web package
         run: npm run pack:npm -- --kind web --output ../engine-web-package
       - name: Pack tarballs and provenance
-        run: npm run pack:npm:artifacts -- --package ../engine-web-package --output ../engine-npm-artifact
+        run: npm run pack:npm:artifacts -- --package ../engine-web-package --output "$RUNNER_TEMP/engine-npm-artifact"
       - name: Verify artifact installation
         shell: bash
         run: |
           mkdir ../engine-artifact-smoke
           cd ../engine-artifact-smoke
           npm init -y
-          npm install ../engine-npm-artifact/*.tgz --ignore-scripts --no-audit --no-fund
+          npm install "$RUNNER_TEMP"/engine-npm-artifact/*.tgz --ignore-scripts --no-audit --no-fund
           node --input-type=module -e "const entry=import.meta.resolve('@cocos/engine-web'); if(!entry.endsWith('/runtime/web/index.mjs')) throw new Error('Unexpected engine entry: '+entry); console.log(entry);"
       - name: Upload npm packages
         id: upload
         uses: actions/upload-artifact@v4
         with:
           name: engine-npm-web-${{ github.sha }}
-          path: ../engine-npm-artifact/*
+          path: ${{ runner.temp }}/engine-npm-artifact/*
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
