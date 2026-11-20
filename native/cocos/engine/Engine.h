@@ -33,6 +33,13 @@
 #include <map>
 #include <memory>
 
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    #include <atomic>
+    #include <mutex>
+    #include <vector>
+    #include "engine/FramePacer.h"
+#endif
+
 namespace se {
 class ScriptEngine;
 }
@@ -117,6 +124,15 @@ private:
     cc::Vec2 _viewLogicalSize{0, 0};
     bool _needRestart{false};
     bool _inited{false};
+
+#if CC_PLATFORM == CC_PLATFORM_ANDROID && CC_USE_ANDROID_FRAME_PACER && !CC_USE_XR
+    FramePacer _framePacer;
+    std::atomic<bool> _resetFramePacer{true};
+    // FPS requests may originate outside the game thread. Apply them only at
+    // the next tick boundary, before waiting or broadcasting BeforeTick.
+    std::mutex _frameRateMutex;
+    std::vector<int> _pendingFrameRates;
+#endif
 
     // Some global objects.
     FileUtils *_fs{nullptr};
