@@ -29,6 +29,7 @@ import { UITransform } from '../2d/framework';
 import { legacyCC } from '../core/global-exports';
 import { Size, Vec2, Vec3, approx, v2, v3 } from '../core/math';
 import { errorID, logID } from '../core/platform/debug';
+import { ccenum } from '../core/value-types/enum';
 import { director, DirectorEvent } from '../game/director';
 import { input } from '../input/input';
 import { Event, EventGamepad, EventHandle, EventMouse, EventTouch, SystemEventType, Touch } from '../input/types';
@@ -213,6 +214,60 @@ export enum ScrollViewEventType {
     TOUCH_UP = 'touch-up',
 }
 
+/**
+ * @en
+ * Enum for the horizontal alignment of the content when it is not wider than the ScrollView.
+ *
+ * @zh
+ * 当内容宽度不大于 ScrollView 时，内容的水平对齐方式。
+ */
+export enum ScrollViewHorizontalContentAlign {
+    /**
+     * @en Align the content to the left side of the view.
+     * @zh 将内容对齐到视图左侧。
+     */
+    LEFT = 0,
+    /**
+     * @en Align the content to the horizontal center of the view.
+     * @zh 将内容对齐到视图水平中心。
+     */
+    CENTER = 1,
+    /**
+     * @en Align the content to the right side of the view.
+     * @zh 将内容对齐到视图右侧。
+     */
+    RIGHT = 2,
+}
+
+ccenum(ScrollViewHorizontalContentAlign);
+
+/**
+ * @en
+ * Enum for the vertical alignment of the content when it is not taller than the ScrollView.
+ *
+ * @zh
+ * 当内容高度不大于 ScrollView 时，内容的垂直对齐方式。
+ */
+export enum ScrollViewVerticalContentAlign {
+    /**
+     * @en Align the content to the top side of the view.
+     * @zh 将内容对齐到视图顶部。
+     */
+    TOP = 0,
+    /**
+     * @en Align the content to the vertical center of the view.
+     * @zh 将内容对齐到视图垂直中心。
+     */
+    CENTER = 1,
+    /**
+     * @en Align the content to the bottom side of the view.
+     * @zh 将内容对齐到视图底部。
+     */
+    BOTTOM = 2,
+}
+
+ccenum(ScrollViewVerticalContentAlign);
+
 enum XrhoverType {
     NONE = 0,
     LEFT = 1,
@@ -235,6 +290,8 @@ enum XrhoverType {
 @requireComponent(UITransform)
 export class ScrollView extends ViewGroup {
     public static EventType = ScrollViewEventType;
+    public static HorizontalContentAlign = ScrollViewHorizontalContentAlign;
+    public static VerticalContentAlign = ScrollViewVerticalContentAlign;
 
     /**
      * @en
@@ -328,6 +385,29 @@ export class ScrollView extends ViewGroup {
 
     /**
      * @en
+     * Horizontal alignment used when the content is not wider than the view.
+     *
+     * @zh
+     * 当内容宽度不大于视图时使用的水平对齐方式。
+     */
+    @type(ScrollViewHorizontalContentAlign)
+    @displayOrder(0)
+    @tooltip('i18n:scrollview.horizontalContentAlign')
+    get horizontalContentAlign (): ScrollViewHorizontalContentAlign {
+        return this._horizontalContentAlign;
+    }
+
+    set horizontalContentAlign (value: ScrollViewHorizontalContentAlign) {
+        if (this._horizontalContentAlign === value) {
+            return;
+        }
+
+        this._horizontalContentAlign = value;
+        this._calculateBoundary();
+    }
+
+    /**
+     * @en
      * The horizontal scrollbar reference.
      * @zh
      * 水平滚动的 ScrollBar。
@@ -367,6 +447,29 @@ export class ScrollView extends ViewGroup {
     @displayOrder(1)
     @tooltip('i18n:scrollview.vertical')
     public vertical = true;
+
+    /**
+     * @en
+     * Vertical alignment used when the content is not taller than the view.
+     *
+     * @zh
+     * 当内容高度不大于视图时使用的垂直对齐方式。
+     */
+    @type(ScrollViewVerticalContentAlign)
+    @displayOrder(1)
+    @tooltip('i18n:scrollview.verticalContentAlign')
+    get verticalContentAlign (): ScrollViewVerticalContentAlign {
+        return this._verticalContentAlign;
+    }
+
+    set verticalContentAlign (value: ScrollViewVerticalContentAlign) {
+        if (this._verticalContentAlign === value) {
+            return;
+        }
+
+        this._verticalContentAlign = value;
+        this._calculateBoundary();
+    }
 
     /**
      * @en
@@ -446,6 +549,10 @@ export class ScrollView extends ViewGroup {
     protected _horizontalScrollBar: ScrollBar | null = null;
     @serializable
     protected _verticalScrollBar: ScrollBar | null = null;
+    @serializable
+    protected _horizontalContentAlign = ScrollViewHorizontalContentAlign.LEFT;
+    @serializable
+    protected _verticalContentAlign = ScrollViewVerticalContentAlign.TOP;
 
     protected _topBoundary = 0;
     protected _bottomBoundary = 0;
@@ -1154,7 +1261,7 @@ export class ScrollView extends ViewGroup {
             self._rightBoundary = self._leftBoundary + viewTrans.width;
             self._topBoundary = self._bottomBoundary + viewTrans.height;
 
-            self._moveContentToTopLeft(viewTrans.contentSize);
+            self._alignContentIfNeeded(viewTrans.contentSize);
         }
     }
 
@@ -1633,10 +1740,10 @@ export class ScrollView extends ViewGroup {
         if (this._content && this.view) {
             const scrollViewSize = this.view.contentSize;
             const uiTrans = this._content._getUITransformComp()!;
-            if (uiTrans.width < scrollViewSize.width) {
+            if (uiTrans.width < scrollViewSize.width || approx(uiTrans.width, scrollViewSize.width)) {
                 out.x = 0;
             }
-            if (uiTrans.height < scrollViewSize.height) {
+            if (uiTrans.height < scrollViewSize.height || approx(uiTrans.height, scrollViewSize.height)) {
                 out.y = 0;
             }
         }
@@ -1856,49 +1963,88 @@ export class ScrollView extends ViewGroup {
             const contentSize = uiTrans.contentSize;
             const scrollSize = self.view.contentSize;
             if (applyToHorizontal) {
-                totalScrollDelta = contentSize.width - scrollSize.width;
-                moveDelta.x = leftDelta - totalScrollDelta * anchor.x;
+                if (contentSize.width < scrollSize.width || approx(contentSize.width, scrollSize.width)) {
+                    moveDelta.x = 0;
+                } else {
+                    totalScrollDelta = contentSize.width - scrollSize.width;
+                    moveDelta.x = leftDelta - totalScrollDelta * anchor.x;
+                }
             }
             if (applyToVertical) {
-                totalScrollDelta = contentSize.height - scrollSize.height;
-                moveDelta.y = bottomDelta - totalScrollDelta * anchor.y;
+                if (contentSize.height < scrollSize.height || approx(contentSize.height, scrollSize.height)) {
+                    moveDelta.y = 0;
+                } else {
+                    totalScrollDelta = contentSize.height - scrollSize.height;
+                    moveDelta.y = bottomDelta - totalScrollDelta * anchor.y;
+                }
             }
         }
 
         return moveDelta;
     }
 
-    protected _moveContentToTopLeft (scrollViewSize: Size): void {
+    /**
+     * @en Aligns the content when its size does not fill the view on one or both axes.
+     * @zh 当内容在某个轴向没有填满视图时，按照配置对齐内容。
+     */
+    protected _alignContentIfNeeded (scrollViewSize: Size): void {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
 
-        let bottomDelta = self._getContentBottomBoundary() - self._bottomBoundary;
-        bottomDelta = -bottomDelta;
         const moveDelta = new Vec3();
-        let totalScrollDelta = 0;
 
-        let leftDelta = self._getContentLeftBoundary() - self._leftBoundary;
-        leftDelta = -leftDelta;
-
-        // 是否限制在上视区上边
         if (self._content) {
             const uiTrans = self._content._getUITransformComp()!;
             const contentSize = uiTrans.contentSize;
-            if (contentSize.height < scrollViewSize.height) {
-                totalScrollDelta = contentSize.height - scrollViewSize.height;
-                moveDelta.y = bottomDelta - totalScrollDelta;
+            if (contentSize.width < scrollViewSize.width || approx(contentSize.width, scrollViewSize.width)) {
+                moveDelta.x = self._getHorizontalContentAlignDelta();
             }
 
-            // 是否限制在上视区左边
-            if (contentSize.width < scrollViewSize.width) {
-                totalScrollDelta = contentSize.width - scrollViewSize.width;
-                moveDelta.x = leftDelta;
+            if (contentSize.height < scrollViewSize.height || approx(contentSize.height, scrollViewSize.height)) {
+                moveDelta.y = self._getVerticalContentAlignDelta();
             }
         }
 
         self._updateScrollBarState();
-        self._moveContent(moveDelta);
+        if (!moveDelta.equals(Vec3.ZERO, EPSILON)) {
+            _tempVec3.set(self._getContentPosition());
+            _tempVec3.add(moveDelta);
+            _tempVec3.set(Math.round(_tempVec3.x * TOLERANCE) * EPSILON, Math.round(_tempVec3.y * TOLERANCE) * EPSILON, _tempVec3.z);
+            self._setContentPosition(_tempVec3);
+        }
         self._adjustContentOutOfBoundary();
+    }
+
+    /**
+     * @en Gets the horizontal movement needed to align the content in the view.
+     * @zh 获取将内容按水平配置对齐到视图中所需的位移。
+     */
+    protected _getHorizontalContentAlignDelta (): number {
+        switch (this._horizontalContentAlign) {
+        case ScrollViewHorizontalContentAlign.CENTER:
+            return (this._leftBoundary + this._rightBoundary - this._getContentLeftBoundary() - this._getContentRightBoundary()) / 2;
+        case ScrollViewHorizontalContentAlign.RIGHT:
+            return this._rightBoundary - this._getContentRightBoundary();
+        case ScrollViewHorizontalContentAlign.LEFT:
+        default:
+            return this._leftBoundary - this._getContentLeftBoundary();
+        }
+    }
+
+    /**
+     * @en Gets the vertical movement needed to align the content in the view.
+     * @zh 获取将内容按垂直配置对齐到视图中所需的位移。
+     */
+    protected _getVerticalContentAlignDelta (): number {
+        switch (this._verticalContentAlign) {
+        case ScrollViewVerticalContentAlign.CENTER:
+            return (this._bottomBoundary + this._topBoundary - this._getContentBottomBoundary() - this._getContentTopBoundary()) / 2;
+        case ScrollViewVerticalContentAlign.BOTTOM:
+            return this._bottomBoundary - this._getContentBottomBoundary();
+        case ScrollViewVerticalContentAlign.TOP:
+        default:
+            return this._topBoundary - this._getContentTopBoundary();
+        }
     }
 
     protected _scaleChanged (value: TransformBit): void {
