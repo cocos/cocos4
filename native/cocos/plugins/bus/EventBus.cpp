@@ -25,6 +25,7 @@
 #include <cstring>
 #include <unordered_map>
 #include "base/Macros.h"
+#include <algorithm>
 
 namespace cc {
 namespace plugin {
