@@ -27,7 +27,7 @@ function getCliArgs() {
 }
 
 /**
- * 
+ *
  * @param {string} configPath
  * @param {string} targetDir
  */
@@ -78,6 +78,9 @@ async function downloadDepsThroughGit(
 function getGitUrl(repo) {
     const origin = getNormalizedOrigin(repo);
     switch (repo.type) {
+        case 'ftp': return `${repo.url}`;
+        case 'http': return `${repo.url}`;
+        case 'https': return `${repo.url}`;
         case 'github': return `${origin}${repo.owner}/${repo.name}.git`;
         case 'gitlab': return `${origin}publics/${repo.name}.git`;
         default: throwUnknownExternType();
@@ -88,6 +91,9 @@ function getNormalizedOrigin(repo) {
     let origin = repo.origin;
     if (origin === undefined) {
         switch (repo.type) {
+            case 'ftp': return undefined;
+            case 'http': return undefined;
+            case 'https': return undefined;
             case 'github': origin = 'github.com'; break;
             case 'gitlab': origin = 'gitlab.cocos.net'; break;
             default: throwUnknownExternType();
