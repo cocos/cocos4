@@ -255,8 +255,8 @@ function createDescriptorSetLayout (device: Device | null, layoutData: Descripto
 }
 
 export function createGfxDescriptorSetsAndPipelines (device: Device | null, g: LayoutGraphData): void {
-    for (let i = 0; i < g._layouts.length; ++i) {
-        const ppl: PipelineLayoutData = g.getLayout(i);
+    for (const v of g.v()) {
+        const ppl: PipelineLayoutData = g.getLayout(v);
         const sets = ppl.getSets();
         sets.forEach((value, key): void => {
             const level = value;

@@ -162,8 +162,7 @@ function getVisibilityName (stage: ShaderStageFlagBit): string {
 export class PrintVisitor extends DefaultVisitor {
     discoverVertex (u: number, g: LayoutGraphData): void {
         const ppl: PipelineLayoutData = g.getLayout(u);
-        const name: string = g._names[u];
-        const freq: UpdateFrequency = g._updateFrequencies[u];
+        const name = g.getName(u);
         this.oss += `${this.space}"${name}": `;
         if (g.h(LayoutGraphDataValue.RenderStage, u)) {
             this.oss += `RenderStage {\n`;
