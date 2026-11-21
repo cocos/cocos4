@@ -1657,12 +1657,12 @@ void startMovePass(const Graphs &graphs, uint32_t passID, const MovePass &pass) 
     } else {
         for (const auto &pair : pass.movePairs) {
             CopyPass copyPass(resourceAccessGraph.get_allocator());
-            copyPass.copyPairs.emplace_back(CopyPair(
+            copyPass.copyPairs.emplace_back(
                 pair.source,
                 pair.target,
                 pair.mipLevels, pair.numSlices,
                 0, 0, 0,
-                pair.targetMostDetailedMip, pair.targetFirstSlice, pair.targetPlaneSlice));
+                pair.targetMostDetailedMip, pair.targetFirstSlice, pair.targetPlaneSlice);
             startCopyPass(graphs, passID, copyPass);
         }
     }
