@@ -27,13 +27,20 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
-#pragma once
+#pragma once // NOLINT(portability-avoid-pragma-once)
+#include <cstdint>
+#include "PrivateFwd.h"
+#include "cocos/base/Ptr.h"
+#include "cocos/base/RefCounted.h"
+#include "cocos/base/std/container/string.h"
+#include "cocos/base/std/container/unordered_map.h"
+#include "cocos/base/std/container/vector.h"
+#include "cocos/core/assets/EffectAsset.h"
+#include "cocos/renderer/core/PassUtils.h"
 #include "cocos/renderer/core/ProgramLib.h"
-#include "cocos/renderer/pipeline/custom/PrivateFwd.h"
-#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
-
+#include "cocos/renderer/gfx-base/GFXDef-common.h"
+#include "cocos/renderer/gfx-base/GFXPipelineLayout.h"
+#include "cocos/renderer/gfx-base/GFXShader.h"
 
 namespace cc {
 
@@ -42,10 +49,10 @@ namespace render {
 class ProgramProxy : public RefCounted {
 public:
     ProgramProxy() = default;
-    ProgramProxy(ProgramProxy&& rhs) = delete;
-    ProgramProxy(ProgramProxy const& rhs) = delete;
-    ProgramProxy& operator=(ProgramProxy&& rhs) = delete;
-    ProgramProxy& operator=(ProgramProxy const& rhs) = delete;
+    ProgramProxy(ProgramProxy &&rhs) = delete;
+    ProgramProxy(ProgramProxy const &rhs) = delete;
+    ProgramProxy &operator=(ProgramProxy &&rhs) = delete;
+    ProgramProxy &operator=(ProgramProxy const &rhs) = delete;
     ~ProgramProxy() noexcept override = default;
 
     virtual const ccstd::string &getName() const noexcept = 0;
@@ -55,10 +62,10 @@ public:
 class ProgramLibrary {
 public:
     ProgramLibrary() noexcept = default;
-    ProgramLibrary(ProgramLibrary&& rhs) = delete;
-    ProgramLibrary(ProgramLibrary const& rhs) = delete;
-    ProgramLibrary& operator=(ProgramLibrary&& rhs) = delete;
-    ProgramLibrary& operator=(ProgramLibrary const& rhs) = delete;
+    ProgramLibrary(ProgramLibrary &&rhs) = delete;
+    ProgramLibrary(ProgramLibrary const &rhs) = delete;
+    ProgramLibrary &operator=(ProgramLibrary &&rhs) = delete;
+    ProgramLibrary &operator=(ProgramLibrary const &rhs) = delete;
     virtual ~ProgramLibrary() noexcept = default;
 
     virtual void addEffect(const EffectAsset *effectAsset) = 0;
@@ -87,6 +94,3 @@ public:
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

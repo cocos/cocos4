@@ -42,6 +42,7 @@
 #include "cocos/renderer/pipeline/custom/CustomTypes.h"
 #include "cocos/renderer/pipeline/custom/NativePipelineFwd.h"
 #include "cocos/renderer/pipeline/custom/NativeTypes.h"
+#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/details/Map.h"
 #include "cocos/renderer/pipeline/custom/details/Set.h"
 #include "cocos/scene/ReflectionProbe.h"

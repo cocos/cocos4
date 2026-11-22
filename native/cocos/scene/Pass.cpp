@@ -25,6 +25,7 @@
 #include "scene/Pass.h"
 #include "base/std/hash/hash.h"
 #include "cocos/bindings/jswrapper/SeApi.h"
+#include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderingModule.h"
 #include "core/Root.h"
 #include "core/assets/EffectAsset.h"
