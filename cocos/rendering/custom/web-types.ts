@@ -29,8 +29,8 @@
  */
 /* eslint-disable max-len */
 import type { Attribute, ShaderInfo } from '../../gfx';
-import type { ProgramProxy } from './private';
 import type { IProgramInfo } from '../../render-scene/core/program-lib';
+import type { ProgramProxy } from './private';
 
 export class ProgramInfo {
     constructor (
