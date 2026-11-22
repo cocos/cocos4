@@ -29,11 +29,10 @@
  */
 /* eslint-disable max-len */
 import { ResolveMode } from '../../gfx';
-import type { ReflectionProbe } from '../../render-scene/scene/reflection-probe';
 import type { Light } from '../../render-scene/scene';
+import type { ReflectionProbe } from '../../render-scene/scene/reflection-probe';
 import { RecyclePool } from '../../core/memop';
 import type { OutputArchive, InputArchive } from './archive';
-import { saveUniformBlock, loadUniformBlock } from './serialization';
 
 export enum UpdateFrequency {
     PER_INSTANCE,
@@ -393,7 +392,7 @@ export class PipelineStatistics {
     numInstancingUniformBlocks = 0;
 }
 
-function createPool<T> (Constructor: new() => T): RecyclePool<T> {
+function createPool<T> (Constructor: new () => T): RecyclePool<T> {
     return new RecyclePool<T>(() => new Constructor(), 16);
 }
 

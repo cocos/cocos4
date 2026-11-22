@@ -29,6 +29,7 @@
  */
 #pragma once
 // clang-format off
+#include "cocos/renderer/pipeline/custom/ArchiveFwd.h"
 #include "cocos/base/std/hash/hash.h"
 
 namespace cc {
@@ -54,6 +55,8 @@ enum class ResourceFlags : uint32_t;
 
 struct BufferTag;
 struct TextureTag;
+struct Name_;
+struct Layout_;
 
 enum class TaskType : uint8_t;
 enum class SceneFlags : uint32_t;

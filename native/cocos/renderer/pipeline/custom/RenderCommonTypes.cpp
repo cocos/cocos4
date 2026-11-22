@@ -27,19 +27,18 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "RenderCommonTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-ResolvePair::ResolvePair(const allocator_type& alloc) noexcept
+ResolvePair::ResolvePair(const allocator_type& alloc)
 : source(alloc),
   target(alloc) {}
 
-ResolvePair::ResolvePair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, ResolveFlags resolveFlagsIn, gfx::ResolveMode modeIn, gfx::ResolveMode mode1In, const allocator_type& alloc) // NOLINT
+ResolvePair::ResolvePair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, ResolveFlags resolveFlagsIn, gfx::ResolveMode modeIn, gfx::ResolveMode mode1In) // NOLINT
 : source(std::move(sourceIn), alloc),
   target(std::move(targetIn), alloc),
   resolveFlags(resolveFlagsIn),
@@ -60,11 +59,11 @@ ResolvePair::ResolvePair(ResolvePair const& rhs, const allocator_type& alloc)
   mode(rhs.mode),
   mode1(rhs.mode1) {}
 
-CopyPair::CopyPair(const allocator_type& alloc) noexcept
+CopyPair::CopyPair(const allocator_type& alloc)
 : source(alloc),
   target(alloc) {}
 
-CopyPair::CopyPair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t sourceMostDetailedMipIn, uint32_t sourceFirstSliceIn, uint32_t sourcePlaneSliceIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc) // NOLINT
+CopyPair::CopyPair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t sourceMostDetailedMipIn, uint32_t sourceFirstSliceIn, uint32_t sourcePlaneSliceIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn) // NOLINT
 : source(std::move(sourceIn), alloc),
   target(std::move(targetIn), alloc),
   mipLevels(mipLevelsIn),
@@ -100,10 +99,11 @@ CopyPair::CopyPair(CopyPair const& rhs, const allocator_type& alloc)
   targetFirstSlice(rhs.targetFirstSlice),
   targetPlaneSlice(rhs.targetPlaneSlice) {}
 
-UploadPair::UploadPair(const allocator_type& alloc) noexcept
-: target(alloc) {}
+UploadPair::UploadPair(const allocator_type& alloc)
+: source(),
+  target(alloc) {}
 
-UploadPair::UploadPair(ccstd::vector<uint8_t> sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc) // NOLINT
+UploadPair::UploadPair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::vector<uint8_t> sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn) // NOLINT
 : source(std::move(sourceIn)),
   target(std::move(targetIn), alloc),
   mipLevels(mipLevelsIn),
@@ -121,11 +121,11 @@ UploadPair::UploadPair(UploadPair&& rhs, const allocator_type& alloc)
   targetFirstSlice(rhs.targetFirstSlice),
   targetPlaneSlice(rhs.targetPlaneSlice) {}
 
-MovePair::MovePair(const allocator_type& alloc) noexcept
+MovePair::MovePair(const allocator_type& alloc)
 : source(alloc),
   target(alloc) {}
 
-MovePair::MovePair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc) // NOLINT
+MovePair::MovePair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn) // NOLINT
 : source(std::move(sourceIn), alloc),
   target(std::move(targetIn), alloc),
   mipLevels(mipLevelsIn),
@@ -155,6 +155,3 @@ MovePair::MovePair(MovePair const& rhs, const allocator_type& alloc)
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on
