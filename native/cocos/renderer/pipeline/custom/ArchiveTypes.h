@@ -30,9 +30,12 @@
 // clang-format off
 // NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #pragma once
-#include <boost/container/pmr/memory_resource.hpp>
 #include <string_view>
 #include "cocos/renderer/pipeline/custom/ArchiveFwd.h"
+
+namespace boost::container::pmr {
+class memory_resource;
+}
 
 namespace cc {
 

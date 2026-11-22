@@ -32,6 +32,7 @@
 #pragma once
 #include "cocos/base/std/container/string.h"
 #include "cocos/base/std/hash/hash.h"
+#include "cocos/renderer/core/ProgramLib.h"
 #include "cocos/renderer/gfx-base/GFXRenderPass.h"
 #include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"

@@ -38,34 +38,49 @@
 #include "cocos/base/Ptr.h"
 #include "cocos/base/std/container/string.h"
 #include "cocos/base/std/container/vector.h"
-#include "cocos/core/ArrayBuffer.h"
-#include "cocos/core/assets/Material.h"
-#include "cocos/math/Mat4.h"
-#include "cocos/math/Quaternion.h"
-#include "cocos/math/Vec2.h"
-#include "cocos/math/Vec4.h"
 #include "cocos/renderer/core/PassUtils.h"
 #include "cocos/renderer/gfx-base/GFXCommandBuffer.h"
 #include "cocos/renderer/gfx-base/GFXDef-common.h"
 #include "cocos/renderer/gfx-base/GFXDef.h"
-#include "cocos/renderer/pipeline/GeometryRenderer.h"
-#include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
-#include "cocos/renderer/pipeline/PipelineSceneData.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonTypes.h"
 #include "cocos/scene/Camera.h"
-#include "cocos/scene/DirectionalLight.h"
 #include "cocos/scene/Light.h"
 #include "cocos/scene/Model.h"
-#include "cocos/scene/PointLight.h"
-#include "cocos/scene/RangedDirectionalLight.h"
-#include "cocos/scene/RenderScene.h"
-#include "cocos/scene/RenderWindow.h"
-#include "cocos/scene/SphereLight.h"
-#include "cocos/scene/SpotLight.h"
+
+namespace cc {
+class ArrayBuffer;
+class Mat4;
+class Material;
+class Quaternion;
+class Vec2;
+class Vec4;
+} // namespace cc
 
 namespace cc::gfx {
+class Buffer;
+class DescriptorSet;
+class DescriptorSetLayout;
 class Device;
-}
+class Sampler;
+class Swapchain;
+class Texture;
+} // namespace cc::gfx
+
+namespace cc::pipeline {
+class GeometryRenderer;
+class GlobalDSManager;
+class PipelineSceneData;
+} // namespace cc::pipeline
+
+namespace cc::scene {
+class DirectionalLight;
+class PointLight;
+class RangedDirectionalLight;
+class RenderScene;
+class RenderWindow;
+class SphereLight;
+class SpotLight;
+} // namespace cc::scene
 
 namespace cc {
 

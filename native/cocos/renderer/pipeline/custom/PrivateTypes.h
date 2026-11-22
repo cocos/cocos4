@@ -35,12 +35,21 @@
 #include "cocos/base/std/container/string.h"
 #include "cocos/base/std/container/unordered_map.h"
 #include "cocos/base/std/container/vector.h"
-#include "cocos/core/assets/EffectAsset.h"
 #include "cocos/renderer/core/PassUtils.h"
-#include "cocos/renderer/core/ProgramLib.h"
-#include "cocos/renderer/gfx-base/GFXDef-common.h"
 #include "cocos/renderer/gfx-base/GFXPipelineLayout.h"
 #include "cocos/renderer/gfx-base/GFXShader.h"
+
+namespace cc {
+class EffectAsset;
+struct IProgramInfo;
+} // namespace cc
+
+namespace cc::gfx {
+class DescriptorSetLayout;
+class Device;
+class PipelineState;
+struct ShaderInfo;
+} // namespace cc::gfx
 
 namespace cc {
 

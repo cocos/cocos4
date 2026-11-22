@@ -22,12 +22,17 @@
  THE SOFTWARE.
 ****************************************************************************/
 
+#include "cocos/renderer/pipeline/PipelineSceneData.h"
 #include "cocos/renderer/pipeline/custom/NativeBuiltinUtils.h"
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
 #include "cocos/renderer/pipeline/custom/NativeUtils.h"
 #include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/scene/DirectionalLight.h"
 #include "cocos/scene/Light.h"
+#include "cocos/scene/PointLight.h"
+#include "cocos/scene/RangedDirectionalLight.h"
 #include "cocos/scene/RenderScene.h"
+#include "cocos/scene/SphereLight.h"
 #include "cocos/scene/SpotLight.h"
 
 namespace cc {
