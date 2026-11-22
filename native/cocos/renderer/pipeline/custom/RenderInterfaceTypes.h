@@ -27,60 +27,51 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
-#pragma once
+#pragma once // NOLINT(portability-avoid-pragma-once)
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include "RenderInterfaceFwd.h"
+#include "cocos/base/Ptr.h"
+#include "cocos/base/std/container/string.h"
+#include "cocos/base/std/container/vector.h"
 #include "cocos/core/ArrayBuffer.h"
-#include "cocos/core/TypedArray.h"
-#include "cocos/core/assets/EffectAsset.h"
+#include "cocos/core/assets/Material.h"
+#include "cocos/math/Mat4.h"
+#include "cocos/math/Quaternion.h"
+#include "cocos/math/Vec2.h"
+#include "cocos/math/Vec4.h"
 #include "cocos/renderer/core/PassUtils.h"
+#include "cocos/renderer/gfx-base/GFXCommandBuffer.h"
 #include "cocos/renderer/gfx-base/GFXDef-common.h"
+#include "cocos/renderer/gfx-base/GFXDef.h"
+#include "cocos/renderer/pipeline/GeometryRenderer.h"
+#include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
 #include "cocos/renderer/pipeline/PipelineSceneData.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonTypes.h"
-#include "cocos/renderer/pipeline/custom/RenderInterfaceFwd.h"
 #include "cocos/scene/Camera.h"
+#include "cocos/scene/DirectionalLight.h"
+#include "cocos/scene/Light.h"
+#include "cocos/scene/Model.h"
+#include "cocos/scene/PointLight.h"
+#include "cocos/scene/RangedDirectionalLight.h"
+#include "cocos/scene/RenderScene.h"
+#include "cocos/scene/RenderWindow.h"
+#include "cocos/scene/SphereLight.h"
+#include "cocos/scene/SpotLight.h"
+
+namespace cc::gfx {
+class Device;
+}
 
 namespace cc {
-
-class Mat4;
-class Mat4;
-class Quaternion;
-class Vec4;
-class Vec3;
-class Vec2;
-
-namespace pipeline {
-
-class GlobalDSManager;
-class PipelineSceneData;
-class GeometryRenderer;
-
-} // namespace pipeline
-
-namespace scene {
-
-class DirectionalLight;
-class SphereLight;
-class SpotLight;
-class PointLight;
-class RangedDirectionalLight;
-class Model;
-class RenderScene;
-class RenderWindow;
-
-} // namespace scene
 
 namespace render {
 
 constexpr bool ENABLE_SUBPASS = true;
-
-} // namespace render
-
-} // namespace cc
-
-namespace cc {
-
-namespace render {
 
 /**
  * @engineInternal
@@ -92,10 +83,10 @@ namespace render {
 class PipelineRuntime {
 public:
     PipelineRuntime() noexcept = default;
-    PipelineRuntime(PipelineRuntime&& rhs) = delete;
-    PipelineRuntime(PipelineRuntime const& rhs) = delete;
-    PipelineRuntime& operator=(PipelineRuntime&& rhs) = delete;
-    PipelineRuntime& operator=(PipelineRuntime const& rhs) = delete;
+    PipelineRuntime(PipelineRuntime &&rhs) = delete;
+    PipelineRuntime(PipelineRuntime const &rhs) = delete;
+    PipelineRuntime &operator=(PipelineRuntime &&rhs) = delete;
+    PipelineRuntime &operator=(PipelineRuntime const &rhs) = delete;
     virtual ~PipelineRuntime() noexcept = default;
 
     /**
@@ -116,7 +107,7 @@ public:
      * @zh 根据相机进行绘制
      * @param cameras @en Camera list @zh 相机列表
      */
-    virtual void render(const ccstd::vector<scene::Camera*> &cameras) = 0;
+    virtual void render(const ccstd::vector<scene::Camera *> &cameras) = 0;
     /**
      * @en Get graphics device
      * @zh 获得图形设备
@@ -146,7 +137,7 @@ public:
      * @en Get command buffers of render pipeline
      * @zh 获得渲染管线的命令缓冲(CommandBuffer)列表
      */
-    virtual const ccstd::vector<gfx::CommandBuffer*> &getCommandBuffers() const = 0;
+    virtual const ccstd::vector<gfx::CommandBuffer *> &getCommandBuffers() const = 0;
     /**
      * @en Get scene data of render pipeline.
      * Scene data contains render configurations of the current scene.
@@ -317,11 +308,11 @@ constexpr SubpassCapabilities operator&(const SubpassCapabilities lhs, const Sub
     return static_cast<SubpassCapabilities>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
 }
 
-constexpr SubpassCapabilities& operator|=(SubpassCapabilities& lhs, const SubpassCapabilities rhs) noexcept {
+constexpr SubpassCapabilities &operator|=(SubpassCapabilities &lhs, const SubpassCapabilities rhs) noexcept {
     return lhs = lhs | rhs;
 }
 
-constexpr SubpassCapabilities& operator&=(SubpassCapabilities& lhs, const SubpassCapabilities rhs) noexcept {
+constexpr SubpassCapabilities &operator&=(SubpassCapabilities &lhs, const SubpassCapabilities rhs) noexcept {
     return lhs = lhs & rhs;
 }
 
@@ -355,10 +346,10 @@ struct PipelineCapabilities {
 class RenderNode {
 public:
     RenderNode() noexcept = default;
-    RenderNode(RenderNode&& rhs) = delete;
-    RenderNode(RenderNode const& rhs) = delete;
-    RenderNode& operator=(RenderNode&& rhs) = delete;
-    RenderNode& operator=(RenderNode const& rhs) = delete;
+    RenderNode(RenderNode &&rhs) = delete;
+    RenderNode(RenderNode const &rhs) = delete;
+    RenderNode &operator=(RenderNode &&rhs) = delete;
+    RenderNode &operator=(RenderNode const &rhs) = delete;
     virtual ~RenderNode() noexcept = default;
 
     /**
@@ -379,8 +370,6 @@ public:
  */
 class Setter : public RenderNode {
 public:
-    Setter() noexcept = default;
-
     /**
      * @en Set matrix4x4 常量(uniform) which consists of 16 floats (64 bytes).
      * @zh 设置4x4矩阵，常量(uniform)有16个float (64 bytes)
@@ -545,8 +534,6 @@ public:
  */
 class SceneBuilder : public Setter {
 public:
-    SceneBuilder() noexcept = default;
-
     /**
      * @en Use the frustum information of light instead of camera.
      * Often used in building shadow map.
@@ -574,8 +561,6 @@ public:
  */
 class RenderQueueBuilder : public Setter {
 public:
-    RenderQueueBuilder() noexcept = default;
-
     /**
      * @deprecated Method will be removed in the future
      * @en Render the scene the camera is looking at.
@@ -616,7 +601,7 @@ public:
     /**
      * @beta Feature is under development
      */
-    virtual void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model*> &models, SceneFlags sceneFlags) = 0;
+    virtual void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model *> &models, SceneFlags sceneFlags) = 0;
     /**
      * @beta Feature is under development
      */
@@ -657,7 +642,7 @@ public:
     void addCameraQuad(scene::Camera *camera, Material *material, uint32_t passID) {
         addCameraQuad(camera, material, passID, SceneFlags::NONE);
     }
-    void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model*> &models) {
+    void addDraw3D(const scene::Camera *camera, const std::vector<scene::Model *> &models) {
         addDraw3D(camera, models, SceneFlags::NON_BUILTIN);
     }
     void clearRenderTarget(const ccstd::string &name) {
@@ -671,8 +656,6 @@ public:
  */
 class BasicRenderPassBuilder : public Setter {
 public:
-    BasicRenderPassBuilder() noexcept = default;
-
     /**
      * @en Add render target for rasterization
      * The render target must have registered in pipeline.
@@ -758,13 +741,13 @@ public:
         addRenderTarget(name, loadOp, storeOp, {});
     }
     void addDepthStencil(const ccstd::string &name) {
-        addDepthStencil(name, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, gfx::LoadOp loadOp) {
-        addDepthStencil(name, loadOp, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, loadOp, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, gfx::LoadOp loadOp, gfx::StoreOp storeOp) {
-        addDepthStencil(name, loadOp, storeOp, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, loadOp, storeOp, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, gfx::LoadOp loadOp, gfx::StoreOp storeOp, float depth) {
         addDepthStencil(name, loadOp, storeOp, depth, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
@@ -802,8 +785,6 @@ public:
  */
 class BasicMultisampleRenderPassBuilder : public BasicRenderPassBuilder {
 public:
-    BasicMultisampleRenderPassBuilder() noexcept = default;
-
     /**
      * @en Set resolve render target
      * @zh 设置决算渲染目标
@@ -838,8 +819,6 @@ public:
  */
 class BasicPipeline : public PipelineRuntime {
 public:
-    BasicPipeline() noexcept = default;
-
     virtual PipelineType getType() const = 0;
     virtual PipelineCapabilities getCapabilities() const = 0;
     /**
@@ -1162,8 +1141,6 @@ public:
  */
 class RenderSubpassBuilder : public Setter {
 public:
-    RenderSubpassBuilder() noexcept = default;
-
     /**
      * @en Add render target for rasterization
      * The render target must have registered in pipeline.
@@ -1275,19 +1252,19 @@ public:
         addRenderTarget(name, accessType, slotName, loadOp, storeOp, {});
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType) {
-        addDepthStencil(name, accessType, "", "", gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, accessType, "", "", gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType, const ccstd::string &depthSlotName) {
-        addDepthStencil(name, accessType, depthSlotName, "", gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, accessType, depthSlotName, "", gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType, const ccstd::string &depthSlotName, const ccstd::string &stencilSlotName) {
-        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType, const ccstd::string &depthSlotName, const ccstd::string &stencilSlotName, gfx::LoadOp loadOp) {
-        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, loadOp, gfx::StoreOp::STORE, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, loadOp, gfx::StoreOp::STORE, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType, const ccstd::string &depthSlotName, const ccstd::string &stencilSlotName, gfx::LoadOp loadOp, gfx::StoreOp storeOp) {
-        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, loadOp, storeOp, 1, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
+        addDepthStencil(name, accessType, depthSlotName, stencilSlotName, loadOp, storeOp, 1.0F, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
     }
     void addDepthStencil(const ccstd::string &name, AccessType accessType, const ccstd::string &depthSlotName, const ccstd::string &stencilSlotName, gfx::LoadOp loadOp, gfx::StoreOp storeOp, float depth) {
         addDepthStencil(name, accessType, depthSlotName, stencilSlotName, loadOp, storeOp, depth, 0, gfx::ClearFlagBit::DEPTH_STENCIL);
@@ -1319,8 +1296,6 @@ public:
  */
 class MultisampleRenderSubpassBuilder : public RenderSubpassBuilder {
 public:
-    MultisampleRenderSubpassBuilder() noexcept = default;
-
     /**
      * @en Resolve render target
      * @zh 汇总渲染目标
@@ -1351,8 +1326,6 @@ public:
  */
 class ComputeQueueBuilder : public Setter {
 public:
-    ComputeQueueBuilder() noexcept = default;
-
     /**
      * @en Dispatch compute task
      * @zh 发送计算任务
@@ -1378,8 +1351,6 @@ public:
  */
 class ComputeSubpassBuilder : public Setter {
 public:
-    ComputeSubpassBuilder() noexcept = default;
-
     /**
      * @en Add input render target.
      * @zh 添加输入渲染目标
@@ -1467,8 +1438,6 @@ public:
  */
 class RenderPassBuilder : public BasicRenderPassBuilder {
 public:
-    RenderPassBuilder() noexcept = default;
-
     /**
      * @en Add storage buffer.
      * The buffer must have registered in pipeline.
@@ -1536,8 +1505,6 @@ public:
  */
 class MultisampleRenderPassBuilder : public BasicMultisampleRenderPassBuilder {
 public:
-    MultisampleRenderPassBuilder() noexcept = default;
-
     /**
      * @en Add storage buffer
      * @zh 添加存储缓冲
@@ -1562,8 +1529,6 @@ public:
  */
 class ComputePassBuilder : public Setter {
 public:
-    ComputePassBuilder() noexcept = default;
-
     /**
      * @en Add texture for sampling
      * The texture must have registered in pipeline.
@@ -1650,8 +1615,6 @@ public:
  */
 class Pipeline : public BasicPipeline {
 public:
-    Pipeline() noexcept = default;
-
     /**
      * @en Add or update storage buffer.
      * @zh 添加或更新存储缓冲
@@ -1706,8 +1669,26 @@ public:
      * @param height @en Height of the resource @zh 资源的高度
      */
     virtual void updateShadingRateTexture(const ccstd::string &name, uint32_t width, uint32_t height) = 0;
-    RenderPassBuilder *addRenderPass(uint32_t width, uint32_t height, const ccstd::string &passName) override = 0 /* covariant */;
-    MultisampleRenderPassBuilder *addMultisampleRenderPass(uint32_t width, uint32_t height, uint32_t count, uint32_t quality, const ccstd::string &passName) override = 0 /* covariant */;
+    /**
+     * @en Add render pass
+     * @zh 添加渲染通道
+     * @param width @en Width of the render pass @zh 渲染通道的宽度
+     * @param height @en Height of the render pass @zh 渲染通道的高度
+     * @param passName @en Pass name declared in the effect. Default value is 'default' @zh effect中的pass name，缺省为'default'
+     * @returns Render pass builder
+     */
+    RenderPassBuilder *addRenderPass(uint32_t width, uint32_t height, const ccstd::string &passName) override = 0;
+    /**
+     * @en Add multisample render pass
+     * @zh 添加多重采样渲染通道
+     * @param width @en Width of the render pass @zh 渲染通道的宽度
+     * @param height @en Height of the render pass @zh 渲染通道的高度
+     * @param count @en Sample count @zh 采样数目
+     * @param quality @en Sample quality (default is 0) @zh 采样质量（默认为0）
+     * @param passName @en Pass name declared in the effect. Default value is 'default' @zh effect中的pass name，缺省为'default'
+     * @returns Multisample render pass builder
+     */
+    MultisampleRenderPassBuilder *addMultisampleRenderPass(uint32_t width, uint32_t height, uint32_t count, uint32_t quality, const ccstd::string &passName) override = 0;
     /**
      * @en Add compute pass
      * @zh 添加计算通道
@@ -1785,10 +1766,10 @@ public:
 class PipelinePassBuilder {
 public:
     PipelinePassBuilder() noexcept = default;
-    PipelinePassBuilder(PipelinePassBuilder&& rhs) = delete;
-    PipelinePassBuilder(PipelinePassBuilder const& rhs) = delete;
-    PipelinePassBuilder& operator=(PipelinePassBuilder&& rhs) = delete;
-    PipelinePassBuilder& operator=(PipelinePassBuilder const& rhs) = delete;
+    PipelinePassBuilder(PipelinePassBuilder &&rhs) = delete;
+    PipelinePassBuilder(PipelinePassBuilder const &rhs) = delete;
+    PipelinePassBuilder &operator=(PipelinePassBuilder &&rhs) = delete;
+    PipelinePassBuilder &operator=(PipelinePassBuilder const &rhs) = delete;
     virtual ~PipelinePassBuilder() noexcept = default;
 
     virtual uint32_t getConfigOrder() const = 0;
@@ -1806,10 +1787,10 @@ public:
 class PipelineBuilder {
 public:
     PipelineBuilder() noexcept = default;
-    PipelineBuilder(PipelineBuilder&& rhs) = delete;
-    PipelineBuilder(PipelineBuilder const& rhs) = delete;
-    PipelineBuilder& operator=(PipelineBuilder&& rhs) = delete;
-    PipelineBuilder& operator=(PipelineBuilder const& rhs) = delete;
+    PipelineBuilder(PipelineBuilder &&rhs) = delete;
+    PipelineBuilder(PipelineBuilder const &rhs) = delete;
+    PipelineBuilder &operator=(PipelineBuilder &&rhs) = delete;
+    PipelineBuilder &operator=(PipelineBuilder const &rhs) = delete;
     virtual ~PipelineBuilder() noexcept = default;
 
     virtual void windowResize(BasicPipeline *pipeline, scene::RenderWindow *window, scene::Camera *camera, uint32_t width, uint32_t height) = 0;
@@ -1819,7 +1800,7 @@ public:
      * @param cameras @en Camera list to render @zh 需要渲染的相机列表
      * @param pipeline @en Current render pipeline @zh 当前管线
      */
-    virtual void setup(const ccstd::vector<scene::Camera*> &cameras, BasicPipeline *pipeline) = 0;
+    virtual void setup(const ccstd::vector<scene::Camera *> &cameras, BasicPipeline *pipeline) = 0;
     /**
      * @en Callback of pipeline state changed
      * @zh 渲染管线状态更新的回调
@@ -1833,10 +1814,10 @@ public:
 class RenderingModule {
 public:
     RenderingModule() noexcept = default;
-    RenderingModule(RenderingModule&& rhs) = delete;
-    RenderingModule(RenderingModule const& rhs) = delete;
-    RenderingModule& operator=(RenderingModule&& rhs) = delete;
-    RenderingModule& operator=(RenderingModule const& rhs) = delete;
+    RenderingModule(RenderingModule &&rhs) = delete;
+    RenderingModule(RenderingModule const &rhs) = delete;
+    RenderingModule &operator=(RenderingModule &&rhs) = delete;
+    RenderingModule &operator=(RenderingModule const &rhs) = delete;
     virtual ~RenderingModule() noexcept = default;
 
     virtual uint32_t getPassID(const ccstd::string &name) const = 0;
@@ -1846,14 +1827,11 @@ public:
 
 class Factory {
 public:
-    static RenderingModule* init(gfx::Device* deviceIn, const ccstd::vector<unsigned char>& bufferIn);
-    static void destroy(RenderingModule* renderingModule) noexcept;
+    static RenderingModule *init(gfx::Device *deviceIn, const ccstd::vector<uint8_t> &bufferIn);
+    static void destroy(RenderingModule *renderingModule) noexcept;
     static Pipeline *createPipeline();
 };
 
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on
