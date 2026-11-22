@@ -241,7 +241,7 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 const auto &inputsAndOutputs = subpasses.back();
                 const auto &inputs = inputsAndOutputs.front();
                 const auto &outputs = inputsAndOutputs.back();
-                copyPass.copyPairs.emplace_back(CopyPair{
+                copyPass.copyPairs.emplace_back(
                     inputs.front().c_str(),
                     outputs.front().c_str(),
                     1,
@@ -251,7 +251,7 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                     0,
                     0,
                     0,
-                    0});
+                    0);
 
                 break;
             }
