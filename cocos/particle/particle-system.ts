@@ -79,6 +79,17 @@ const superMaterials = Object.getOwnPropertyDescriptor(Renderer.prototype, 'shar
 @executeInEditMode
 export class ParticleSystem extends ModelRenderer {
     /**
+     * @en Playback speed multiplier shared by all 3D particle systems. Multiplies each component's simulationSpeed.
+     * @zh 所有 3D 粒子系统共用的播放倍率，与各组件的 simulationSpeed 相乘。设为 0 时暂停推进模拟。
+     */
+    public static globalTimeScale = 1.0;
+
+    /** Sets the playback multiplier shared by all 3D particle systems. */
+    public static setGlobalTimeScale (scale: number): void {
+        ParticleSystem.globalTimeScale = scale;
+    }
+
+    /**
      * @en Maximum particle capacity to generate.
      * @zh 粒子系统能生成的最大粒子数量。
      */
@@ -312,6 +323,11 @@ export class ParticleSystem extends ModelRenderer {
     @displayOrder(5)
     @tooltip('i18n:particle_system.simulationSpeed')
     public simulationSpeed = 1.0;
+
+    /** Sets this component's playback multiplier relative to the global time scale. */
+    public setTimeScale (scale: number): void {
+        this.simulationSpeed = scale;
+    }
 
     /**
      * @en Automatically start playing after particle system initialized.
@@ -1205,7 +1221,7 @@ export class ParticleSystem extends ModelRenderer {
         const self = this;
         const thisProcessor = self.processor;
         const thisTrailModule = self.trailModule;
-        const scaledDeltaTime = dt * self.simulationSpeed;
+        const scaledDeltaTime = dt * self.simulationSpeed * ParticleSystem.globalTimeScale;
 
         if (!self.renderCulling) {
             if (self._boundingBox) {
@@ -1298,7 +1314,7 @@ export class ParticleSystem extends ModelRenderer {
             }
         }
 
-        if (self._isPlaying) {
+        if (self._isPlaying && ParticleSystem.globalTimeScale !== 0) {
             self._time += scaledDeltaTime;
 
             // Execute emission

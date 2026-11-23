@@ -174,6 +174,17 @@ const wrapParseFloat: (str: string | number) => number = parseFloat as any;
 @playOnFocus
 @executeInEditMode
 export class ParticleSystem2D extends UIRenderer {
+    /**
+     * @en Playback speed multiplier shared by all 2D particle systems.
+     * @zh 所有 2D 粒子系统共用的播放倍率，设为 0 时暂停模拟。
+     */
+    public static globalTimeScale = 1.0;
+
+    /** Sets the playback multiplier shared by all 2D particle systems. */
+    public static setGlobalTimeScale (scale: number): void {
+        ParticleSystem2D.globalTimeScale = scale;
+    }
+
     static EmitterMode = EmitterMode;
     static PositionType = PositionType;
     static readonly DURATION_INFINITY = DURATION_INFINITY;
@@ -273,6 +284,20 @@ export class ParticleSystem2D extends UIRenderer {
     public set totalParticles (value: number) {
         if (this._totalParticles === value) return;
         this._totalParticles = value;
+    }
+
+    /**
+     * @en Playback speed of this component, multiplied by ParticleSystem2D.globalTimeScale.
+     * @zh 当前组件的播放倍率，与 ParticleSystem2D.globalTimeScale 相乘。
+     */
+    @serializable
+    @editable
+    @tooltip('i18n:particle_system.simulationSpeed')
+    public simulationSpeed = 1.0;
+
+    /** Sets this component's playback multiplier relative to the global time scale. */
+    public setTimeScale (scale: number): void {
+        this.simulationSpeed = scale;
     }
 
     /**
@@ -866,8 +891,9 @@ export class ParticleSystem2D extends UIRenderer {
     }
 
     protected override lateUpdate (dt: number): void {
-        if (!this._simulator.finished) {
-            this._simulator.step(dt);
+        const speed = ParticleSystem2D.globalTimeScale * this.simulationSpeed;
+        if (!this._simulator.finished && speed > 0) {
+            this._simulator.step(dt, speed);
         }
     }
 
