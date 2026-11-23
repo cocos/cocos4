@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-function validateEngineNpmInputs(source, profiles = []) {
+function validateEngineNpmInputs(source, profiles = [], profileRoot = path.join(source, 'bin/.cache/dev-cli')) {
     const config = JSON.parse(fs.readFileSync(path.join(source, 'cc.config.json'), 'utf8'));
     const palStamp = path.join(source, 'pal/.pal-source.json');
     const palPackage = path.join(source, 'node_modules/@cocos/engine-pal/package.json');
@@ -19,7 +19,7 @@ function validateEngineNpmInputs(source, profiles = []) {
         }
     }
     for (const profile of profiles) {
-        const root = path.join(source, 'bin/.cache/dev-cli', profile);
+        const root = path.join(profileRoot, profile);
         const mapFile = path.join(root, 'import-map.json');
         const bundleFile = path.join(root, 'bundled/index.js');
         if (!fs.existsSync(mapFile) || !fs.existsSync(bundleFile)) throw new Error('[ENGINE_NPM_PROFILE_INCOMPLETE] Prepare ' + profile + ' import map and bundle before packaging.');

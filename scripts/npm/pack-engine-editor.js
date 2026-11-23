@@ -9,13 +9,20 @@ const { transformModule } = require('./pack-engine-npm');
 const { validateEngineNpmInputs } = require('./engine-npm-preflight');
 const { readWebManifest: readManifest } = require('./package-manifest.cjs');
 
+function validateProfileIdentity(stamp, web) {
+    for (const key of ['engineVersion', 'engineRevision', 'sdkReleaseId']) if (!stamp || stamp[key] !== web[key]) throw new Error('Prepared profiles differ from Web SDK: ' + key);
+}
+
 async function packEngineEditor({ source, base, output }) {
     source = await fs.realpath(source);
     base = await fs.realpath(base);
-    validateEngineNpmInputs(source, ['editor', 'web']);
+    const profileRoot = path.join(source, 'bin/.cache/npm-editor');
+    validateEngineNpmInputs(source, ['editor', 'web'], profileRoot);
     output = path.resolve(output);
     const web = readManifest(base);
     if (web?.schemaVersion !== 2 || web.component !== 'web') throw new Error('A prepared Web SDK is required');
+    const stamp = JSON.parse(await fs.readFile(path.join(profileRoot, 'npm-profiles.json'), 'utf8'));
+    validateProfileIdentity(stamp, web);
     const pkg = JSON.parse(await fs.readFile(path.join(source, 'package.json'), 'utf8'));
     if (pkg.version !== web.engineVersion) throw new Error('Editor engine version differs from Web SDK');
     for (const input of [source, base]) {
@@ -23,14 +30,16 @@ async function packEngineEditor({ source, base, output }) {
         if (!relative || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))) throw new Error('Editor output must be outside its inputs');
     }
     if (sync.existsSync(output)) throw new Error(`Output already exists: ${output}`);
-    for (const profile of ['editor', 'web']) if (!sync.existsSync(path.join(source, 'bin/.cache/dev-cli', profile, 'loader.js'))) throw new Error(`Prepare ${profile} profile before packaging the editor`);
+    for (const profile of ['editor', 'web']) if (!sync.existsSync(path.join(profileRoot, profile, 'loader.js'))) throw new Error(`Prepare ${profile} profile before packaging the editor`);
     const staging = output + '.' + crypto.randomUUID() + '.tmp';
     await fs.mkdir(staging, { recursive: true });
     try {
-        for (const directory of ['editor/assets', 'editor/i18n', 'editor/settings', 'editor/extends', 'bin/.editor', 'bin/.cache/dev-cli']) {
+        for (const directory of ['editor/assets', 'editor/i18n', 'editor/settings', 'editor/extends']) {
             const from = path.join(source, directory);
             if (sync.existsSync(from)) await fs.cp(from, path.join(staging, directory), { recursive: true, filter: file => !['transform-cache', '.incremental.json', 'node_modules', '.git'].includes(path.basename(file)) });
         }
+        await fs.cp(profileRoot, path.join(staging, 'bin/.cache/dev-cli'), { recursive: true, filter: file => !['adapters', 'transform-cache', '.incremental.json', '.git', 'node_modules'].includes(path.basename(file)) });
+        await fs.cp(path.join(profileRoot, 'adapters'), path.join(staging, 'bin/.editor'), { recursive: true });
         for (const name of ['i18n-utils.js']) if (sync.existsSync(path.join(source, 'editor', name))) await fs.copyFile(path.join(source, 'editor', name), path.join(staging, 'editor', name));
         await fs.mkdir(path.join(staging, 'editor/exports'), { recursive: true });
         for (const entry of await fs.readdir(path.join(source, 'editor/exports'))) {
@@ -62,7 +71,7 @@ async function packEngineEditor({ source, base, output }) {
     } catch (error) { await fs.rm(staging, { recursive: true, force: true }); throw error; }
 }
 
-module.exports = { packEngineEditor };
+module.exports = { packEngineEditor, validateProfileIdentity };
 if (require.main === module) {
     const { values } = parseArgs({ options: { source: { type: 'string', default: path.resolve(__dirname, '../..') }, base: { type: 'string' }, output: { type: 'string' } } });
     if (!values.source || !values.base || !values.output) throw new Error('Usage: node scripts/npm/pack-engine-editor.js --source ENGINE --base WEB_SDK --output NEW_DIRECTORY');

@@ -35,7 +35,8 @@
     "pack:npm:web": "node scripts/npm/pack-engine-npm.js --kind web",
     "pack:npm:editor": "node scripts/npm/pack-engine-npm.js --kind editor",
     "test:npm": "node --test scripts/npm/test/*.test.cjs",
-    "pack:npm:artifacts": "node scripts/npm/pack-artifacts.cjs"
+    "pack:npm:artifacts": "node scripts/npm/pack-artifacts.cjs",
+    "prepare:npm:editor": "node scripts/npm/prepare-editor-profiles.cjs"
   },
   "repository": {
     "type": "git",
@@ -46,6 +47,7 @@
     "@babel/plugin-proposal-export-default-from": "^7.17.12",
     "@babel/preset-env": "7.8.7",
     "@cocos/babel-preset-cc": "2.2.0",
+    "@cocos/quick-compiler": "4.2.26",
     "@types/fs-extra": "^5.0.4",
     "@types/yargs": "^12.0.14",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
