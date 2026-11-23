@@ -50,7 +50,7 @@ simpleTextureProto.uploadData = function (source, level = 0, arrayIndex = 0) {
         // @ts-ignore
         data = source._data;
     } else if (ArrayBuffer.isView(source)) {
-        data = source.buffer;
+        data = source;
     }
     oldUpdateDataFunc.call(this, data, level, arrayIndex);
 };
