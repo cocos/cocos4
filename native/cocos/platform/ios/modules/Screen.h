@@ -45,6 +45,10 @@ public:
      * @brief set display stats information.
      */
     void setDisplayStats(bool isShow) override;
+
+private:
+    mutable Orientation _lastOrientation{Orientation::PORTRAIT};
+    mutable bool _hasValidOrientation{false};
 };
 
 } // namespace cc

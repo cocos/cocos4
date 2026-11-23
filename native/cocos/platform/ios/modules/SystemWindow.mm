@@ -53,7 +53,7 @@ uintptr_t SystemWindow::getWindowHandle() const {
 
 SystemWindow::Size SystemWindow::getViewSize() const {
     auto dpr = BasePlatform::getPlatform()->getInterface<IScreen>()->getDevicePixelRatio();
-    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect bounds = UIApplication.sharedApplication.delegate.window.rootViewController.view.bounds;
     return Size{static_cast<float>(bounds.size.width * dpr), static_cast<float>(bounds.size.height * dpr)};
 }
 
