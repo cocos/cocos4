@@ -28,6 +28,8 @@ import { error, errorID, warn, warnID } from '../../platform/debug';
 import * as js from '../../utils/js';
 import { PrimitiveType } from './attribute';
 import { legacyCC } from '../../global-exports';
+import { isOneOfPropertyType } from '../decorators/one-of';
+import type { OneOfPropertyType } from '../decorators/one-of';
 
 // 增加预处理属性这个步骤的目的是降低 CCClass 的实现难度，将比较稳定的通用逻辑和一些需求比较灵活的属性需求分隔开。
 
@@ -155,7 +157,11 @@ function getBaseClassWherePropertyDefined_DEV (propName, cls): any {
     }
 }
 
-function _wrapOptions (isGetset: boolean, _default, type?: Function | Function[] | PrimitiveType<any>): {
+function _wrapOptions (
+    isGetset: boolean,
+    _default,
+    type?: Function | Function[] | PrimitiveType<any> | OneOfPropertyType,
+): {
     default?: any;
     _short?: boolean | undefined;
     type?: any;
@@ -185,6 +191,8 @@ export function getFullFormOfProperty (options, isGetset): {
             return _wrapOptions(isGetset, js.isChildClassOf(type, legacyCC.ValueType) ? new type() : null, type);
         } else if (options instanceof PrimitiveType) {
             return _wrapOptions(isGetset, undefined, options);
+        } else if (isOneOfPropertyType(options)) {
+            return _wrapOptions(isGetset, null, options);
         } else {
             return _wrapOptions(isGetset, options);
         }

@@ -996,7 +996,7 @@ const uiElements = {
             propUtils.updateCustomPropElements(this.$customProps, excludeList, this.dump, (element, prop) => {
                 element.className = 'customProp';
                 if (prop.dump.visible) {
-                    element.render(prop.dump);
+                    propUtils.renderDumpProp(element, prop.dump);
                 }
                 element.hidden = !prop.dump.visible;
             });
