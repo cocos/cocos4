@@ -28,7 +28,7 @@ import ParticleSystemRenderer from './particle-system-renderer-data';
 import { Material } from '../../asset/assets';
 import { Particle, IParticleModule } from '../particle';
 import { ParticleRenderMode, ParticleSpace } from '../enum';
-import { cclegacy, Mat4, Vec4 } from '../../core';
+import { cclegacy, geometry, Mat4, Vec3, Vec4 } from '../../core';
 import { Pass } from '../../render-scene';
 import type { ParticleSystem } from '../particle-system';
 import type { Root } from '../../root';
@@ -164,7 +164,10 @@ export abstract class ParticleSystemRendererBase {
     public abstract updateVertexAttrib (): void;
     public abstract updateRenderMode (): void;
     public abstract updateMaterialParams (): void;
-    public abstract setNewParticle (p: Particle): void;
+    public abstract setNewParticle (p: Particle, eventOrigin?: Vec3): void;
+    public getCullingBounds (emitterBounds: geometry.AABB): geometry.AABB {
+        return emitterBounds;
+    }
     public abstract getDefaultMaterial(): Material | null;
     public abstract updateRotation (pass: Pass | null): void;
     public abstract updateScale (pass: Pass | null): void;

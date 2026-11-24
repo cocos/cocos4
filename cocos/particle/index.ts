@@ -41,6 +41,7 @@ export {
     Burst,
 };
 
+export { SubEmitter, SubEmitterEvent } from './sub-emitter';
 export { ForceFieldModule } from './animator/force-field';
 export * from './deprecated';
 
