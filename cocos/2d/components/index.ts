@@ -24,6 +24,7 @@
 
 export * from './label';
 export { Sprite } from './sprite';
+export type { SpriteType } from './sprite';
 export { UIMeshRenderer } from './ui-mesh-renderer';
 export * from './ui-mesh';
 export { LabelOutline } from './label-outline';
