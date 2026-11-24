@@ -851,6 +851,7 @@ export class ParticleSystem extends ModelRenderer {
     private declare _customData2: Vec2;
 
     @type([SubEmitter])
+    @serializable
     @visible(function isSubEmittersVisible (this: ParticleSystem) { return !this.renderer.useGPU; })
     public subEmitters: SubEmitter[] = [];
 

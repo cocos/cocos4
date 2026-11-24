@@ -22,7 +22,7 @@
  THE SOFTWARE.
 */
 
-import { ccclass, type } from 'cc.decorator';
+import { ccclass, serializable, type } from 'cc.decorator';
 import { CCInteger, Enum } from '../core';
 import { Node } from '../scene-graph/node';
 
@@ -37,11 +37,14 @@ Enum(SubEmitterEvent);
 export class SubEmitter {
     /** Node containing the target CPU particle system. */
     @type(Node)
+    @serializable
     public emitter: Node | null = null;
 
     @type(SubEmitterEvent)
+    @serializable
     public event = SubEmitterEvent.Birth;
 
     @type(CCInteger)
+    @serializable
     public count = 1;
 }
