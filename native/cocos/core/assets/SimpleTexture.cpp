@@ -44,8 +44,11 @@ uint32_t getMipLevel(uint32_t width, uint32_t height) {
 
 bool isPOT(uint32_t n) { return n && (n & (n - 1)) == 0; }
 
-bool canGenerateMipmap(uint32_t w, uint32_t h) {
-    return isPOT(w) && isPOT(h);
+bool canGenerateMipmap(const gfx::Device *device, uint32_t w, uint32_t h) {
+    if (device->getGfxAPI() == gfx::API::GLES2) {
+        return isPOT(w) && isPOT(h);
+    }
+    return true;
 }
 
 } // namespace
@@ -136,7 +139,7 @@ void SimpleTexture::createTexture(gfx::Device *device) {
 
     auto flags = gfx::TextureFlagBit::NONE;
     auto usage = gfx::TextureUsageBit::SAMPLED | gfx::TextureUsageBit::TRANSFER_DST;
-    if (_mipFilter != Filter::NONE && canGenerateMipmap(_width, _height)) {
+    if (_mipFilter != Filter::NONE && canGenerateMipmap(device, _width, _height)) {
         _mipmapLevel = getMipLevel(_width, _height);
         if (!isUsingOfflineMipmaps() && !isCompressed()) {
             flags = gfx::TextureFlagBit::GEN_MIPMAP;
