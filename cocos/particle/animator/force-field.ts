@@ -72,6 +72,23 @@ export class ForceFieldModule extends ParticleModuleBase {
     private _transform = false;
     private _valid = true;
 
+    /**
+     * Bound the difference between trajectories sampled at two emission origins.
+     * Each acceleration has magnitude at most |strength|. With semi-implicit
+     * Euler, even a single step of length T can displace a particle by a*T*T.
+     */
+    public getCullingPadding (out: Vec3, lifetime: number, worldTransform: Mat4): Vec3 {
+        if (!this.enable || this.radius <= 0 || this.strength === 0) return out.set(0, 0, 0);
+        const distance = 2 * Math.abs(this.strength) * lifetime * lifetime;
+        if (this.space === ParticleSpace.World) return out.set(distance, distance, distance);
+        // Row lengths project a local-space sphere onto the three world axes.
+        return out.set(
+            Math.hypot(worldTransform.m00, worldTransform.m04, worldTransform.m08) * distance,
+            Math.hypot(worldTransform.m01, worldTransform.m05, worldTransform.m09) * distance,
+            Math.hypot(worldTransform.m02, worldTransform.m06, worldTransform.m10) * distance,
+        );
+    }
+
     /** Convert positions and accelerations using the particle simulation transform. */
     public update (space: number, worldTransform: Mat4): void {
         this._transform = space !== this.space;

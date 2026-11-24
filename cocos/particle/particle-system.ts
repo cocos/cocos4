@@ -28,7 +28,7 @@ import { EDITOR, EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
 import { Renderer } from '../misc/renderer';
 import { ModelRenderer } from '../misc/model-renderer';
 import { Material } from '../asset/assets/material';
-import { Mat4, pseudoRandom, Quat, randomRangeInt, Vec2, Vec3, CCBoolean, CCFloat, bits, geometry, cclegacy, warn } from '../core';
+import { Mat4, pseudoRandom, Quat, random, randomRangeInt, Vec2, Vec3, CCBoolean, CCFloat, bits, geometry, cclegacy, warn } from '../core';
 import { scene } from '../render-scene';
 import ColorOverLifetimeModule from './animator/color-overtime';
 import CurveRange, { Mode } from './animator/curve-range';
@@ -41,6 +41,7 @@ import SizeOvertimeModule from './animator/size-overtime';
 import TextureAnimationModule from './animator/texture-animation';
 import VelocityOvertimeModule from './animator/velocity-overtime';
 import Burst from './burst';
+import { SubEmitter, SubEmitterEvent } from './sub-emitter';
 import ShapeModule from './emitter/shape-module';
 import { ParticleCullingMode, ParticleSpace } from './enum';
 import { isCurveTwoValues, particleEmitZAxis } from './particle-general-function';
@@ -54,8 +55,6 @@ import { ParticleCuller } from './particle-culler';
 import { NoiseModule } from './animator/noise-module';
 import { director, DirectorEvent } from '../game/director';
 
-const _world_mat = new Mat4();
-const _world_rol = new Quat();
 const _emitDirection = new Vec3();
 const _alignRotation = new Quat();
 const _startRotation = new Quat();
@@ -851,7 +850,17 @@ export class ParticleSystem extends ModelRenderer {
     private declare _customData1: Vec2;
     private declare _customData2: Vec2;
 
-    private declare _subEmitters: any[]; // array of { emitter: ParticleSystem, type: 'birth', 'collision' or 'death'}
+    @type([SubEmitter])
+    @serializable
+    @visible(function isSubEmittersVisible (this: ParticleSystem) { return !this.renderer.useGPU; })
+    public subEmitters: SubEmitter[] = [];
+
+    private readonly _emitMatrix = new Mat4();
+    private readonly _emitRotation = new Quat();
+    private readonly _eventMatrix = new Mat4();
+    private readonly _eventOrigin = new Vec3();
+    private readonly _eventOffset = new Vec3();
+    private _dispatchingSubEmitters = false;
 
     private declare _needAttach: boolean;
 
@@ -904,8 +913,6 @@ export class ParticleSystem extends ModelRenderer {
 
         self._customData1 = new Vec2();
         self._customData2 = new Vec2();
-
-        self._subEmitters = []; // array of { emitter: ParticleSystem, type: 'birth', 'collision' or 'death'}
     }
 
     public onFocusInEditor (): void {
@@ -1266,16 +1273,17 @@ export class ParticleSystem extends ModelRenderer {
             const cameraLst: Camera[] | undefined = renderScene ? renderScene.cameras : undefined;
             let culled = true;
             if (cameraLst !== undefined && self._boundingBox) {
+                const bounds = thisProcessor.getCullingBounds(self._boundingBox);
                 for (let i = 0; i < cameraLst.length; ++i) {
                     const camera: Camera = cameraLst[i];
                     const visibility = camera.visibility;
                     if ((visibility & self.node.layer) === self.node.layer) {
                         if (EDITOR_NOT_IN_PREVIEW) {
-                            if (camera.name === 'Editor Camera' && geometry.intersect.aabbFrustum(self._boundingBox, camera.frustum)) {
+                            if (camera.name === 'Editor Camera' && geometry.intersect.aabbFrustum(bounds, camera.frustum)) {
                                 culled = false;
                                 break;
                             }
-                        } else if (geometry.intersect.aabbFrustum(self._boundingBox, camera.frustum)) {
+                        } else if (geometry.intersect.aabbFrustum(bounds, camera.frustum)) {
                             culled = false;
                             break;
                         }
@@ -1399,7 +1407,7 @@ export class ParticleSystem extends ModelRenderer {
      * @engineInternal
      * emit is used in burst.ts, so it should be public and marked as engine internal.
      */
-    public emit (count: number, dt: number): void {
+    public emit (count: number, dt: number, worldOrigin?: Vec3): void {
         const self = this;
         const node = self.node;
         const loopDelta = (self._time % self.duration) / self.duration; // loop delta value
@@ -1413,8 +1421,17 @@ export class ParticleSystem extends ModelRenderer {
         }
 
         if (self._simulationSpace === ParticleSpace.World) {
-            self.getParticleWorldMatrix(_world_mat);
-            node.getWorldRotation(_world_rol);
+            self.getParticleWorldMatrix(self._emitMatrix);
+            node.getWorldRotation(self._emitRotation);
+            if (worldOrigin) {
+                self._emitMatrix.m12 = worldOrigin.x;
+                self._emitMatrix.m13 = worldOrigin.y;
+                self._emitMatrix.m14 = worldOrigin.z;
+            }
+        } else if (worldOrigin) {
+            self.getParticleWorldMatrix(self._emitMatrix);
+            Mat4.invert(self._emitMatrix, self._emitMatrix);
+            Vec3.transformMat4(self._eventOffset, worldOrigin, self._emitMatrix);
         }
 
         for (let i = 0; i < count; ++i) {
@@ -1442,7 +1459,7 @@ export class ParticleSystem extends ModelRenderer {
             if (alignToDirection) {
                 Vec3.copy(_emitDirection, particle.velocity);
                 if (self._simulationSpace === ParticleSpace.World) {
-                    Vec3.transformQuat(_emitDirection, _emitDirection, _world_rol);
+                    Vec3.transformQuat(_emitDirection, _emitDirection, self._emitRotation);
                 }
             }
 
@@ -1450,8 +1467,10 @@ export class ParticleSystem extends ModelRenderer {
             Vec3.multiplyScalar(particle.velocity, particle.velocity, curveStartSpeed);
 
             if (self._simulationSpace === ParticleSpace.World) {
-                Vec3.transformMat4(particle.position, particle.position, _world_mat);
-                Vec3.transformQuat(particle.velocity, particle.velocity, _world_rol);
+                Vec3.transformMat4(particle.position, particle.position, self._emitMatrix);
+                Vec3.transformQuat(particle.velocity, particle.velocity, self._emitRotation);
+            } else if (worldOrigin) {
+                particle.position.add(self._eventOffset);
             }
 
             Vec3.copy(particle.ultimateVelocity, particle.velocity);
@@ -1500,7 +1519,7 @@ export class ParticleSystem extends ModelRenderer {
             particle.randomSeed = randomRangeInt(0, 233280);
             particle.loopCount++;
 
-            self.processor.setNewParticle(particle);
+            self.processor.setNewParticle(particle, worldOrigin && (self._simulationSpace === ParticleSpace.World ? worldOrigin : self._eventOffset));
         } // end of particles forLoop.
     }
 
@@ -1575,12 +1594,37 @@ export class ParticleSystem extends ModelRenderer {
         Vec3.copy(this._curWPos, this._oldWPos);
     }
 
-    private addSubEmitter (subEmitter): void {
-        this._subEmitters.push(subEmitter);
-    }
-
-    private removeSubEmitter (idx: number): void {
-        this._subEmitters.splice(this._subEmitters.indexOf(idx), 1);
+    /** Dispatch an event at a position in this system's simulation space.
+     * Custom collision handlers can dispatch SubEmitterEvent.Collision here.
+     */
+    public triggerSubEmitters (event: SubEmitterEvent, position: Vec3): void {
+        if (!this.subEmitters.length || this._dispatchingSubEmitters || this.renderer.useGPU) return;
+        this._dispatchingSubEmitters = true;
+        try {
+            const origin = this._eventOrigin;
+            if (this.simulationSpace === ParticleSpace.World) {
+                origin.set(position);
+            } else {
+                Vec3.transformMat4(origin, position, this.getParticleWorldMatrix(this._eventMatrix));
+            }
+            for (const entry of this.subEmitters) {
+                if (entry?.event !== event || !(entry.count >= 1) || !entry.emitter?.isValid) continue;
+                const target = entry.emitter.getComponent(ParticleSystem);
+                if (!target?.enabledInHierarchy || !target.processor || target.renderer.useGPU
+                    || target._dispatchingSubEmitters || target._isPaused) continue;
+                if (!(entry.triggerProbability > 0) || (entry.triggerProbability < 1 && random() >= entry.triggerProbability)) continue;
+                if (!target._isPlaying) {
+                    target._isPlaying = true;
+                    target._isStopped = false;
+                    target._isEmitting = false;
+                    if (target.processor.model) target.processor.model.enabled = true;
+                    if (target._trailModule?.enable) target._trailModule.play();
+                }
+                target.emit(Math.floor(entry.count), 0, origin);
+            }
+        } finally {
+            this._dispatchingSubEmitters = false;
+        }
     }
 
     private addBurst (burst: Burst): void {

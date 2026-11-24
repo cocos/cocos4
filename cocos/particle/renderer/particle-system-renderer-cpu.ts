@@ -23,10 +23,11 @@
 */
 
 import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
+import { SubEmitterEvent } from '../sub-emitter';
 import { builtinResMgr } from '../../asset/asset-manager';
 import { Material, Texture2D } from '../../asset/assets';
 import { AttributeName, Format, Attribute, FormatInfos } from '../../gfx';
-import { Mat4, Vec2, Vec3, Vec4, pseudoRandom, Quat, EPSILON, approx, RecyclePool, warn, Color, v3 } from '../../core';
+import { geometry, Mat4, Vec2, Vec3, Vec4, pseudoRandom, Quat, EPSILON, approx, RecyclePool, warn, Color, v3 } from '../../core';
 import { MaterialInstance, IMaterialInstanceInfo } from '../../render-scene/core/material-instance';
 import { MacroRecord } from '../../render-scene/core/pass-utils';
 import { ParticleAlignmentSpace, ParticleRenderMode, ParticleSpace } from '../enum';
@@ -43,6 +44,9 @@ import type ParticleSystemRenderer from './particle-system-renderer-data';
 const _tempNodeScale = new Vec4();
 const _tempAttribUV = v3();
 const _tempWorldTrans = new Mat4();
+const _minOriginOffset = new Vec3();
+const _maxOriginOffset = new Vec3();
+const _originOffset = new Vec3();
 const _tempParentInverse = new Mat4();
 const _node_rot = new Quat();
 
@@ -181,6 +185,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     private _node_scale: Vec3;
     private _particleVertexData: PVData;
     private _particles: RecyclePool<Particle> | null = null;
+    private readonly _eventOrigins = new Map<Particle, Vec3>();
+    private readonly _eventBounds = new geometry.AABB();
     private _defaultTrailMat: Material | null = null;
     private _updateList: Map<string, IParticleModule> = new Map<string, IParticleModule>();
     private _animateList: Map<string, IParticleModule> = new Map<string, IParticleModule>();
@@ -233,6 +239,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     public clear (): void {
         super.clear();
         this._particles!.reset();
+        this._eventOrigins.clear();
         if (this._particleSystem && this._particleSystem._trailModule) {
             this._particleSystem._trailModule.clear();
         }
@@ -248,6 +255,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     }
 
     public onDestroy (): void {
+        this._eventOrigins.clear();
         this._particles?.destroy();
         super.onDestroy();
     }
@@ -263,7 +271,35 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         return this._defaultTrailMat;
     }
 
-    public setNewParticle (p: Particle): void {
+    public setNewParticle (p: Particle, eventOrigin?: Vec3): void {
+        if (eventOrigin) this._eventOrigins.set(p, eventOrigin.clone());
+        this._particleSystem!.triggerSubEmitters(SubEmitterEvent.Birth, p.position);
+    }
+
+    public getCullingBounds (emitterBounds: geometry.AABB): geometry.AABB {
+        if (!this._eventOrigins.size) return emitterBounds;
+        const ps = this._particleSystem!;
+        const local = ps.simulationSpace !== ParticleSpace.World;
+        const field = ps._forceFieldModule;
+        if (local || field?.enable) ps.getParticleWorldMatrix(_tempWorldTrans);
+        const nodeOrigin = ps.node.worldPosition;
+        _minOriginOffset.set(0, 0, 0);
+        _maxOriginOffset.set(0, 0, 0);
+        let maxLifetime = 0;
+        for (const [p, origin] of this._eventOrigins) {
+            const world = local ? Vec3.transformMat4(_originOffset, origin, _tempWorldTrans) : origin;
+            Vec3.subtract(_originOffset, world, nodeOrigin);
+            Vec3.min(_minOriginOffset, _minOriginOffset, _originOffset);
+            Vec3.max(_maxOriginOffset, _maxOriginOffset, _originOffset);
+            maxLifetime = Math.max(maxLifetime, p.startLifetime);
+        }
+        geometry.AABB.fromPoints(this._eventBounds, _minOriginOffset, _maxOriginOffset);
+        this._eventBounds.center.add(emitterBounds.center);
+        this._eventBounds.halfExtents.add(emitterBounds.halfExtents);
+        if (field?.enable) {
+            this._eventBounds.halfExtents.add(field.getCullingPadding(_originOffset, maxLifetime, _tempWorldTrans));
+        }
+        return this._eventBounds;
     }
 
     private _initModuleList (): void {
@@ -454,6 +490,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 if (trailEnable) {
                     trailModule.removeParticle(p);
                 }
+                ps.triggerSubEmitters(SubEmitterEvent.Death, p.position);
+                this._eventOrigins.delete(p);
                 this._particles!.removeAt(i);
                 continue;
             }

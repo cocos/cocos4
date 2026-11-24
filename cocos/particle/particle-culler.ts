@@ -30,7 +30,7 @@ import { approx, EPSILON, Mat4, pseudoRandom, Quat, randomRangeInt, Vec3, Vec4, 
 import { isCurveTwoValues, particleEmitZAxis } from './particle-general-function';
 import { ParticleSystemRendererBase } from './renderer/particle-system-renderer-base';
 import { Mesh } from '../3d';
-import type { ParticleSystem } from './particle-system';
+import { ParticleSystem } from './particle-system';
 import { Mode } from './animator/curve-range';
 
 const _nodeMat = new Mat4();
@@ -309,7 +309,7 @@ export class ParticleCuller {
         }
     }
 
-    public calculatePositions (): void {
+    public calculatePositions (ancestors = new Set<ParticleSystem>()): void {
         this.clear();
         this._processor = this._particleSystem.processor;
         this._initModuleList();
@@ -330,6 +330,37 @@ export class ParticleCuller {
         } else {
             this._updateParticles(this._particleSystem.startLifetime.evaluate(0, rand), this._particlesAll);
             this._calculateBounding(false);
+        }
+        const ps = this._particleSystem;
+        const field = ps._forceFieldModule;
+        if (ancestors.size && field?.enable && !ps.renderer.useGPU) {
+            // The parent may trigger this system anywhere in its envelope.
+            const lifetime = this._particlesAll.reduce((max, p) => Math.max(max, p.startLifetime), Math.max(0, ps.startLifetime.getMax()));
+            const padding = field.getCullingPadding(new Vec3(), lifetime, ps.getParticleWorldMatrix(_nodeMat));
+            this.minPos.subtract(padding);
+            this.maxPos.add(padding);
+        }
+        if (!ps.renderer.useGPU && ps.subEmitters.length) {
+            // Each child can start anywhere in the parent's sampled envelope.
+            // Combine sibling envelopes independently, relative to their own emitter origins.
+            const parentMin = this.minPos.clone();
+            const parentMax = this.maxPos.clone();
+            ancestors.add(ps);
+            const sampled = new Set<ParticleSystem>();
+            for (const entry of ps.subEmitters) {
+                const target = entry?.emitter?.getComponent(ParticleSystem);
+                if (!target?.processor || target.renderer.useGPU || !(entry.count >= 1) || !(entry.triggerProbability > 0)
+                    || ancestors.has(target) || sampled.has(target)) continue;
+                sampled.add(target);
+                const child = new ParticleCuller(target);
+                child.calculatePositions(ancestors);
+                const origin = target.node.worldPosition;
+                child.minPos.subtract(origin).add(parentMin);
+                child.maxPos.subtract(origin).add(parentMax);
+                Vec3.min(this.minPos, this.minPos, child.minPos);
+                Vec3.max(this.maxPos, this.maxPos, child.maxPos);
+            }
+            ancestors.delete(ps);
         }
         this._updateBoundingNode();
     }
