@@ -341,7 +341,7 @@ export class ParticleCuller {
             const sampled = new Set<ParticleSystem>();
             for (const entry of ps.subEmitters) {
                 const target = entry?.emitter?.getComponent(ParticleSystem);
-                if (!target?.processor || target.renderer.useGPU || !(entry.count >= 1)
+                if (!target?.processor || target.renderer.useGPU || !(entry.count >= 1) || !(entry.triggerProbability > 0)
                     || ancestors.has(target) || sampled.has(target)) continue;
                 sampled.add(target);
                 const child = new ParticleCuller(target);

@@ -22,8 +22,8 @@
  THE SOFTWARE.
 */
 
-import { ccclass, serializable, type } from 'cc.decorator';
-import { CCInteger, Enum } from '../core';
+import { ccclass, displayName, editable, range, serializable, type } from 'cc.decorator';
+import { CCFloat, CCInteger, Enum } from '../core';
 import { Node } from '../scene-graph/node';
 
 export enum SubEmitterEvent {
@@ -37,14 +37,27 @@ Enum(SubEmitterEvent);
 export class SubEmitter {
     /** Node containing the target CPU particle system. */
     @type(Node)
+    @editable
+    @displayName('Target Node')
     @serializable
     public emitter: Node | null = null;
 
     @type(SubEmitterEvent)
+    @editable
+    @displayName('Trigger Event')
     @serializable
     public event = SubEmitterEvent.Birth;
 
     @type(CCInteger)
+    @editable
+    @range([0, Number.POSITIVE_INFINITY, 1])
     @serializable
     public count = 1;
+
+    /** Chance of emitting the whole burst for one matching parent event. */
+    @type(CCFloat)
+    @editable
+    @range([0, 1, 0.01])
+    @serializable
+    public triggerProbability = 1;
 }

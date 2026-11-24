@@ -33,6 +33,7 @@ exports.template = /* html*/`
         <ui-prop type="dump" key="rateOverTime"></ui-prop>
         <ui-prop type="dump" key="rateOverDistance"></ui-prop>
         <ui-prop type="dump" key="bursts"></ui-prop>
+        <ui-prop type="dump" key="subEmitters" showflag="!renderer.value.useGPU"></ui-prop>
         <!-- Render other data that has not taken over -->
         <div id="customProps"></div>
 
@@ -189,7 +190,7 @@ const excludeList = [
     'startSizeX', 'startSizeY', 'startSizeZ', 'startSpeed',
     'startRotation3D', 'startRotationX', 'startRotationY',
     'startRotationZ', 'gravityModifier', 'rateOverTime',
-    'rateOverDistance', 'bursts', 'shapeModule',
+    'rateOverDistance', 'bursts', 'subEmitters', 'shapeModule',
     'velocityOvertimeModule', 'forceOvertimeModule', 'forceFieldModule', 'sizeOvertimeModule',
     'rotationOvertimeModule', 'colorOverLifetimeModule', 'textureAnimationModule',
     'trailModule', 'renderer', 'renderCulling', 'limitVelocityOvertimeModule', 'cullingMode',

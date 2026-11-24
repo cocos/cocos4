@@ -28,7 +28,7 @@ import { EDITOR, EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
 import { Renderer } from '../misc/renderer';
 import { ModelRenderer } from '../misc/model-renderer';
 import { Material } from '../asset/assets/material';
-import { Mat4, pseudoRandom, Quat, randomRangeInt, Vec2, Vec3, CCBoolean, CCFloat, bits, geometry, cclegacy, warn } from '../core';
+import { Mat4, pseudoRandom, Quat, random, randomRangeInt, Vec2, Vec3, CCBoolean, CCFloat, bits, geometry, cclegacy, warn } from '../core';
 import { scene } from '../render-scene';
 import ColorOverLifetimeModule from './animator/color-overtime';
 import CurveRange, { Mode } from './animator/curve-range';
@@ -1612,6 +1612,7 @@ export class ParticleSystem extends ModelRenderer {
                 const target = entry.emitter.getComponent(ParticleSystem);
                 if (!target?.enabledInHierarchy || !target.processor || target.renderer.useGPU
                     || target._dispatchingSubEmitters || target._isPaused) continue;
+                if (!(entry.triggerProbability > 0) || (entry.triggerProbability < 1 && random() >= entry.triggerProbability)) continue;
                 if (!target._isPlaying) {
                     target._isPlaying = true;
                     target._isStopped = false;
