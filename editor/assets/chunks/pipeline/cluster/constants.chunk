@@ -1,0 +1,8 @@
+// std140 共 208 字节；独立成员前缀避免与内建 CCCamera 的反射名称冲突。
+#pragma rate CCClusterConstants pass
+layout(std140) uniform CCClusterConstants {
+  vec4 cc_clusterCamera; // near、far、实时局部灯数、设备 NDC 最小 Z（0 或 -1）
+  mat4 cc_clusterView;
+  mat4 cc_clusterProj;
+  mat4 cc_clusterProjInv;
+};
