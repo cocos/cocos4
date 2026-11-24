@@ -23,6 +23,7 @@
 */
 
 import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
+import { AnimationTimeScale } from './animation-time-scale';
 import { Node } from '../scene-graph/node';
 import { AnimationClip } from './animation-clip';
 import { Playable } from './playable';
@@ -221,7 +222,7 @@ export class AnimationState extends Playable {
 
     set speed (value) {
         this._speed = value;
-        this._clipEmbeddedPlayerEval?.notifyHostSpeedChanged(value);
+        this._syncEmbeddedPlayerSpeed(true);
     }
 
     /**
@@ -278,6 +279,7 @@ export class AnimationState extends Playable {
 
     private _clip: AnimationClip;
     private _speed = 1.0;
+    private _lastEmbeddedPlayerSpeed = NaN;
     private _useSimpleProcess = false;
     private _target: Node | null = null;
     private _wrapMode = WrapMode.Normal;
@@ -387,7 +389,7 @@ export class AnimationState extends Playable {
 
         if (clip.containsAnyEmbeddedPlayer()) {
             this._clipEmbeddedPlayerEval = clip.createEmbeddedPlayerEvaluator(this._targetNode);
-            this._clipEmbeddedPlayerEval.notifyHostSpeedChanged(this._speed);
+            this._syncEmbeddedPlayerSpeed(true);
         }
     }
 
@@ -399,6 +401,8 @@ export class AnimationState extends Playable {
             this._poseOutput.destroy();
             this._poseOutput = null;
         }
+        this._clipEmbeddedPlayerEval?.destroy();
+        this._clipEmbeddedPlayerEval = undefined;
         // TODO: destroy?
         this._clipEval = undefined!;
     }
@@ -479,7 +483,14 @@ export class AnimationState extends Playable {
         }
     }
 
+    /** @internal Component clock used by the animation manager. */
+    public _timeScaleSource: { readonly timeScale: number } | null = null;
+
+    /** @internal Embedded animations are sampled exclusively at their host's time. */
+    public _manualTime = false;
+
     public update (delta: number): void {
+        this._syncEmbeddedPlayerSpeed();
         // calculate delay time
 
         if (this._delayTime > 0.0) {
@@ -547,6 +558,7 @@ export class AnimationState extends Playable {
         const { _poseOutput: poseOutput, _clipEval: clipEval } = this;
         if (poseOutput) {
             poseOutput.weight = this.weight;
+            poseOutput.isFrozen = AnimationTimeScale.global === 0 || this._timeScaleSource?.timeScale === 0;
         }
         if (clipEval) {
             clipEval.evaluate(time);
@@ -725,6 +737,20 @@ export class AnimationState extends Playable {
             wrapInfo.direction,
             wrapInfo.iterations,
         );
+    }
+
+    /** @internal Synchronizes independent embedded players with the component and state clocks. */
+    public _syncEmbeddedPlayerSpeed (force = false): void {
+        const evaluator = this._clipEmbeddedPlayerEval;
+        if (!evaluator) {
+            return;
+        }
+        // Particle systems apply their own global clock. Do not apply the animation global clock twice.
+        const speed = this._speed * (this._timeScaleSource?.timeScale ?? 1);
+        if (force || speed !== this._lastEmbeddedPlayerSpeed) {
+            evaluator.notifyHostSpeedChanged(speed);
+            this._lastEmbeddedPlayerSpeed = speed;
+        }
     }
 
     private _sampleEmbeddedPlayers (wrapInfo: WrappedInfo): void {

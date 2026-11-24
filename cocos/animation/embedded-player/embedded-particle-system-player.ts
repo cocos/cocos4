@@ -81,6 +81,10 @@ class EmbeddedParticleSystemPlayableState extends EmbeddedPlayableState {
      * Plays the particle system from the beginning no matter current time.
      */
     public play (): void {
+        this._isStopped = false;
+        if (this._speed !== undefined) {
+            this._particleSystem.simulationSpeed = this._speed;
+        }
         this._particleSystem.play();
     }
 
@@ -95,6 +99,7 @@ class EmbeddedParticleSystemPlayableState extends EmbeddedPlayableState {
      * Stops the particle system.
      */
     public stop (): void {
+        this._isStopped = true;
         this._particleSystem.stopEmitting();
     }
 
@@ -103,8 +108,14 @@ class EmbeddedParticleSystemPlayableState extends EmbeddedPlayableState {
      * @param speed The speed.
      */
     public setSpeed (speed: number): void {
-        this._particleSystem.simulationSpeed = speed;
+        // Initialization must not change a particle system controlled by another clip.
+        this._speed = speed;
+        if (!this._isStopped) {
+            this._particleSystem.simulationSpeed = speed;
+        }
     }
 
     private _particleSystem: ParticleSystem;
+    private _speed: number | undefined;
+    private _isStopped = true;
 }

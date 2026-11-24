@@ -30,6 +30,8 @@ export type Pose = BlendStateBuffer;
 export class PoseOutput {
     public weight = 0.0;
 
+    public isFrozen = false;
+
     constructor (pose: Pose) {
         this._pose = pose;
     }

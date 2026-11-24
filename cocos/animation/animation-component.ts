@@ -22,8 +22,9 @@
  THE SOFTWARE.
 */
 
-import { ccclass, executeInEditMode, executionOrder, help, menu, type, serializable, editable } from 'cc.decorator';
+import { ccclass, executeInEditMode, executionOrder, help, menu, type, serializable, editable, rangeMin } from 'cc.decorator';
 import { EDITOR_NOT_IN_PREVIEW, TEST } from 'internal:constants';
+import { AnimationTimeScale, validateAnimationTimeScale } from './animation-time-scale';
 import { Component } from '../scene-graph/component';
 import { Eventify, warnID, js, cclegacy } from '../core';
 import { AnimationClip } from './animation-clip';
@@ -50,6 +51,45 @@ import { CrossFade } from './cross-fade';
 @executeInEditMode
 @menu('Animation/Animation')
 export class Animation extends Eventify(Component) {
+    /**
+     * @en Playback multiplier shared by Animation, SkeletalAnimation and AnimationController.
+     * Zero freezes time advancement. Does not affect particles, physics or script updates.
+     * @zh Animation、SkeletalAnimation 和 AnimationController 共用的播放倍率。
+     * 设为零时冻结时间推进，不影响粒子、物理或脚本更新。
+     */
+    public static get globalTimeScale (): number {
+        return AnimationTimeScale.global;
+    }
+
+    public static set globalTimeScale (value: number) {
+        AnimationTimeScale.global = validateAnimationTimeScale(value);
+    }
+
+    /**
+     * @en Component playback multiplier, multiplied by globalTimeScale. Defaults to 1.
+     * Accepts finite non-negative values; zero freezes time advancement without stopping playback.
+     * @zh 组件播放倍率，与 globalTimeScale 相乘，默认为 1。
+     * 支持非负有限数；零倍率冻结时间推进，但不停止播放。
+     */
+    @editable
+    @rangeMin(0)
+    public get timeScale (): number {
+        return this._timeScale;
+    }
+
+    public set timeScale (value: number) {
+        this._timeScale = validateAnimationTimeScale(value);
+        for (const name in this._nameToState) {
+            const state = this._nameToState[name];
+            if (state.isPlaying) {
+                state._syncEmbeddedPlayerSpeed();
+            }
+        }
+    }
+
+    @serializable
+    private _timeScale = 1;
+
     /**
      * @en
      * Gets or sets clips this component governs.
@@ -136,6 +176,11 @@ export class Animation extends Eventify(Component) {
      * @internal
      */
     protected _crossFade = new CrossFade();
+
+    constructor () {
+        super();
+        this._crossFade._timeScaleSource = this;
+    }
 
     /**
      * @internal
@@ -437,6 +482,7 @@ export class Animation extends Eventify(Component) {
      */
     protected _doCreateState (clip: AnimationClip, name: string): AnimationState {
         const state = this._createState(clip, name);
+        state._timeScaleSource = this;
         state._setEventTarget(this);
         state.allowLastFrameEvent(this.hasEventListener(AnimationStateEventType.LASTFRAME));
         if (this.node) {
