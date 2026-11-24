@@ -1,6 +1,7 @@
 import { SpriteFrame } from "../../cocos/2d";
 import { Texture2D } from "../../cocos/asset/assets";
 import { Rect, Size, Vec2 } from "../../exports/base";
+import { captureWarns } from "../utils/log-capture";
 
 test('spritefrom.get',()=>{
     let sp = new SpriteFrame;
@@ -146,4 +147,169 @@ test('spriteframe.clone', () => {
     sp_clone.texture.setFilters(Texture2D.Filter.NEAREST, Texture2D.Filter.NEAREST);
     // Textures are not deep copies.
     expect(sp_clone.texture === sp.texture).toEqual(true);
+});
+
+describe('SpriteFrame.reset pixelsToUnit', () => {
+    test('accepts pixelsToUnit', () => {
+        /// @case
+        /// 1. A runtime-created SpriteFrame is reset with a texture, rect, and pixelsToUnit.
+        /// 2. Mesh data is requested from the SpriteFrame.
+        /// @expect
+        /// The SpriteFrame stores the requested pixelsToUnit and creates mesh bounds in world units.
+        const texture = new Texture2D();
+        texture.reset({ width: 200, height: 100 });
+
+        const sp = new SpriteFrame();
+        sp.reset({
+            texture,
+            rect: new Rect(0, 0, 200, 100),
+            pixelsToUnit: 50,
+        });
+        sp.ensureMeshData();
+
+        const minPosition = sp.mesh!.struct.minPosition!;
+        const maxPosition = sp.mesh!.struct.maxPosition!;
+        expect(sp.pixelsToUnit).toBe(50);
+        expect(maxPosition.x - minPosition.x).toBeCloseTo(4);
+        expect(maxPosition.y - minPosition.y).toBeCloseTo(2);
+    });
+
+    test('preserves pixelsToUnit when omitted', () => {
+        /// @case
+        /// 1. A SpriteFrame is reset with a custom pixelsToUnit.
+        /// 2. The SpriteFrame is reset again without pixelsToUnit.
+        /// @expect
+        /// The existing pixelsToUnit is preserved for backwards-compatible partial resets.
+        const sp = new SpriteFrame();
+        sp.reset({ pixelsToUnit: 25 });
+        sp.reset({ rect: new Rect(0, 0, 10, 10) });
+
+        expect(sp.pixelsToUnit).toBe(25);
+    });
+
+    test('refreshes existing mesh when pixelsToUnit changes', () => {
+        /// @case
+        /// 1. A SpriteFrame creates mesh data with the default pixelsToUnit.
+        /// 2. The SpriteFrame is reset with a different pixelsToUnit.
+        /// @expect
+        /// Existing mesh data reflects the new world-unit scale.
+        const texture = new Texture2D();
+        texture.reset({ width: 200, height: 100 });
+
+        const sp = new SpriteFrame();
+        sp.reset({
+            texture,
+            rect: new Rect(0, 0, 200, 100),
+        });
+        sp.ensureMeshData();
+        expect(sp.mesh!.struct.maxPosition!.x - sp.mesh!.struct.minPosition!.x).toBeCloseTo(2);
+
+        sp.reset({ pixelsToUnit: 50 });
+
+        expect(sp.mesh!.struct.maxPosition!.x - sp.mesh!.struct.minPosition!.x).toBeCloseTo(4);
+        expect(sp.mesh!.struct.maxPosition!.y - sp.mesh!.struct.minPosition!.y).toBeCloseTo(2);
+    });
+
+    test('rebuilds existing mesh when pixelsToUnit changes while clearing data', () => {
+        /// @case
+        /// 1. A SpriteFrame has existing mesh data.
+        /// 2. It is reset with a new pixelsToUnit and clearData enabled.
+        /// @expect
+        /// The mesh is rebuilt from the cleared rect instead of scaling stale raw vertices.
+        const texture = new Texture2D();
+        texture.reset({ width: 200, height: 100 });
+
+        const sp = new SpriteFrame();
+        sp.reset({ texture });
+        sp.ensureMeshData();
+
+        sp.reset({ pixelsToUnit: 50 }, true);
+
+        const minPosition = sp.mesh!.struct.minPosition!;
+        const maxPosition = sp.mesh!.struct.maxPosition!;
+        expect(sp.pixelsToUnit).toBe(50);
+        expect(sp.rect.width).toBe(0);
+        expect(sp.rect.height).toBe(0);
+        expect(maxPosition.x - minPosition.x).toBe(0);
+        expect(maxPosition.y - minPosition.y).toBe(0);
+    });
+
+    test('refreshes existing mesh from the final texture, rect, and pixelsToUnit state', () => {
+        /// @case
+        /// 1. A SpriteFrame has existing mesh data.
+        /// 2. It is reset with a new texture, a sub-rect, and a new pixelsToUnit.
+        /// @expect
+        /// The refreshed mesh bounds use the final sub-rect and pixelsToUnit values.
+        const initialTexture = new Texture2D();
+        initialTexture.reset({ width: 64, height: 64 });
+        const nextTexture = new Texture2D();
+        nextTexture.reset({ width: 200, height: 100 });
+
+        const sp = new SpriteFrame();
+        sp.reset({ texture: initialTexture });
+        sp.ensureMeshData();
+
+        sp.reset({
+            texture: nextTexture,
+            rect: new Rect(10, 5, 50, 25),
+            pixelsToUnit: 25,
+        });
+
+        const minPosition = sp.mesh!.struct.minPosition!;
+        const maxPosition = sp.mesh!.struct.maxPosition!;
+        expect(maxPosition.x - minPosition.x).toBeCloseTo(2);
+        expect(maxPosition.y - minPosition.y).toBeCloseTo(1);
+    });
+
+    test('rebuilds existing mesh when rect and pixelsToUnit change', () => {
+        /// @case
+        /// 1. A SpriteFrame has existing mesh data for a full texture rect.
+        /// 2. It is reset with a smaller rect and a new pixelsToUnit without changing texture.
+        /// @expect
+        /// The refreshed mesh bounds use the new rect instead of scaling stale raw vertices.
+        const texture = new Texture2D();
+        texture.reset({ width: 200, height: 100 });
+
+        const sp = new SpriteFrame();
+        sp.reset({ texture });
+        sp.ensureMeshData();
+
+        sp.reset({
+            rect: new Rect(10, 5, 50, 25),
+            pixelsToUnit: 25,
+        });
+
+        const minPosition = sp.mesh!.struct.minPosition!;
+        const maxPosition = sp.mesh!.struct.maxPosition!;
+        expect(maxPosition.x - minPosition.x).toBeCloseTo(2);
+        expect(maxPosition.y - minPosition.y).toBeCloseTo(1);
+    });
+
+    test('warns and ignores invalid pixelsToUnit', () => {
+        /// @case
+        /// 1. A SpriteFrame has a valid pixelsToUnit.
+        /// 2. It is reset with invalid pixelsToUnit values and another valid field.
+        /// @expect
+        /// Each invalid value warns, preserves pixelsToUnit, and does not interrupt the rest of reset.
+        const sp = new SpriteFrame();
+        sp.reset({ pixelsToUnit: 25 });
+        const nextRect = new Rect(0, 0, 10, 10);
+        const warnWatcher = captureWarns();
+        const invalidPixelsToUnit = [0, -1, NaN, Infinity, -Infinity, '25' as unknown as number];
+
+        invalidPixelsToUnit.forEach((pixelsToUnit, index) => {
+            expect(() => sp.reset({
+                pixelsToUnit,
+                rect: index === 0 ? nextRect : undefined,
+            })).not.toThrow();
+            expect(sp.pixelsToUnit).toBe(25);
+        });
+
+        expect(sp.rect).toEqual(nextRect);
+        expect(warnWatcher.captured).toHaveLength(invalidPixelsToUnit.length);
+        warnWatcher.captured.forEach(([message]) => {
+            expect(message).toBe('SpriteFrame pixelsToUnit must be a finite number greater than 0.');
+        });
+        warnWatcher.stop();
+    });
 });
