@@ -280,19 +280,25 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         if (!this._eventOrigins.size) return emitterBounds;
         const ps = this._particleSystem!;
         const local = ps.simulationSpace !== ParticleSpace.World;
-        if (local) ps.getParticleWorldMatrix(_tempWorldTrans);
+        const field = ps._forceFieldModule;
+        if (local || field?.enable) ps.getParticleWorldMatrix(_tempWorldTrans);
         const nodeOrigin = ps.node.worldPosition;
         _minOriginOffset.set(0, 0, 0);
         _maxOriginOffset.set(0, 0, 0);
-        for (const origin of this._eventOrigins.values()) {
+        let maxLifetime = 0;
+        for (const [p, origin] of this._eventOrigins) {
             const world = local ? Vec3.transformMat4(_originOffset, origin, _tempWorldTrans) : origin;
             Vec3.subtract(_originOffset, world, nodeOrigin);
             Vec3.min(_minOriginOffset, _minOriginOffset, _originOffset);
             Vec3.max(_maxOriginOffset, _maxOriginOffset, _originOffset);
+            maxLifetime = Math.max(maxLifetime, p.startLifetime);
         }
         geometry.AABB.fromPoints(this._eventBounds, _minOriginOffset, _maxOriginOffset);
         this._eventBounds.center.add(emitterBounds.center);
         this._eventBounds.halfExtents.add(emitterBounds.halfExtents);
+        if (field?.enable) {
+            this._eventBounds.halfExtents.add(field.getCullingPadding(_originOffset, maxLifetime, _tempWorldTrans));
+        }
         return this._eventBounds;
     }
 

@@ -332,6 +332,14 @@ export class ParticleCuller {
             this._calculateBounding(false);
         }
         const ps = this._particleSystem;
+        const field = ps._forceFieldModule;
+        if (ancestors.size && field?.enable && !ps.renderer.useGPU) {
+            // The parent may trigger this system anywhere in its envelope.
+            const lifetime = this._particlesAll.reduce((max, p) => Math.max(max, p.startLifetime), Math.max(0, ps.startLifetime.getMax()));
+            const padding = field.getCullingPadding(new Vec3(), lifetime, ps.getParticleWorldMatrix(_nodeMat));
+            this.minPos.subtract(padding);
+            this.maxPos.add(padding);
+        }
         if (!ps.renderer.useGPU && ps.subEmitters.length) {
             // Each child can start anywhere in the parent's sampled envelope.
             // Combine sibling envelopes independently, relative to their own emitter origins.

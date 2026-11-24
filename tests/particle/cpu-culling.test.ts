@@ -1,6 +1,6 @@
 import { director } from '../../cocos/game';
 import { legacyCC } from '../../cocos/core/global-exports';
-import { ParticleSystem, SubEmitter } from '../../exports/particle';
+import { ForceFieldModule, ParticleSystem, SubEmitter } from '../../exports/particle';
 import { geometry, Vec3 } from '../../cocos/core';
 import { ParticleSpace } from '../../cocos/particle/enum';
 import { Node, Scene } from '../../cocos/scene-graph';
@@ -62,4 +62,42 @@ test.each([ParticleSpace.Local, ParticleSpace.World])('sub-emitter bounds in sim
     expect(max.x).toBeCloseTo(114);
     target.processor.updateParticles(10);
     expect(target.processor.getCullingBounds(base)).toBe(base);
+});
+
+test.each([ParticleSpace.World, ParticleSpace.Local])('offset sub-emitter remains in force-field culling bounds (space %i)', (space) => {
+    const scene = new Scene('offset force field');
+    director.runSceneImmediate(scene);
+    const launcher = new Node();
+    const sparks = new Node();
+    scene.addChild(launcher);
+    scene.addChild(sparks);
+    sparks.setPosition(100, 0, 0);
+    const parent = launcher.addComponent(ParticleSystem);
+    const child = sparks.addComponent(ParticleSystem);
+    child.simulationSpace = space;
+    parent.startSpeed.constant = child.startSpeed.constant = 0;
+    child.startLifetime.constant = 1;
+    const field = new ForceFieldModule();
+    field.space = ParticleSpace.World;
+    field.center.set(1, 0, 0);
+    field.radius = 10;
+    field.strength = 20;
+    child.forceFieldModule = field;
+    field.enable = true;
+    const entry = new SubEmitter();
+    entry.emitter = sparks;
+    parent.subEmitters.push(entry);
+    parent.renderCulling = child.renderCulling = true;
+
+    // The child node is outside the field. A particle born at the launcher
+    // experiences acceleration -18 and moves -4.5 on its first 0.5s step.
+    parent.emit(1, 0);
+    const base = new geometry.AABB(100, 0, 0, 1, 1, 1);
+    const min = new Vec3();
+    child.processor.getCullingBounds(base).getBoundary(min, new Vec3());
+    expect(min.x).toBeLessThanOrEqual(-5.5);
+    expect(parent.aabbHalfX).toBeGreaterThanOrEqual(5.5);
+    child.processor.updateParticles(0.5);
+    child.processor.updateParticles(0.6);
+    expect(child.processor.getCullingBounds(base)).toBe(base);
 });
