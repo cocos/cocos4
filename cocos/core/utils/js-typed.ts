@@ -631,14 +631,8 @@ function setup (tag: string, table: Record<string | number, any>, allowExist: bo
         if (id) {
             const registered = table[id];
             if (!allowExist && registered && registered !== constructor) {
-                let detail = '';
-                if (TEST) {
-                    // eslint-disable-next-line no-multi-str
-                    detail += ' (This may be caused by error of unit test.) \
-If you dont need serialization, you can set class id to "". You can also call \
-js.unregisterClass to remove the id of unused class';
-                }
-                errorID(16334, tag, id, detail);
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                errorID(16334, id, constructor.name, registered.name);
             } else {
                 table[id] = constructor;
             }
