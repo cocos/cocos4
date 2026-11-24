@@ -27,7 +27,7 @@
 #include "cocos/renderer/pipeline/Define.h"
 #include "cocos/renderer/pipeline/InstancedBuffer.h"
 #include "cocos/renderer/pipeline/PipelineStateManager.h"
-#include "cocos/renderer/pipeline/custom/LayoutGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
 
 namespace cc {
@@ -35,9 +35,9 @@ namespace cc {
 namespace render {
 
 LayoutGraphData::vertex_descriptor ProbeHelperQueue::getDefaultId(const LayoutGraphData &lg) {
-    const auto passID = locate(LayoutGraphData::null_vertex(), "default", lg);
+    const auto passID = lg.locate("default");
     CC_ENSURES(passID != LayoutGraphData::null_vertex());
-    const auto phaseID = locate(passID, "default", lg);
+    const auto phaseID = lg.locate("default", passID);
     CC_ENSURES(phaseID != LayoutGraphData::null_vertex());
     return phaseID;
 }

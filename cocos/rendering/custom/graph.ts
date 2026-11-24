@@ -198,6 +198,27 @@ export class InEI implements IterableIterator<ED> {
     readonly source: vertex_descriptor;
 }
 
+/** Iterates the incoming edge of a vertex in a single-parent graph. */
+export class OneInEI implements IterableIterator<ED> {
+    constructor (parent: number, target: number, nullVertex: number) {
+        this.parent = parent === nullVertex ? undefined : parent;
+        this.target = target;
+    }
+    [Symbol.iterator] (): OneInEI {
+        return this;
+    }
+    next (): IteratorResult<ED> {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return { value: undefined, done: true };
+        }
+        this.parent = undefined;
+        return { value: new ED(parent, this.target), done: false };
+    }
+    private parent: number | undefined;
+    private readonly target: number;
+}
+
 // InEdge(Property) Iterator
 export class InEPI implements IterableIterator<EPD> {
     constructor (iterator: IterableIterator<OutEP>, source: vertex_descriptor) {
@@ -220,7 +241,7 @@ export class InEPI implements IterableIterator<EPD> {
 }
 
 // InEdge Iterator
-export type in_edge_iterator = InEI | InEPI;
+export type in_edge_iterator = InEI | InEPI | OneInEI;
 
 //--------------------------------------------------------------------------
 // Graph
@@ -559,16 +580,6 @@ class NoTermination implements TerminatorFunc {
     }
 }
 
-function getDefaultStartingVertex (g: IncidenceGraph & VertexListGraph): vertex_descriptor | null {
-    const iter = g.v();
-    const v = iter.next();
-    if (v.done) {
-        return g.N;
-    } else {
-        return v.value;
-    }
-}
-
 export interface GraphVisitor {
     // 0. before dfs
     initializeVertex (v: vertex_descriptor, g: IncidenceGraph): void;
@@ -627,12 +638,11 @@ function depthFirstVisitImpl (
     color.put(u, GraphColor.GRAY);
     visitor.discoverVertex(u, g);
 
-    ei = g.oe(u);
     if (func.terminate(u, g)) {
         // If this vertex terminates the search, we push empty range
         stack.push(new VertexInfo(u, null, null));
     } else {
-        stack.push(new VertexInfo(u, null, ei));
+        stack.push(new VertexInfo(u, null, g.oe(u)));
     }
 
     while (stack.length) {
@@ -648,8 +658,8 @@ function depthFirstVisitImpl (
         if (ei) { // has out edges
             for (let ev = ei.next(); !ev.done; ev = ei.next()) {
                 const e = ev.value;
-                const v = e.target;
                 visitor.examineEdge(e, g);
+                const v = g.target(e);
                 const vColor = color.get(v);
                 if (vColor === GraphColor.WHITE) {
                     visitor.treeEdge(e, g);
@@ -658,10 +668,10 @@ function depthFirstVisitImpl (
                     u = v;
                     color.put(u, GraphColor.GRAY);
                     visitor.discoverVertex(u, g);
-                    ei = g.oe(u);
                     if (func.terminate(u, g)) {
                         break;
                     }
+                    ei = g.oe(u);
                 } else {
                     if (vColor === GraphColor.GRAY) {
                         visitor.backEdge(e, g);
@@ -683,10 +693,8 @@ export function depthFirstSearch (
     color: MutableVertexPropertyMap<GraphColor>,
     startVertex: vertex_descriptor | null = null,
 ): void {
-    // get start vertex
-    startVertex = startVertex || getDefaultStartingVertex(g);
     // graph is empty, do nothing
-    if (startVertex === null || g.nv() === 0) {
+    if (g.nv() === 0) {
         return;
     }
     // initialize vertex and color map
@@ -697,7 +705,7 @@ export function depthFirstSearch (
     // start DFS
     const terminator = new NoTermination();
     // try starting from startVertex
-    if (startVertex !== getDefaultStartingVertex(g)) {
+    if (startVertex !== null) {
         visitor.startVertex(startVertex, g);
         depthFirstVisitImpl(g, startVertex, visitor, color, terminator);
     }

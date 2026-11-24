@@ -100,7 +100,7 @@ CopyPair::CopyPair(CopyPair const& rhs, const allocator_type& alloc)
   targetPlaneSlice(rhs.targetPlaneSlice) {}
 
 UploadPair::UploadPair(const allocator_type& alloc)
-: source(),
+: source(), // NOLINT(readability-redundant-member-init)
   target(alloc) {}
 
 UploadPair::UploadPair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::vector<uint8_t> sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn) // NOLINT

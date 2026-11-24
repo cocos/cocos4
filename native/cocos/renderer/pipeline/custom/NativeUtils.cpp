@@ -23,7 +23,7 @@
 ****************************************************************************/
 
 #include "cocos/renderer/pipeline/custom/NativeUtils.h"
-#include "cocos/renderer/pipeline/custom/LayoutGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"

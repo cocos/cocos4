@@ -31,7 +31,6 @@
 #include <stdexcept>
 #include <tuple>
 #include <utility>
-#include "LayoutGraphGraphs.h"
 #include "LayoutGraphUtils.h"
 #include "NativePipelineTypes.h"
 #include "ProgramLib.h"
@@ -41,7 +40,6 @@
 #include "cocos/renderer/core/ProgramUtils.h"
 #include "cocos/renderer/gfx-base/GFXDef-common.h"
 #include "cocos/renderer/pipeline/Define.h"
-#include "cocos/renderer/pipeline/custom/LayoutGraphGraphs.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
 #include "details/Range.h"
 #include "gfx-base/GFXDescriptorSetLayout.h"
@@ -80,9 +78,9 @@ getEffectShader(
     const auto &programName = pass.program;
     auto passID = INVALID_ID;
     if (pass.pass) {
-        passID = locate(INVALID_ID, *pass.pass, lg);
+        passID = lg.locate(*pass.pass);
     } else {
-        passID = locate(INVALID_ID, "default", lg);
+        passID = lg.locate("default");
     }
     if (passID == INVALID_ID) {
         CC_LOG_ERROR("Invalid render pass");
@@ -91,7 +89,7 @@ getEffectShader(
 
     auto subpassID = INVALID_ID;
     if (pass.subpass) {
-        subpassID = locate(passID, *pass.subpass, lg);
+        subpassID = lg.locate(*pass.subpass, passID);
         if (subpassID == INVALID_ID) {
             CC_LOG_ERROR("Invalid render subpass");
             return {INVALID_ID, INVALID_ID, INVALID_ID, nullptr, INVALID_ID};
@@ -100,9 +98,9 @@ getEffectShader(
 
     auto phaseID = INVALID_ID;
     if (pass.phase) {
-        phaseID = locate(subpassID == INVALID_ID ? passID : subpassID, *pass.phase, lg);
+        phaseID = lg.locate(*pass.phase, subpassID == INVALID_ID ? passID : subpassID);
     } else {
-        phaseID = locate(subpassID == INVALID_ID ? passID : subpassID, "default", lg);
+        phaseID = lg.locate("default", subpassID == INVALID_ID ? passID : subpassID);
     }
     if (phaseID == INVALID_ID) {
         CC_LOG_ERROR("Invalid render phase");
@@ -1012,7 +1010,7 @@ gfx::DescriptorSetLayout *getDescriptorSetLayout(
     const LayoutGraphData &lg,
     uint32_t subpassOrPassID, uint32_t phaseID, UpdateFrequency rate) { // NOLINT(bugprone-easily-swappable-parameters)
     if (rate < UpdateFrequency::PER_PASS) {
-        const auto &phaseData = get(LayoutGraphData::LayoutTag{}, lg, phaseID);
+        const auto &phaseData = lg.getLayout(phaseID);
         auto iter = phaseData.descriptorSets.find(rate);
         if (iter != phaseData.descriptorSets.end()) {
             const auto &data = iter->second;
@@ -1026,9 +1024,9 @@ gfx::DescriptorSetLayout *getDescriptorSetLayout(
     }
 
     CC_EXPECTS(rate == UpdateFrequency::PER_PASS);
-    CC_EXPECTS(subpassOrPassID == parent(phaseID, lg));
+    CC_EXPECTS(subpassOrPassID == lg.get_parent(phaseID));
 
-    const auto &passData = get(LayoutGraphData::LayoutTag{}, lg, subpassOrPassID);
+    const auto &passData = lg.getLayout(subpassOrPassID);
     auto iter = passData.descriptorSets.find(rate);
     if (iter != passData.descriptorSets.end()) {
         const auto &data = iter->second;
@@ -1046,7 +1044,7 @@ gfx::DescriptorSetLayout *getProgramDescriptorSetLayout(
     LayoutGraphData &lg, uint32_t phaseID,
     const ccstd::string &programName, UpdateFrequency rate) {
     CC_EXPECTS(rate < UpdateFrequency::PER_PHASE);
-    auto &phase = get(RenderPhaseTag{}, phaseID, lg);
+    auto &phase = lg.value(RenderPhase_{}, phaseID);
     const auto iter = phase.shaderIndex.find(std::string_view{programName});
     if (iter == phase.shaderIndex.end()) {
         return nullptr;
@@ -1072,7 +1070,7 @@ const gfx::DescriptorSetLayout &getOrCreateDescriptorSetLayout(
     const LayoutGraphData &lg,
     uint32_t subpassOrPassID, uint32_t phaseID, UpdateFrequency rate) { // NOLINT(bugprone-easily-swappable-parameters)
     if (rate < UpdateFrequency::PER_PASS) {
-        const auto &phaseData = get(LayoutGraphData::LayoutTag{}, lg, phaseID);
+        const auto &phaseData = lg.getLayout(phaseID);
         auto iter = phaseData.descriptorSets.find(rate);
         if (iter != phaseData.descriptorSets.end()) {
             const auto &data = iter->second;
@@ -1086,9 +1084,9 @@ const gfx::DescriptorSetLayout &getOrCreateDescriptorSetLayout(
     }
 
     CC_EXPECTS(rate == UpdateFrequency::PER_PASS);
-    CC_EXPECTS(subpassOrPassID == parent(phaseID, lg));
+    CC_EXPECTS(subpassOrPassID == lg.get_parent(phaseID));
 
-    const auto &passData = get(LayoutGraphData::LayoutTag{}, lg, subpassOrPassID);
+    const auto &passData = lg.getLayout(subpassOrPassID);
     const auto iter = passData.descriptorSets.find(rate);
     if (iter != passData.descriptorSets.end()) {
         const auto &data = iter->second;
@@ -1108,7 +1106,7 @@ const gfx::DescriptorSetLayout &getOrCreateProgramDescriptorSetLayout(
     LayoutGraphData &lg, uint32_t phaseID,
     std::string_view programName, UpdateFrequency rate) {
     CC_EXPECTS(rate < UpdateFrequency::PER_PHASE);
-    auto &phase = get(RenderPhaseTag{}, phaseID, lg);
+    auto &phase = lg.value(RenderPhase_{}, phaseID);
     const auto iter = phase.shaderIndex.find(programName);
     if (iter == phase.shaderIndex.end()) {
         return *lib.emptyDescriptorSetLayout;
@@ -1178,8 +1176,8 @@ void NativeProgramLibrary::init(gfx::Device *deviceIn) {
 
     // init layout graph
     auto &lg = layoutGraph;
-    for (const auto v : makeRange(vertices(lg))) {
-        auto &layout = get(LayoutGraphData::LayoutTag{}, lg, v);
+    for (const auto v : lg.vertices()) {
+        auto &layout = lg.getLayout(v);
         for (auto &&[update, set] : layout.descriptorSets) {
             if (set.descriptorSetLayout) {
                 CC_LOG_WARNING("descriptor set layout already initialized. It will be overwritten");
@@ -1194,20 +1192,20 @@ void NativeProgramLibrary::init(gfx::Device *deviceIn) {
         }
     }
 
-    for (const auto v : makeRange(vertices(lg))) {
-        if (!holds<RenderPhaseTag>(v, lg)) {
+    for (const auto v : lg.vertices()) {
+        if (!lg.holds<RenderPhase_>(v)) {
             continue;
         }
         const auto phaseID = v;
-        const auto subpassOrPassID = parent(phaseID, lg);
-        const auto &passLayout = get(LayoutGraphData::LayoutTag{}, lg, subpassOrPassID);
-        const auto &phaseLayout = get(LayoutGraphData::LayoutTag{}, lg, phaseID);
+        const auto subpassOrPassID = lg.get_parent(phaseID);
+        const auto &passLayout = lg.getLayout(subpassOrPassID);
+        const auto &phaseLayout = lg.getLayout(phaseID);
         gfx::PipelineLayoutInfo info;
         populatePipelineLayoutInfo(*this, passLayout, UpdateFrequency::PER_PASS, info);
         populatePipelineLayoutInfo(*this, phaseLayout, UpdateFrequency::PER_PHASE, info);
         populatePipelineLayoutInfo(*this, phaseLayout, UpdateFrequency::PER_BATCH, info);
         populatePipelineLayoutInfo(*this, phaseLayout, UpdateFrequency::PER_INSTANCE, info);
-        auto &phase = get(RenderPhaseTag{}, phaseID, lg);
+        auto &phase = lg.value(RenderPhase_{}, phaseID);
         phase.pipelineLayout = device->createPipelineLayout(info);
     }
 
@@ -1262,8 +1260,8 @@ void NativeProgramLibrary::addEffect(const EffectAsset *effectAssetIn) {
             const auto subpassOrPassID = subpassID == INVALID_ID ? passID : subpassID;
             const auto &srcShaderInfo = *pShaderInfo;
             CC_ENSURES(subpassOrPassID != INVALID_ID && phaseID != INVALID_ID);
-            const auto &passLayout = get(LayoutGraphData::LayoutTag{}, lg, subpassOrPassID);
-            const auto &phaseLayout = get(LayoutGraphData::LayoutTag{}, lg, phaseID);
+            const auto &passLayout = lg.getLayout(subpassOrPassID);
+            const auto &phaseLayout = lg.getLayout(phaseID);
 
             // programs
             auto iter = this->phases.find(phaseID);
@@ -1286,7 +1284,7 @@ void NativeProgramLibrary::addEffect(const EffectAsset *effectAssetIn) {
             // collect program descriptors
             ShaderProgramData *programData = nullptr;
             if (!mergeHighFrequency) {
-                auto &phase = get(RenderPhaseTag{}, phaseID, lg);
+                auto &phase = lg.value(RenderPhase_{}, phaseID);
                 programData = &buildProgramData(programName, srcShaderInfo, lg, phase, fixedLocal, scratch);
             }
 
@@ -1356,11 +1354,11 @@ IntrusivePtr<gfx::PipelineLayout> NativeProgramLibrary::getPipelineLayout(
     gfx::Device *device, uint32_t phaseID, const ccstd::string &programName) {
     if (mergeHighFrequency) {
         CC_EXPECTS(phaseID != LayoutGraphData::null_vertex());
-        const auto &layout = get(RenderPhaseTag{}, phaseID, layoutGraph);
+        const auto &layout = layoutGraph.value(RenderPhase_{}, phaseID);
         return layout.pipelineLayout;
     }
     auto &lg = layoutGraph;
-    auto &phase = get(RenderPhaseTag{}, phaseID, lg);
+    auto &phase = lg.value(RenderPhase_{}, phaseID);
     const auto iter = phase.shaderIndex.find(std::string_view{programName});
     if (iter == phase.shaderIndex.end()) {
         return emptyPipelineLayout;
@@ -1372,7 +1370,7 @@ IntrusivePtr<gfx::PipelineLayout> NativeProgramLibrary::getPipelineLayout(
     }
 
     // get pass
-    const auto subpassOrPassID = parent(phaseID, lg);
+    const auto subpassOrPassID = lg.get_parent(phaseID);
     if (subpassOrPassID == LayoutGraphData::null_vertex()) {
         return emptyPipelineLayout;
     }
@@ -1404,7 +1402,7 @@ const gfx::DescriptorSetLayout &NativeProgramLibrary::getMaterialDescriptorSetLa
     gfx::Device *device, uint32_t phaseID, const ccstd::string &programName) {
     if (mergeHighFrequency) {
         CC_EXPECTS(phaseID != LayoutGraphData::null_vertex());
-        const auto subpassOrPassID = parent(phaseID, layoutGraph);
+        const auto subpassOrPassID = layoutGraph.get_parent(phaseID);
         return getOrCreateDescriptorSetLayout(
             *this, layoutGraph, subpassOrPassID, phaseID, UpdateFrequency::PER_BATCH);
     }
@@ -1416,7 +1414,7 @@ const gfx::DescriptorSetLayout &NativeProgramLibrary::getLocalDescriptorSetLayou
     gfx::Device *device, uint32_t phaseID, const ccstd::string &programName) {
     if (mergeHighFrequency) {
         CC_EXPECTS(phaseID != LayoutGraphData::null_vertex());
-        const auto subpassOrPassID = parent(phaseID, layoutGraph);
+        const auto subpassOrPassID = layoutGraph.get_parent(phaseID);
         return getOrCreateDescriptorSetLayout(
             *this, layoutGraph, subpassOrPassID, phaseID, UpdateFrequency::PER_INSTANCE);
     }
@@ -1587,7 +1585,7 @@ const ccstd::unordered_map<ccstd::string, uint32_t> &NativeProgramLibrary::getHa
 uint32_t NativeProgramLibrary::getProgramID(
     uint32_t phaseID, const ccstd::pmr::string &programName) {
     CC_EXPECTS(phaseID != LayoutGraphData::null_vertex());
-    const auto &phase = get(RenderPhaseTag{}, phaseID, layoutGraph);
+    const auto &phase = layoutGraph.value(RenderPhase_{}, phaseID);
     auto iter = phase.shaderIndex.find(programName);
     if (iter == phase.shaderIndex.end()) {
         CC_LOG_ERROR("program not found");

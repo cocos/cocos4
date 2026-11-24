@@ -35,11 +35,11 @@ namespace cc {
 namespace render {
 
 ProgramInfo::ProgramInfo(const allocator_type& alloc)
-: programInfo(),
-  shaderInfo(),
+: programInfo(), // NOLINT(readability-redundant-member-init)
+  shaderInfo(), // NOLINT(readability-redundant-member-init)
   attributes(alloc),
-  blockSizes(),
-  handleMap() {}
+  blockSizes(), // NOLINT(readability-redundant-member-init)
+  handleMap() {} // NOLINT(readability-redundant-member-init)
 
 ProgramInfo::ProgramInfo(IProgramInfo programInfoIn, gfx::ShaderInfo shaderInfoIn, ccstd::pmr::vector<gfx::Attribute> attributesIn, ccstd::vector<int> blockSizesIn, ccstd::unordered_map<ccstd::string, uint32_t> handleMapIn, const allocator_type& alloc) // NOLINT
 : programInfo(std::move(programInfoIn)),

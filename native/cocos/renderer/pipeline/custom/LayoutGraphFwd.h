@@ -29,14 +29,15 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
+#include "cocos/renderer/pipeline/custom/ArchiveFwd.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
-// IWYU pragma: end_exports
 #include "cocos/base/std/hash/hash.h"
 
 namespace cc {
 
 namespace render {
+
+using UniformID = uint32_t;
 
 enum class LayoutType : uint8_t;
 
@@ -50,16 +51,15 @@ struct DescriptorBlockFlattened;
 struct DescriptorBlockIndex;
 struct DescriptorGroupBlockIndex;
 struct DescriptorDB;
-struct RenderStageTag;
-struct RenderPhaseTag;
 struct RenderPhase;
 
 enum class RenderPassType : uint8_t;
 
+struct Descriptors_;
+struct Update_;
+struct RenderStage_;
+struct RenderPhase_;
 struct LayoutGraph;
-
-using UniformID = uint32_t;
-
 struct UniformData;
 struct UniformBlockData;
 struct NameLocalID;

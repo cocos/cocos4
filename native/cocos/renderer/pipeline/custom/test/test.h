@@ -33,7 +33,7 @@
 #include <variant>
 #include "../../Enum.h"
 #include "../FGDispatcherTypes.h"
-#include "../LayoutGraphGraphs.h"
+#include "../LayoutGraphTypes.h"
 #include "../NativePipelineTypes.h"
 #include "../RenderGraphGraphs.h"
 #include "../RenderGraphTypes.h"
@@ -70,17 +70,13 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
         rescGraph.states[rescVertexID].states = gfx::AccessFlagBit::NONE;
     }
 
-    const auto &mem_resource = layoutGraphData.get_allocator();
-    auto &stages = layoutGraphData.stages;
-    stages.resize(layoutInfo.size());
-
-    add_vertex(layoutGraphData, RenderPhaseTag{}, "default");
-    auto &layout = layoutGraphData.layouts.back();
-    const auto &descPair = layout.descriptorSets.emplace(UpdateFrequency::PER_PASS, DescriptorSetData{renderGraph.get_allocator()});
-    auto &descData = (*descPair.first).second.descriptorSetLayoutData;
+    const auto phase = layoutGraphData.add_vertex(RenderPhase_{}, "default");
+    layoutGraphData.getLayout(phase).descriptorSets.emplace(UpdateFrequency::PER_PASS, DescriptorSetData{layoutGraphData.get_allocator()});
     for (size_t i = 0; i < layoutInfo.size(); ++i) {
         const ccstd::string passName = "pass" + std::to_string(i);
-        auto layoutVtxID = add_vertex(layoutGraphData, RenderStageTag{}, passName.c_str());
+        const auto layoutVtxID = layoutGraphData.add_vertex(RenderStage_{}, passName.c_str());
+        auto &stage = layoutGraphData.value(RenderStage_{}, layoutVtxID);
+        auto &descData = layoutGraphData.getLayout(phase).descriptorSets.at(UpdateFrequency::PER_PASS).descriptorSetLayoutData;
         const auto &renderStageInfo = layoutInfo[i];
         for (const auto &layoutUnit : renderStageInfo) {
             const auto &rescName = std::get<0>(layoutUnit);
@@ -89,7 +85,7 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
             if (layoutGraphData.attributeIndex.find(rescName) == layoutGraphData.attributeIndex.end()) {
                 layoutGraphData.attributeIndex.emplace(std::make_pair<string, NameLocalID>(rescName.c_str(), NameLocalID{nameID}));
             }
-            stages[i].descriptorVisibility.emplace(NameLocalID{nameID}, shaderStage);
+            stage.descriptorVisibility.emplace(NameLocalID{nameID}, shaderStage);
             auto &block = descData.descriptorBlocks.emplace_back();
             block.visibility = shaderStage;
             auto &desc = block.descriptors.emplace_back();

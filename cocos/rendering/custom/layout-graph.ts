@@ -29,17 +29,15 @@
  */
 /* eslint-disable max-len */
 import { COCOS_RUNTIME, HTML5 } from 'internal:constants';
-import { AddressableGraph, AdjI, AdjacencyGraph, BidirectionalGraph, ComponentGraph, ED, InEI, MutableGraph, MutableReferenceGraph, NamedGraph, OutE, OutEI, PolymorphicGraph, PropertyGraph, ReferenceGraph, VertexListGraph, findRelative, getPath } from './graph';
-import type { DescriptorSet, DescriptorSetLayout, PipelineLayout } from '../../gfx';
 import { DescriptorSetLayoutInfo, Format, MemoryAccessBit, SampleType, ShaderStageFlagBit, Type, UniformBlock, ViewDimension } from '../../gfx';
-import { ParameterType, UpdateFrequency, RenderCommonObjectPool } from './types';
+import { AdjI, ED, OneInEI, OutE, OutEI, findRelative, getPath } from './graph';
+import { loadDescriptorSetLayoutInfo, loadUniformBlock, saveDescriptorSetLayoutInfo, saveUniformBlock } from './serialization';
+import { ParameterType, UpdateFrequency } from './types';
+import type { DescriptorSet, DescriptorSetLayout, PipelineLayout } from '../../gfx';
+import type { AddressableGraph, AdjacencyGraph, BidirectionalGraph, ComponentGraph, MutableGraph, MutableReferenceGraph, NamedGraph, PolymorphicGraph, PropertyGraph, ReferenceGraph, VertexListGraph } from './graph';
+import type { RenderCommonObjectPool } from './types';
 import { RecyclePool } from '../../core/memop';
 import type { OutputArchive, InputArchive } from './archive';
-import { saveUniformBlock, loadUniformBlock, saveDescriptorSetLayoutInfo, loadDescriptorSetLayoutInfo } from './serialization';
-
-function resetDescriptorSetLayoutInfo (info: DescriptorSetLayoutInfo): void {
-    info.bindings.length = 0;
-}
 
 export const enum LayoutType {
     VULKAN,
@@ -47,8 +45,8 @@ export const enum LayoutType {
 }
 
 export class Layout {
-    static type = LayoutType.VULKAN;
-    static isWebGPU = false;
+    static type: LayoutType = LayoutType.VULKAN;
+    static isWebGPU: boolean = false;
 }
 
 export const enum DescriptorTypeOrder {
@@ -106,7 +104,12 @@ export class DescriptorBlockFlattened {
 }
 
 export class DescriptorBlockIndex {
-    constructor (updateFrequency: UpdateFrequency = UpdateFrequency.PER_INSTANCE, parameterType: ParameterType = ParameterType.CONSTANTS, descriptorType: DescriptorTypeOrder = DescriptorTypeOrder.UNIFORM_BUFFER, visibility: ShaderStageFlagBit = ShaderStageFlagBit.NONE) {
+    constructor (
+        updateFrequency: UpdateFrequency = UpdateFrequency.PER_INSTANCE,
+        parameterType: ParameterType = ParameterType.CONSTANTS,
+        descriptorType: DescriptorTypeOrder = DescriptorTypeOrder.UNIFORM_BUFFER,
+        visibility: ShaderStageFlagBit = ShaderStageFlagBit.NONE,
+    ) {
         this.updateFrequency = updateFrequency;
         this.parameterType = parameterType;
         this.descriptorType = descriptorType;
@@ -170,17 +173,13 @@ export const enum RenderPassType {
     RENDER_SUBPASS,
 }
 
-//=================================================================
-// LayoutGraph
-//=================================================================
-// PolymorphicGraph Concept
 export const enum LayoutGraphValue {
     RenderStage,
     RenderPhase,
 }
 
-export function getLayoutGraphValueName (e: LayoutGraphValue): string {
-    switch (e) {
+export function getLayoutGraphValueName (kind: LayoutGraphValue): string {
+    switch (kind) {
     case LayoutGraphValue.RenderStage: return 'RenderStage';
     case LayoutGraphValue.RenderPhase: return 'RenderPhase';
     default: return '';
@@ -188,8 +187,8 @@ export function getLayoutGraphValueName (e: LayoutGraphValue): string {
 }
 
 export interface LayoutGraphValueType {
-    [LayoutGraphValue.RenderStage]: RenderPassType
-    [LayoutGraphValue.RenderPhase]: RenderPhase
+    [LayoutGraphValue.RenderStage]: RenderPassType;
+    [LayoutGraphValue.RenderPhase]: RenderPhase;
 }
 
 export interface LayoutGraphVisitor {
@@ -197,41 +196,8 @@ export interface LayoutGraphVisitor {
     renderPhase(value: RenderPhase): unknown;
 }
 
-export type LayoutGraphObject = RenderPassType | RenderPhase;
+export type LayoutGraphObject = LayoutGraphValueType[LayoutGraphValue];
 
-//-----------------------------------------------------------------
-// Graph Concept
-export class LayoutGraphVertex {
-    constructor (
-        readonly id: LayoutGraphValue,
-        readonly object: LayoutGraphObject,
-    ) {
-        this.t = id;
-        this.j = object;
-    }
-    /** Out edge list */
-    readonly o: OutE[] = [];
-    /** In edge list */
-    readonly i: OutE[] = [];
-    /** Polymorphic object Id */
-    readonly t: LayoutGraphValue;
-    /** Polymorphic object */
-    j: LayoutGraphObject;
-}
-//-----------------------------------------------------------------
-// ComponentGraph Concept
-export const enum LayoutGraphComponent {
-    Name,
-    Descriptors,
-}
-
-export interface LayoutGraphComponentType {
-    [LayoutGraphComponent.Name]: string;
-    [LayoutGraphComponent.Descriptors]: DescriptorDB;
-}
-
-//-----------------------------------------------------------------
-// LayoutGraph Implementation
 export class LayoutGraph implements BidirectionalGraph
 , AdjacencyGraph
 , VertexListGraph
@@ -243,22 +209,12 @@ export class LayoutGraph implements BidirectionalGraph
 , ReferenceGraph
 , MutableReferenceGraph
 , AddressableGraph {
-    //-----------------------------------------------------------------
     // Graph
-    /** null vertex descriptor */
-    readonly N = 0xFFFFFFFF;
-    // type edge_descriptor = ED;
-    //-----------------------------------------------------------------
+    readonly N = 4294967295;
+
     // IncidenceGraph
-    // type out_edge_iterator = OutEI;
-    // type degree_size_type = number;
     edge (u: number, v: number): boolean {
-        for (const oe of this.x[u].o) {
-            if (v === oe.target as number) {
-                return true;
-            }
-        }
-        return false;
+        return this.p[v] === u;
     }
     source (e: ED): number {
         return e.source as number;
@@ -267,139 +223,131 @@ export class LayoutGraph implements BidirectionalGraph
         return e.target as number;
     }
     oe (v: number): OutEI {
-        return new OutEI(this.x[v].o.values(), v);
+        return new OutEI(this.c[v].values(), v);
     }
     od (v: number): number {
-        return this.x[v].o.length;
+        return this.c[v].length;
     }
-    //-----------------------------------------------------------------
+
     // BidirectionalGraph
-    // type in_edge_iterator = InEI;
-    ie (v: number): InEI {
-        return new InEI(this.x[v].i.values(), v);
+    ie (v: number): OneInEI {
+        return new OneInEI(this.p[v], v, this.N);
     }
     id (v: number): number {
-        return this.x[v].i.length;
+        return this.p[v] === this.N ? 0 : 1;
     }
     d (v: number): number {
         return this.od(v) + this.id(v);
     }
-    //-----------------------------------------------------------------
+
     // AdjacencyGraph
-    // type adjacency_iterator = AdjI;
     adj (v: number): AdjI {
         return new AdjI(this, this.oe(v));
     }
-    //-----------------------------------------------------------------
+
     // VertexListGraph
     v (): IterableIterator<number> {
-        return this.x.keys();
+        return this.c.keys();
     }
     nv (): number {
-        return this.x.length;
+        return this.c.length;
     }
-    //-----------------------------------------------------------------
-    // EdgeListGraph
-    ne (): number {
-        let numEdges = 0;
-        for (const v of this.v()) {
-            numEdges += this.od(v);
-        }
-        return numEdges;
-    }
-    //-----------------------------------------------------------------
+
     // MutableGraph
     clear (): void {
-        // ComponentGraph
+        this.r.length = 0;
+        this.c.length = 0;
+        this.p.length = 0;
+        this.t.length = 0;
+        this.a.length = 0;
         this._names.length = 0;
         this._descriptors.length = 0;
-        // Graph Vertices
-        this.x.length = 0;
     }
+
     addVertex<T extends LayoutGraphValue> (
         id: T,
         object: LayoutGraphValueType[T],
-        name: string,
-        descriptors: DescriptorDB,
-        u = 0xFFFFFFFF,
+        componentName: string,
+        componentDescriptors: DescriptorDB,
+        parent: number = this.N,
     ): number {
-        const vert = new LayoutGraphVertex(id, object);
-        const v = this.x.length;
-        this.x.push(vert);
-        this._names.push(name);
-        this._descriptors.push(descriptors);
-
-        // ReferenceGraph
-        if (u !== 0xFFFFFFFF) {
-            this.addEdge(u, v);
+        const v = this.c.length;
+        if (v >= this.N) throw new RangeError('Vertex limit exceeded');
+        const siblings = parent === this.N ? this.r : this.c[parent];
+        try {
+            this.c.push([]);
+            this.p.push(parent);
+            this.t.push(id);
+            this.a.push(object);
+            this._names.push(componentName);
+            this._descriptors.push(componentDescriptors);
+            siblings.push(new OutE(v));
+        } catch (error) {
+            this.c.length = v;
+            this.p.length = v;
+            this.t.length = v;
+            this.a.length = v;
+            this._names.length = v;
+            this._descriptors.length = v;
+            throw error;
         }
-
         return v;
     }
+
     addEdge (u: number, v: number): ED | null {
-        // update in/out edge list
-        this.x[u].o.push(new OutE(v));
-        this.x[v].i.push(new OutE(u));
+        if (this.p[v] !== this.N || u >= v) return null;
+        const children = this.c[u];
+        const index = children.findIndex((e) => (e.target as number) > v);
+        children.splice(index < 0 ? children.length : index, 0, new OutE(v));
+        this.r.splice(this.r.findIndex((e) => e.target === v), 1);
+        this.p[v] = u;
         return new ED(u, v);
     }
-    //-----------------------------------------------------------------
+
     // NamedGraph
     vertexName (v: number): string {
         return this._names[v];
     }
-    //-----------------------------------------------------------------
+
     // ComponentGraph
-    // skip setName, Name is constant in AddressableGraph
     getName (v: number): string {
         return this._names[v];
     }
     getDescriptors (v: number): DescriptorDB {
         return this._descriptors[v];
     }
-    //-----------------------------------------------------------------
+
     // PolymorphicGraph
     h (id: LayoutGraphValue, v: number): boolean {
-        return this.x[v].t === id;
+        return this.t[v] === id;
     }
     w (v: number): LayoutGraphValue {
-        return this.x[v].t;
+        return this.t[v];
     }
     object (v: number): LayoutGraphObject {
-        return this.x[v].j;
+        return this.a[v];
     }
     value<T extends LayoutGraphValue> (id: T, v: number): LayoutGraphValueType[T] {
-        if (this.x[v].t === id) {
-            return this.x[v].j as LayoutGraphValueType[T];
-        } else {
-            throw Error('value id not match');
-        }
+        return this.a[v] as LayoutGraphValueType[typeof id];
     }
     visitVertex (visitor: LayoutGraphVisitor, v: number): unknown {
-        const vert = this.x[v];
-        switch (vert.t) {
+        const object = this.a[v];
+        switch (this.t[v]) {
         case LayoutGraphValue.RenderStage:
-            return visitor.renderStage(vert.j as RenderPassType);
+            return visitor.renderStage(object as RenderPassType);
         case LayoutGraphValue.RenderPhase:
-            return visitor.renderPhase(vert.j as RenderPhase);
+            return visitor.renderPhase(object as RenderPhase);
         default:
-            throw Error('polymorphic type not found');
+            throw new Error('Unknown vertex kind');
         }
     }
     j<T extends LayoutGraphObject> (v: number): T {
-        return this.x[v].j as T;
+        return this.a[v] as T;
     }
-    //-----------------------------------------------------------------
+
     // ReferenceGraph
-    // type reference_descriptor = ED;
-    // type child_iterator = OutEI;
-    // type parent_iterator = InEI;
     reference (u: number, v: number): boolean {
-        for (const oe of this.x[u].o) {
-            if (v === oe.target as number) {
-                return true;
-            }
-        }
-        return false;
+        return this.p[v] === u;
     }
     parent (e: ED): number {
         return e.source as number;
@@ -408,61 +356,51 @@ export class LayoutGraph implements BidirectionalGraph
         return e.target as number;
     }
     children (v: number): OutEI {
-        return new OutEI(this.x[v].o.values(), v);
+        return new OutEI(this.c[v].values(), v);
     }
     numChildren (v: number): number {
-        return this.x[v].o.length;
+        return this.c[v].length;
     }
     getParent (v: number): number {
-        if (v === 0xFFFFFFFF) {
-            return 0xFFFFFFFF;
-        }
-        const list = this.x[v].i;
-        if (list.length === 0) {
-            return 0xFFFFFFFF;
-        } else {
-            return list[0].target as number;
-        }
+        return this.p[v];
     }
-    //-----------------------------------------------------------------
+
     // MutableReferenceGraph
     addReference (u: number, v: number): ED | null {
         return this.addEdge(u, v);
     }
-    //-----------------------------------------------------------------
+
     // ParentGraph
-    locateChild (u: number, name: string): number {
-        if (u === 0xFFFFFFFF) {
-            for (const v of this.x.keys()) {
-                const vert = this.x[v];
-                if (vert.i.length === 0 && this._names[v] === name) {
-                    return v;
-                }
-            }
-            return 0xFFFFFFFF;
+    locateChild (parent: number, name: string): number {
+        const children = parent === this.N ? this.r : this.c[parent];
+        for (const edge of children) {
+            const v = edge.target as number;
+            if (this.vertexName(v) === name) return v;
         }
-        for (const oe of this.x[u].o) {
-            const child = oe.target as number;
-            if (name === this._names[child]) {
-                return child;
-            }
-        }
-        return 0xFFFFFFFF;
+        return this.N;
     }
-    //-----------------------------------------------------------------
+
     // AddressableGraph
     locate (absPath: string): number {
-        return findRelative(this, 0xFFFFFFFF, absPath) as number;
+        return this.locateRelative(absPath);
     }
-    locateRelative (path: string, start = 0xFFFFFFFF): number {
+
+    locateRelative (path: string, start: number = this.N): number {
+        if (path.length === 0) return this.N;
         return findRelative(this, start, path) as number;
     }
+
     path (v: number): string {
         return getPath(this, v);
     }
-    readonly x: LayoutGraphVertex[] = [];
-    readonly _names: string[] = [];
-    readonly _descriptors: DescriptorDB[] = [];
+
+    private readonly r: OutE[] = [];
+    private readonly c: OutE[][] = [];
+    private readonly p: number[] = [];
+    private readonly t: LayoutGraphValue[] = [];
+    private readonly a: LayoutGraphObject[] = [];
+    private readonly _names: string[] = [];
+    private readonly _descriptors: DescriptorDB[] = [];
 }
 
 export class UniformData {
@@ -592,14 +530,21 @@ export class DescriptorSetLayoutData {
 }
 
 export class DescriptorSetData {
-    constructor (descriptorSetLayoutData: DescriptorSetLayoutData = new DescriptorSetLayoutData(), descriptorSetLayout: DescriptorSetLayout | null = null, descriptorSet: DescriptorSet | null = null) {
+    constructor (
+        descriptorSetLayoutData: DescriptorSetLayoutData = new DescriptorSetLayoutData(),
+        descriptorSetLayout: DescriptorSetLayout | null = null,
+        descriptorSet: DescriptorSet | null = null,
+    ) {
         this.descriptorSetLayoutData = descriptorSetLayoutData;
         this.descriptorSetLayout = descriptorSetLayout;
         this.descriptorSet = descriptorSet;
     }
-    reset (descriptorSetLayout: DescriptorSetLayout | null, descriptorSet: DescriptorSet | null): void {
+    reset (
+        descriptorSetLayout: DescriptorSetLayout | null,
+        descriptorSet: DescriptorSet | null,
+    ): void {
         this.descriptorSetLayoutData.reset(0xFFFFFFFF, 0);
-        resetDescriptorSetLayoutInfo(this.descriptorSetLayoutInfo);
+        this.descriptorSetLayoutInfo.reset();
         this.descriptorSetLayout = descriptorSetLayout;
         this.descriptorSet = descriptorSet;
     }
@@ -614,11 +559,13 @@ export class PipelineLayoutData {
         this.descriptorSets.clear();
         this.descriptorGroups.clear();
     }
+
     getSets (): Map<UpdateFrequency, DescriptorSetData> {
         return (COCOS_RUNTIME || HTML5) && Layout.isWebGPU ? this.descriptorGroups : this.descriptorSets;
     }
+
     getSet (frequency: UpdateFrequency): DescriptorSetData | undefined {
-        return (COCOS_RUNTIME || HTML5) && Layout.isWebGPU ? this.descriptorGroups.get(frequency) : this.descriptorSets.get(frequency);
+        return this.getSets().get(frequency);
     }
     readonly descriptorSets: Map<UpdateFrequency, DescriptorSetData> = new Map<UpdateFrequency, DescriptorSetData>();
     readonly descriptorGroups: Map<UpdateFrequency, DescriptorSetData> = new Map<UpdateFrequency, DescriptorSetData>();
@@ -683,17 +630,13 @@ export class RenderPhaseData {
     /*refcount*/ pipelineLayout: PipelineLayout | null = null;
 }
 
-//=================================================================
-// LayoutGraphData
-//=================================================================
-// PolymorphicGraph Concept
 export const enum LayoutGraphDataValue {
     RenderStage,
     RenderPhase,
 }
 
-export function getLayoutGraphDataValueName (e: LayoutGraphDataValue): string {
-    switch (e) {
+export function getLayoutGraphDataValueName (kind: LayoutGraphDataValue): string {
+    switch (kind) {
     case LayoutGraphDataValue.RenderStage: return 'RenderStage';
     case LayoutGraphDataValue.RenderPhase: return 'RenderPhase';
     default: return '';
@@ -701,8 +644,8 @@ export function getLayoutGraphDataValueName (e: LayoutGraphDataValue): string {
 }
 
 export interface LayoutGraphDataValueType {
-    [LayoutGraphDataValue.RenderStage]: RenderStageData
-    [LayoutGraphDataValue.RenderPhase]: RenderPhaseData
+    [LayoutGraphDataValue.RenderStage]: RenderStageData;
+    [LayoutGraphDataValue.RenderPhase]: RenderPhaseData;
 }
 
 export interface LayoutGraphDataVisitor {
@@ -710,43 +653,8 @@ export interface LayoutGraphDataVisitor {
     renderPhase(value: RenderPhaseData): unknown;
 }
 
-export type LayoutGraphDataObject = RenderStageData | RenderPhaseData;
+export type LayoutGraphDataObject = LayoutGraphDataValueType[LayoutGraphDataValue];
 
-//-----------------------------------------------------------------
-// Graph Concept
-export class LayoutGraphDataVertex {
-    constructor (
-        readonly id: LayoutGraphDataValue,
-        readonly object: LayoutGraphDataObject,
-    ) {
-        this.t = id;
-        this.j = object;
-    }
-    /** Out edge list */
-    readonly o: OutE[] = [];
-    /** In edge list */
-    readonly i: OutE[] = [];
-    /** Polymorphic object Id */
-    readonly t: LayoutGraphDataValue;
-    /** Polymorphic object */
-    j: LayoutGraphDataObject;
-}
-//-----------------------------------------------------------------
-// ComponentGraph Concept
-export const enum LayoutGraphDataComponent {
-    Name,
-    Update,
-    Layout,
-}
-
-export interface LayoutGraphDataComponentType {
-    [LayoutGraphDataComponent.Name]: string;
-    [LayoutGraphDataComponent.Update]: UpdateFrequency;
-    [LayoutGraphDataComponent.Layout]: PipelineLayoutData;
-}
-
-//-----------------------------------------------------------------
-// LayoutGraphData Implementation
 export class LayoutGraphData implements BidirectionalGraph
 , AdjacencyGraph
 , VertexListGraph
@@ -758,22 +666,12 @@ export class LayoutGraphData implements BidirectionalGraph
 , ReferenceGraph
 , MutableReferenceGraph
 , AddressableGraph {
-    //-----------------------------------------------------------------
     // Graph
-    /** null vertex descriptor */
-    readonly N = 0xFFFFFFFF;
-    // type edge_descriptor = ED;
-    //-----------------------------------------------------------------
+    readonly N = 4294967295;
+
     // IncidenceGraph
-    // type out_edge_iterator = OutEI;
-    // type degree_size_type = number;
     edge (u: number, v: number): boolean {
-        for (const oe of this.x[u].o) {
-            if (v === oe.target as number) {
-                return true;
-            }
-        }
-        return false;
+        return this.p[v] === u;
     }
     source (e: ED): number {
         return e.source as number;
@@ -782,99 +680,103 @@ export class LayoutGraphData implements BidirectionalGraph
         return e.target as number;
     }
     oe (v: number): OutEI {
-        return new OutEI(this.x[v].o.values(), v);
+        return new OutEI(this.c[v].values(), v);
     }
     od (v: number): number {
-        return this.x[v].o.length;
+        return this.c[v].length;
     }
-    //-----------------------------------------------------------------
+
     // BidirectionalGraph
-    // type in_edge_iterator = InEI;
-    ie (v: number): InEI {
-        return new InEI(this.x[v].i.values(), v);
+    ie (v: number): OneInEI {
+        return new OneInEI(this.p[v], v, this.N);
     }
     id (v: number): number {
-        return this.x[v].i.length;
+        return this.p[v] === this.N ? 0 : 1;
     }
     d (v: number): number {
         return this.od(v) + this.id(v);
     }
-    //-----------------------------------------------------------------
+
     // AdjacencyGraph
-    // type adjacency_iterator = AdjI;
     adj (v: number): AdjI {
         return new AdjI(this, this.oe(v));
     }
-    //-----------------------------------------------------------------
+
     // VertexListGraph
     v (): IterableIterator<number> {
-        return this.x.keys();
+        return this.c.keys();
     }
     nv (): number {
-        return this.x.length;
+        return this.c.length;
     }
-    //-----------------------------------------------------------------
-    // EdgeListGraph
-    ne (): number {
-        let numEdges = 0;
-        for (const v of this.v()) {
-            numEdges += this.od(v);
-        }
-        return numEdges;
-    }
-    //-----------------------------------------------------------------
+
     // MutableGraph
-    clear (): void {
-        // Members
+    clear (includeTransient = true): void {
+        this.r.length = 0;
+        this.c.length = 0;
+        this.p.length = 0;
+        this.t.length = 0;
+        this.a.length = 0;
+        this._names.length = 0;
+        this._updateFrequencies.length = 0;
+        this._layouts.length = 0;
         this.valueNames.length = 0;
         this.attributeIndex.clear();
         this.constantIndex.clear();
         this.shaderLayoutIndex.clear();
         this.effects.clear();
-        this.constantMacros = '';
-        // ComponentGraph
-        this._names.length = 0;
-        this._updateFrequencies.length = 0;
-        this._layouts.length = 0;
-        // Graph Vertices
-        this.x.length = 0;
+        if (includeTransient) this.constantMacros = '';
     }
+
     addVertex<T extends LayoutGraphDataValue> (
         id: T,
         object: LayoutGraphDataValueType[T],
-        name: string,
-        update: UpdateFrequency,
-        layout: PipelineLayoutData,
-        u = 0xFFFFFFFF,
+        componentName: string,
+        componentUpdate: UpdateFrequency,
+        componentLayout: PipelineLayoutData,
+        parent: number = this.N,
     ): number {
-        const vert = new LayoutGraphDataVertex(id, object);
-        const v = this.x.length;
-        this.x.push(vert);
-        this._names.push(name);
-        this._updateFrequencies.push(update);
-        this._layouts.push(layout);
-
-        // ReferenceGraph
-        if (u !== 0xFFFFFFFF) {
-            this.addEdge(u, v);
+        const v = this.c.length;
+        if (v >= this.N) throw new RangeError('Vertex limit exceeded');
+        const siblings = parent === this.N ? this.r : this.c[parent];
+        try {
+            this.c.push([]);
+            this.p.push(parent);
+            this.t.push(id);
+            this.a.push(object);
+            this._names.push(componentName);
+            this._updateFrequencies.push(componentUpdate);
+            this._layouts.push(componentLayout);
+            siblings.push(new OutE(v));
+        } catch (error) {
+            this.c.length = v;
+            this.p.length = v;
+            this.t.length = v;
+            this.a.length = v;
+            this._names.length = v;
+            this._updateFrequencies.length = v;
+            this._layouts.length = v;
+            throw error;
         }
-
         return v;
     }
+
     addEdge (u: number, v: number): ED | null {
-        // update in/out edge list
-        this.x[u].o.push(new OutE(v));
-        this.x[v].i.push(new OutE(u));
+        if (this.p[v] !== this.N || u >= v) return null;
+        const children = this.c[u];
+        const index = children.findIndex((e) => (e.target as number) > v);
+        children.splice(index < 0 ? children.length : index, 0, new OutE(v));
+        this.r.splice(this.r.findIndex((e) => e.target === v), 1);
+        this.p[v] = u;
         return new ED(u, v);
     }
-    //-----------------------------------------------------------------
+
     // NamedGraph
     vertexName (v: number): string {
         return this._names[v];
     }
-    //-----------------------------------------------------------------
+
     // ComponentGraph
-    // skip setName, Name is constant in AddressableGraph
     getName (v: number): string {
         return this._names[v];
     }
@@ -887,50 +789,38 @@ export class LayoutGraphData implements BidirectionalGraph
     getLayout (v: number): PipelineLayoutData {
         return this._layouts[v];
     }
-    //-----------------------------------------------------------------
+
     // PolymorphicGraph
     h (id: LayoutGraphDataValue, v: number): boolean {
-        return this.x[v].t === id;
+        return this.t[v] === id;
     }
     w (v: number): LayoutGraphDataValue {
-        return this.x[v].t;
+        return this.t[v];
     }
     object (v: number): LayoutGraphDataObject {
-        return this.x[v].j;
+        return this.a[v];
     }
     value<T extends LayoutGraphDataValue> (id: T, v: number): LayoutGraphDataValueType[T] {
-        if (this.x[v].t === id) {
-            return this.x[v].j as LayoutGraphDataValueType[T];
-        } else {
-            throw Error('value id not match');
-        }
+        return this.a[v] as LayoutGraphDataValueType[typeof id];
     }
     visitVertex (visitor: LayoutGraphDataVisitor, v: number): unknown {
-        const vert = this.x[v];
-        switch (vert.t) {
+        const object = this.a[v];
+        switch (this.t[v]) {
         case LayoutGraphDataValue.RenderStage:
-            return visitor.renderStage(vert.j as RenderStageData);
+            return visitor.renderStage(object as RenderStageData);
         case LayoutGraphDataValue.RenderPhase:
-            return visitor.renderPhase(vert.j as RenderPhaseData);
+            return visitor.renderPhase(object as RenderPhaseData);
         default:
-            throw Error('polymorphic type not found');
+            throw new Error('Unknown vertex kind');
         }
     }
     j<T extends LayoutGraphDataObject> (v: number): T {
-        return this.x[v].j as T;
+        return this.a[v] as T;
     }
-    //-----------------------------------------------------------------
+
     // ReferenceGraph
-    // type reference_descriptor = ED;
-    // type child_iterator = OutEI;
-    // type parent_iterator = InEI;
     reference (u: number, v: number): boolean {
-        for (const oe of this.x[u].o) {
-            if (v === oe.target as number) {
-                return true;
-            }
-        }
-        return false;
+        return this.p[v] === u;
     }
     parent (e: ED): number {
         return e.source as number;
@@ -939,71 +829,61 @@ export class LayoutGraphData implements BidirectionalGraph
         return e.target as number;
     }
     children (v: number): OutEI {
-        return new OutEI(this.x[v].o.values(), v);
+        return new OutEI(this.c[v].values(), v);
     }
     numChildren (v: number): number {
-        return this.x[v].o.length;
+        return this.c[v].length;
     }
     getParent (v: number): number {
-        if (v === 0xFFFFFFFF) {
-            return 0xFFFFFFFF;
-        }
-        const list = this.x[v].i;
-        if (list.length === 0) {
-            return 0xFFFFFFFF;
-        } else {
-            return list[0].target as number;
-        }
+        return this.p[v];
     }
-    //-----------------------------------------------------------------
+
     // MutableReferenceGraph
     addReference (u: number, v: number): ED | null {
         return this.addEdge(u, v);
     }
-    //-----------------------------------------------------------------
+
     // ParentGraph
-    locateChild (u: number, name: string): number {
-        if (u === 0xFFFFFFFF) {
-            for (const v of this.x.keys()) {
-                const vert = this.x[v];
-                if (vert.i.length === 0 && this._names[v] === name) {
-                    return v;
-                }
-            }
-            return 0xFFFFFFFF;
+    locateChild (parent: number, name: string): number {
+        const children = parent === this.N ? this.r : this.c[parent];
+        for (const edge of children) {
+            const v = edge.target as number;
+            if (this.vertexName(v) === name) return v;
         }
-        for (const oe of this.x[u].o) {
-            const child = oe.target as number;
-            if (name === this._names[child]) {
-                return child;
-            }
-        }
-        return 0xFFFFFFFF;
+        return this.N;
     }
-    //-----------------------------------------------------------------
+
     // AddressableGraph
     locate (absPath: string): number {
-        return findRelative(this, 0xFFFFFFFF, absPath) as number;
+        return this.locateRelative(absPath);
     }
-    locateRelative (path: string, start = 0xFFFFFFFF): number {
+
+    locateRelative (path: string, start: number = this.N): number {
+        if (path.length === 0) return this.N;
         return findRelative(this, start, path) as number;
     }
+
     path (v: number): string {
         return getPath(this, v);
     }
-    readonly x: LayoutGraphDataVertex[] = [];
-    readonly _names: string[] = [];
-    readonly _updateFrequencies: UpdateFrequency[] = [];
-    readonly _layouts: PipelineLayoutData[] = [];
+
+    private readonly r: OutE[] = [];
+    private readonly c: OutE[][] = [];
+    private readonly p: number[] = [];
+    private readonly t: LayoutGraphDataValue[] = [];
+    private readonly a: LayoutGraphDataObject[] = [];
+    private readonly _names: string[] = [];
+    private readonly _updateFrequencies: UpdateFrequency[] = [];
+    private readonly _layouts: PipelineLayoutData[] = [];
     readonly valueNames: string[] = [];
     readonly attributeIndex: Map<string, number> = new Map<string, number>();
     readonly constantIndex: Map<string, number> = new Map<string, number>();
     readonly shaderLayoutIndex: Map<string, number> = new Map<string, number>();
     readonly effects: Map<string, EffectData> = new Map<string, EffectData>();
-    constantMacros = '';
+    constantMacros: string = '';
 }
 
-function createPool<T> (Constructor: new() => T): RecyclePool<T> {
+function createPool<T> (Constructor: new () => T): RecyclePool<T> {
     return new RecyclePool<T>(() => new Constructor(), 16);
 }
 
@@ -1242,86 +1122,82 @@ export function loadDescriptor (a: InputArchive, v: Descriptor): void {
 }
 
 export function saveDescriptorBlock (a: OutputArchive, v: DescriptorBlock): void {
-    a.n(v.descriptors.size); // Map<string, Descriptor>
-    for (const [k1, v1] of v.descriptors) {
-        a.s(k1);
-        saveDescriptor(a, v1);
+    a.n(v.descriptors.size);
+    for (const [key0, item0] of v.descriptors) {
+        a.s(key0);
+        saveDescriptor(a, item0);
     }
-    a.n(v.uniformBlocks.size); // Map<string, UniformBlock>
-    for (const [k1, v1] of v.uniformBlocks) {
-        a.s(k1);
-        saveUniformBlock(a, v1);
+    a.n(v.uniformBlocks.size);
+    for (const [key0, item0] of v.uniformBlocks) {
+        a.s(key0);
+        saveUniformBlock(a, item0);
     }
     a.n(v.capacity);
     a.n(v.count);
 }
 
 export function loadDescriptorBlock (a: InputArchive, v: DescriptorBlock): void {
-    let sz = 0;
-    sz = a.n(); // Map<string, Descriptor>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = new Descriptor();
-        loadDescriptor(a, v1);
-        v.descriptors.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = new Descriptor();
+        loadDescriptor(a, item0);
+        v.descriptors.set(key0, item0);
     }
-    sz = a.n(); // Map<string, UniformBlock>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = new UniformBlock();
-        loadUniformBlock(a, v1);
-        v.uniformBlocks.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = new UniformBlock();
+        loadUniformBlock(a, item0);
+        v.uniformBlocks.set(key0, item0);
     }
     v.capacity = a.n();
     v.count = a.n();
 }
 
 export function saveDescriptorBlockFlattened (a: OutputArchive, v: DescriptorBlockFlattened): void {
-    a.n(v.descriptorNames.length); // string[]
-    for (const v1 of v.descriptorNames) {
-        a.s(v1);
+    a.n(v.descriptorNames.length);
+    for (const item0 of v.descriptorNames) {
+        a.s(item0);
     }
-    a.n(v.uniformBlockNames.length); // string[]
-    for (const v1 of v.uniformBlockNames) {
-        a.s(v1);
+    a.n(v.uniformBlockNames.length);
+    for (const item0 of v.uniformBlockNames) {
+        a.s(item0);
     }
-    a.n(v.descriptors.length); // Descriptor[]
-    for (const v1 of v.descriptors) {
-        saveDescriptor(a, v1);
+    a.n(v.descriptors.length);
+    for (const item0 of v.descriptors) {
+        saveDescriptor(a, item0);
     }
-    a.n(v.uniformBlocks.length); // UniformBlock[]
-    for (const v1 of v.uniformBlocks) {
-        saveUniformBlock(a, v1);
+    a.n(v.uniformBlocks.length);
+    for (const item0 of v.uniformBlocks) {
+        saveUniformBlock(a, item0);
     }
     a.n(v.capacity);
     a.n(v.count);
 }
 
 export function loadDescriptorBlockFlattened (a: InputArchive, v: DescriptorBlockFlattened): void {
-    let sz = 0;
-    sz = a.n(); // string[]
-    v.descriptorNames.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        v.descriptorNames[i1] = a.s();
+    const n = a.n();
+    v.descriptorNames.length = n;
+    for (let i = 0; i < n; ++i) {
+        v.descriptorNames[i] = a.s();
     }
-    sz = a.n(); // string[]
-    v.uniformBlockNames.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        v.uniformBlockNames[i1] = a.s();
+    const n1 = a.n();
+    v.uniformBlockNames.length = n1;
+    for (let i = 0; i < n1; ++i) {
+        v.uniformBlockNames[i] = a.s();
     }
-    sz = a.n(); // Descriptor[]
-    v.descriptors.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new Descriptor();
-        loadDescriptor(a, v1);
-        v.descriptors[i1] = v1;
+    const n2 = a.n();
+    v.descriptors.length = n2;
+    for (let i = 0; i < n2; ++i) {
+        const item0 = new Descriptor();
+        loadDescriptor(a, item0);
+        v.descriptors[i] = item0;
     }
-    sz = a.n(); // UniformBlock[]
-    v.uniformBlocks.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new UniformBlock();
-        loadUniformBlock(a, v1);
-        v.uniformBlocks[i1] = v1;
+    const n3 = a.n();
+    v.uniformBlocks.length = n3;
+    for (let i = 0; i < n3; ++i) {
+        const item0 = new UniformBlock();
+        loadUniformBlock(a, item0);
+        v.uniformBlocks[i] = item0;
     }
     v.capacity = a.n();
     v.count = a.n();
@@ -1364,75 +1240,59 @@ export function loadDescriptorGroupBlockIndex (a: InputArchive, v: DescriptorGro
 }
 
 export function saveDescriptorDB (a: OutputArchive, v: DescriptorDB): void {
-    a.n(v.blocks.size); // Map<string, DescriptorBlock>
-    for (const [k1, v1] of v.blocks) {
-        saveDescriptorBlockIndex(a, JSON.parse(k1) as DescriptorBlockIndex);
-        saveDescriptorBlock(a, v1);
+    a.n(v.blocks.size);
+    for (const [key0, item0] of v.blocks) {
+        saveDescriptorBlockIndex(a, JSON.parse(key0) as DescriptorBlockIndex);
+        saveDescriptorBlock(a, item0);
     }
-    a.n(v.groupBlocks.size); // Map<string, DescriptorBlock>
-    for (const [k1, v1] of v.groupBlocks) {
-        saveDescriptorGroupBlockIndex(a, JSON.parse(k1) as DescriptorGroupBlockIndex);
-        saveDescriptorBlock(a, v1);
+    a.n(v.groupBlocks.size);
+    for (const [key0, item0] of v.groupBlocks) {
+        saveDescriptorGroupBlockIndex(a, JSON.parse(key0) as DescriptorGroupBlockIndex);
+        saveDescriptorBlock(a, item0);
     }
 }
 
 export function loadDescriptorDB (a: InputArchive, v: DescriptorDB): void {
-    let sz = 0;
-    sz = a.n(); // Map<string, DescriptorBlock>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = new DescriptorBlockIndex();
-        loadDescriptorBlockIndex(a, k1);
-        const v1 = new DescriptorBlock();
-        loadDescriptorBlock(a, v1);
-        v.blocks.set(JSON.stringify(k1), v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = new DescriptorBlockIndex();
+        loadDescriptorBlockIndex(a, key0);
+        const item0 = new DescriptorBlock();
+        loadDescriptorBlock(a, item0);
+        v.blocks.set(JSON.stringify(key0), item0);
     }
-    sz = a.n(); // Map<string, DescriptorBlock>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = new DescriptorGroupBlockIndex();
-        loadDescriptorGroupBlockIndex(a, k1);
-        const v1 = new DescriptorBlock();
-        loadDescriptorBlock(a, v1);
-        v.groupBlocks.set(JSON.stringify(k1), v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = new DescriptorGroupBlockIndex();
+        loadDescriptorGroupBlockIndex(a, key0);
+        const item0 = new DescriptorBlock();
+        loadDescriptorBlock(a, item0);
+        v.groupBlocks.set(JSON.stringify(key0), item0);
     }
 }
 
 export function saveRenderPhase (a: OutputArchive, v: RenderPhase): void {
-    a.n(v.shaders.size); // Set<string>
-    for (const v1 of v.shaders) {
-        a.s(v1);
+    a.n(v.shaders.size);
+    for (const item0 of v.shaders) {
+        a.s(item0);
     }
 }
 
 export function loadRenderPhase (a: InputArchive, v: RenderPhase): void {
-    let sz = 0;
-    sz = a.n(); // Set<string>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = a.s();
-        v.shaders.add(v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const item0 = a.s();
+        v.shaders.add(item0);
     }
 }
 
 export function saveLayoutGraph (a: OutputArchive, g: LayoutGraph): void {
-    const numVertices = g.nv();
-    const numEdges = g.ne();
-    a.n(numVertices);
-    a.n(numEdges);
-    let numStages = 0;
-    let numPhases = 0;
+    const counts = new Array<number>(2).fill(0);
+    let edges = 0;
     for (const v of g.v()) {
-        switch (g.w(v)) {
-        case LayoutGraphValue.RenderStage:
-            numStages += 1;
-            break;
-        case LayoutGraphValue.RenderPhase:
-            numPhases += 1;
-            break;
-        default:
-            break;
-        }
+        edges += g.od(v);
+        ++counts[g.w(v)];
     }
-    a.n(numStages);
-    a.n(numPhases);
+    a.n(g.nv());
+    a.n(edges);
+    for (const n of counts) a.n(n);
     for (const v of g.v()) {
         a.n(g.w(v));
         a.n(g.getParent(v));
@@ -1440,10 +1300,10 @@ export function saveLayoutGraph (a: OutputArchive, g: LayoutGraph): void {
         saveDescriptorDB(a, g.getDescriptors(v));
         switch (g.w(v)) {
         case LayoutGraphValue.RenderStage:
-            a.n(g.x[v].j as RenderPassType);
+            a.n(g.value(LayoutGraphValue.RenderStage, v));
             break;
         case LayoutGraphValue.RenderPhase:
-            saveRenderPhase(a, g.x[v].j as RenderPhase);
+            saveRenderPhase(a, g.value(LayoutGraphValue.RenderPhase, v));
             break;
         default:
             break;
@@ -1452,32 +1312,39 @@ export function saveLayoutGraph (a: OutputArchive, g: LayoutGraph): void {
 }
 
 export function loadLayoutGraph (a: InputArchive, g: LayoutGraph): void {
-    const numVertices = a.n();
-    const numEdges = a.n();
-    const numStages = a.n();
-    const numPhases = a.n();
-    for (let v = 0; v !== numVertices; ++v) {
-        const id = a.n();
-        const u = a.n();
-        const name = a.s();
-        const descriptors = new DescriptorDB();
-        loadDescriptorDB(a, descriptors);
-        switch (id) {
+    g.clear();
+    const size = a.n();
+    let edges = a.n();
+    const counts = Array.from({ length: 2 }, () => a.n());
+    for (let i = 0; i < size; ++i) {
+        const kind = a.n();
+        const parent = a.n();
+        if (kind >= counts.length || !counts[kind]) throw new RangeError('Invalid graph archive kind');
+        --counts[kind];
+        if (parent !== g.N) {
+            if (parent >= i || !edges) throw new RangeError('Invalid graph archive parent');
+            --edges;
+        }
+        const componentName = a.s();
+        const componentDescriptors = new DescriptorDB();
+        loadDescriptorDB(a, componentDescriptors);
+        switch (kind) {
         case LayoutGraphValue.RenderStage: {
-            const renderStage = a.n();
-            g.addVertex<LayoutGraphValue.RenderStage>(LayoutGraphValue.RenderStage, renderStage, name, descriptors, u);
+            const payload = a.n();
+            g.addVertex(LayoutGraphValue.RenderStage, payload, componentName, componentDescriptors, parent);
             break;
         }
         case LayoutGraphValue.RenderPhase: {
-            const renderPhase = new RenderPhase();
-            loadRenderPhase(a, renderPhase);
-            g.addVertex<LayoutGraphValue.RenderPhase>(LayoutGraphValue.RenderPhase, renderPhase, name, descriptors, u);
+            const payload = new RenderPhase();
+            loadRenderPhase(a, payload);
+            g.addVertex(LayoutGraphValue.RenderPhase, payload, componentName, componentDescriptors, parent);
             break;
         }
         default:
             break;
         }
     }
+    if (edges || counts.some((n) => n !== 0)) throw new RangeError('Invalid graph archive counts');
 }
 
 export function saveUniformData (a: OutputArchive, v: UniformData): void {
@@ -1496,21 +1363,20 @@ export function loadUniformData (a: InputArchive, v: UniformData): void {
 
 export function saveUniformBlockData (a: OutputArchive, v: UniformBlockData): void {
     a.n(v.bufferSize);
-    a.n(v.uniforms.length); // UniformData[]
-    for (const v1 of v.uniforms) {
-        saveUniformData(a, v1);
+    a.n(v.uniforms.length);
+    for (const item0 of v.uniforms) {
+        saveUniformData(a, item0);
     }
 }
 
 export function loadUniformBlockData (a: InputArchive, v: UniformBlockData): void {
     v.bufferSize = a.n();
-    let sz = 0;
-    sz = a.n(); // UniformData[]
-    v.uniforms.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new UniformData();
-        loadUniformData(a, v1);
-        v.uniforms[i1] = v1;
+    const n = a.n();
+    v.uniforms.length = n;
+    for (let i = 0; i < n; ++i) {
+        const item0 = new UniformData();
+        loadUniformData(a, item0);
+        v.uniforms[i] = item0;
     }
 }
 
@@ -1535,9 +1401,9 @@ export function saveDescriptorBlockData (a: OutputArchive, v: DescriptorBlockDat
     a.n(v.viewDimension);
     a.n(v.sampleType);
     a.n(v.format);
-    a.n(v.descriptors.length); // DescriptorData[]
-    for (const v1 of v.descriptors) {
-        saveDescriptorData(a, v1);
+    a.n(v.descriptors.length);
+    for (const item0 of v.descriptors) {
+        saveDescriptorData(a, item0);
     }
 }
 
@@ -1550,13 +1416,12 @@ export function loadDescriptorBlockData (a: InputArchive, v: DescriptorBlockData
     v.viewDimension = a.n();
     v.sampleType = a.n();
     v.format = a.n();
-    let sz = 0;
-    sz = a.n(); // DescriptorData[]
-    v.descriptors.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new DescriptorData();
-        loadDescriptorData(a, v1);
-        v.descriptors[i1] = v1;
+    const n = a.n();
+    v.descriptors.length = n;
+    for (let i = 0; i < n; ++i) {
+        const item0 = new DescriptorData();
+        loadDescriptorData(a, item0);
+        v.descriptors[i] = item0;
     }
 }
 
@@ -1565,19 +1430,19 @@ export function saveDescriptorSetLayoutData (a: OutputArchive, v: DescriptorSetL
     a.n(v.capacity);
     a.n(v.uniformBlockCapacity);
     a.n(v.samplerTextureCapacity);
-    a.n(v.descriptorBlocks.length); // DescriptorBlockData[]
-    for (const v1 of v.descriptorBlocks) {
-        saveDescriptorBlockData(a, v1);
+    a.n(v.descriptorBlocks.length);
+    for (const item0 of v.descriptorBlocks) {
+        saveDescriptorBlockData(a, item0);
     }
-    a.n(v.uniformBlocks.size); // Map<number, UniformBlock>
-    for (const [k1, v1] of v.uniformBlocks) {
-        a.n(k1);
-        saveUniformBlock(a, v1);
+    a.n(v.uniformBlocks.size);
+    for (const [key0, item0] of v.uniformBlocks) {
+        a.n(key0);
+        saveUniformBlock(a, item0);
     }
-    a.n(v.bindingMap.size); // Map<number, number>
-    for (const [k1, v1] of v.bindingMap) {
-        a.n(k1);
-        a.n(v1);
+    a.n(v.bindingMap.size);
+    for (const [key0, item0] of v.bindingMap) {
+        a.n(key0);
+        a.n(item0);
     }
 }
 
@@ -1586,26 +1451,23 @@ export function loadDescriptorSetLayoutData (a: InputArchive, v: DescriptorSetLa
     v.capacity = a.n();
     v.uniformBlockCapacity = a.n();
     v.samplerTextureCapacity = a.n();
-    let sz = 0;
-    sz = a.n(); // DescriptorBlockData[]
-    v.descriptorBlocks.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new DescriptorBlockData();
-        loadDescriptorBlockData(a, v1);
-        v.descriptorBlocks[i1] = v1;
+    const n = a.n();
+    v.descriptorBlocks.length = n;
+    for (let i = 0; i < n; ++i) {
+        const item0 = new DescriptorBlockData();
+        loadDescriptorBlockData(a, item0);
+        v.descriptorBlocks[i] = item0;
     }
-    sz = a.n(); // Map<number, UniformBlock>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = new UniformBlock();
-        loadUniformBlock(a, v1);
-        v.uniformBlocks.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = new UniformBlock();
+        loadUniformBlock(a, item0);
+        v.uniformBlocks.set(key0, item0);
     }
-    sz = a.n(); // Map<number, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = a.n();
-        v.bindingMap.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = a.n();
+        v.bindingMap.set(key0, item0);
     }
 }
 
@@ -1624,119 +1486,108 @@ export function loadDescriptorSetData (a: InputArchive, v: DescriptorSetData): v
 }
 
 export function savePipelineLayoutData (a: OutputArchive, v: PipelineLayoutData): void {
-    a.n(v.descriptorSets.size); // Map<UpdateFrequency, DescriptorSetData>
-    for (const [k1, v1] of v.descriptorSets) {
-        a.n(k1);
-        saveDescriptorSetData(a, v1);
+    a.n(v.descriptorSets.size);
+    for (const [key0, item0] of v.descriptorSets) {
+        a.n(key0);
+        saveDescriptorSetData(a, item0);
     }
-    a.n(v.descriptorGroups.size); // Map<UpdateFrequency, DescriptorSetData>
-    for (const [k1, v1] of v.descriptorGroups) {
-        a.n(k1);
-        saveDescriptorSetData(a, v1);
+    a.n(v.descriptorGroups.size);
+    for (const [key0, item0] of v.descriptorGroups) {
+        a.n(key0);
+        saveDescriptorSetData(a, item0);
     }
 }
 
 export function loadPipelineLayoutData (a: InputArchive, v: PipelineLayoutData): void {
-    let sz = 0;
-    sz = a.n(); // Map<UpdateFrequency, DescriptorSetData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = new DescriptorSetData();
-        loadDescriptorSetData(a, v1);
-        v.descriptorSets.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = new DescriptorSetData();
+        loadDescriptorSetData(a, item0);
+        v.descriptorSets.set(key0, item0);
     }
-    sz = a.n(); // Map<UpdateFrequency, DescriptorSetData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = new DescriptorSetData();
-        loadDescriptorSetData(a, v1);
-        v.descriptorGroups.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = new DescriptorSetData();
+        loadDescriptorSetData(a, item0);
+        v.descriptorGroups.set(key0, item0);
     }
 }
 
 export function saveShaderBindingData (a: OutputArchive, v: ShaderBindingData): void {
-    a.n(v.descriptorBindings.size); // Map<number, number>
-    for (const [k1, v1] of v.descriptorBindings) {
-        a.n(k1);
-        a.n(v1);
+    a.n(v.descriptorBindings.size);
+    for (const [key0, item0] of v.descriptorBindings) {
+        a.n(key0);
+        a.n(item0);
     }
 }
 
 export function loadShaderBindingData (a: InputArchive, v: ShaderBindingData): void {
-    let sz = 0;
-    sz = a.n(); // Map<number, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = a.n();
-        v.descriptorBindings.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = a.n();
+        v.descriptorBindings.set(key0, item0);
     }
 }
 
 export function saveShaderLayoutData (a: OutputArchive, v: ShaderLayoutData): void {
-    a.n(v.layoutData.size); // Map<UpdateFrequency, DescriptorSetLayoutData>
-    for (const [k1, v1] of v.layoutData) {
-        a.n(k1);
-        saveDescriptorSetLayoutData(a, v1);
+    a.n(v.layoutData.size);
+    for (const [key0, item0] of v.layoutData) {
+        a.n(key0);
+        saveDescriptorSetLayoutData(a, item0);
     }
-    a.n(v.bindingData.size); // Map<UpdateFrequency, ShaderBindingData>
-    for (const [k1, v1] of v.bindingData) {
-        a.n(k1);
-        saveShaderBindingData(a, v1);
+    a.n(v.bindingData.size);
+    for (const [key0, item0] of v.bindingData) {
+        a.n(key0);
+        saveShaderBindingData(a, item0);
     }
 }
 
 export function loadShaderLayoutData (a: InputArchive, v: ShaderLayoutData): void {
-    let sz = 0;
-    sz = a.n(); // Map<UpdateFrequency, DescriptorSetLayoutData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = new DescriptorSetLayoutData();
-        loadDescriptorSetLayoutData(a, v1);
-        v.layoutData.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = new DescriptorSetLayoutData();
+        loadDescriptorSetLayoutData(a, item0);
+        v.layoutData.set(key0, item0);
     }
-    sz = a.n(); // Map<UpdateFrequency, ShaderBindingData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = new ShaderBindingData();
-        loadShaderBindingData(a, v1);
-        v.bindingData.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = new ShaderBindingData();
+        loadShaderBindingData(a, item0);
+        v.bindingData.set(key0, item0);
     }
 }
 
 export function saveTechniqueData (a: OutputArchive, v: TechniqueData): void {
-    a.n(v.passes.length); // ShaderLayoutData[]
-    for (const v1 of v.passes) {
-        saveShaderLayoutData(a, v1);
+    a.n(v.passes.length);
+    for (const item0 of v.passes) {
+        saveShaderLayoutData(a, item0);
     }
 }
 
 export function loadTechniqueData (a: InputArchive, v: TechniqueData): void {
-    let sz = 0;
-    sz = a.n(); // ShaderLayoutData[]
-    v.passes.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new ShaderLayoutData();
-        loadShaderLayoutData(a, v1);
-        v.passes[i1] = v1;
+    const n = a.n();
+    v.passes.length = n;
+    for (let i = 0; i < n; ++i) {
+        const item0 = new ShaderLayoutData();
+        loadShaderLayoutData(a, item0);
+        v.passes[i] = item0;
     }
 }
 
 export function saveEffectData (a: OutputArchive, v: EffectData): void {
-    a.n(v.techniques.size); // Map<string, TechniqueData>
-    for (const [k1, v1] of v.techniques) {
-        a.s(k1);
-        saveTechniqueData(a, v1);
+    a.n(v.techniques.size);
+    for (const [key0, item0] of v.techniques) {
+        a.s(key0);
+        saveTechniqueData(a, item0);
     }
 }
 
 export function loadEffectData (a: InputArchive, v: EffectData): void {
-    let sz = 0;
-    sz = a.n(); // Map<string, TechniqueData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = new TechniqueData();
-        loadTechniqueData(a, v1);
-        v.techniques.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = new TechniqueData();
+        loadTechniqueData(a, item0);
+        v.techniques.set(key0, item0);
     }
 }
 
@@ -1751,77 +1602,62 @@ export function loadShaderProgramData (a: InputArchive, v: ShaderProgramData): v
 }
 
 export function saveRenderStageData (a: OutputArchive, v: RenderStageData): void {
-    a.n(v.descriptorVisibility.size); // Map<number, ShaderStageFlagBit>
-    for (const [k1, v1] of v.descriptorVisibility) {
-        a.n(k1);
-        a.n(v1);
+    a.n(v.descriptorVisibility.size);
+    for (const [key0, item0] of v.descriptorVisibility) {
+        a.n(key0);
+        a.n(item0);
     }
 }
 
 export function loadRenderStageData (a: InputArchive, v: RenderStageData): void {
-    let sz = 0;
-    sz = a.n(); // Map<number, ShaderStageFlagBit>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.n();
-        const v1 = a.n();
-        v.descriptorVisibility.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.n();
+        const item0 = a.n();
+        v.descriptorVisibility.set(key0, item0);
     }
 }
 
 export function saveRenderPhaseData (a: OutputArchive, v: RenderPhaseData): void {
     a.s(v.rootSignature);
-    a.n(v.shaderPrograms.length); // ShaderProgramData[]
-    for (const v1 of v.shaderPrograms) {
-        saveShaderProgramData(a, v1);
+    a.n(v.shaderPrograms.length);
+    for (const item0 of v.shaderPrograms) {
+        saveShaderProgramData(a, item0);
     }
-    a.n(v.shaderIndex.size); // Map<string, number>
-    for (const [k1, v1] of v.shaderIndex) {
-        a.s(k1);
-        a.n(v1);
+    a.n(v.shaderIndex.size);
+    for (const [key0, item0] of v.shaderIndex) {
+        a.s(key0);
+        a.n(item0);
     }
     // skip, v.pipelineLayout: PipelineLayout
 }
 
 export function loadRenderPhaseData (a: InputArchive, v: RenderPhaseData): void {
     v.rootSignature = a.s();
-    let sz = 0;
-    sz = a.n(); // ShaderProgramData[]
-    v.shaderPrograms.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const v1 = new ShaderProgramData();
-        loadShaderProgramData(a, v1);
-        v.shaderPrograms[i1] = v1;
+    const n = a.n();
+    v.shaderPrograms.length = n;
+    for (let i = 0; i < n; ++i) {
+        const item0 = new ShaderProgramData();
+        loadShaderProgramData(a, item0);
+        v.shaderPrograms[i] = item0;
     }
-    sz = a.n(); // Map<string, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = a.n();
-        v.shaderIndex.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = a.n();
+        v.shaderIndex.set(key0, item0);
     }
     // skip, v.pipelineLayout: PipelineLayout
 }
 
 export function saveLayoutGraphData (a: OutputArchive, g: LayoutGraphData): void {
-    const numVertices = g.nv();
-    const numEdges = g.ne();
-    a.n(numVertices);
-    a.n(numEdges);
-    let numStages = 0;
-    let numPhases = 0;
+    const counts = new Array<number>(2).fill(0);
+    let edges = 0;
     for (const v of g.v()) {
-        switch (g.w(v)) {
-        case LayoutGraphDataValue.RenderStage:
-            numStages += 1;
-            break;
-        case LayoutGraphDataValue.RenderPhase:
-            numPhases += 1;
-            break;
-        default:
-            break;
-        }
+        edges += g.od(v);
+        ++counts[g.w(v)];
     }
-    a.n(numStages);
-    a.n(numPhases);
+    a.n(g.nv());
+    a.n(edges);
+    for (const n of counts) a.n(n);
     for (const v of g.v()) {
         a.n(g.w(v));
         a.n(g.getParent(v));
@@ -1830,99 +1666,101 @@ export function saveLayoutGraphData (a: OutputArchive, g: LayoutGraphData): void
         savePipelineLayoutData(a, g.getLayout(v));
         switch (g.w(v)) {
         case LayoutGraphDataValue.RenderStage:
-            saveRenderStageData(a, g.x[v].j as RenderStageData);
+            saveRenderStageData(a, g.value(LayoutGraphDataValue.RenderStage, v));
             break;
         case LayoutGraphDataValue.RenderPhase:
-            saveRenderPhaseData(a, g.x[v].j as RenderPhaseData);
+            saveRenderPhaseData(a, g.value(LayoutGraphDataValue.RenderPhase, v));
             break;
         default:
             break;
         }
     }
-    a.n(g.valueNames.length); // string[]
-    for (const v1 of g.valueNames) {
-        a.s(v1);
+    a.n(g.valueNames.length);
+    for (const item0 of g.valueNames) {
+        a.s(item0);
     }
-    a.n(g.attributeIndex.size); // Map<string, number>
-    for (const [k1, v1] of g.attributeIndex) {
-        a.s(k1);
-        a.n(v1);
+    a.n(g.attributeIndex.size);
+    for (const [key0, item0] of g.attributeIndex) {
+        a.s(key0);
+        a.n(item0);
     }
-    a.n(g.constantIndex.size); // Map<string, number>
-    for (const [k1, v1] of g.constantIndex) {
-        a.s(k1);
-        a.n(v1);
+    a.n(g.constantIndex.size);
+    for (const [key0, item0] of g.constantIndex) {
+        a.s(key0);
+        a.n(item0);
     }
-    a.n(g.shaderLayoutIndex.size); // Map<string, number>
-    for (const [k1, v1] of g.shaderLayoutIndex) {
-        a.s(k1);
-        a.n(v1);
+    a.n(g.shaderLayoutIndex.size);
+    for (const [key0, item0] of g.shaderLayoutIndex) {
+        a.s(key0);
+        a.n(item0);
     }
-    a.n(g.effects.size); // Map<string, EffectData>
-    for (const [k1, v1] of g.effects) {
-        a.s(k1);
-        saveEffectData(a, v1);
+    a.n(g.effects.size);
+    for (const [key0, item0] of g.effects) {
+        a.s(key0);
+        saveEffectData(a, item0);
     }
 }
 
 export function loadLayoutGraphData (a: InputArchive, g: LayoutGraphData): void {
-    const numVertices = a.n();
-    const numEdges = a.n();
-    const numStages = a.n();
-    const numPhases = a.n();
-    for (let v = 0; v !== numVertices; ++v) {
-        const id = a.n();
-        const u = a.n();
-        const name = a.s();
-        const update = a.n();
-        const layout = new PipelineLayoutData();
-        loadPipelineLayoutData(a, layout);
-        switch (id) {
+    g.clear(false);
+    const size = a.n();
+    let edges = a.n();
+    const counts = Array.from({ length: 2 }, () => a.n());
+    for (let i = 0; i < size; ++i) {
+        const kind = a.n();
+        const parent = a.n();
+        if (kind >= counts.length || !counts[kind]) throw new RangeError('Invalid graph archive kind');
+        --counts[kind];
+        if (parent !== g.N) {
+            if (parent >= i || !edges) throw new RangeError('Invalid graph archive parent');
+            --edges;
+        }
+        const componentName = a.s();
+        const componentUpdate = a.n();
+        const componentLayout = new PipelineLayoutData();
+        loadPipelineLayoutData(a, componentLayout);
+        switch (kind) {
         case LayoutGraphDataValue.RenderStage: {
-            const renderStage = new RenderStageData();
-            loadRenderStageData(a, renderStage);
-            g.addVertex<LayoutGraphDataValue.RenderStage>(LayoutGraphDataValue.RenderStage, renderStage, name, update, layout, u);
+            const payload = new RenderStageData();
+            loadRenderStageData(a, payload);
+            g.addVertex(LayoutGraphDataValue.RenderStage, payload, componentName, componentUpdate, componentLayout, parent);
             break;
         }
         case LayoutGraphDataValue.RenderPhase: {
-            const renderPhase = new RenderPhaseData();
-            loadRenderPhaseData(a, renderPhase);
-            g.addVertex<LayoutGraphDataValue.RenderPhase>(LayoutGraphDataValue.RenderPhase, renderPhase, name, update, layout, u);
+            const payload = new RenderPhaseData();
+            loadRenderPhaseData(a, payload);
+            g.addVertex(LayoutGraphDataValue.RenderPhase, payload, componentName, componentUpdate, componentLayout, parent);
             break;
         }
         default:
             break;
         }
     }
-    let sz = 0;
-    sz = a.n(); // string[]
-    g.valueNames.length = sz;
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        g.valueNames[i1] = a.s();
+    if (edges || counts.some((n) => n !== 0)) throw new RangeError('Invalid graph archive counts');
+    const n = a.n();
+    g.valueNames.length = n;
+    for (let i = 0; i < n; ++i) {
+        g.valueNames[i] = a.s();
     }
-    sz = a.n(); // Map<string, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = a.n();
-        g.attributeIndex.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = a.n();
+        g.attributeIndex.set(key0, item0);
     }
-    sz = a.n(); // Map<string, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = a.n();
-        g.constantIndex.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = a.n();
+        g.constantIndex.set(key0, item0);
     }
-    sz = a.n(); // Map<string, number>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = a.n();
-        g.shaderLayoutIndex.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = a.n();
+        g.shaderLayoutIndex.set(key0, item0);
     }
-    sz = a.n(); // Map<string, EffectData>
-    for (let i1 = 0; i1 !== sz; ++i1) {
-        const k1 = a.s();
-        const v1 = new EffectData();
-        loadEffectData(a, v1);
-        g.effects.set(k1, v1);
+    for (let left0 = a.n(); left0 > 0; --left0) {
+        const key0 = a.s();
+        const item0 = new EffectData();
+        loadEffectData(a, item0);
+        g.effects.set(key0, item0);
     }
 }

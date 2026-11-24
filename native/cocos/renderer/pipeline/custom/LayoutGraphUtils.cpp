@@ -26,7 +26,6 @@
 #include "LayoutGraphUtils.h"
 #include <tuple>
 #include <utility>
-#include "LayoutGraphGraphs.h"
 #include "LayoutGraphNames.h"
 #include "LayoutGraphTypes.h"
 #include "RenderCommonNames.h"
@@ -38,7 +37,6 @@
 #include "details/DebugUtils.h"
 #include "details/GslUtils.h"
 #include "details/Map.h"
-#include "details/Range.h"
 
 namespace cc {
 
@@ -327,7 +325,7 @@ bool isDynamicUniformBlock(std::string_view name) {
 gfx::DescriptorSet* getOrCreatePerPassDescriptorSet(
     gfx::Device* device,
     LayoutGraphData& lg, LayoutGraphData::vertex_descriptor vertID) {
-    auto& ppl = get(LayoutGraphData::LayoutTag{}, lg, vertID);
+    auto& ppl = lg.getLayout(vertID);
     auto iter = ppl.descriptorSets.find(UpdateFrequency::PER_PASS);
     if (iter == ppl.descriptorSets.end()) {
         return nullptr;
@@ -424,22 +422,18 @@ void printLayoutGraphData(
 
     oss << "\n";
 
-    for (const auto v : makeRange(vertices(lg))) {
-        if (parent(v, lg) != LayoutGraphData::null_vertex()) {
+    for (const auto v : lg.vertices()) {
+        if (lg.get_parent(v) != LayoutGraphData::null_vertex()) {
             continue;
         }
-        const auto& name = get(LayoutGraphData::NameTag{}, lg, v);
+        const auto& name = lg.getName(v);
         OSS << "\"" << name << "\": ";
 
-        visit(
-            [&](auto tag) {
-                oss << getName(tag);
-            },
-            tag(v, lg));
+        oss << (lg.holds<RenderStage_>(v) ? getName(RenderStage_{}) : getName(RenderPhase_{}));
 
         oss << " {\n";
         INDENT_BEG();
-        const auto& info = get(LayoutGraphData::LayoutTag{}, lg, v);
+        const auto& info = lg.getLayout(v);
         for (const auto& set : info.descriptorSets) {
             OSS << "Set<" << getName(set.first) << "> {\n";
             {

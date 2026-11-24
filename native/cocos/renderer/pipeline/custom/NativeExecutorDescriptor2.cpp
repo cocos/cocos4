@@ -27,7 +27,7 @@
 #include <boost/graph/depth_first_search.hpp>
 
 #include "FGDispatcherTypes.h"
-#include "LayoutGraphGraphs.h"
+#include "LayoutGraphTypes.h"
 #include "LayoutGraphUtils.h"
 #include "NativeExecutorRenderGraph.h" // IWYU pragma: keep
 #include "NativePipelineTypes.h"
@@ -50,7 +50,7 @@ struct DescriptorSetVisitorContext {
         CC_EXPECTS(mPhaseLayoutIdStack.empty());
 
         // Get the pass layoutId from the layout graph
-        auto passLayoutId = locate(LayoutGraphData::null_vertex(), passLayoutName, layoutGraph);
+        auto passLayoutId = layoutGraph.locate(passLayoutName);
         CC_ENSURES(passLayoutId != LayoutGraphData::null_vertex());
 
         // Save the passId
@@ -94,7 +94,7 @@ struct DescriptorSetVisitorContext {
         auto subpassLayoutId =
             subpassLayoutName.empty()
                 ? mPassLayoutIdStack.back()
-                : locate(LayoutGraphData::null_vertex(), subpassLayoutName, layoutGraph);
+                : layoutGraph.locate(subpassLayoutName);
         CC_ENSURES(subpassLayoutId != LayoutGraphData::null_vertex());
 
         // Save the passId
@@ -521,7 +521,7 @@ struct DescriptorSetVisitorContext {
             accessNode = &renderDependencyGraph.getAccessNode(passOrSubpassID);
         }
 
-        const auto& layout = get(LayoutGraphData::LayoutTag{}, layoutGraph, layoutID);
+        const auto& layout = layoutGraph.getLayout(layoutID);
 
         DeviceRenderData* deviceData = nullptr;
         // Collect resources from the current render graph node
@@ -878,7 +878,7 @@ struct DescriptorSetVisitorContext {
         boost::span<const DeviceRenderData* const> dataRange) const {
         const auto& defaultResource = *pipeline.nativeContext.defaultResource;
         // Get layout
-        const auto& layout = get(LayoutGraphData::LayoutTag{}, layoutGraph, layoutID);
+        const auto& layout = layoutGraph.getLayout(layoutID);
         CC_EXPECTS(layout.descriptorSets.find(frequency) != layout.descriptorSets.end());
         const auto& data = layout.descriptorSets.at(frequency).descriptorSetLayoutData;
 

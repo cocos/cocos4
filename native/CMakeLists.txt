@@ -464,6 +464,9 @@ cocos_source_files(
     cocos/base/etc1.h
     cocos/base/etc2.cpp
     cocos/base/etc2.h
+    cocos/base/GraphDFS.h
+    cocos/base/GraphIterator.h
+    cocos/base/GraphView.h
     cocos/base/HasMemberFunction.h
     cocos/base/IndexHandle.h
     cocos/base/Locked.h
@@ -1534,7 +1537,6 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/FGDispatcherTypes.h
                  cocos/renderer/pipeline/custom/FrameGraphDispatcher.cpp
                  cocos/renderer/pipeline/custom/LayoutGraphFwd.h
-                 cocos/renderer/pipeline/custom/LayoutGraphGraphs.h
                  cocos/renderer/pipeline/custom/LayoutGraphNames.h
                  cocos/renderer/pipeline/custom/LayoutGraphSerialization.cpp
                  cocos/renderer/pipeline/custom/LayoutGraphSerialization.h

@@ -1179,7 +1179,7 @@ ComputePassBuilder *NativePipeline::addComputePass(const ccstd::string &passName
         std::forward_as_tuple(),
         renderGraph);
 
-    auto passLayoutID = locate(LayoutGraphData::null_vertex(), passName, programLibrary->layoutGraph);
+    auto passLayoutID = programLibrary->layoutGraph.locate(passName);
 
     return ccnew NativeComputePassBuilder(this, &renderGraph, passID, &programLibrary->layoutGraph, passLayoutID);
 }
@@ -1325,7 +1325,7 @@ gfx::DescriptorSetLayout *NativePipeline::getDescriptorSetLayout(const ccstd::st
     const auto &lg = programLibrary->layoutGraph;
     auto iter = lg.shaderLayoutIndex.find(std::string_view{shaderName});
     if (iter != lg.shaderLayoutIndex.end()) {
-        const auto &layouts = get(LayoutGraphData::LayoutTag{}, lg, iter->second).descriptorSets;
+        const auto &layouts = lg.getLayout(iter->second).descriptorSets;
         auto iter2 = layouts.find(freq);
         if (iter2 != layouts.end()) {
             return iter2->second.descriptorSetLayout.get();
@@ -1451,14 +1451,14 @@ bool NativePipeline::activate(gfx::Swapchain *swapchainIn) {
 
     // reserve layout graph resource
     const auto &lg = programLibrary->layoutGraph;
-    const auto numNodes = num_vertices(lg);
+    const auto numNodes = lg.num_vertices();
     nativeContext.layoutGraphResources.reserve(numNodes);
     nativeContext.lightResources.init(*programLibrary, device, 16);
 
     for (uint32_t i = 0; i != numNodes; ++i) {
         auto &node = nativeContext.layoutGraphResources.emplace_back();
-        const auto &layout = get(LayoutGraphData::LayoutTag{}, lg, i);
-        if (holds<RenderStageTag>(i, lg)) {
+        const auto &layout = lg.getLayout(i);
+        if (lg.holds<RenderStage_>(i)) {
             auto iter = layout.descriptorSets.find(UpdateFrequency::PER_PASS);
             if (iter == layout.descriptorSets.end()) {
                 continue;

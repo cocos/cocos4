@@ -36,7 +36,6 @@
 #include <vector>
 #include "FGDispatcherGraphs.h"
 #include "FGDispatcherTypes.h"
-#include "LayoutGraphGraphs.h"
 #include "LayoutGraphTypes.h"
 #include "NativeRenderGraphUtils.h"
 #include "RenderGraphGraphs.h"
@@ -684,13 +683,13 @@ gfx::ShaderStageFlagBit getVisibility(const RenderGraph &renderGraph, const Layo
                    parent(parentID, renderGraph) == RenderGraph::null_vertex());
         const auto &layoutName2 = get(RenderGraph::LayoutTag{}, renderGraph, parentID);
         CC_EXPECTS(!layoutName2.empty());
-        layoutID = locate(LayoutGraphData::null_vertex(), layoutName2, lgd);
+        layoutID = lgd.locate(layoutName2);
     } else {
-        layoutID = locate(LayoutGraphData::null_vertex(), layoutName, lgd);
+        layoutID = lgd.locate(layoutName);
     }
     CC_ENSURES(layoutID != LayoutGraphData::null_vertex());
 
-    const auto &layout = get(LayoutGraphData::LayoutTag{}, lgd, layoutID);
+    const auto &layout = lgd.getLayout(layoutID);
     for (const auto &pair : layout.descriptorSets) {
         for (const auto &block : pair.second.descriptorSetLayoutData.descriptorBlocks) {
             for (const auto &descriptor : block.descriptors) {

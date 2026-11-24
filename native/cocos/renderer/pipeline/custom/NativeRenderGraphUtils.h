@@ -1,5 +1,5 @@
 #pragma once
-#include "cocos/renderer/pipeline/custom/LayoutGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
 #include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
@@ -40,18 +40,18 @@ inline LayoutGraphData::vertex_descriptor getSubpassOrPassID(
     if (passID == RenderGraph::null_vertex()) { // single render pass
         const auto &layoutName = get(RenderGraph::LayoutTag{}, rg, subpassOrPassID);
         CC_ENSURES(!layoutName.empty());
-        layoutID = locate(LayoutGraphData::null_vertex(), layoutName, lg);
+        layoutID = lg.locate(layoutName);
     } else { // render pass
         const auto &passLayoutName = get(RenderGraph::LayoutTag{}, rg, passID);
         CC_ENSURES(!passLayoutName.empty());
-        const auto passLayoutID = locate(LayoutGraphData::null_vertex(), passLayoutName, lg);
+        const auto passLayoutID = lg.locate(passLayoutName);
         CC_ENSURES(passLayoutID != LayoutGraphData::null_vertex());
 
         const auto &subpassLayoutName = get(RenderGraph::LayoutTag{}, rg, subpassOrPassID);
         if (subpassLayoutName.empty()) {
             layoutID = passLayoutID; // expect to be multisample pass
         } else {
-            const auto subpassLayoutID = locate(passLayoutID, subpassLayoutName, lg);
+            const auto subpassLayoutID = lg.locate(subpassLayoutName, passLayoutID);
             CC_ENSURES(subpassLayoutID != LayoutGraphData::null_vertex());
             layoutID = subpassLayoutID;
         }
@@ -83,7 +83,7 @@ addRenderPassVertex(
         std::forward_as_tuple(std::move(pass)),
         renderGraph);
 
-    auto passLayoutID = locate(LayoutGraphData::null_vertex(), passName, layoutGraph);
+    auto passLayoutID = layoutGraph.locate(passName);
     CC_EXPECTS(passLayoutID != LayoutGraphData::null_vertex());
 
     return {passID, passLayoutID};
@@ -130,9 +130,9 @@ addRenderSubpassVertex(
         subpassLayoutID = passLayoutID;
     } else {
         if constexpr (ENABLE_SUBPASS) {
-            subpassLayoutID = locate(passLayoutID, subpassName, layoutGraph);
+            subpassLayoutID = layoutGraph.locate(subpassName, passLayoutID);
         } else {
-            subpassLayoutID = locate(LayoutGraphData::null_vertex(), subpassName, layoutGraph);
+            subpassLayoutID = layoutGraph.locate(subpassName);
         }
     }
     CC_ENSURES(subpassLayoutID != LayoutGraphData::null_vertex());
