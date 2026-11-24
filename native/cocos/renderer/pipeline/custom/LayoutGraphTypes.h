@@ -227,7 +227,7 @@ struct LayoutGraph {
     // PolymorphicGraph types
     enum class Kind : uint8_t {
         RenderStage, // NOLINT(readability-identifier-naming)
-        RenderPhase // NOLINT(readability-identifier-naming)
+        RenderPhase  // NOLINT(readability-identifier-naming)
     };
 
     // ReferenceGraph types
@@ -239,10 +239,10 @@ struct LayoutGraph {
     static constexpr vertex_descriptor null_vertex() noexcept { return (std::numeric_limits<vertex_descriptor>::max)(); } // NOLINT(readability-identifier-naming)
 
     // IncidenceGraph
-    vertex_descriptor source(edge_descriptor e) const noexcept { return e.source; } // NOLINT(readability-convert-member-functions-to-static)
-    vertex_descriptor target(edge_descriptor e) const noexcept { return e.target; } // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor source(edge_descriptor e) const noexcept { return e.source; }                                  // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor target(edge_descriptor e) const noexcept { return e.target; }                                  // NOLINT(readability-convert-member-functions-to-static)
     graph::IteratorRange<out_edge_iterator> out_edges(vertex_descriptor v) const noexcept { return child_links(v); } // NOLINT(readability-identifier-naming)
-    vertex_descriptor out_degree(vertex_descriptor v) const noexcept { return num_children(v); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor out_degree(vertex_descriptor v) const noexcept { return num_children(v); }                     // NOLINT(readability-identifier-naming)
     std::pair<edge_descriptor, bool> edge(vertex_descriptor u, vertex_descriptor v) const noexcept {
         if (u != null_vertex() && static_cast<std::uintmax_t>(v) < this->links.size() && get_parent(v) == u) return {{u, v}, true};
         return {{null_vertex(), null_vertex()}, false};
@@ -250,7 +250,7 @@ struct LayoutGraph {
 
     // BidirectionalGraph
     graph::IteratorRange<in_edge_iterator> in_edges(vertex_descriptor v) const noexcept { return parent_links(v); } // NOLINT(readability-identifier-naming)
-    vertex_descriptor in_degree(vertex_descriptor v) const noexcept { return num_parents(v); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor in_degree(vertex_descriptor v) const noexcept { return num_parents(v); }                      // NOLINT(readability-identifier-naming)
     vertex_descriptor degree(vertex_descriptor v) const noexcept { return in_degree(v) + out_degree(v); }
 
     // AdjacencyGraph
@@ -275,8 +275,8 @@ struct LayoutGraph {
                                   typename std::tuple_size<std::decay_t<Args0>>::type,
                                   typename std::tuple_size<std::decay_t<Args1>>::type>>
     vertex_descriptor add_vertex(const Tag& /*tag*/, std::piecewise_construct_t /*piecewise*/, PayloadArgs&& payloadArgs, Args0&& argsName, Args1&& argsDescriptors, vertex_descriptor parent = null_vertex()); // NOLINT(readability-identifier-naming)
-    std::pair<edge_descriptor, bool> add_edge(vertex_descriptor u, vertex_descriptor v) noexcept; // NOLINT(readability-identifier-naming)
-    void remove_edge(edge_descriptor e) noexcept; // NOLINT(readability-identifier-naming)
+    std::pair<edge_descriptor, bool> add_edge(vertex_descriptor u, vertex_descriptor v) noexcept;                                                                                                               // NOLINT(readability-identifier-naming)
+    void remove_edge(edge_descriptor e) noexcept;                                                                                                                                                               // NOLINT(readability-identifier-naming)
 
     // ComponentGraph
     ccstd::pmr::string& getName(vertex_descriptor v) noexcept { return this->names[v]; }
@@ -351,17 +351,17 @@ struct LayoutGraph {
     }
 
     // ReferenceGraph
-    vertex_descriptor child(ownership_descriptor link) const noexcept { return link.target; } // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor child(ownership_descriptor link) const noexcept { return link.target; }                                   // NOLINT(readability-convert-member-functions-to-static)
     vertex_descriptor get_parent(vertex_descriptor v) const noexcept { return v == null_vertex() ? v : this->links[v].parent; } // NOLINT(readability-identifier-naming)
-    vertex_descriptor num_children(vertex_descriptor v) const noexcept { return this->links[v].childCount; } // NOLINT(readability-identifier-naming)
-    graph::IteratorRange<children_iterator> child_links(vertex_descriptor v) const noexcept { // NOLINT(readability-identifier-naming)
+    vertex_descriptor num_children(vertex_descriptor v) const noexcept { return this->links[v].childCount; }                    // NOLINT(readability-identifier-naming)
+    graph::IteratorRange<children_iterator> child_links(vertex_descriptor v) const noexcept {                                   // NOLINT(readability-identifier-naming)
         const auto* rows = links.data();
         return {{rows, rows[v].firstChild}, {rows, null_vertex()}};
     }
-    vertex_descriptor parent(ownership_descriptor e) const noexcept { return e.source; } // NOLINT(readability-convert-member-functions-to-static)
-    vertex_descriptor num_parents(vertex_descriptor v) const noexcept { return get_parent(v) != null_vertex(); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor parent(ownership_descriptor e) const noexcept { return e.source; }                                                            // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor num_parents(vertex_descriptor v) const noexcept { return get_parent(v) != null_vertex(); }                                    // NOLINT(readability-identifier-naming)
     graph::IteratorRange<parent_iterator> parent_links(vertex_descriptor v) const noexcept { return {{{get_parent(v), v}}, {{null_vertex(), v}}}; } // NOLINT(readability-identifier-naming)
-    bool has_link(vertex_descriptor u, vertex_descriptor v) const noexcept { return edge(u, v).second; } // NOLINT(readability-identifier-naming)
+    bool has_link(vertex_descriptor u, vertex_descriptor v) const noexcept { return edge(u, v).second; }                                            // NOLINT(readability-identifier-naming)
 
     // ParentGraph
     vertex_descriptor locate_child(vertex_descriptor parent, std::string_view name) const noexcept; // NOLINT(readability-identifier-naming)
@@ -694,7 +694,7 @@ struct LayoutGraphData {
     // PolymorphicGraph types
     enum class Kind : uint8_t {
         RenderStage, // NOLINT(readability-identifier-naming)
-        RenderPhase // NOLINT(readability-identifier-naming)
+        RenderPhase  // NOLINT(readability-identifier-naming)
     };
 
     // ReferenceGraph types
@@ -706,10 +706,10 @@ struct LayoutGraphData {
     static constexpr vertex_descriptor null_vertex() noexcept { return (std::numeric_limits<vertex_descriptor>::max)(); } // NOLINT(readability-identifier-naming)
 
     // IncidenceGraph
-    vertex_descriptor source(edge_descriptor e) const noexcept { return e.source; } // NOLINT(readability-convert-member-functions-to-static)
-    vertex_descriptor target(edge_descriptor e) const noexcept { return e.target; } // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor source(edge_descriptor e) const noexcept { return e.source; }                                  // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor target(edge_descriptor e) const noexcept { return e.target; }                                  // NOLINT(readability-convert-member-functions-to-static)
     graph::IteratorRange<out_edge_iterator> out_edges(vertex_descriptor v) const noexcept { return child_links(v); } // NOLINT(readability-identifier-naming)
-    vertex_descriptor out_degree(vertex_descriptor v) const noexcept { return num_children(v); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor out_degree(vertex_descriptor v) const noexcept { return num_children(v); }                     // NOLINT(readability-identifier-naming)
     std::pair<edge_descriptor, bool> edge(vertex_descriptor u, vertex_descriptor v) const noexcept {
         if (u != null_vertex() && static_cast<std::uintmax_t>(v) < this->links.size() && get_parent(v) == u) return {{u, v}, true};
         return {{null_vertex(), null_vertex()}, false};
@@ -717,7 +717,7 @@ struct LayoutGraphData {
 
     // BidirectionalGraph
     graph::IteratorRange<in_edge_iterator> in_edges(vertex_descriptor v) const noexcept { return parent_links(v); } // NOLINT(readability-identifier-naming)
-    vertex_descriptor in_degree(vertex_descriptor v) const noexcept { return num_parents(v); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor in_degree(vertex_descriptor v) const noexcept { return num_parents(v); }                      // NOLINT(readability-identifier-naming)
     vertex_descriptor degree(vertex_descriptor v) const noexcept { return in_degree(v) + out_degree(v); }
 
     // AdjacencyGraph
@@ -743,8 +743,8 @@ struct LayoutGraphData {
                                   typename std::tuple_size<std::decay_t<Args1>>::type,
                                   typename std::tuple_size<std::decay_t<Args2>>::type>>
     vertex_descriptor add_vertex(const Tag& /*tag*/, std::piecewise_construct_t /*piecewise*/, PayloadArgs&& payloadArgs, Args0&& argsName, Args1&& argsUpdate, Args2&& argsLayout, vertex_descriptor parent = null_vertex()); // NOLINT(readability-identifier-naming)
-    std::pair<edge_descriptor, bool> add_edge(vertex_descriptor u, vertex_descriptor v) noexcept; // NOLINT(readability-identifier-naming)
-    void remove_edge(edge_descriptor e) noexcept; // NOLINT(readability-identifier-naming)
+    std::pair<edge_descriptor, bool> add_edge(vertex_descriptor u, vertex_descriptor v) noexcept;                                                                                                                              // NOLINT(readability-identifier-naming)
+    void remove_edge(edge_descriptor e) noexcept;                                                                                                                                                                              // NOLINT(readability-identifier-naming)
 
     // ComponentGraph
     ccstd::pmr::string& getName(vertex_descriptor v) noexcept { return this->names[v]; }
@@ -825,17 +825,17 @@ struct LayoutGraphData {
     }
 
     // ReferenceGraph
-    vertex_descriptor child(ownership_descriptor link) const noexcept { return link.target; } // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor child(ownership_descriptor link) const noexcept { return link.target; }                                   // NOLINT(readability-convert-member-functions-to-static)
     vertex_descriptor get_parent(vertex_descriptor v) const noexcept { return v == null_vertex() ? v : this->links[v].parent; } // NOLINT(readability-identifier-naming)
-    vertex_descriptor num_children(vertex_descriptor v) const noexcept { return this->links[v].childCount; } // NOLINT(readability-identifier-naming)
-    graph::IteratorRange<children_iterator> child_links(vertex_descriptor v) const noexcept { // NOLINT(readability-identifier-naming)
+    vertex_descriptor num_children(vertex_descriptor v) const noexcept { return this->links[v].childCount; }                    // NOLINT(readability-identifier-naming)
+    graph::IteratorRange<children_iterator> child_links(vertex_descriptor v) const noexcept {                                   // NOLINT(readability-identifier-naming)
         const auto* rows = links.data();
         return {{rows, rows[v].firstChild}, {rows, null_vertex()}};
     }
-    vertex_descriptor parent(ownership_descriptor e) const noexcept { return e.source; } // NOLINT(readability-convert-member-functions-to-static)
-    vertex_descriptor num_parents(vertex_descriptor v) const noexcept { return get_parent(v) != null_vertex(); } // NOLINT(readability-identifier-naming)
+    vertex_descriptor parent(ownership_descriptor e) const noexcept { return e.source; }                                                            // NOLINT(readability-convert-member-functions-to-static)
+    vertex_descriptor num_parents(vertex_descriptor v) const noexcept { return get_parent(v) != null_vertex(); }                                    // NOLINT(readability-identifier-naming)
     graph::IteratorRange<parent_iterator> parent_links(vertex_descriptor v) const noexcept { return {{{get_parent(v), v}}, {{null_vertex(), v}}}; } // NOLINT(readability-identifier-naming)
-    bool has_link(vertex_descriptor u, vertex_descriptor v) const noexcept { return edge(u, v).second; } // NOLINT(readability-identifier-naming)
+    bool has_link(vertex_descriptor u, vertex_descriptor v) const noexcept { return edge(u, v).second; }                                            // NOLINT(readability-identifier-naming)
 
     // ParentGraph
     vertex_descriptor locate_child(vertex_descriptor parent, std::string_view name) const noexcept; // NOLINT(readability-identifier-naming)
