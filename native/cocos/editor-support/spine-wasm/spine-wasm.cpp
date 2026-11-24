@@ -6,10 +6,15 @@
 
 #include <emscripten/emscripten.h>
 #include <emscripten/val.h>
+#include <unordered_map>
+#include <vector>
+#include <utility>
 
 #include "spine/HashMap.h"
 
 using namespace spine;
+
+extern "C" void spineScheduleRelease();
 
 HashMap<SkeletonData *, HashMap<Attachment *, AttachmentVertices *>*> spineAttachmentVerticesMap{};
 HashMap<SkeletonData *, HashMap<spine::String, spine::String>*> spineTexturesMap{};
@@ -81,6 +86,57 @@ void logToConsole(const char* message, int logLevel = LOG_LEVEL_INFO) {
 }
 
 HashMap<String, SkeletonData*> skeletonDataMap{};
+
+struct SkeletonDataUsage {
+    size_t references = 0;
+    bool pendingDestroy = false;
+};
+std::unordered_map<SkeletonData*, SkeletonDataUsage> skeletonDataUsage;
+std::vector<std::function<void()>> pendingReleases;
+
+void releaseSkeletonData(SkeletonData* data) {
+    if (spineAttachmentVerticesMap.containsKey(data)) {
+        auto* vertices = spineAttachmentVerticesMap[data];
+        auto entries = vertices->getEntries();
+        while (entries.hasNext()) delete entries.next().value;
+        delete vertices;
+        spineAttachmentVerticesMap.remove(data);
+    }
+#ifdef CC_SPINE_VERSION_4_2
+    if (spineAtlasMap.containsKey(data)) {
+        delete spineAtlasMap[data];
+        spineAtlasMap.remove(data);
+    }
+#endif
+    if (spineTexturesMap.containsKey(data)) {
+        delete spineTexturesMap[data];
+        spineTexturesMap.remove(data);
+    }
+    skeletonDataUsage.erase(data);
+    delete data;
+}
+
+// This base is destroyed AFTER Skeleton, whose slots still refer to the data.
+class SkeletonDataLease {
+public:
+    explicit SkeletonDataLease(SkeletonData* data) : _data(data) {
+        ++skeletonDataUsage[data].references;
+    }
+    ~SkeletonDataLease() {
+        auto found = skeletonDataUsage.find(_data);
+        if (found != skeletonDataUsage.end() && --found->second.references == 0) {
+            if (found->second.pendingDestroy) releaseSkeletonData(_data);
+            else skeletonDataUsage.erase(found);
+        }
+    }
+private:
+    SkeletonData* _data;
+};
+
+class RetainedSkeleton final : private SkeletonDataLease, public Skeleton {
+public:
+    explicit RetainedSkeleton(SkeletonData* data) : SkeletonDataLease(data), Skeleton(data) {}
+};
 
 void saveAttachmentVertices(SkeletonData* skeletonData, const spine::Vector<spine::String>& textureNames, const spine::Vector<spine::String>& textureUUIDs) {
     spine::HashMap<spine::String, spine::String> textureMap{};
@@ -160,6 +216,7 @@ void SpineWasmUtil::spineWasmInit() {
 }
 
 void SpineWasmUtil::spineWasmDestroy() {
+    collectGarbage();
     auto* extension = SpineExtension::getInstance();
     delete extension;
     freeStoreMemory();
@@ -250,26 +307,28 @@ void SpineWasmUtil::registerSpineSkeletonDataWithUUID(SkeletonData* data, const 
 void SpineWasmUtil::destroySpineSkeletonDataWithUUID(const String& uuid) {
     if (skeletonDataMap.containsKey(uuid)) {
         auto* data = skeletonDataMap[uuid];
-        HashMap<Attachment *, AttachmentVertices *> *attachmentVerticesMap = nullptr;
-        if (spineAttachmentVerticesMap.containsKey(data)) {
-            attachmentVerticesMap = spineAttachmentVerticesMap[data];
-            auto entries = attachmentVerticesMap->getEntries();
-            while (entries.hasNext()) {
-                auto entry = entries.next();
-                auto* attachmentVertices = entry.value;
-                delete attachmentVertices;
-            }
-            delete attachmentVerticesMap;
-
-            spineAttachmentVerticesMap.remove(data);
-        }
-#ifndef CC_SPINE_VERSION_3_8
-        auto* atlas = spineAtlasMap[data];
-        delete atlas;
-#endif        
-        delete data;
         skeletonDataMap.remove(uuid);
+        auto& usage = skeletonDataUsage[data];
+        usage.pendingDestroy = true;
+        if (usage.references == 0) releaseSkeletonData(data);
     }
+}
+
+Skeleton* SpineWasmUtil::createSpineSkeleton(SkeletonData* data) {
+    return data ? new RetainedSkeleton(data) : nullptr;
+}
+
+void SpineWasmUtil::deferRelease(std::function<void()> release) {
+    const bool needsSchedule = pendingReleases.empty();
+    pendingReleases.emplace_back(std::move(release));
+    if (needsSchedule) spineScheduleRelease();
+}
+
+void SpineWasmUtil::collectGarbage() {
+    // Detach the batch so releases cannot invalidate the iteration.
+    auto releases = std::move(pendingReleases);
+    pendingReleases.clear();
+    for (auto& release : releases) release();
 }
 
 void SpineWasmUtil::destroySpineSkeleton(Skeleton* skeleton) {

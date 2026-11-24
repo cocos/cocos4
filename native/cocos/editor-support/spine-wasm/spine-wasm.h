@@ -2,6 +2,7 @@
 
 #include <spine/spine.h>
 #include <string>
+#include <functional>
 
 class SpineWasmUtil {
 public:
@@ -16,6 +17,11 @@ public:
     static void registerSpineSkeletonDataWithUUID(spine::SkeletonData* data, const spine::String& uuid);
     static void destroySpineSkeletonDataWithUUID(const spine::String& uuid);
     static void destroySpineSkeleton(spine::Skeleton* skeleton);
+    static spine::Skeleton* createSpineSkeleton(spine::SkeletonData* data);
+
+    // Retire objects only after the JS/WASM call stack that can still use them has unwound.
+    static void deferRelease(std::function<void()> release);
+    static void collectGarbage();
 
     static uint32_t getCurrentListenerID();
     static spine::EventType getCurrentEventType();

@@ -27,7 +27,7 @@ import { Material, Texture2D } from '../asset/assets';
 import { error, errorID, logID, warnID } from '../core/platform/debug';
 import { Enum, EnumType, ccenum } from '../core/value-types/enum';
 import { Node, NodeEventType } from '../scene-graph';
-import { CCObjectFlags, Color, RecyclePool, js, math } from '../core';
+import { CCObjectFlags, Color, RecyclePool, isValid, js, math } from '../core';
 import { SkeletonData } from './skeleton-data';
 import type { Graphics } from '../2d/components/graphics';
 import { UIRenderer } from '../2d/framework/ui-renderer';
@@ -1075,6 +1075,8 @@ export class Skeleton extends UIRenderer {
      * @param dt @en delta time. @zh 时间差。
      */
     public updateAnimation (dt: number): void {
+        // destroy() releases the runtime asset before deferred CCObject destruction completes.
+        if (this._skeletonData && !isValid(this._skeletonData, true)) return;
         this._markForUpdateRenderData();
         if (this.paused) return;
         if (this.isAnimationCached()) {
