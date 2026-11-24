@@ -174,7 +174,25 @@ struct IGeometry {
 
 struct DynamicCustomAttribute {
     gfx::Attribute attr;
-    Float32Array values;
+    /**
+     * @en
+     * The raw vertex data for this custom attribute. Unlike the standard attributes
+     * (positions/normals/uvs/tangents/colors) which are always float-based, a custom
+     * attribute's physical GPU format (gfx::Attribute::format) can be any integer or
+     * float format (e.g. RGBA16UI for joint indices). To avoid forcing every custom
+     * attribute through a lossy/unnecessary "integer -> float -> integer" round trip,
+     * `values` accepts any concrete TypedArray variant so callers can supply data whose
+     * element type already matches the target GPU format (fast memcpy path). Supplying a
+     * Float32Array still works for FLOAT-typed formats (backward compatible).
+     * @zh
+     * 该定制属性的原始顶点数据。与标准属性（positions/normals/uvs/tangents/colors，始终为
+     * float）不同，定制属性的物理 GPU 格式（gfx::Attribute::format）可以是任意整型或浮点格式
+     * （例如 RGBA16UI 用于骨骼关节索引）。为了避免强制所有定制属性都经历不必要甚至有损的
+     * “整数 -> 浮点 -> 整数”往返转换，`values` 支持任意具体的 TypedArray 类型，调用者可以直接传入
+     * 与目标 GPU 格式匹配的原生类型数组（走快速 memcpy 路径）。传入 Float32Array 对于 FLOAT
+     * 类型格式仍然有效（向后兼容）。
+     */
+    TypedArray values;
 };
 
 /**
