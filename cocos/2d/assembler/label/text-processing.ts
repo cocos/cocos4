@@ -122,6 +122,8 @@ export class TextProcessing {
                 this._updatePaddingRect(style, outputLayoutData);
                 this._calculateLabelFont(style, layout, outputLayoutData, inputString);
             }
+
+            this._snapCanvasSize(outputLayoutData);
         } else {
             if (!style.fntConfig) { // for char
                 this._fontScale = this._getStyleFontScale(style.originFontSize, style.fontScale);
@@ -430,6 +432,29 @@ export class TextProcessing {
 
     // -------------------- Render Processing Part --------------------------
 
+    /**
+     * The text texture is created with `canvas.width/height`, which are integers, while the quad is
+     * built from the floating `nodeContentSize`. When the two disagree the texture is stretched onto
+     * the quad, which shifts the glyphs by a fraction of a pixel (up to ~1px on small labels) and
+     * makes the result depend on how the host converts `canvas.width/height`.
+     *
+     * Snap the canvas size to integers once, after layout, and carry the same delta into the content
+     * size so that texture and quad stay exactly 1:1 on screen.
+     */
+    private _snapCanvasSize (outputLayoutData: TextOutputLayoutData): void {
+        const { canvasSize, nodeContentSize } = outputLayoutData;
+        const width = Math.max(0, Math.floor(canvasSize.width));
+        const height = Math.max(0, Math.floor(canvasSize.height));
+        if (width === canvasSize.width && height === canvasSize.height) {
+            return;
+        }
+        const fontScale = this._fontScale;
+        nodeContentSize.width += (width - canvasSize.width) / fontScale;
+        nodeContentSize.height += (height - canvasSize.height) / fontScale;
+        canvasSize.width = width;
+        canvasSize.height = height;
+    }
+
     private _updateLabelDimensions (style: TextStyle, layout: TextLayout, outputLayoutData: TextOutputLayoutData): void {
         const { canvasSize } = outputLayoutData;
         canvasSize.width = Math.min(canvasSize.width, MAX_SIZE);
@@ -438,8 +463,10 @@ export class TextProcessing {
         const canvas = this._canvas!;
         const context = this._context!;
 
-        canvas.width = canvasSize.width;
-        canvas.height = canvasSize.height;
+        // The layout snaps the canvas size to integers in `_snapCanvasSize`; keep this assignment
+        // integral as well so no host conversion (truncate or round) can change the texture size.
+        canvas.width = Math.max(0, Math.floor(canvasSize.width));
+        canvas.height = Math.max(0, Math.floor(canvasSize.height));
 
         context.font = style.fontDesc;
         // align
