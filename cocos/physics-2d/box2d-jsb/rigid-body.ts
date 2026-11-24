@@ -30,7 +30,7 @@ import { Vec2, toRadian, Vec3, Quat, IVec2Like, TWO_PI, HALF_PI } from '../../co
 import { PHYSICS_2D_PTM_RATIO, ERigidBody2DType } from '../framework/physics-types';
 
 import { Node } from '../../scene-graph/node';
-import { Collider2D } from '../framework';
+import { Collider2D, Joint2D } from '../framework';
 
 const tempVec3 = new Vec3();
 
@@ -90,6 +90,7 @@ export class b2RigidBody2D implements IRigidBody2D {
             for (let i = 0; i < colliders.length; i++) {
                 colliders[i].apply();
             }
+            Joint2D._applyScale(this.rigidBody);
         }
 
         const bodyType = this._rigidBody.type;
