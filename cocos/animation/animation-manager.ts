@@ -23,6 +23,7 @@
 */
 
 import { ccclass } from 'cc.decorator';
+import { AnimationTimeScale } from './animation-time-scale';
 import { System, errorID, cclegacy, js, SystemPriority } from '../core';
 import { director, DirectorEvent } from '../game/director';
 import { Node } from '../scene-graph';
@@ -79,13 +80,14 @@ export class AnimationManager extends System {
     }
 
     public update (dt: number): void {
+        dt *= AnimationTimeScale.global;
         const { _delayEvents, _crossFades: crossFadesIter, _sockets } = this;
 
         { // Update cross fades
             const crossFades = crossFadesIter.array;
             for (crossFadesIter.i = 0; crossFadesIter.i < crossFades.length; ++crossFadesIter.i) {
                 const crossFade = crossFades[crossFadesIter.i];
-                crossFade.update(dt);
+                crossFade.update(dt * (crossFade._timeScaleSource?.timeScale ?? 1));
             }
         }
 
@@ -94,7 +96,9 @@ export class AnimationManager extends System {
         for (iterator.i = 0; iterator.i < array.length; ++iterator.i) {
             const anim = array[iterator.i];
             if (!anim.isMotionless) {
-                anim.update(dt);
+                // Embedded animations already receive their absolute time from their
+                // host. Keep their original scheduling order, without advancing twice.
+                anim.update(anim._manualTime ? 0 : dt * (anim._timeScaleSource?.timeScale ?? 1));
             }
         }
         this._blendStateBuffer.apply();

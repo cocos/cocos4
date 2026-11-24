@@ -55,6 +55,9 @@ export class CrossFade extends Playable {
         this._scheduler = scheduler ?? getGlobalAnimationManager();
     }
 
+    /** @internal Component clock used by the animation manager. */
+    public _timeScaleSource: { readonly timeScale: number } | null = null;
+
     public update (deltaTime: number): void {
         if (this.isMotionless) {
             return;

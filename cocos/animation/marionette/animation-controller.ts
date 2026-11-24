@@ -22,7 +22,10 @@
  THE SOFTWARE.
 */
 
+import { rangeMin } from 'cc.decorator';
 import { DEBUG } from 'internal:constants';
+import { AnimationTimeScale, validateAnimationTimeScale } from '../animation-time-scale';
+
 import { Component } from '../../scene-graph/component';
 import { AnimationGraph } from './animation-graph';
 import type { AnimationGraphRunTime } from './animation-graph';
@@ -57,6 +60,39 @@ export type {
 @menu('Animation/Animation Controller')
 @help('i18n:cc.animation.AnimationController')
 export class AnimationController extends Component {
+    /**
+     * @en Playback multiplier shared by Animation, SkeletalAnimation and AnimationController.
+     * Zero freezes time advancement. Does not affect particles, physics or script updates.
+     * @zh Animation、SkeletalAnimation 和 AnimationController 共用的播放倍率。
+     * 设为零时冻结时间推进，不影响粒子、物理或脚本更新。
+     */
+    public static get globalTimeScale (): number {
+        return AnimationTimeScale.global;
+    }
+
+    public static set globalTimeScale (value: number) {
+        AnimationTimeScale.global = validateAnimationTimeScale(value);
+    }
+
+    /**
+     * @en Component playback multiplier, multiplied by globalTimeScale. Defaults to 1.
+     * Accepts finite non-negative values; zero freezes time advancement without stopping playback.
+     * @zh 组件播放倍率，与 globalTimeScale 相乘，默认为 1。
+     * 支持非负有限数；零倍率冻结时间推进，但不停止播放。
+     */
+    @editable
+    @rangeMin(0)
+    public get timeScale (): number {
+        return this._timeScale;
+    }
+
+    public set timeScale (value: number) {
+        this._timeScale = validateAnimationTimeScale(value);
+    }
+
+    @serializable
+    private _timeScale = 1;
+
     /**
      * @zh
      * 动画控制器所关联的动画图。
@@ -118,7 +154,7 @@ export class AnimationController extends Component {
     }
 
     public update (deltaTime: number): void {
-        this._graphEval?.update(deltaTime);
+        this._graphEval?.update(deltaTime * AnimationTimeScale.global * this.timeScale);
     }
 
     /**
