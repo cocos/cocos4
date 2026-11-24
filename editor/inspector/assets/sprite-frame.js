@@ -543,8 +543,14 @@ const Elements = {
             const panel = this;
 
             panel.$.pixelsToUnitInput.addEventListener('change', (event) => {
+                const pixelsToUnit = Number(event.target.value);
+                if (!Number.isFinite(pixelsToUnit) || pixelsToUnit <= 0) {
+                    event.target.value = panel.meta.userData.pixelsToUnit;
+                    console.warn('Pixels To Unit must be a positive finite number.');
+                    return;
+                }
                 panel.metaList.forEach((meta) => {
-                    meta.userData.pixelsToUnit = event.target.value;
+                    meta.userData.pixelsToUnit = pixelsToUnit;
                 });
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);

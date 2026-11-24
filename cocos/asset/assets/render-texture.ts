@@ -24,6 +24,7 @@
 
 import { ccclass } from 'cc.decorator';
 import { EDITOR, NODEJS, TEST } from 'internal:constants';
+import { GFX_TEXTURE_CHANGED } from './asset-enum';
 import { clamp, cclegacy, errorID } from '../../core';
 import { Texture, ColorAttachment, DepthStencilAttachment, GeneralBarrierInfo, AccessFlagBit, RenderPassInfo, Format, deviceManager,
     BufferTextureCopy, TextureFlags, TextureFlagBit } from '../../gfx';
@@ -117,8 +118,9 @@ export class RenderTexture extends TextureBase {
             root?.destroyWindow(this._window);
             this._window = null;
         }
-
-        return super.destroy();
+        const destroyed = super.destroy();
+        if (destroyed) this.emit(GFX_TEXTURE_CHANGED);
+        return destroyed;
     }
 
     /**
@@ -137,6 +139,7 @@ export class RenderTexture extends TextureBase {
         this._height = Math.floor(clamp(height, 1, maxSize));
         if (this._window) {
             this._window.resize(this._width, this._height);
+            this.emit(GFX_TEXTURE_CHANGED);
         }
         this.emit('resize', this._window);
     }
@@ -212,6 +215,7 @@ export class RenderTexture extends TextureBase {
         } else {
             this._window = root.createWindow(_windowInfo);
         }
+        this.emit(GFX_TEXTURE_CHANGED);
     }
 
     /**

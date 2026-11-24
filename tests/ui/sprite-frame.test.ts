@@ -1,6 +1,6 @@
 import { SpriteFrame } from "../../cocos/2d";
 import { Texture2D } from "../../cocos/asset/assets";
-import { Rect, Size, Vec2 } from "../../exports/base";
+import { Rect, Size, Vec2, Vec3 } from "../../exports/base";
 
 test('spritefrom.get',()=>{
     let sp = new SpriteFrame;
@@ -67,6 +67,16 @@ test('spriteframe.clone', () => {
     sp.flipUVX = true;
     sp.flipUVY = false;
     sp.packable = true;
+    // Imported/source geometry is distinct from the derived world quad and must survive cloning.
+    sp.vertices = {
+        rawPosition: [new Vec3(0, 0, 0), new Vec3(10, 0, 0), new Vec3(0, 10, 0)],
+        positions: [0, 0, 0, 0.1, 0, 0, 0, 0.1, 0],
+        indexes: [0, 1, 2],
+        uv: [0, 0, 10, 0, 0, 10],
+        nuv: [0, 0, 1, 0, 0, 1],
+        minPos: new Vec3(),
+        maxPos: new Vec3(10, 10, 0),
+    };
     // Make sure the mesh is created
     sp.ensureMeshData();
     
@@ -100,9 +110,11 @@ test('spriteframe.clone', () => {
     sp_clone.pivot.add2f(100,200);
     expect(sp_clone.pivot !== sp.pivot).toEqual(true);
 
-    expect(sp_clone.mesh).toEqual(sp.mesh);
-    sp_clone.mesh?.destroy();
-    expect(sp_clone.mesh !== sp.mesh).toEqual(true);
+    // Cloning resource metadata does not allocate a world mesh before a world consumer needs it.
+    expect(sp_clone.mesh).toBeNull();
+    sp_clone.ensureMeshData();
+    expect(sp_clone.mesh).not.toBeNull();
+    expect(sp_clone.mesh).not.toBe(sp.mesh);
     
     expect(sp_clone.uv).toEqual(sp.uv);
     sp_clone.uv.splice(0, sp_clone.uv.length);
@@ -117,6 +129,7 @@ test('spriteframe.clone', () => {
     expect(sp_clone.uvSliced !== sp.uvSliced).toEqual(true);
 
     expect(sp_clone.vertices).toEqual(sp.vertices);
+    expect(sp_clone.vertices!.rawPosition[0]).not.toBe(sp.vertices!.rawPosition[0]);
     sp_clone.vertices?.rawPosition.splice(0,  sp_clone.vertices?.rawPosition.length);
     expect(sp_clone.vertices?.rawPosition !== sp.vertices?.rawPosition).toEqual(true)
     sp_clone.vertices?.positions.splice(0,  sp_clone.vertices?.positions.length);
@@ -146,4 +159,16 @@ test('spriteframe.clone', () => {
     sp_clone.texture.setFilters(Texture2D.Filter.NEAREST, Texture2D.Filter.NEAREST);
     // Textures are not deep copies.
     expect(sp_clone.texture === sp.texture).toEqual(true);
+    sp_clone.destroy();
+    sp.destroy();
+});
+
+test('spriteframe legacy metadata defaults and source data are not replaced by derived geometry', () => {
+    const sp = new SpriteFrame();
+    sp._deserialize({ name: 'legacy', rect: { x: 0, y: 0, width: 20, height: 10 }, pivot: { x: 0.25, y: 0.75 } }, {});
+    expect(sp.pixelsToUnit).toBe(100);
+    expect(sp.pivot).toEqual(new Vec2(0.25, 0.75));
+    sp._deserialize({ name: 'explicit-invalid', pixelsToUnit: 0 }, {});
+    expect(sp.pixelsToUnit).toBe(0); // Preserve explicit data; geometry validation must reject it instead of rewriting the asset.
+    sp.destroy();
 });

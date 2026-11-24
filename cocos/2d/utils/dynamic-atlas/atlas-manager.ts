@@ -47,6 +47,7 @@ export class DynamicAtlasManager extends System {
 
     private _atlases: Atlas[] = [];
     private _atlasIndex = -1;
+    private _resetting = false;
 
     private _maxAtlasCount = 5;
     private _textureSize = 2048;
@@ -186,7 +187,7 @@ export class DynamicAtlasManager extends System {
         texture: DynamicAtlasTexture;
     } | null {
         if (EDITOR_NOT_IN_PREVIEW) return null;
-        if (!this._enabled || this._atlasIndex >= this._maxAtlasCount
+        if (this._resetting || !this._enabled || this._atlasIndex >= this._maxAtlasCount
             || !spriteFrame || spriteFrame.original) return null;
 
         if (!spriteFrame.packable) return null;
@@ -220,11 +221,16 @@ export class DynamicAtlasManager extends System {
      * @method reset
     */
     public reset (): void {
-        for (let i = 0, l = this._atlases.length; i < l; i++) {
-            this._atlases[i].destroy();
-        }
-        this._atlases.length = 0;
+        if (this._resetting) return;
+        this._resetting = true;
+        const pages = this._atlases;
+        this._atlases = [];
         this._atlasIndex = -1;
+        try {
+            for (const page of pages) page.destroy();
+        } finally {
+            this._resetting = false;
+        }
     }
 
     /**
@@ -238,15 +244,26 @@ export class DynamicAtlasManager extends System {
      * @param spriteFrame  the sprite frame that will be removed from the atlas.
      */
     public deleteAtlasSpriteFrame (spriteFrame: SpriteFrame): void {
-        if (!spriteFrame.original) return;
+        this._unlinkAtlasSpriteFrame(spriteFrame)?.forEach((page) => page.destroy());
+    }
 
-        let atlas: Atlas;
+    /** @engineInternal Remove all old registrations before notifying listeners. The caller destroys the retired pages. */
+    public _unlinkAtlasSpriteFrame (spriteFrame: SpriteFrame): Atlas[] | undefined {
+        if (!spriteFrame.original) return undefined;
+        let retired: Atlas[] | undefined;
         for (let i = this._atlases.length - 1; i >= 0; i--) {
-            atlas = this._atlases[i];
-            atlas.removeSpriteFrame(spriteFrame);
+            const page = this._atlases[i];
+            page.removeSpriteFrame(spriteFrame);
+            if (page.isEmpty()) (retired ??= []).push(this._unlinkPage(i));
         }
-        const texture = spriteFrame.original._texture;
-        this.deleteAtlasTexture(texture);
+        return retired;
+    }
+
+    private _unlinkPage (index: number): Atlas {
+        const page = this._atlases[index];
+        this._atlases.splice(index, 1);
+        --this._atlasIndex;
+        return page;
     }
 
     /**
@@ -260,17 +277,16 @@ export class DynamicAtlasManager extends System {
      * @param texture  the texture that will be removed from the atlas.
      */
     public deleteAtlasTexture (texture: TextureBase): void {
-        if (texture) {
-            for (let i = this._atlases.length - 1; i >= 0; i--) {
-                this._atlases[i].deleteInnerTexture(texture as Texture2D);
-
-                if (this._atlases[i].isEmpty()) {
-                    this._atlases[i].destroy();
-                    this._atlases.splice(i, 1);
-                    this._atlasIndex--;
-                }
+        if (!texture) return;
+        let retired: Atlas[] | undefined;
+        for (let i = this._atlases.length - 1; i >= 0; i--) {
+            const page = this._atlases[i];
+            page.deleteInnerTexture(texture as Texture2D);
+            if (page.isEmpty()) {
+                (retired ??= []).push(this._unlinkPage(i));
             }
         }
+        if (retired) for (const page of retired) page.destroy();
     }
 
     /**

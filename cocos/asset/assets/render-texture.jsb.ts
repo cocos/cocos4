@@ -23,7 +23,7 @@
 */
 import { EDITOR, NODEJS, TEST } from 'internal:constants';
 import { cclegacy } from '../../core';
-import { TextureFilter, PixelFormat, WrapMode } from './asset-enum';
+import { GFX_TEXTURE_CHANGED, TextureFilter, PixelFormat, WrapMode } from './asset-enum';
 import './asset';
 import { patch_cc_RenderTexture } from '../../native-binding/decorators';
 import type { RenderTexture as JsbRenderTexture } from './render-texture';
@@ -33,6 +33,16 @@ const renderTextureProto: any = jsb.RenderTexture.prototype;
 const textureBaseProto: any = jsb.TextureBase.prototype;
 
 renderTextureProto.createNode = null!;
+
+// Native RenderTexture owns its window attachment; publish the completed change to JS consumers.
+for (const name of ['initialize', 'initDefault', 'reset', 'resize', 'onLoaded', 'destroy']) {
+    const nativeMethod = renderTextureProto[name];
+    renderTextureProto[name] = function (...args) {
+        const result = nativeMethod.apply(this, args);
+        this.emit(GFX_TEXTURE_CHANGED);
+        return result;
+    };
+}
 
 export type RenderTexture = JsbRenderTexture;
 export const RenderTexture: typeof JsbRenderTexture = jsb.RenderTexture;
