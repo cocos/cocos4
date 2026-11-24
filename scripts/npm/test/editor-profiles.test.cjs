@@ -1,0 +1,8 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {evaluateCondition,selectFeatures}=require('../prepare-editor-profiles.cjs');
+test('environment conditions honor boolean precedence and reject code',()=>{assert.equal(evaluateCondition('!$NATIVE && ($HTML5 || $NODEJS)',{NODEJS:true}),true);assert.equal(evaluateCondition('$HTML5 || $NODEJS && $NATIVE',{NODEJS:true}),false);assert.throws(()=>evaluateCondition('process.exit()',{}),/Invalid/);});
+test('profile feature selection applies grouped fallbacks and preserves dual Spine',()=>{const known=['base','gpu','empty','spine-3.8','spine-4.2','spine-4.1'];const selected=selectFeatures(known,{features:{graphics:{options:{gpu:{envCondition:'$HTML5',fallback:'empty'}}}}},{NODEJS:true});assert.deepEqual(selected,['base','empty','spine-3.8','spine-4.2']);});
+test('fallback cycles and unavailable fallbacks fail before compilation',()=>{assert.throws(()=>selectFeatures(['a','b'],{features:{a:{envCondition:'$HTML5',fallback:'b'},b:{envCondition:'$HTML5',fallback:'a'}}},{}),/cycle/);assert.throws(()=>selectFeatures(['a'],{features:{a:{envCondition:'$HTML5',fallback:'missing'}}},{}),/Unknown fallback/);});
+
+test('Editor packaging rejects profiles from another Web release',()=>{const {validateProfileIdentity}=require('../pack-engine-editor');const web={engineVersion:'4.0.0',engineRevision:'r1',sdkReleaseId:'sdk1'};assert.doesNotThrow(()=>validateProfileIdentity({...web},web));for(const key of Object.keys(web))assert.throws(()=>validateProfileIdentity({...web,[key]:'other'},web),/profiles differ/);assert.throws(()=>validateProfileIdentity(undefined,web),/profiles differ/);});

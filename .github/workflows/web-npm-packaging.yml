@@ -1,0 +1,129 @@
+name: <Web> npm packaging
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/npm/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'cc.config.json'
+      - 'cocos/**'
+      - 'exports/**'
+      - 'pal/**'
+      - 'editor/**'
+      - 'vendor/**'
+      - 'extensions/**'
+      - 'templates/**'
+      - 'native/external-config.json'
+      - 'scripts/spread-*.cjs'
+      - 'scripts/ensure-pal.cjs'
+      - 'scripts/build-declarations.js'
+      - '.github/workflows/web-npm-packaging.yml'
+  push:
+    branches: [v4.0.0]
+    paths:
+      - 'scripts/npm/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'cc.config.json'
+      - 'cocos/**'
+      - 'exports/**'
+      - 'pal/**'
+      - 'editor/**'
+      - 'vendor/**'
+      - 'extensions/**'
+      - 'templates/**'
+      - 'native/external-config.json'
+      - 'scripts/spread-*.cjs'
+      - 'scripts/ensure-pal.cjs'
+      - 'scripts/build-declarations.js'
+      - '.github/workflows/web-npm-packaging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaging-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install packaging dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test package generation and standalone dependencies
+        run: npm run test:npm
+
+  web-artifact:
+    name: Web and Editor npm artifacts
+    needs: packaging-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Resolve external runtime revision
+        id: external
+        shell: bash
+        run: echo "ref=$(node .github/workflows/get-native-external-version.js)" >> "$GITHUB_OUTPUT"
+      - name: Download Web runtime dependencies
+        uses: actions/checkout@v4
+        with:
+          repository: cocos/cocos-engine-external
+          ref: ${{ steps.external.outputs.ref }}
+          path: native/external
+          sparse-checkout: emscripten
+      - name: Install generation dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prepare Web package inputs
+        run: |
+          node scripts/spread-pal.cjs
+          node scripts/spread-adapter.cjs
+          npm run build:debug-infos
+          npm run build:declaration
+      - name: Generate Web package
+        run: npm run pack:npm -- --kind web --output ../engine-web-package
+      - name: Prepare Editor and preview profiles
+        run: npm run prepare:npm:editor -- --base ../engine-web-package
+      - name: Generate matching Editor package
+        run: npm run pack:npm -- --kind editor --base ../engine-web-package --output ../engine-editor-package
+      - name: Pack tarballs and provenance
+        run: npm run pack:npm:artifacts -- --package ../engine-web-package --package ../engine-editor-package --output "$RUNNER_TEMP/engine-npm-artifact"
+      - name: Verify artifact installation
+        shell: bash
+        run: |
+          mkdir ../engine-artifact-smoke
+          cd ../engine-artifact-smoke
+          npm init -y
+          npm install "$RUNNER_TEMP"/engine-npm-artifact/*.tgz --ignore-scripts --no-audit --no-fund
+          node --input-type=module -e "const entry=import.meta.resolve('@cocos/engine-web'); if(!entry.endsWith('/runtime/web/index.mjs')) throw new Error('Unexpected engine entry: '+entry); const fs=await import('node:fs'); const editor=JSON.parse(fs.readFileSync(new URL(import.meta.resolve('@cocos/engine-editor/engine-sdk.json')))); const web=JSON.parse(fs.readFileSync(new URL(import.meta.resolve('@cocos/engine-web/engine-sdk.json')))); if(editor.sdkReleaseId!==web.sdkReleaseId) throw new Error('Mixed SDK releases'); console.log(entry);"
+      - name: Upload npm packages
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-npm-web-editor-${{ github.sha }}
+          path: ${{ runner.temp }}/engine-npm-artifact/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Write download instructions
+        shell: bash
+        run: |
+          echo "### Web and Editor npm packages" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download: ${{ steps.upload.outputs.artifact-url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Extract the ZIP and install the .tgz inside it. See README.md, SHA256SUMS and provenance.json. This artifact contains matched Web and Editor components. Install both tarballs in the consumer project.' >> "$GITHUB_STEP_SUMMARY"
