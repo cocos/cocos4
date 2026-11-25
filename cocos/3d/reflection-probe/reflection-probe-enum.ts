@@ -53,3 +53,16 @@ export enum ReflectionProbeType {
      */
     BLEND_PROBES_AND_SKYBOX = 4,
 }
+
+/**
+ * @en Multisample anti-aliasing for planar reflection capture.
+ * @zh 平面反射采集的多重采样抗锯齿。
+ */
+export enum PlanarReflectionMSAA {
+    /** @en Disable MSAA. @zh 关闭 MSAA。 */
+    OFF = 1,
+    /** @en Two samples per pixel. @zh 每像素 2 个采样。 */
+    X2 = 2,
+    /** @en Four samples per pixel. @zh 每像素 4 个采样。 */
+    X4 = 4,
+}
