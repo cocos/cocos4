@@ -321,10 +321,10 @@ struct LayoutGraph {
     }
 
     template <class Visitor, class... Others>
-    decltype(auto) visit_object(vertex_descriptor v, Visitor&& visitor, Others&&... others) { // NOLINT(readability-identifier-naming)
+    decltype(auto) visit_vertex(vertex_descriptor v, Visitor&& visitor, Others&&... others) { // NOLINT(readability-identifier-naming)
         if constexpr (sizeof...(others) > 0) {
             auto handlers = overloaded{std::forward<Visitor>(visitor), std::forward<Others>(others)...};
-            return this->visit_object(v, handlers);
+            return this->visit_vertex(v, handlers);
         } else {
             const auto& handle = this->handles.at(v);
             switch (handle.kind) {
@@ -336,10 +336,10 @@ struct LayoutGraph {
     }
 
     template <class Visitor, class... Others>
-    decltype(auto) visit_object(vertex_descriptor v, Visitor&& visitor, Others&&... others) const { // NOLINT(readability-identifier-naming)
+    decltype(auto) visit_vertex(vertex_descriptor v, Visitor&& visitor, Others&&... others) const { // NOLINT(readability-identifier-naming)
         if constexpr (sizeof...(others) > 0) {
             auto handlers = overloaded{std::forward<Visitor>(visitor), std::forward<Others>(others)...};
-            return this->visit_object(v, handlers);
+            return this->visit_vertex(v, handlers);
         } else {
             const auto& handle = this->handles.at(v);
             switch (handle.kind) {
@@ -795,10 +795,10 @@ struct LayoutGraphData {
     }
 
     template <class Visitor, class... Others>
-    decltype(auto) visit_object(vertex_descriptor v, Visitor&& visitor, Others&&... others) { // NOLINT(readability-identifier-naming)
+    decltype(auto) visit_vertex(vertex_descriptor v, Visitor&& visitor, Others&&... others) { // NOLINT(readability-identifier-naming)
         if constexpr (sizeof...(others) > 0) {
             auto handlers = overloaded{std::forward<Visitor>(visitor), std::forward<Others>(others)...};
-            return this->visit_object(v, handlers);
+            return this->visit_vertex(v, handlers);
         } else {
             const auto& handle = this->handles.at(v);
             switch (handle.kind) {
@@ -810,10 +810,10 @@ struct LayoutGraphData {
     }
 
     template <class Visitor, class... Others>
-    decltype(auto) visit_object(vertex_descriptor v, Visitor&& visitor, Others&&... others) const { // NOLINT(readability-identifier-naming)
+    decltype(auto) visit_vertex(vertex_descriptor v, Visitor&& visitor, Others&&... others) const { // NOLINT(readability-identifier-naming)
         if constexpr (sizeof...(others) > 0) {
             auto handlers = overloaded{std::forward<Visitor>(visitor), std::forward<Others>(others)...};
-            return this->visit_object(v, handlers);
+            return this->visit_vertex(v, handlers);
         } else {
             const auto& handle = this->handles.at(v);
             switch (handle.kind) {

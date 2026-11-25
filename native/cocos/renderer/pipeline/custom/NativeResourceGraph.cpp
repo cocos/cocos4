@@ -250,7 +250,7 @@ void recreateTextureView(
 
 // NOLINTNEXTLINE(misc-no-recursion)
 void ResourceGraph::mount(gfx::Device* device, vertex_descriptor vertID) {
-    visit_object(
+    visit_vertex(
         vertID,
         [&](const ManagedResource& resource) {
             // to be removed
@@ -356,7 +356,7 @@ bool ResourceGraph::isTextureView(vertex_descriptor resID) const noexcept {
 
 gfx::Buffer* ResourceGraph::getBuffer(vertex_descriptor resID) {
     gfx::Buffer* buffer = nullptr;
-    visit_object(
+    visit_vertex(
         resID,
         [&](const ManagedBuffer& res) {
             buffer = res.buffer.get();
@@ -374,7 +374,7 @@ gfx::Buffer* ResourceGraph::getBuffer(vertex_descriptor resID) {
 }
 
 gfx::Texture* ResourceGraph::getTexture(vertex_descriptor resID) {
-    auto* const texture = visit_object(
+    auto* const texture = visit_vertex(
         resID,
         [](const ManagedTexture& res) -> gfx::Texture* {
             return res.texture.get();

@@ -222,7 +222,7 @@ void NativePipeline::updateExternalTexture(const ccstd::string &name, gfx::Textu
         return;
     }
     auto &desc = resourceGraph.getDesc(resID);
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](PersistentTexture &tex) {
             desc.width = texture->getWidth();
@@ -252,7 +252,7 @@ void updateDepthStencilImpl(
     }
     CC_ENSURES(format != gfx::Format::UNKNOWN);
 
-    ppl.resourceGraph.visit_object(
+    ppl.resourceGraph.visit_vertex(
         resID,
         [&](ManagedTexture &tex) {
             CC_EXPECTS(!swapchain || !ppl.defaultFramebufferHasDepthStencil);
@@ -623,7 +623,7 @@ void NativePipeline::updateResource(
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](ManagedTexture &tex) {
             uint32_t depthOrArraySize = static_cast<uint16_t>(
@@ -801,7 +801,7 @@ void NativePipeline::updateRenderWindow(
     }
     uint32_t width = 0;
     uint32_t height = 0;
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](IntrusivePtr<gfx::Framebuffer> &fb) {
             // deprecated
@@ -868,7 +868,7 @@ void NativePipeline::updateStorageBuffer(
         format = desc.format;
     }
 
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](ManagedBuffer &buffer) {
             std::ignore = buffer;
@@ -897,7 +897,7 @@ void NativePipeline::updateRenderTarget(
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](ManagedTexture &tex) {
             bool invalidate =
@@ -943,7 +943,7 @@ void NativePipeline::updateStorageTexture(
         format = desc.format;
     }
 
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](ManagedTexture &tex) {
             std::ignore = tex;
@@ -969,7 +969,7 @@ void NativePipeline::updateShadingRateTexture(
     auto &desc = resourceGraph.getDesc(resID);
 
     // update format
-    resourceGraph.visit_object(
+    resourceGraph.visit_vertex(
         resID,
         [&](ManagedTexture &tex) {
             std::ignore = tex;
