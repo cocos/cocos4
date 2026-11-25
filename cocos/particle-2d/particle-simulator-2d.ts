@@ -341,12 +341,12 @@ export class Simulator {
         this._parentAlpha = uiProps.localOpacity * parentOpacity;
     }
 
-    public step (dt: number): void {
+    public step (dt: number, speed = 1): void {
         const assembler = this.sys.assembler as Particle2DAssembler;
         const psys = this.sys;
         const node = psys.node;
         const particles = this.particles;
-        dt = dt > assembler.maxParticleDeltaTime ? assembler.maxParticleDeltaTime : dt;
+        dt = Math.min(dt, assembler.maxParticleDeltaTime) * speed;
         // Calculate pos
         node.updateWorldTransform();
         if (psys.positionType === PositionType.FREE) {

@@ -33,6 +33,7 @@ exports.template = /* html*/`
         <ui-prop type="dump" key="rateOverTime"></ui-prop>
         <ui-prop type="dump" key="rateOverDistance"></ui-prop>
         <ui-prop type="dump" key="bursts"></ui-prop>
+        <ui-prop type="dump" key="subEmitters" showflag="!renderer.value.useGPU"></ui-prop>
         <!-- Render other data that has not taken over -->
         <div id="customProps"></div>
 
@@ -103,6 +104,7 @@ exports.template = /* html*/`
             <ui-prop type="dump" key="shapeModule.value.randomPositionAmount"></ui-prop>
         </ui-section>
         <ui-section key="velocityOvertimeModule" autoflag="true" cache-expand="particle-system-velocityOvertimeModule"></ui-section>
+        <ui-section key="forceFieldModule" showflag="!renderer.value.useGPU" autoflag="true" cache-expand="particle-system-forceFieldModule"></ui-section>
         <ui-section key="forceOvertimeModule" autoflag="true" cache-expand="particle-system-forceOvertimeModule"></ui-section>
         <ui-section empty="true" key="sizeOvertimeModule"
             cache-expand="particle-system-sizeOvertimeModule">
@@ -188,8 +190,8 @@ const excludeList = [
     'startSizeX', 'startSizeY', 'startSizeZ', 'startSpeed',
     'startRotation3D', 'startRotationX', 'startRotationY',
     'startRotationZ', 'gravityModifier', 'rateOverTime',
-    'rateOverDistance', 'bursts', 'shapeModule',
-    'velocityOvertimeModule', 'forceOvertimeModule', 'sizeOvertimeModule',
+    'rateOverDistance', 'bursts', 'subEmitters', 'shapeModule',
+    'velocityOvertimeModule', 'forceOvertimeModule', 'forceFieldModule', 'sizeOvertimeModule',
     'rotationOvertimeModule', 'colorOverLifetimeModule', 'textureAnimationModule',
     'trailModule', 'renderer', 'renderCulling', 'limitVelocityOvertimeModule', 'cullingMode',
     'aabbHalfX', 'aabbHalfY', 'aabbHalfZ', 'noiseModule',

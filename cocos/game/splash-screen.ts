@@ -360,13 +360,13 @@ export class SplashScreen {
         }
         // update logo uniform
         const logoYTrans = dh * this.logoYTrans;
+        // The logo height is 18.5% of the swapchain height before applying the display ratio.
+        const logoRenderHeight = dh * 0.185 * settings.displayRatio;
         if (this.settings.logo!.type !== 'none') {
-            // Product design is 0.185 of the height of the screen resolution as the display height of the logo.
-            scaleY = dh * 0.185 * settings.displayRatio;
-            scaleX = this.logoWidth * (dh * 0.185 / this.logoHeight) * settings.displayRatio;
+            const logoRenderWidth = (this.logoWidth / this.logoHeight) * logoRenderHeight;
             const logoMat = this.logoMat;
             setMaterialProperty(logoMat, 'resolution', v2_0.set(dw, dh), 0);
-            setMaterialProperty(logoMat, 'scale', v2_0.set(scaleX, scaleY), 0);
+            setMaterialProperty(logoMat, 'scale', v2_0.set(logoRenderWidth, logoRenderHeight), 0);
             setMaterialProperty(logoMat, 'translate', v2_0.set(dw * this.logoXTrans, logoYTrans), 0);
             setMaterialProperty(logoMat, 'percent', u_p);
             setMaterialProperty(logoMat, 'u_projection', this.projection);
@@ -378,8 +378,8 @@ export class SplashScreen {
             const watermarkTW = this.watermarkTexture.width; const watermarkTH = this.watermarkTexture.height;
             scaleX = watermarkTW;
             scaleY = watermarkTH;
-            const textYTrans = logoYTrans - (this.logoHeight * 0.5 * settings.displayRatio + this.textYExtraTrans)
-                * this.scaleSize - watermarkTH * 0.5;
+            const logoBottom = logoYTrans - logoRenderHeight * 0.5;
+            const textYTrans = logoBottom - this.textYExtraTrans * this.scaleSize - watermarkTH * 0.5;
             const watermarkMat = this.watermarkMat;
             setMaterialProperty(watermarkMat, 'resolution', v2_0.set(dw, dh), 0);
             setMaterialProperty(watermarkMat, 'scale', v2_0.set(scaleX, scaleY), 0);

@@ -127,7 +127,7 @@ export class RenderAdditiveLightQueue {
     private declare _firstLightBufferView: Buffer;
     private declare _lightBufferData: Float32Array;
     private _instancedQueues: (RenderInstancedQueue | undefined)[] = [];
-    private _lightMeterScale = 10000.0;
+    private _lightMeterScale = Camera.standardLightMeterScale;
 
     constructor (pipeline: PipelineRuntime) {
         this._pipeline = pipeline;

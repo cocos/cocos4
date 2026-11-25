@@ -48,6 +48,7 @@ const attributes = vfmtPosColor.concat([
 ]);
 
 const componentPerVertex = getComponentPerVertex(attributes);
+const alphaOffset = 6; // position.xyz, color.rgba, distance
 
 const stride = getAttributeStride(attributes);
 
@@ -62,10 +63,10 @@ function growCapacity (needed: number, current: number, max: number): number {
 
 /**
  * @en
- * Graphics component.
+ * Graphics component. Fill and stroke alpha are multiplied by the node's cascaded UI opacity at draw time.
  *
  * @zh
- * 自定义图形类。
+ * 自定义图形组件。绘制时，填充和描边的 alpha 会乘以节点的累计 UI 透明度。
  */
 @ccclass('cc.Graphics')
 @help('i18n:cc.Graphics')
@@ -236,6 +237,8 @@ export class Graphics extends UIRenderer {
     protected _isNeedUploadData = true;
 
     private _graphicsUseSubMeshes: RenderingSubMesh[] = [];
+    private _uploadedOpacity = 1;
+    private _opacityScratch: Float32Array | null = null;
 
     //nativeObj
     protected declare _graphicsNativeProxy: NativeUIModelProxy;
@@ -313,6 +316,7 @@ export class Graphics extends UIRenderer {
             this.impl = null;
         }
 
+        this._opacityScratch = null;
         super.onDestroy();
     }
 
@@ -567,6 +571,7 @@ export class Graphics extends UIRenderer {
         }
 
         this.impl.clear();
+        this._opacityScratch = null;
         this._isDrawing = false;
         if (JSB) {
             this._graphicsNativeProxy.clear();// need native
@@ -676,39 +681,59 @@ export class Graphics extends UIRenderer {
         }
     }
 
-    protected _uploadData (): void {
-        const impl = this.impl;
-        if (!impl) {
+    protected _uploadData (opacity = this.node._uiProps.opacity): void {
+        if (!this.impl || !this.model) {
             return;
         }
 
-        const renderDataList = impl && impl.getRenderDataList();
-        if (renderDataList.length <= 0 || !this.model) {
-            return;
-        }
-
+        const renderDataList = this.impl.getRenderDataList();
         const subModelList = this.model.subModels;
         for (let i = 0; i < renderDataList.length; i++) {
             const renderData = renderDataList[i];
-            const ia = subModelList[i].inputAssembler;
-            if (renderData.lastFilledVertex === renderData.vertexStart) {
-                continue;
+            const indexCount = renderData.indexStart;
+            const vertexCount = indexCount ? renderData.vertexStart : 0;
+            const newSubModel = i >= subModelList.length;
+            if (newSubModel) {
+                this.activeSubModel(i, vertexCount, indexCount);
             }
-
-            // Buffer.update() does not grow the buffer on WebGL, reserve the capacity first.
-            this._ensureCapacity(renderData, ia);
-
-            const vb = new Float32Array(renderData.vData.buffer, 0, renderData.vertexStart * componentPerVertex);
-            ia.vertexBuffers[0].update(vb);
-            ia.vertexCount = renderData.vertexStart;
-            const ib = new Uint16Array(renderData.iData.buffer, 0, renderData.indexStart);
-            ia.indexBuffer!.update(ib);
-            ia.indexCount = renderData.indexStart;
-            renderData.lastFilledVertex = renderData.vertexStart;
-            renderData.lastFilledIndex = renderData.indexStart;
+            const ia = subModelList[i].inputAssembler;
+            const verticesChanged = newSubModel || renderData.lastFilledVertex !== vertexCount;
+            const indicesChanged = newSubModel || renderData.lastFilledIndex !== indexCount;
+            if (verticesChanged || indicesChanged) {
+                this._ensureCapacity(renderData, ia);
+            }
+            if (vertexCount && (verticesChanged || opacity !== this._uploadedOpacity)) {
+                ia.vertexBuffers[0].update(this._getUploadVertices(renderData, vertexCount, opacity));
+            }
+            if (verticesChanged) {
+                ia.vertexCount = vertexCount;
+                renderData.lastFilledVertex = vertexCount;
+            }
+            if (indicesChanged) {
+                if (indexCount) ia.indexBuffer!.update(renderData.iData.subarray(0, indexCount));
+                ia.indexCount = indexCount;
+                renderData.lastFilledIndex = indexCount;
+            }
         }
 
+        this._uploadedOpacity = opacity;
         this._isNeedUploadData = false;
+    }
+
+    private _getUploadVertices (data: MeshRenderData, vertexCount: number, opacity: number): Float32Array {
+        const raw = new Float32Array(data.vData.buffer, data.vData.byteOffset, vertexCount * componentPerVertex);
+        if (opacity === 1) return raw;
+
+        // Keep the retained paint colors intact so each fade starts from its original alpha.
+        if (!this._opacityScratch || this._opacityScratch.length < raw.length) {
+            this._opacityScratch = new Float32Array(growCapacity(vertexCount, 0, MAX_VERTEX_COUNT) * componentPerVertex);
+        }
+        const output = this._opacityScratch.subarray(0, raw.length);
+        output.set(raw);
+        for (let i = alphaOffset; i < output.length; i += componentPerVertex) {
+            output[i] = raw[i] * opacity;
+        }
+        return output;
     }
 
     /**
@@ -733,18 +758,9 @@ export class Graphics extends UIRenderer {
     }
 
     protected _render (render: IBatcher): void {
-        if (this._isNeedUploadData) {
-            if (this.impl) {
-                const renderDataList = this.impl.getRenderDataList();
-                const len = this.model!.subModels.length;
-                if (renderDataList.length > len) {
-                    for (let i = len; i < renderDataList.length; i++) {
-                        const renderData = renderDataList[i];
-                        this.activeSubModel(i, renderData.vertexStart, renderData.indexStart);
-                    }
-                }
-            }
-            this._uploadData();
+        const opacity = this.node._uiProps.opacity;
+        if (this._isNeedUploadData || this._uploadedOpacity !== opacity) {
+            this._uploadData(opacity);
         }
 
         render.commitModel(this, this.model, this.getMaterialInstance(0));

@@ -38,4 +38,8 @@ you.
 
 @property(nonatomic, readonly) ViewController *viewController;
 @property(nonatomic, readonly) AppDelegateBridge *appDelegateBridge;
+@property(nonatomic, retain) UIWindow *window;
+
+// Called after the scene has supplied the game's window.
+- (void)startGameWithWindow:(UIWindow *)gameWindow;
 @end

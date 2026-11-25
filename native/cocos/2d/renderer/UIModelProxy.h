@@ -56,7 +56,6 @@ private:
     ccstd::vector<scene::Model*> _models{};
 
     gfx::Device* _device{nullptr};
-    uint32_t _stride{32};
     ccstd::vector<gfx::Attribute> _attributes{
         gfx::Attribute{gfx::ATTR_NAME_POSITION, gfx::Format::RGB32F},
         gfx::Attribute{gfx::ATTR_NAME_COLOR, gfx::Format::RGBA32F},

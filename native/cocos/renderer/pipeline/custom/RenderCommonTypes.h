@@ -83,6 +83,7 @@ enum class ResourceResidency : uint8_t {
     PERSISTENT,
     EXTERNAL,
     BACKBUFFER,
+    CUSTOM,
 };
 
 enum class QueueHint : uint8_t {

@@ -76,7 +76,7 @@ private:
     uint32_t _lightBufferStride{0};
     uint32_t _lightBufferElementCount{0};
     bool _isTransparentQueueEmpty{true};
-    float _lightMeterScale{10000.0};
+    float _lightMeterScale{scene::Camera::getStandardLightMeterScale()};
     gfx::DescriptorSet *_descriptorSet{nullptr};
     gfx::DescriptorSetLayout *_descLayout{nullptr};
     uint32_t _maxDeferredLights{UBODeferredLight::LIGHTS_PER_PASS};

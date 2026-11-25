@@ -86,6 +86,8 @@ export abstract class BlendStateBuffer<
 
 export interface BlendStateWriterHost {
     readonly weight: number;
+    /** Whether this writer's animation clock is frozen. */
+    readonly isFrozen?: boolean;
 }
 
 export type BlendingPropertyName = 'position' | 'scale' | 'rotation' | 'eulerAngles';
@@ -127,7 +129,7 @@ class BlendStateWriterInternal<P extends BlendingPropertyName> implements Runtim
         const weight = host.weight;
         // TODO: please fix type here @Leslie Leigh
         // Tracking issue: https://github.com/cocos/cocos-engine/issues/14640
-        propertyBlendState.blend(value as Readonly<Vec3> & Readonly<Quat>, weight);
+        propertyBlendState.blend(value as Readonly<Vec3> & Readonly<Quat>, weight, host.isFrozen);
     }
 }
 
@@ -153,7 +155,7 @@ interface PropertyBlendState<TValue> {
 
     readonly result: Readonly<TValue>;
 
-    blend(value: Readonly<TValue>, weight: number): void;
+    blend(value: Readonly<TValue>, weight: number, isFrozen?: boolean): void;
 }
 
 class LegacyVec3PropertyBlendState implements PropertyBlendState<Vec3> {
@@ -163,7 +165,14 @@ class LegacyVec3PropertyBlendState implements PropertyBlendState<Vec3> {
 
     public result = new Vec3();
 
-    public blend (value: Readonly<Vec3>, weight: number): void {
+    private _baseValue = new Vec3();
+    private _hasBaseValue = false;
+    private _allFrozen = true;
+
+    public blend (value: Readonly<Vec3>, weight: number, isFrozen = false): void {
+        if (weight > 0) {
+            this._allFrozen &&= isFrozen;
+        }
         this.accumulatedWeight = mixAveragedVec3(
             this.result,
             this.result,
@@ -173,7 +182,29 @@ class LegacyVec3PropertyBlendState implements PropertyBlendState<Vec3> {
         );
     }
 
+    public blendDefault (currentValue: Readonly<Vec3>): void {
+        // Reusing the previous output as the base would move a partially weighted
+        // pose every frame even though all contributing animation clocks are frozen.
+        if (!this._allFrozen || !this._hasBaseValue) {
+            Vec3.copy(this._baseValue, currentValue);
+            this._hasBaseValue = true;
+        }
+        if (this.accumulatedWeight < 1.0) {
+            this.accumulatedWeight = mixAveragedVec3(
+                this.result,
+                this.result,
+                this.accumulatedWeight,
+                this._baseValue,
+                1.0 - this.accumulatedWeight,
+            );
+        }
+    }
+
     public reset (): void {
+        if (!this.accumulatedWeight) {
+            this._hasBaseValue = false;
+        }
+        this._allFrozen = true;
         this.accumulatedWeight = 0.0;
         Vec3.zero(this.result);
     }
@@ -186,7 +217,14 @@ class LegacyQuatPropertyBlendState implements PropertyBlendState<Quat> {
 
     public result = new Quat();
 
-    public blend (value: Readonly<Quat>, weight: number): void {
+    private _baseValue = new Quat();
+    private _hasBaseValue = false;
+    private _allFrozen = true;
+
+    public blend (value: Readonly<Quat>, weight: number, isFrozen = false): void {
+        if (weight > 0) {
+            this._allFrozen &&= isFrozen;
+        }
         this.accumulatedWeight = mixAveragedQuat(
             this.result,
             this.result,
@@ -196,7 +234,29 @@ class LegacyQuatPropertyBlendState implements PropertyBlendState<Quat> {
         );
     }
 
+    public blendDefault (currentValue: Readonly<Quat>): void {
+        // Reusing the previous output as the base would move a partially weighted
+        // pose every frame even though all contributing animation clocks are frozen.
+        if (!this._allFrozen || !this._hasBaseValue) {
+            Quat.copy(this._baseValue, currentValue);
+            this._hasBaseValue = true;
+        }
+        if (this.accumulatedWeight < 1.0) {
+            this.accumulatedWeight = mixAveragedQuat(
+                this.result,
+                this.result,
+                this.accumulatedWeight,
+                this._baseValue,
+                1.0 - this.accumulatedWeight,
+            );
+        }
+    }
+
     public reset (): void {
+        if (!this.accumulatedWeight) {
+            this._hasBaseValue = false;
+        }
+        this._allFrozen = true;
         this.accumulatedWeight = 0.0;
         Quat.identity(this.result);
     }
@@ -304,30 +364,22 @@ class LegacyNodeBlendState extends NodeBlendState<LegacyVec3PropertyBlendState, 
 
         if (position && position.accumulatedWeight) {
             this._transformApplyFlags |= TransformApplyFlag.POSITION;
-            if (position.accumulatedWeight < 1.0) {
-                position.blend(node.position, 1.0 - position.accumulatedWeight);
-            }
+            position.blendDefault(node.position);
         }
 
         if (scale && scale.accumulatedWeight) {
             this._transformApplyFlags |= TransformApplyFlag.SCALE;
-            if (scale.accumulatedWeight < 1.0) {
-                scale.blend(node.scale, 1.0 - scale.accumulatedWeight);
-            }
+            scale.blendDefault(node.scale);
         }
 
         if (eulerAngles && eulerAngles.accumulatedWeight) {
             this._transformApplyFlags |= TransformApplyFlag.EULER_ANGLES;
-            if (eulerAngles.accumulatedWeight < 1.0) {
-                eulerAngles.blend(node.eulerAngles, 1.0 - eulerAngles.accumulatedWeight);
-            }
+            eulerAngles.blendDefault(node.eulerAngles);
         }
 
         if (rotation && rotation.accumulatedWeight) {
             this._transformApplyFlags |= TransformApplyFlag.ROTATION;
-            if (rotation.accumulatedWeight < 1.0) {
-                rotation.blend(node.rotation, 1.0 - rotation.accumulatedWeight);
-            }
+            rotation.blendDefault(node.rotation);
         }
 
         super.apply(node);

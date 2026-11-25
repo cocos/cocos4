@@ -104,6 +104,7 @@ export class Particle {
 export const PARTICLE_MODULE_NAME = {
     COLOR: 'colorModule',
     FORCE: 'forceModule',
+    FORCE_FIELD: 'forceFieldModule',
     LIMIT: 'limitModule',
     ROTATION: 'rotationModule',
     SIZE: 'sizeModule',
@@ -116,6 +117,7 @@ export const PARTICLE_MODULE_ORDER = [
     'sizeModule',
     'colorModule',
     'forceModule',
+    'forceFieldModule',
     'velocityModule',
     'limitModule',
     'rotationModule',
@@ -129,6 +131,7 @@ export const PARTICLE_MODULE_PROPERTY = [
     '_sizeOvertimeModule',
     '_velocityOvertimeModule',
     '_forceOvertimeModule',
+    '_forceFieldModule',
     '_limitVelocityOvertimeModule',
     '_rotationOvertimeModule',
     '_textureAnimationModule',

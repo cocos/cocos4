@@ -30,7 +30,7 @@ import { Mat4, Vec2, Vec4, Quat, Vec3, warn } from '../../core';
 import { MaterialInstance, IMaterialInstanceInfo } from '../../render-scene/core/material-instance';
 import { getBindingFromHandle, MacroRecord } from '../../render-scene/core/pass-utils';
 import { ParticleAlignmentSpace, ParticleRenderMode, ParticleSpace } from '../enum';
-import { Particle, IParticleModule } from '../particle';
+import { Particle, IParticleModule, PARTICLE_MODULE_NAME } from '../particle';
 import { packGradientRange } from '../animator/gradient-range';
 import { Pass } from '../../render-scene/core/pass';
 import { packCurveRangeXYZ, packCurveRangeZ, packCurveRangeXYZW, packCurveRangeN, packCurveRangeXY } from '../animator/curve-range';
@@ -61,6 +61,7 @@ const RENDER_MODE_MESH = 4;
 
 const COLOR_OVER_TIME_MODULE_ENABLE = 'COLOR_OVER_TIME_MODULE_ENABLE';
 const ROTATION_OVER_TIME_MODULE_ENABLE = 'ROTATION_OVER_TIME_MODULE_ENABLE';
+const USE_NORMAL_MAP = 'USE_NORMAL_MAP';
 const SIZE_OVER_TIME_MODULE_ENABLE = 'SIZE_OVER_TIME_MODULE_ENABLE';
 const VELOCITY_OVER_TIME_MODULE_ENABLE = 'VELOCITY_OVER_TIME_MODULE_ENABLE';
 const FORCE_OVER_TIME_MODULE_ENABLE = 'FORCE_OVER_TIME_MODULE_ENABLE';
@@ -222,6 +223,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
     }
 
     public enableModule (name: string, val: boolean, pm: IParticleModule): void {
+        // Force fields are CPU-only, including when enabled from scripts.
+        if (name === PARTICLE_MODULE_NAME.FORCE_FIELD) return;
         const mat: Material | null = this._particleSystem?.getMaterialInstance(0) || this._defaultMat;
         if (!mat) {
             return;
@@ -229,7 +232,7 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         this.initShaderUniform(mat);
         mat.recompileShaders(this._defines);
         if (this._model) {
-            this._model.setSubModelMaterial(0, mat);
+            this._model.updateMaterial(mat);
         }
     }
 
@@ -305,7 +308,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         }
     }
 
-    private doUpdateScale (pass): void {
+    private doUpdateScale (pass: Pass): void {
+        this.updateWorldTransform(pass);
         const nodeScale = this._node_scale;
         switch (this._particleSystem?.scaleSpace) {
         case ParticleSpace.Local:
@@ -372,6 +376,9 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         }
 
         const pass = mat.passes[0];
+        if (!pass) {
+            return;
+        }
         _tempVec4.x = this._particleSystem.time;
         _tempVec4.y = dt;
         pass.setUniform(this._uTimeHandle, _tempVec4);
@@ -380,10 +387,18 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
         pass.setUniform(this._uRotHandle, _world_rot);
 
         this.doUpdateRotation(pass);
+        this.doUpdateScale(pass);
     }
 
     public initShaderUniform (mat: Material): void {
         const pass = mat.passes[0];
+        if (!pass) {
+            return;
+        }
+
+        // Explicitly clear the override when the material omits the disabled macro.
+        const materialDefines = (this._particleSystem?.sharedMaterial || mat.parent || mat).passes[0]?.defines;
+        this._defines[USE_NORMAL_MAP] = !!materialDefines?.[USE_NORMAL_MAP];
 
         this._uTimeHandle = pass.getHandle('u_timeDelta');
         this._uRotHandle = pass.getHandle('u_worldRot');
@@ -606,7 +621,8 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
             this._renderInfo!.mainTexture = shareMaterial.getProperty('mainTexture', 0) as Texture2D;
         }
 
-        if (ps.sharedMaterial == null && this._defaultMat == null) {
+        // Recreate the fallback if its passes have been destroyed.
+        if (ps.sharedMaterial == null && (!this._defaultMat || !this._defaultMat.passes.length)) {
             _matInsInfo.parent = builtinResMgr.get<Material>('default-particle-gpu-material');
             _matInsInfo.owner = ps;
             _matInsInfo.subModelIdx = 0;
@@ -619,6 +635,11 @@ export default class ParticleSystemRendererGPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat!;
+        // A custom material may still have an invalid or unavailable effect.
+        if (!mat || !mat.passes.length) {
+            warn('Particle material has no render passes. Check its effect import and selected technique.');
+            return;
+        }
 
         ps.node.getWorldMatrix(_tempWorldTrans);
 

@@ -1,4 +1,4 @@
-import { buildFontDesc, CssFontFamily, getCanvasFontFamily, quoteFontFamily } from '../../cocos/2d/utils/font-family';
+import { buildFontDesc, CssFontFamily, getCanvasFontFamily, quoteFontFamily, serializeFontFamily } from '../../cocos/2d/utils/font-family';
 import { TTFFont } from '../../cocos/2d/assets/ttf-font';
 import type { Label } from '../../cocos/2d/components/label';
 import { TTFUtils } from '../../cocos/2d/assembler/label/ttfUtils';
@@ -57,13 +57,13 @@ describe('font family serialization', () => {
         const descriptions = rawAliases.map((rawAlias) => {
             const source = { useSystemFont: false, fontFamily: 'Arial', font: { _nativeAsset: rawAlias } };
             // A migrated manual caller uses the original registered alias, not its old ctx.font text.
-            const migrated = buildFontDesc(40, quoteFontFamily(rawAlias));
+            const migrated = buildFontDesc(40, serializeFontFamily(rawAlias));
             expect(migrated).toBe(buildFontDesc(40, getCanvasFontFamily(source)));
             expect(source.font._nativeAsset).toBe(rawAlias);
             return migrated;
         });
         expect(descriptions).toEqual([
-            '40px "Example_LABEL"',
+            '40px Example_LABEL',
             '40px "\\"Example_LABEL\\""',
             '40px "\\"My Font_LABEL\\""',
         ]);
@@ -84,15 +84,25 @@ describe('Label font consumers', () => {
         }
     }
 
-    test('TTF and CHAR resolve the same raw asset without modifying it', () => {
+    test.each([
+        ['KenneyPixel_LABEL', 'KenneyPixel_LABEL'],
+        ['AlibabaPuHuiTi-3-105-Heavy_LABEL', 'AlibabaPuHuiTi-3-105-Heavy_LABEL'],
+        ['sans-serif_LABEL', 'sans-serif_LABEL'],
+        ['中文字体_LABEL', '"中文字体_LABEL"'],
+        ['阿里普惠体-Heavy_LABEL', '"阿里普惠体-Heavy_LABEL"'],
+        ['Alibaba PuHuiTi 3.0 105 Heavy', '"Alibaba PuHuiTi 3.0 105 Heavy"'],
+        ['3Font_LABEL', '"3Font_LABEL"'],
+        ['Font.3_LABEL', '"Font.3_LABEL"'],
+        ['A,B_LABEL', '"A,B_LABEL"'],
+    ])('TTF and CHAR select the family for %p without modifying the asset', (raw, expected) => {
         const font = new TTFFont();
-        font._nativeAsset = 'Alibaba PuHuiTi 3.0 105 Heavy';
+        font._nativeAsset = raw;
         const label = { font, useSystemFont: false, fontFamily: 'Arial' } as unknown as Label;
         const ttf = new TTFUtils();
         const char = new ExposedLetterFont();
-        expect(ttf._updateFontFamily(label)).toBe('"Alibaba PuHuiTi 3.0 105 Heavy"');
+        expect(ttf._updateFontFamily(label)).toBe(expected);
         expect(char.familyFor(label)).toBe(ttf._updateFontFamily(label));
-        expect(font._nativeAsset).toBe('Alibaba PuHuiTi 3.0 105 Heavy');
+        expect(font._nativeAsset).toBe(raw);
     });
 
     test('Web EditBox applies a custom family as CSS and preserves system lists', () => {

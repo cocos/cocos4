@@ -103,7 +103,6 @@ import {
     RasterPass,
     RasterSubpass,
     RaytracePass,
-    RenderData,
     RenderGraph,
     RenderGraphValue,
     RenderGraphVisitor,
@@ -375,7 +374,7 @@ class BlitDesc {
     private _stageDesc: DescriptorSet | undefined;
     // If VOLUMETRIC_LIGHTING is turned on, it needs to be assigned
     private _lightVolumeBuffer: Buffer | null = null;
-    private _lightMeterScale = 10000.0;
+    private _lightMeterScale = Camera.standardLightMeterScale;
     private _lightBufferData!: Float32Array;
 
     get screenQuad (): PipelineInputAssemblerData | null { return this._screenQuad; }
@@ -773,7 +772,6 @@ class DeviceRenderPass implements RecordingInterface {
     protected _layoutName: string;
     protected _viewport: Viewport | null = null;
     private _layout: RenderPassLayoutInfo | null = null;
-    private _idxOfRenderData: number = 0;
 
     private _traversalResolves (callback: (resolvePair: ResolvePair) => void): void {
         const subpassGraph = this._rasterPass.subpassGraph;
@@ -899,7 +897,6 @@ class DeviceRenderPass implements RecordingInterface {
         );
     }
     get passMergeInfo (): RenderPassMergeInfo { return rpMergeInfos.get(this._rasterPass)!; }
-    get indexOfRD (): number { return this._idxOfRenderData; }
     get rasterID (): number { return this._rasterID; }
     get layoutName (): string { return this._layoutName; }
     get passID (): number { return this._passID; }
@@ -911,9 +908,6 @@ class DeviceRenderPass implements RecordingInterface {
     get clearStencil (): number { return this._clearStencil; }
     get deviceQueues (): Map<number, DeviceRenderQueue> { return this._deviceQueues; }
     get viewport (): Viewport | null { return this._viewport; }
-    addIdxOfRD (): void {
-        this._idxOfRenderData++;
-    }
     visitResource (resName: string): void {
         const resourceGraph = context.resourceGraph;
         const vertId = resourceGraph.vertex(resName);
@@ -1038,7 +1032,6 @@ class DeviceRenderPass implements RecordingInterface {
         this._layoutName = context.renderGraph.getLayout(id);
         this._passID = cclegacy.rendering.getPassID(this._layoutName);
         this._deviceQueues.clear();
-        this._idxOfRenderData = 0;
         let framebuffer: Framebuffer | null = null;
         const colTextures: Texture[] = [];
         const currFramebuffer = this._framebuffer;
@@ -1172,8 +1165,9 @@ class DeviceComputePass implements RecordingInterface {
         for (const queue of this._deviceQueues) {
             queue.record();
         }
-        const renderData = context.renderGraph.getData(this._computeInfo.id);
-        updateGlobalDescBinding(renderData, -1, 0, context.renderGraph.getLayout(this._computeInfo.id));
+        const rg = context.renderGraph;
+        const passId = this._computeInfo.id;
+        updateGlobalDescBinding(rg.getData(passId), -1, rg.getLayout(passId));
     }
 
     resetResource (id: number, pass: ComputePass): void {
@@ -1309,32 +1303,26 @@ class DeviceRenderScene implements RecordingInterface {
         recordCommand(context.commandBuffer, this._renderPass, pass, blitDesc.stageDesc!, shader, screenIa);
     }
 
-    protected _updateGlobal (data: RenderData, sceneId: number): void {
-        const devicePass = this._currentQueue.devicePass;
-        devicePass.addIdxOfRD();
-        updateGlobalDescBinding(data, sceneId, devicePass.indexOfRD, context.renderGraph.getLayout(devicePass.rasterID));
-    }
-
     protected _updateRenderData (): void {
-        if (this._currentQueue.isUpdateUBO) return;
-        const devicePass = this._currentQueue.devicePass;
+        const queue = this._currentQueue;
+        if (queue.isUpdateUBO) return;
+        const devicePass = queue.devicePass;
+        const rg = context.renderGraph;
         const rasterId = devicePass.rasterID;
-        const passRenderData = context.renderGraph.getData(rasterId);
+        const layout = rg.getLayout(rasterId);
         const sceneId = this.sceneID;
         // global
-        this._updateGlobal(context.renderGraph.globalRenderData, sceneId);
+        updateGlobalDescBinding(rg.globalRenderData, sceneId, layout);
         // pass
-        this._updateGlobal(passRenderData, sceneId);
+        updateGlobalDescBinding(rg.getData(rasterId), sceneId, layout);
         // queue
-        const queueId = this._currentQueue.queueId;
-        const queueRenderData = context.renderGraph.getData(queueId)!;
-        this._updateGlobal(queueRenderData, sceneId);
+        updateGlobalDescBinding(rg.getData(queue.queueId)!, sceneId, layout);
         // scene
-        const sceneRenderData = context.renderGraph.getData(sceneId)!;
-        if (sceneRenderData) this._updateGlobal(sceneRenderData, sceneId);
+        const sceneRenderData = rg.getData(sceneId);
+        if (sceneRenderData) updateGlobalDescBinding(sceneRenderData, sceneId, layout);
         devicePass.processRenderLayout();
         context.passDescriptorSet?.update();
-        this._currentQueue.isUpdateUBO = true;
+        queue.isUpdateUBO = true;
     }
 
     private _applyViewport (): void {

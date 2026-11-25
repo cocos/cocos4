@@ -65,7 +65,7 @@ export class LightingStage extends RenderStage {
     private _deferredLitsBufs: Buffer = null!;
     private _maxDeferredLights = UBODeferredLight.LIGHTS_PER_PASS;
     private _lightBufferData: Float32Array = null!;
-    private _lightMeterScale = 10000.0;
+    private _lightMeterScale = Camera.standardLightMeterScale;
     private _descriptorSet: DescriptorSet = null!;
     private _renderArea = new Rect();
     private _planarQueue: PlanarShadowQueue = null!;

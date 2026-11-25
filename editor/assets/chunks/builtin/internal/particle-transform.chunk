@@ -1,0 +1,17 @@
+// Separate from particle-common to preserve the shared Constants block layout
+// and avoid adding particle-only uniforms to Billboard materials.
+#include <builtin/uniforms/cc-local>
+
+uniform ParticleTransform {
+  highp mat4 particleWorldMatrix;
+  vec4 particleTransformParams;
+};
+
+highp vec4 ParticleToWorld (highp vec4 value) {
+  // Zero-initialized parameters preserve the legacy path until explicitly
+  // enabled by the particle renderer. World scaling always uses cc_matWorld.
+  if (particleTransformParams.x > 0.5) {
+    return particleWorldMatrix * value;
+  }
+  return cc_matWorld * value;
+}

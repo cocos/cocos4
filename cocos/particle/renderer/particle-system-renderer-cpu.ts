@@ -23,10 +23,11 @@
 */
 
 import { EDITOR_NOT_IN_PREVIEW } from 'internal:constants';
+import { SubEmitterEvent } from '../sub-emitter';
 import { builtinResMgr } from '../../asset/asset-manager';
 import { Material, Texture2D } from '../../asset/assets';
 import { AttributeName, Format, Attribute, FormatInfos } from '../../gfx';
-import { Mat4, Vec2, Vec3, Vec4, pseudoRandom, Quat, EPSILON, approx, RecyclePool, warn, Color, v3 } from '../../core';
+import { geometry, Mat4, Vec2, Vec3, Vec4, pseudoRandom, Quat, EPSILON, approx, RecyclePool, warn, Color, v3 } from '../../core';
 import { MaterialInstance, IMaterialInstanceInfo } from '../../render-scene/core/material-instance';
 import { MacroRecord } from '../../render-scene/core/pass-utils';
 import { ParticleAlignmentSpace, ParticleRenderMode, ParticleSpace } from '../enum';
@@ -43,6 +44,9 @@ import type ParticleSystemRenderer from './particle-system-renderer-data';
 const _tempNodeScale = new Vec4();
 const _tempAttribUV = v3();
 const _tempWorldTrans = new Mat4();
+const _minOriginOffset = new Vec3();
+const _maxOriginOffset = new Vec3();
+const _originOffset = new Vec3();
 const _tempParentInverse = new Mat4();
 const _node_rot = new Quat();
 
@@ -51,6 +55,7 @@ const _animModule = [
     '_sizeOvertimeModule',
     '_velocityOvertimeModule',
     '_forceOvertimeModule',
+    '_forceFieldModule',
     '_limitVelocityOvertimeModule',
     '_rotationOvertimeModule',
     '_textureAnimationModule',
@@ -69,6 +74,7 @@ const CC_USE_EMBEDDED_ALPHA = 'CC_USE_EMBEDDED_ALPHA';
 
 const CC_RENDER_MODE = 'CC_RENDER_MODE';
 const ROTATION_OVER_TIME_MODULE_ENABLE = 'ROTATION_OVER_TIME_MODULE_ENABLE';
+const USE_NORMAL_MAP = 'USE_NORMAL_MAP';
 const INSTANCE_PARTICLE = 'CC_INSTANCE_PARTICLE';
 const RENDER_MODE_BILLBOARD = 0;
 const RENDER_MODE_STRETCHED_BILLBOARD = 1;
@@ -179,6 +185,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     private _node_scale: Vec3;
     private _particleVertexData: PVData;
     private _particles: RecyclePool<Particle> | null = null;
+    private readonly _eventOrigins = new Map<Particle, Vec3>();
+    private readonly _eventBounds = new geometry.AABB();
     private _defaultTrailMat: Material | null = null;
     private _updateList: Map<string, IParticleModule> = new Map<string, IParticleModule>();
     private _animateList: Map<string, IParticleModule> = new Map<string, IParticleModule>();
@@ -231,6 +239,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     public clear (): void {
         super.clear();
         this._particles!.reset();
+        this._eventOrigins.clear();
         if (this._particleSystem && this._particleSystem._trailModule) {
             this._particleSystem._trailModule.clear();
         }
@@ -246,6 +255,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
     }
 
     public onDestroy (): void {
+        this._eventOrigins.clear();
         this._particles?.destroy();
         super.onDestroy();
     }
@@ -261,7 +271,35 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         return this._defaultTrailMat;
     }
 
-    public setNewParticle (p: Particle): void {
+    public setNewParticle (p: Particle, eventOrigin?: Vec3): void {
+        if (eventOrigin) this._eventOrigins.set(p, eventOrigin.clone());
+        this._particleSystem!.triggerSubEmitters(SubEmitterEvent.Birth, p.position);
+    }
+
+    public getCullingBounds (emitterBounds: geometry.AABB): geometry.AABB {
+        if (!this._eventOrigins.size) return emitterBounds;
+        const ps = this._particleSystem!;
+        const local = ps.simulationSpace !== ParticleSpace.World;
+        const field = ps._forceFieldModule;
+        if (local || field?.enable) ps.getParticleWorldMatrix(_tempWorldTrans);
+        const nodeOrigin = ps.node.worldPosition;
+        _minOriginOffset.set(0, 0, 0);
+        _maxOriginOffset.set(0, 0, 0);
+        let maxLifetime = 0;
+        for (const [p, origin] of this._eventOrigins) {
+            const world = local ? Vec3.transformMat4(_originOffset, origin, _tempWorldTrans) : origin;
+            Vec3.subtract(_originOffset, world, nodeOrigin);
+            Vec3.min(_minOriginOffset, _minOriginOffset, _originOffset);
+            Vec3.max(_maxOriginOffset, _maxOriginOffset, _originOffset);
+            maxLifetime = Math.max(maxLifetime, p.startLifetime);
+        }
+        geometry.AABB.fromPoints(this._eventBounds, _minOriginOffset, _maxOriginOffset);
+        this._eventBounds.center.add(emitterBounds.center);
+        this._eventBounds.halfExtents.add(emitterBounds.halfExtents);
+        if (field?.enable) {
+            this._eventBounds.halfExtents.add(field.getCullingPadding(_originOffset, maxLifetime, _tempWorldTrans));
+        }
+        return this._eventBounds;
     }
 
     private _initModuleList (): void {
@@ -376,7 +414,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         }
     }
 
-    private doUpdateScale (pass): void {
+    private doUpdateScale (pass: Pass): void {
+        this.updateWorldTransform(pass);
         const nodeScale = this._node_scale;
         switch (this._particleSystem?.scaleSpace) {
         case ParticleSpace.Local:
@@ -402,9 +441,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         }
         ps.node.getWorldMatrix(_tempWorldTrans);
         const mat: Material | null = ps.getMaterialInstance(0) || this._defaultMat;
-        const pass = mat!.passes[0];
-        this.doUpdateScale(pass);
-        this.doUpdateRotation(pass);
+        const pass = mat?.passes[0];
+        if (pass) {
+            this.doUpdateScale(pass);
+            this.doUpdateRotation(pass);
+        }
 
         this._updateList.forEach((value: IParticleModule, key: string): void => {
             // TODO(cjh): Bug here? _updateList is a Map, the old code uses `this._updateList['some_key'] = some_value;`
@@ -415,6 +456,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         });
 
         const trailModule = ps._trailModule;
+        const forceField = ps._forceFieldModule;
+        if (forceField?.enable) {
+            ps.getParticleWorldMatrix(_tempWorldTrans);
+            forceField.update(ps.simulationSpace, _tempWorldTrans);
+        }
         const trailEnable = trailModule && trailModule.enable;
         if (trailEnable) {
             trailModule.update();
@@ -444,6 +490,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 if (trailEnable) {
                     trailModule.removeParticle(p);
                 }
+                ps.triggerSubEmitters(SubEmitterEvent.Death, p.position);
+                this._eventOrigins.delete(p);
                 this._particles!.removeAt(i);
                 continue;
             }
@@ -695,7 +743,8 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             this._renderInfo!.mainTexture = shareMaterial.getProperty('mainTexture', 0) as Texture2D;
         }
 
-        if (ps.sharedMaterial == null && this._defaultMat == null) {
+        // Renderer can destroy the cached instance when replacing a preview material.
+        if (ps.sharedMaterial == null && (!this._defaultMat || !this._defaultMat.passes.length)) {
             _matInsInfo.parent = builtinResMgr.get<Material>('default-particle-material');
             _matInsInfo.owner = this._particleSystem;
             _matInsInfo.subModelIdx = 0;
@@ -708,6 +757,11 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
             }
         }
         const mat: Material = ps.getMaterialInstance(0) || this._defaultMat!;
+        // A custom material may still have an invalid or unavailable effect.
+        if (!mat || !mat.passes.length) {
+            warn('Particle material has no render passes. Check its effect import and selected technique.');
+            return;
+        }
         if (ps.simulationSpace === ParticleSpace.World) {
             this._defines[CC_USE_WORLD_SPACE] = true;
         } else {
@@ -754,6 +808,10 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         const roationModule = this._particleSystem._rotationOvertimeModule;
         enable = roationModule ? roationModule.enable : false;
         this._defines[ROTATION_OVER_TIME_MODULE_ENABLE] = enable;
+        // Explicitly clear the override when the material omits the disabled macro.
+        const materialDefines = (shareMaterial || mat.parent || mat).passes[0]?.defines;
+        this._defines[USE_NORMAL_MAP] = !!materialDefines?.[USE_NORMAL_MAP];
+
         this._defines[INSTANCE_PARTICLE] = this._useInstance;
 
         const matIns: MaterialInstance | null = ps.getMaterialInstance(0);
@@ -781,7 +839,7 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
                 this._trailDefines[CC_USE_WORLD_SPACE] = false;
             }
             let mat: Material | null = ps.getMaterialInstance(1);
-            if (mat === null && this._defaultTrailMat === null) {
+            if (mat === null && (!this._defaultTrailMat || !this._defaultTrailMat.passes.length)) {
                 _matInsInfo.parent = builtinResMgr.get<Material>('default-trail-material');
                 _matInsInfo.owner = this._particleSystem;
                 _matInsInfo.subModelIdx = 1;

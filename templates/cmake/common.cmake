@@ -60,14 +60,19 @@ endfunction()
 
 
 function(cc_gen_plugin_cmake_hook)
-    set(project_root_dir ${CC_PROJECT_DIR}/../../..)
     set(load_plugin_cmake ${CC_PROJECT_DIR}/Pre-AutoLoadPlulgins.cmake)
     message(STATUS "Try generating ${load_plugin_cmake}")
     file(REMOVE ${load_plugin_cmake})
-    list(APPEND CC_PLUGIN_PATH 
-        ${project_root_dir}/native 
-        ${project_root_dir}/extensions
-        )
+    # Scan roots default to the native-build project layout; callers that host
+    # the scan elsewhere (e.g. the Simulator, pointed at an arbitrary
+    # extensions tree) may pre-set CC_PLUGIN_PATH with their own roots.
+    if(NOT DEFINED CC_PLUGIN_PATH)
+        set(project_root_dir ${CC_PROJECT_DIR}/../../..)
+        list(APPEND CC_PLUGIN_PATH
+            ${project_root_dir}/native
+            ${project_root_dir}/extensions
+            )
+    endif()
     set(plugin_args_info ${CMAKE_CURRENT_BINARY_DIR}/plugin_dirs.txt)
     file(WRITE ${plugin_args_info} "# directories for searching native plugins\n")
     foreach(dir ${CC_PLUGIN_PATH})

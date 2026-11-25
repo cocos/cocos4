@@ -67,6 +67,7 @@ export class EmbeddedAnimationClipPlayable extends EmbeddedPlayable {
             return null;
         }
         const state = new AnimationState(clip);
+        state._manualTime = true;
         state.initialize(
             clipRoot,
         );
@@ -81,6 +82,7 @@ class EmbeddedAnimationClipPlayableState extends EmbeddedPlayableState {
     }
 
     public destroy (): void {
+        this._animationState.stop();
         this._animationState.destroy();
     }
 

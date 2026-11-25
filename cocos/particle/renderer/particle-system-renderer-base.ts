@@ -27,11 +27,14 @@ import ParticleBatchModel from '../models/particle-batch-model';
 import ParticleSystemRenderer from './particle-system-renderer-data';
 import { Material } from '../../asset/assets';
 import { Particle, IParticleModule } from '../particle';
-import { ParticleRenderMode } from '../enum';
-import { cclegacy } from '../../core';
+import { ParticleRenderMode, ParticleSpace } from '../enum';
+import { cclegacy, geometry, Mat4, Vec3, Vec4 } from '../../core';
 import { Pass } from '../../render-scene';
 import type { ParticleSystem } from '../particle-system';
 import type { Root } from '../../root';
+
+const particleWorldMatrix = new Mat4();
+const particleTransformParams = new Vec4();
 
 export abstract class ParticleSystemRendererBase {
     protected _particleSystem: ParticleSystem | null = null;
@@ -107,7 +110,10 @@ export abstract class ParticleSystemRendererBase {
     public setVertexAttributes (): void {
         if (this._model) {
             this.updateVertexAttrib();
-            this._model.setVertexAttributes(this._renderInfo!.renderMode === ParticleRenderMode.Mesh ? this._renderInfo!.mesh : null, this._vertAttrs);
+            this._model.setVertexAttributes(
+                this._renderInfo!.renderMode === ParticleRenderMode.Mesh ? this._renderInfo!.mesh : null,
+                this._vertAttrs,
+            );
         }
     }
 
@@ -128,6 +134,28 @@ export abstract class ParticleSystemRendererBase {
     }
 
     public updateTrailMaterial (): void {}
+
+    /** @engineInternal */
+    public updateWorldTransform (pass?: Pass): void {
+        const ps = this._particleSystem;
+        if (!ps) return;
+        const local = ps.scaleSpace === ParticleSpace.Local;
+        if (local) ps.getParticleWorldMatrix(particleWorldMatrix);
+        particleTransformParams.set(local ? 1 : 0, 0, 0, 0);
+        const updatePass = (target: Pass): void => {
+            const matrixHandle = target.getHandle('particleWorldMatrix');
+            const paramsHandle = target.getHandle('particleTransformParams');
+            // Old/custom effects keep their original cc_matWorld path.
+            if (!matrixHandle || !paramsHandle) return;
+            if (local) target.setUniform(matrixHandle, particleWorldMatrix);
+            target.setUniform(paramsHandle, particleTransformParams);
+        };
+        if (pass) updatePass(pass);
+        const material = ps.getMaterialInstance(0) || this.getDefaultMaterial();
+        const trailMaterial = ps.getMaterialInstance(1) || this.getDefaultTrailMaterial();
+        for (const target of material?.passes || []) updatePass(target);
+        for (const target of trailMaterial?.passes || []) updatePass(target);
+    }
     public getDefaultTrailMaterial (): Material | null { return null; }
     public abstract getParticleCount (): number;
     public abstract getFreeParticle (): Particle | null;
@@ -136,7 +164,10 @@ export abstract class ParticleSystemRendererBase {
     public abstract updateVertexAttrib (): void;
     public abstract updateRenderMode (): void;
     public abstract updateMaterialParams (): void;
-    public abstract setNewParticle (p: Particle): void;
+    public abstract setNewParticle (p: Particle, eventOrigin?: Vec3): void;
+    public getCullingBounds (emitterBounds: geometry.AABB): geometry.AABB {
+        return emitterBounds;
+    }
     public abstract getDefaultMaterial(): Material | null;
     public abstract updateRotation (pass: Pass | null): void;
     public abstract updateScale (pass: Pass | null): void;

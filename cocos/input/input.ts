@@ -24,7 +24,7 @@
  THE SOFTWARE.
 */
 
-import { EDITOR_NOT_IN_PREVIEW, HTML5, NATIVE } from 'internal:constants';
+import { EDITOR_NOT_IN_PREVIEW, HTML5, NATIVE, WECHAT } from 'internal:constants';
 import { AccelerometerInputSource, GamepadInputDevice, HMDInputDevice, HandheldInputDevice,
     HandleInputDevice, KeyboardInputSource, MouseInputSource, TouchInputSource } from 'pal/input';
 import { touchManager } from '../../pal/input/touch-manager';
@@ -380,10 +380,10 @@ export class Input {
         }
 
         if (sys.hasFeature(sys.Feature.EVENT_MOUSE)) {
-            // WeChat PC maps the left mouse button and configured keyboard/mouse controls to touch events.
-            // Use those platform touch events to avoid duplicates, while continuing to dispatch mouse events.
+            // Game View still needs mouse-to-touch simulation even when INPUT_TOUCH is true.
+            // WeChat PC already maps left mouse clicks to touch events.
             // https://developers.weixin.qq.com/minigame/dev/guide/open-ability/pc-game.html
-            const shouldSimulateTouch = !sys.hasFeature(sys.Feature.INPUT_TOUCH);
+            const shouldSimulateTouch = !(WECHAT && sys.hasFeature(sys.Feature.INPUT_TOUCH));
             mouseInput.on(InputEventType.MOUSE_DOWN, (event): void => {
                 if (shouldSimulateTouch) {
                     self._needSimulateTouchMoveEvent = true;
