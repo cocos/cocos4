@@ -158,8 +158,8 @@ void save(OutputArchive& ar, const LayoutGraph& g) {
 }
 
 void load(InputArchive& ar, LayoutGraph& g) {
-    g.links.clear();
     g.handles.clear();
+    g.links.clear();
     g.names.clear();
     g.descriptors.clear();
     g.stages.clear();
@@ -406,8 +406,8 @@ void save(OutputArchive& ar, const LayoutGraphData& g) {
 }
 
 void load(InputArchive& ar, LayoutGraphData& g) {
-    g.links.clear();
     g.handles.clear();
+    g.links.clear();
     g.names.clear();
     g.updateFrequencies.clear();
     g.layouts.clear();

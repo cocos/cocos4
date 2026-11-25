@@ -107,26 +107,6 @@ num_vertices(const SubpassGraph& g) noexcept { // NOLINT
     return gsl::narrow_cast<SubpassGraph::vertices_size_type>(g.getVertexList().size());
 }
 
-// EdgeListGraph
-inline std::pair<SubpassGraph::edge_iterator, SubpassGraph::edge_iterator>
-edges(const SubpassGraph& g0) noexcept {
-    auto& g = const_cast<SubpassGraph&>(g0);
-    return std::make_pair(
-        SubpassGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().begin(), g.getVertexList().end(), g),
-        SubpassGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().end(), g.getVertexList().end(), g));
-}
-
-inline SubpassGraph::edges_size_type
-num_edges(const SubpassGraph& g) noexcept { // NOLINT
-    SubpassGraph::edges_size_type numEdges = 0;
-
-    auto range = vertices(g);
-    for (auto iter = range.first; iter != range.second; ++iter) {
-        numEdges += out_degree(*iter, g);
-    }
-    return numEdges;
-}
-
 // MutableGraph(Edge)
 inline std::pair<SubpassGraph::edge_descriptor, bool>
 add_edge( // NOLINT
@@ -313,26 +293,6 @@ num_vertices(const ResourceGraph& g) noexcept { // NOLINT
     return gsl::narrow_cast<ResourceGraph::vertices_size_type>(g.getVertexList().size());
 }
 
-// EdgeListGraph
-inline std::pair<ResourceGraph::edge_iterator, ResourceGraph::edge_iterator>
-edges(const ResourceGraph& g0) noexcept {
-    auto& g = const_cast<ResourceGraph&>(g0);
-    return std::make_pair(
-        ResourceGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().begin(), g.getVertexList().end(), g),
-        ResourceGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().end(), g.getVertexList().end(), g));
-}
-
-inline ResourceGraph::edges_size_type
-num_edges(const ResourceGraph& g) noexcept { // NOLINT
-    ResourceGraph::edges_size_type numEdges = 0;
-
-    auto range = vertices(g);
-    for (auto iter = range.first; iter != range.second; ++iter) {
-        numEdges += out_degree(*iter, g);
-    }
-    return numEdges;
-}
-
 // MutableGraph(Edge)
 inline std::pair<ResourceGraph::edge_descriptor, bool>
 add_edge( // NOLINT
@@ -443,24 +403,6 @@ ancestor(ResourceGraph::vertex_descriptor u, ResourceGraph::vertex_descriptor v,
     return isAncestor;
 }
 
-inline std::pair<ResourceGraph::ownership_iterator, ResourceGraph::ownership_iterator>
-references(const ResourceGraph& g0) noexcept {
-    auto& g = const_cast<ResourceGraph&>(g0);
-    return std::make_pair(
-        ResourceGraph::ownership_iterator(g.getVertexList().begin(), g.getVertexList().begin(), g.getVertexList().end(), g),
-        ResourceGraph::ownership_iterator(g.getVertexList().begin(), g.getVertexList().end(), g.getVertexList().end(), g));
-}
-
-inline ResourceGraph::ownerships_size_type
-numReferences(const ResourceGraph& g) noexcept {
-    ResourceGraph::ownerships_size_type numEdges = 0;
-    auto                                range    = vertices(g);
-    for (auto iter = range.first; iter != range.second; ++iter) {
-        numEdges += numChildren(*iter, g);
-    }
-    return numEdges;
-}
-
 // IncidenceGraph
 inline RenderGraph::vertex_descriptor
 source(const RenderGraph::edge_descriptor& e, const RenderGraph& /*g*/) noexcept {
@@ -526,26 +468,6 @@ vertices(const RenderGraph& g) noexcept {
 inline RenderGraph::vertices_size_type
 num_vertices(const RenderGraph& g) noexcept { // NOLINT
     return gsl::narrow_cast<RenderGraph::vertices_size_type>(g.getVertexList().size());
-}
-
-// EdgeListGraph
-inline std::pair<RenderGraph::edge_iterator, RenderGraph::edge_iterator>
-edges(const RenderGraph& g0) noexcept {
-    auto& g = const_cast<RenderGraph&>(g0);
-    return std::make_pair(
-        RenderGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().begin(), g.getVertexList().end(), g),
-        RenderGraph::edge_iterator(g.getVertexList().begin(), g.getVertexList().end(), g.getVertexList().end(), g));
-}
-
-inline RenderGraph::edges_size_type
-num_edges(const RenderGraph& g) noexcept { // NOLINT
-    RenderGraph::edges_size_type numEdges = 0;
-
-    auto range = vertices(g);
-    for (auto iter = range.first; iter != range.second; ++iter) {
-        numEdges += out_degree(*iter, g);
-    }
-    return numEdges;
 }
 
 // MutableGraph(Edge)
@@ -656,24 +578,6 @@ ancestor(RenderGraph::vertex_descriptor u, RenderGraph::vertex_descriptor v, con
         r = parents(v, g);
     }
     return isAncestor;
-}
-
-inline std::pair<RenderGraph::ownership_iterator, RenderGraph::ownership_iterator>
-references(const RenderGraph& g0) noexcept {
-    auto& g = const_cast<RenderGraph&>(g0);
-    return std::make_pair(
-        RenderGraph::ownership_iterator(g.getVertexList().begin(), g.getVertexList().begin(), g.getVertexList().end(), g),
-        RenderGraph::ownership_iterator(g.getVertexList().begin(), g.getVertexList().end(), g.getVertexList().end(), g));
-}
-
-inline RenderGraph::ownerships_size_type
-numReferences(const RenderGraph& g) noexcept {
-    RenderGraph::ownerships_size_type numEdges = 0;
-    auto                              range    = vertices(g);
-    for (auto iter = range.first; iter != range.second; ++iter) {
-        numEdges += numChildren(*iter, g);
-    }
-    return numEdges;
 }
 
 } // namespace render

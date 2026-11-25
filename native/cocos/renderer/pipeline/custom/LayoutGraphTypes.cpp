@@ -56,10 +56,10 @@ RenderPhase::RenderPhase(RenderPhase const& rhs, const allocator_type& alloc)
 : shaders(rhs.shaders, alloc) {}
 
 LayoutGraph::LayoutGraph(const LayoutGraph& rhs, const allocator_type& alloc)
-: links(rhs.links, alloc), handles(rhs.handles, alloc), names(rhs.names, alloc), descriptors(rhs.descriptors, alloc), stages(rhs.stages, alloc), phases(rhs.phases, alloc) {}
+: handles(rhs.handles, alloc), links(rhs.links, alloc), names(rhs.names, alloc), descriptors(rhs.descriptors, alloc), stages(rhs.stages, alloc), phases(rhs.phases, alloc) {}
 
 LayoutGraph::LayoutGraph(LayoutGraph&& rhs, const allocator_type& alloc)
-: links(std::move(rhs.links), alloc), handles(std::move(rhs.handles), alloc), names(std::move(rhs.names), alloc), descriptors(std::move(rhs.descriptors), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc) {}
+: handles(std::move(rhs.handles), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), descriptors(std::move(rhs.descriptors), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc) {}
 
 LayoutGraph::vertex_descriptor LayoutGraph::add_vertex(const RenderStage_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, parent);
@@ -319,7 +319,7 @@ RenderPhaseData::RenderPhaseData(RenderPhaseData&& rhs, const allocator_type& al
   pipelineLayout(std::move(rhs.pipelineLayout)) {}
 
 LayoutGraphData::LayoutGraphData(LayoutGraphData&& rhs, const allocator_type& alloc)
-: links(std::move(rhs.links), alloc), handles(std::move(rhs.handles), alloc), names(std::move(rhs.names), alloc), updateFrequencies(std::move(rhs.updateFrequencies), alloc), layouts(std::move(rhs.layouts), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc), valueNames(std::move(rhs.valueNames), alloc), attributeIndex(std::move(rhs.attributeIndex), alloc), constantIndex(std::move(rhs.constantIndex), alloc), shaderLayoutIndex(std::move(rhs.shaderLayoutIndex), alloc), effects(std::move(rhs.effects), alloc), constantMacros(std::move(rhs.constantMacros)) {}
+: handles(std::move(rhs.handles), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), updateFrequencies(std::move(rhs.updateFrequencies), alloc), layouts(std::move(rhs.layouts), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc), valueNames(std::move(rhs.valueNames), alloc), attributeIndex(std::move(rhs.attributeIndex), alloc), constantIndex(std::move(rhs.constantIndex), alloc), shaderLayoutIndex(std::move(rhs.shaderLayoutIndex), alloc), effects(std::move(rhs.effects), alloc), constantMacros(std::move(rhs.constantMacros)) {}
 
 LayoutGraphData::vertex_descriptor LayoutGraphData::add_vertex(const RenderStage_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, parent);

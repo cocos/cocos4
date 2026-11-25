@@ -29,9 +29,7 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
 #include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
-// IWYU pragma: end_exports
 #include "cocos/base/std/hash/hash.h"
 
 namespace cc {
@@ -51,35 +49,39 @@ struct ManagedTexture;
 struct PersistentTexture;
 struct ManagedResource;
 struct Subpass;
+struct Subpass_;
 struct SubpassGraph;
 struct RasterSubpass;
 struct ComputeSubpass;
 struct RasterPass;
 struct PersistentRenderPassAndFramebuffer;
-struct ManagedTag;
-struct ManagedBufferTag;
-struct ManagedTextureTag;
-struct PersistentBufferTag;
-struct PersistentTextureTag;
-struct FramebufferTag;
-struct SwapchainTag;
-struct SamplerTag;
-struct FormatViewTag;
-struct SubresourceViewTag;
+struct Managed_;
+struct ManagedBuffer_;
+struct ManagedTexture_;
+struct PersistentBuffer_;
+struct PersistentTexture_;
+struct Framebuffer_;
+struct Swapchain_;
+struct Sampler_;
+struct FormatView_;
+struct SubresourceView_;
 struct FormatView;
 struct SubresourceView;
+struct Desc_;
+struct Traits_;
+struct States_;
 struct ResourceGraph;
 struct ComputePass;
 struct ResolvePass;
 struct CopyPass;
 struct MovePass;
 struct RaytracePass;
-struct QueueTag;
-struct SceneTag;
-struct DispatchTag;
-struct BlitTag;
-struct ClearTag;
-struct ViewportTag;
+struct Queue_;
+struct Scene_;
+struct Dispatch_;
+struct Blit_;
+struct Clear_;
+struct Viewport_;
 struct ClearView;
 struct RenderQueue;
 
@@ -92,6 +94,8 @@ enum class BlitType : uint8_t;
 
 struct Blit;
 struct RenderData;
+struct Data_;
+struct Valid_;
 struct RenderGraph;
 
 } // namespace render

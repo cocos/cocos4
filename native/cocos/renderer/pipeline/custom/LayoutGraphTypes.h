@@ -197,9 +197,9 @@ struct RenderPhase_ {};
 
 struct LayoutGraph {
     using allocator_type = boost::container::pmr::polymorphic_allocator<char>;
-    allocator_type get_allocator() const noexcept { return {this->links.get_allocator().resource()}; } // NOLINT(readability-identifier-naming)
+    allocator_type get_allocator() const noexcept { return {this->handles.get_allocator().resource()}; } // NOLINT(readability-identifier-naming)
 
-    explicit LayoutGraph(const allocator_type& alloc) : links(alloc), handles(alloc), names(alloc), descriptors(alloc), stages(alloc), phases(alloc) {}
+    explicit LayoutGraph(const allocator_type& alloc) : handles(alloc), links(alloc), names(alloc), descriptors(alloc), stages(alloc), phases(alloc) {}
     LayoutGraph(const LayoutGraph& rhs, const allocator_type& alloc);
     LayoutGraph(LayoutGraph&& rhs, const allocator_type& alloc);
     LayoutGraph(LayoutGraph&&) noexcept = default;
@@ -378,8 +378,8 @@ struct LayoutGraph {
         vertex_descriptor index;
     };
 
-    ccstd::pmr::vector<TreeEdge> links;
     ccstd::pmr::vector<VertexHandle> handles;
+    ccstd::pmr::vector<TreeEdge> links;
     ccstd::pmr::vector<ccstd::pmr::string> names;
     ccstd::pmr::vector<DescriptorDB> descriptors;
     ccstd::pmr::vector<RenderPassType> stages;
@@ -664,9 +664,9 @@ struct RenderPhaseData {
 
 struct LayoutGraphData {
     using allocator_type = boost::container::pmr::polymorphic_allocator<char>;
-    allocator_type get_allocator() const noexcept { return {this->links.get_allocator().resource()}; } // NOLINT(readability-identifier-naming)
+    allocator_type get_allocator() const noexcept { return {this->handles.get_allocator().resource()}; } // NOLINT(readability-identifier-naming)
 
-    explicit LayoutGraphData(const allocator_type& alloc) : links(alloc), handles(alloc), names(alloc), updateFrequencies(alloc), layouts(alloc), stages(alloc), phases(alloc), valueNames(alloc), attributeIndex(alloc), constantIndex(alloc), shaderLayoutIndex(alloc), effects(alloc) {}
+    explicit LayoutGraphData(const allocator_type& alloc) : handles(alloc), links(alloc), names(alloc), updateFrequencies(alloc), layouts(alloc), stages(alloc), phases(alloc), valueNames(alloc), attributeIndex(alloc), constantIndex(alloc), shaderLayoutIndex(alloc), effects(alloc) {}
     LayoutGraphData(const LayoutGraphData& rhs, const allocator_type& alloc) = delete;
     LayoutGraphData(LayoutGraphData&& rhs, const allocator_type& alloc);
     LayoutGraphData(LayoutGraphData&&) noexcept = default;
@@ -852,8 +852,8 @@ struct LayoutGraphData {
         vertex_descriptor index;
     };
 
-    ccstd::pmr::vector<TreeEdge> links;
     ccstd::pmr::vector<VertexHandle> handles;
+    ccstd::pmr::vector<TreeEdge> links;
     ccstd::pmr::vector<ccstd::pmr::string> names;
     ccstd::pmr::vector<UpdateFrequency> updateFrequencies;
     ccstd::pmr::vector<PipelineLayoutData> layouts;
