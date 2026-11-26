@@ -136,14 +136,14 @@ class PassVisitor implements RenderGraphVisitor {
         const outputName = this.context.resourceGraph.vertexName(outputId);
         readViews.clear();
         const pass = this._currPass! as RasterPass;
-        const subpasses = pass.subpassGraph._subpasses;
+        const subpassGraph = pass.subpassGraph;
         const validPass = rg.getValid(this.passID);
         for (const [readName, raster] of pass.rasterViews) {
             // Check whether the subpass contains the output resources
             let isSubpassOutput = false;
-            for (const subpass of subpasses) {
+            for (const v of subpassGraph.v()) {
                 if (isSubpassOutput) break;
-                for (const resolve of subpass.resolvePairs) {
+                for (const resolve of subpassGraph.getSubpass(v).resolvePairs) {
                     if (resolve.target === outputName && resolve.source === readName) {
                         isSubpassOutput = true;
                         break;

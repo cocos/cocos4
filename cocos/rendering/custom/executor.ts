@@ -238,17 +238,20 @@ class DeviceResource {
 }
 class DeviceTexture extends DeviceResource {
     protected _texture: Texture | null = null;
-    protected _swapchain: Swapchain | null = null;
+    protected _renderSwapchain: RenderSwapchain | null = null;
     protected _framebuffer: Framebuffer | null = null;
     protected _desc: ResourceDesc | null = null;
     protected _trait: ResourceTraits | null = null;
 
     get texture (): Texture | null { return this._texture; }
     set framebuffer (val: Framebuffer | null) { this._framebuffer = val; }
-    get framebuffer (): Framebuffer | null { return this._framebuffer; }
+    get framebuffer (): Framebuffer | null {
+        const renderWindow = this._renderSwapchain && this._renderSwapchain.renderWindow;
+        return (renderWindow && renderWindow.framebuffer) || this._framebuffer;
+    }
     get description (): ResourceDesc | null { return this._desc; }
     get trait (): ResourceTraits | null { return this._trait; }
-    get swapchain (): Swapchain | null { return this._swapchain; }
+    get swapchain (): Swapchain | null { return this._renderSwapchain && this._renderSwapchain.swapchain; }
 
     constructor (name: string, tex: PersistentTexture | Framebuffer | RenderSwapchain | ManagedResource) {
         super(name);
@@ -262,7 +265,7 @@ class DeviceTexture extends DeviceResource {
         } else if (tex instanceof Framebuffer) {
             this._framebuffer = tex;
         } else if (tex instanceof RenderSwapchain) {
-            this._swapchain = tex.swapchain;
+            this._renderSwapchain = tex;
         } else {
             this.createTextureFromDesc(this._desc);
         }
@@ -311,7 +314,8 @@ class DeviceTexture extends DeviceResource {
     }
 
     release (): void {
-        this.framebuffer?.destroy();
+        this._framebuffer?.destroy();
+        this._renderSwapchain = null;
         this._framebuffer = null;
         this.texture?.destroy();
         this._texture = null;
@@ -775,9 +779,8 @@ class DeviceRenderPass implements RecordingInterface {
 
     private _traversalResolves (callback: (resolvePair: ResolvePair) => void): void {
         const subpassGraph = this._rasterPass.subpassGraph;
-        const subpasses = subpassGraph._subpasses;
-        for (const subpass of subpasses) {
-            const resolvePairs = subpass.resolvePairs;
+        for (const v of subpassGraph.v()) {
+            const resolvePairs = subpassGraph.getSubpass(v).resolvePairs;
             for (const resolve of resolvePairs) {
                 callback(resolve);
             }
@@ -1061,10 +1064,12 @@ class DeviceRenderPass implements RecordingInterface {
             }
             const resGraph = context.resourceGraph;
             const resId = resGraph.vertex(resName);
-            const resFbo = resGraph.object(resId);
+            const resource = resGraph.object(resId);
             const resDesc = resGraph.getDesc(resId);
-            if (deviceTex.framebuffer && resFbo instanceof Framebuffer && (deviceTex.framebuffer !== resFbo || resFbo !== this._framebuffer)) {
-                framebuffer = this._framebuffer = deviceTex.framebuffer = resFbo;
+            if (resource instanceof Framebuffer) deviceTex.framebuffer = resource;
+            const resFbo = deviceTex.framebuffer;
+            if (resFbo && resFbo !== this._framebuffer) {
+                framebuffer = this._framebuffer = resFbo;
             } else if (deviceTex.texture && needRebuild) {
                 const gfxTex = deviceTex.texture;
                 gfxTex.resize(resDesc.width, resDesc.height);

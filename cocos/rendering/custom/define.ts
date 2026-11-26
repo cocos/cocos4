@@ -934,9 +934,8 @@ export function genHashValue (pass: RasterPass): void {
     }
 
     const subpassGraph = pass.subpassGraph;
-    const subpasses = subpassGraph._subpasses;
-    for (const subpass of subpasses) {
-        const resolvePairs = subpass.resolvePairs;
+    for (const v of subpassGraph.v()) {
+        const resolvePairs = subpassGraph.getSubpass(v).resolvePairs;
         for (const resolve of resolvePairs) {
             const commonParts = [
                 hashCombineKey(resolve.source),
