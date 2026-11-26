@@ -2145,7 +2145,7 @@ struct PassVisitor : graph::DefaultDfsVisitor {
     ccstd::pmr::vector<Branch> &arms;
     ccstd::pmr::vector<RelationGraph::edge_descriptor> &constraints;
 
-    void backEdge(RelationGraph::edge_descriptor, const RelationGraph &) const {
+    static void backEdge(RelationGraph::edge_descriptor /*edge*/, const RelationGraph & /*graph*/) {
         throw std::logic_error("cyclic pass dependencies");
     }
 

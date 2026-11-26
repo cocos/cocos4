@@ -126,7 +126,7 @@ LayoutGraph::vertex_descriptor LayoutGraph::locate(std::string_view refPath, ver
 
     while (!refPath.empty()) {
         const auto slash = refPath.find('/');
-        const auto segment = refPath.substr(0, slash);
+        const std::string_view segment{refPath.data(), slash == std::string_view::npos ? refPath.size() : slash};
         refPath.remove_prefix(slash == std::string_view::npos ? refPath.size() : slash + 1);
         if (segment.empty() || segment == ".") continue;
         if (segment == "..") {
@@ -386,7 +386,7 @@ LayoutGraphData::vertex_descriptor LayoutGraphData::locate(std::string_view refP
 
     while (!refPath.empty()) {
         const auto slash = refPath.find('/');
-        const auto segment = refPath.substr(0, slash);
+        const std::string_view segment{refPath.data(), slash == std::string_view::npos ? refPath.size() : slash};
         refPath.remove_prefix(slash == std::string_view::npos ? refPath.size() : slash + 1);
         if (segment.empty() || segment == ".") continue;
         if (segment == "..") {

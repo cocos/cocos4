@@ -66,8 +66,8 @@ FGRenderPassInfo::FGRenderPassInfo(const allocator_type& alloc)
 
 FGRenderPassInfo::FGRenderPassInfo(FGRenderPassInfo&& rhs, const allocator_type& alloc)
 : colorAccesses(std::move(rhs.colorAccesses)),
-  dsAccess(std::move(rhs.dsAccess)),
-  dsResolveAccess(std::move(rhs.dsResolveAccess)),
+  dsAccess(rhs.dsAccess),
+  dsResolveAccess(rhs.dsResolveAccess),
   rpInfo(std::move(rhs.rpInfo)),
   orderedViews(std::move(rhs.orderedViews), alloc),
   viewIndex(std::move(rhs.viewIndex), alloc),

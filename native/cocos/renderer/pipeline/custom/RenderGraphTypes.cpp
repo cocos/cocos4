@@ -69,7 +69,7 @@ RasterView::RasterView(RasterView&& rhs, const allocator_type& alloc)
   loadOp(rhs.loadOp),
   storeOp(rhs.storeOp),
   clearFlags(rhs.clearFlags),
-  clearColor(std::move(rhs.clearColor)),
+  clearColor(rhs.clearColor),
   slotID(rhs.slotID),
   shaderStageFlags(rhs.shaderStageFlags) {}
 
@@ -94,7 +94,7 @@ ComputeView::ComputeView(const std::allocator_arg_t& /*tag*/, const allocator_ty
   accessType(accessTypeIn),
   clearFlags(clearFlagsIn),
   clearValueType(clearValueTypeIn),
-  clearValue(std::move(clearValueIn)),
+  clearValue(clearValueIn),
   shaderStageFlags(shaderStageFlagsIn) {}
 
 ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, uint32_t planeIn, gfx::ClearFlagBit clearFlagsIn, ClearValueType clearValueTypeIn, ClearValue clearValueIn, gfx::ShaderStageFlagBit shaderStageFlagsIn, const allocator_type& alloc) // NOLINT
@@ -103,7 +103,7 @@ ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, uin
   plane(planeIn),
   clearFlags(clearFlagsIn),
   clearValueType(clearValueTypeIn),
-  clearValue(std::move(clearValueIn)),
+  clearValue(clearValueIn),
   shaderStageFlags(shaderStageFlagsIn) {}
 
 ComputeView::ComputeView(ComputeView&& rhs, const allocator_type& alloc)
@@ -112,7 +112,7 @@ ComputeView::ComputeView(ComputeView&& rhs, const allocator_type& alloc)
   plane(rhs.plane),
   clearFlags(rhs.clearFlags),
   clearValueType(rhs.clearValueType),
-  clearValue(std::move(rhs.clearValue)),
+  clearValue(rhs.clearValue),
   shaderStageFlags(rhs.shaderStageFlags) {}
 
 ComputeView::ComputeView(ComputeView const& rhs, const allocator_type& alloc)
@@ -198,7 +198,7 @@ RasterSubpass::RasterSubpass(RasterSubpass&& rhs, const allocator_type& alloc)
 : rasterViews(std::move(rhs.rasterViews), alloc),
   computeViews(std::move(rhs.computeViews), alloc),
   resolvePairs(std::move(rhs.resolvePairs), alloc),
-  viewport(std::move(rhs.viewport)),
+  viewport(rhs.viewport),
   subpassID(rhs.subpassID),
   count(rhs.count),
   quality(rhs.quality),
@@ -252,7 +252,7 @@ RasterPass::RasterPass(RasterPass&& rhs, const allocator_type& alloc)
   height(rhs.height),
   count(rhs.count),
   quality(rhs.quality),
-  viewport(std::move(rhs.viewport)),
+  viewport(rhs.viewport),
   versionName(std::move(rhs.versionName), alloc),
   version(rhs.version),
   hashValue(rhs.hashValue),
@@ -337,8 +337,9 @@ ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const SubresourceView
 std::pair<ResourceGraph::edge_descriptor, bool> ResourceGraph::add_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
     if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
         links[v].parent != null_vertex()) return {{null_vertex(), null_vertex()}, false};
-    for (auto p = u; p != null_vertex(); p = links[p].parent)
+    for (auto p = u; p != null_vertex(); p = links[p].parent) {
         if (p == v) return {{null_vertex(), null_vertex()}, false};
+    }
     auto& parent = links[u];
     auto& child = links[v];
     auto* slot = &parent.firstChild;
@@ -436,7 +437,7 @@ ClearView::ClearView(const std::allocator_arg_t& /*tag*/, const allocator_type& 
 ClearView::ClearView(ClearView&& rhs, const allocator_type& alloc)
 : slotName(std::move(rhs.slotName), alloc),
   clearFlags(rhs.clearFlags),
-  clearColor(std::move(rhs.clearColor)) {}
+  clearColor(rhs.clearColor) {}
 
 ClearView::ClearView(ClearView const& rhs, const allocator_type& alloc)
 : slotName(rhs.slotName, alloc),
@@ -583,8 +584,9 @@ void RenderGraph::remove_edge(vertex_descriptor u, vertex_descriptor v) noexcept
 std::pair<RenderGraph::ownership_descriptor, bool> RenderGraph::add_reference(vertex_descriptor u, vertex_descriptor v) noexcept {
     if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
         links[v].parent != null_vertex()) return {{null_vertex(), null_vertex()}, false};
-    for (auto p = u; p != null_vertex(); p = links[p].parent)
+    for (auto p = u; p != null_vertex(); p = links[p].parent) {
         if (p == v) return {{null_vertex(), null_vertex()}, false};
+    }
     auto& parent = links[u];
     auto& child = links[v];
     auto* slot = &parent.firstChild;

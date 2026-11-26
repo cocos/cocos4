@@ -381,7 +381,7 @@ struct SubpassGraph {
     Subpass const& getSubpass(vertex_descriptor v) const noexcept { return this->subpasses[v]; }
     Subpass const& get(const Subpass_& /*tag*/, vertex_descriptor v) const noexcept { return getSubpass(v); }
 
-    friend bool operator==(const SubpassGraph&, const SubpassGraph&) noexcept;
+    friend bool operator==(const SubpassGraph& lhs, const SubpassGraph& rhs) noexcept;
     friend struct ccstd::hash<SubpassGraph>;
     ccstd::pmr::vector<ccstd::pmr::vector<vertex_descriptor>> outEdges;
     ccstd::pmr::vector<ccstd::pmr::vector<vertex_descriptor>> inEdges;
