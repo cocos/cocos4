@@ -24,6 +24,7 @@
 */
 
 import { JSB } from 'internal:constants';
+import { ParticleInstanceStream } from '../../rendering/particle-instance-stream';
 import { Mesh } from '../../3d/assets/mesh';
 import { AttributeName, BufferUsageBit, FormatInfos, MemoryUsageBit, PrimitiveMode,
     Attribute, Buffer, BufferInfo, Feature, deviceManager } from '../../gfx';
@@ -546,6 +547,18 @@ export default class ParticleBatchModel extends scene.Model {
         this._lifeTimeOffset = vOffset / 4 + 3;
     }
 
+    private _batchStream: ParticleInstanceStream | null = null;
+
+    public setDrawBatchGroup (group: string): void {
+        if (!JSB && group && this._useInstance && !this._mesh && this._vBuffer && this.transform) {
+            this._batchStream ??= new ParticleInstanceStream(this._subModels[0], new Uint8Array(this._vBuffer), this.transform.worldMatrix);
+            this._batchStream.group = group;
+        } else if (this._batchStream) {
+            this._batchStream.destroy();
+            this._batchStream = null;
+        }
+    }
+
     public updateIA (count: number): void {
         if (!this._useInstance) {
             if (count <= 0) {
@@ -626,6 +639,8 @@ export default class ParticleBatchModel extends scene.Model {
     }
 
     private destroySubMeshData (): void {
+        this._batchStream?.destroy();
+        this._batchStream = null;
         if (this._subMeshData) {
             this._subMeshData.destroy();
             this._subMeshData = null;

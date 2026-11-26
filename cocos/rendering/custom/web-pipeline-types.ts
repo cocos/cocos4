@@ -10,6 +10,7 @@ import { SetIndex, supportsR32FloatTexture } from '../define';
 import { InstancedBuffer, instancingCompareFn } from '../instanced-buffer';
 import { PipelineStateManager } from '../pipeline-state-manager';
 import { LayoutGraphData } from './layout-graph';
+import { batchParticleDraws } from '../particle-instance-stream';
 import { RenderData } from './render-graph';
 import { SceneFlags, UpdateFrequency } from './types';
 import { Setter } from './pipeline';
@@ -872,11 +873,14 @@ export class RenderDrawQueue {
         offset = 0,
         dynamicOffsets: number[] | null = null,
     ): void {
-        for (const instance of this.instances) {
+        for (let i = 0; i < this.instances.length; ++i) {
+            const instance = this.instances[i];
             const subModel = instance.subModel!;
 
             const passIdx = instance.passIndex;
-            const inputAssembler = subModel.inputAssembler;
+            const batch = dynamicOffsets ? null : batchParticleDraws(device, this.instances, i, this.instances.length);
+            if (batch) i = batch.last;
+            const inputAssembler = batch?.ia ?? subModel.inputAssembler;
             const pass = subModel.passes[passIdx];
             const shader = subModel.shaders[passIdx];
             const pso = PipelineStateManager.getOrCreatePipelineState(device, pass, shader, renderPass, inputAssembler);
