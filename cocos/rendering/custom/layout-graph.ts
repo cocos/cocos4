@@ -256,12 +256,7 @@ export class LayoutGraph implements BidirectionalGraph
     // MutableGraph
     clear (): void {
         this.r.length = 0;
-        this.c.length = 0;
-        this.p.length = 0;
-        this.t.length = 0;
-        this.a.length = 0;
-        this._names.length = 0;
-        this._descriptors.length = 0;
+        this.z(0);
     }
 
     addVertex<T extends LayoutGraphValue> (
@@ -279,16 +274,11 @@ export class LayoutGraph implements BidirectionalGraph
             this.p.push(parent);
             this.t.push(id);
             this.a.push(object);
-            this._names.push(componentName);
-            this._descriptors.push(componentDescriptors);
+            this.n.push(componentName);
+            this.d1.push(componentDescriptors);
             siblings.push(new OutE(v));
         } catch (error) {
-            this.c.length = v;
-            this.p.length = v;
-            this.t.length = v;
-            this.a.length = v;
-            this._names.length = v;
-            this._descriptors.length = v;
+            this.z(v);
             throw error;
         }
         return v;
@@ -306,15 +296,15 @@ export class LayoutGraph implements BidirectionalGraph
 
     // NamedGraph
     vertexName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
 
     // ComponentGraph
     getName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
     getDescriptors (v: number): DescriptorDB {
-        return this._descriptors[v];
+        return this.d1[v];
     }
 
     // PolymorphicGraph
@@ -394,13 +384,22 @@ export class LayoutGraph implements BidirectionalGraph
         return getPath(this, v);
     }
 
+    private z (length: number): void {
+        this.c.length = length;
+        this.p.length = length;
+        this.t.length = length;
+        this.a.length = length;
+        this.n.length = length;
+        this.d1.length = length;
+    }
+
     private readonly r: OutE[] = [];
     private readonly c: OutE[][] = [];
     private readonly p: number[] = [];
     private readonly t: LayoutGraphValue[] = [];
     private readonly a: LayoutGraphObject[] = [];
-    private readonly _names: string[] = [];
-    private readonly _descriptors: DescriptorDB[] = [];
+    private readonly n: string[] = [];
+    private readonly d1: DescriptorDB[] = [];
 }
 
 export class UniformData {
@@ -713,13 +712,7 @@ export class LayoutGraphData implements BidirectionalGraph
     // MutableGraph
     clear (includeTransient = true): void {
         this.r.length = 0;
-        this.c.length = 0;
-        this.p.length = 0;
-        this.t.length = 0;
-        this.a.length = 0;
-        this._names.length = 0;
-        this._updateFrequencies.length = 0;
-        this._layouts.length = 0;
+        this.z(0);
         this.valueNames.length = 0;
         this.attributeIndex.clear();
         this.constantIndex.clear();
@@ -744,18 +737,12 @@ export class LayoutGraphData implements BidirectionalGraph
             this.p.push(parent);
             this.t.push(id);
             this.a.push(object);
-            this._names.push(componentName);
-            this._updateFrequencies.push(componentUpdate);
-            this._layouts.push(componentLayout);
+            this.n.push(componentName);
+            this.u.push(componentUpdate);
+            this.l.push(componentLayout);
             siblings.push(new OutE(v));
         } catch (error) {
-            this.c.length = v;
-            this.p.length = v;
-            this.t.length = v;
-            this.a.length = v;
-            this._names.length = v;
-            this._updateFrequencies.length = v;
-            this._layouts.length = v;
+            this.z(v);
             throw error;
         }
         return v;
@@ -773,21 +760,21 @@ export class LayoutGraphData implements BidirectionalGraph
 
     // NamedGraph
     vertexName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
 
     // ComponentGraph
     getName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
     getUpdate (v: number): UpdateFrequency {
-        return this._updateFrequencies[v];
+        return this.u[v];
     }
     setUpdate (v: number, value: UpdateFrequency): void {
-        this._updateFrequencies[v] = value;
+        this.u[v] = value;
     }
     getLayout (v: number): PipelineLayoutData {
-        return this._layouts[v];
+        return this.l[v];
     }
 
     // PolymorphicGraph
@@ -867,14 +854,24 @@ export class LayoutGraphData implements BidirectionalGraph
         return getPath(this, v);
     }
 
+    private z (length: number): void {
+        this.c.length = length;
+        this.p.length = length;
+        this.t.length = length;
+        this.a.length = length;
+        this.n.length = length;
+        this.u.length = length;
+        this.l.length = length;
+    }
+
     private readonly r: OutE[] = [];
     private readonly c: OutE[][] = [];
     private readonly p: number[] = [];
     private readonly t: LayoutGraphDataValue[] = [];
     private readonly a: LayoutGraphDataObject[] = [];
-    private readonly _names: string[] = [];
-    private readonly _updateFrequencies: UpdateFrequency[] = [];
-    private readonly _layouts: PipelineLayoutData[] = [];
+    private readonly n: string[] = [];
+    private readonly u: UpdateFrequency[] = [];
+    private readonly l: PipelineLayoutData[] = [];
     readonly valueNames: string[] = [];
     readonly attributeIndex: Map<string, number> = new Map<string, number>();
     readonly constantIndex: Map<string, number> = new Map<string, number>();

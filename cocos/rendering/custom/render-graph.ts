@@ -336,10 +336,7 @@ export class SubpassGraph implements BidirectionalGraph
 
     // MutableGraph
     clear (): void {
-        this.o.length = 0;
-        this.i.length = 0;
-        this._names.length = 0;
-        this._subpasses.length = 0;
+        this.z(0);
     }
 
     addVertex (
@@ -351,13 +348,10 @@ export class SubpassGraph implements BidirectionalGraph
         try {
             this.o.push([]);
             this.i.push([]);
-            this._names.push(componentName);
-            this._subpasses.push(componentSubpass);
+            this.n.push(componentName);
+            this.s.push(componentSubpass);
         } catch (error) {
-            this.o.length = v;
-            this.i.length = v;
-            this._names.length = v;
-            this._subpasses.length = v;
+            this.z(v);
             throw error;
         }
         return v;
@@ -396,24 +390,31 @@ export class SubpassGraph implements BidirectionalGraph
 
     // NamedGraph
     vertexName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
 
     // ComponentGraph
     getName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
     setName (v: number, value: string): void {
-        this._names[v] = value;
+        this.n[v] = value;
     }
     getSubpass (v: number): Subpass {
-        return this._subpasses[v];
+        return this.s[v];
+    }
+
+    private z (length: number): void {
+        this.o.length = length;
+        this.i.length = length;
+        this.n.length = length;
+        this.s.length = length;
     }
 
     private readonly o: OutE[][] = [];
     private readonly i: OutE[][] = [];
-    private readonly _names: string[] = [];
-    private readonly _subpasses: Subpass[] = [];
+    private readonly n: string[] = [];
+    private readonly s: Subpass[] = [];
 }
 
 export class RasterSubpass {
@@ -646,15 +647,7 @@ export class ResourceGraph implements BidirectionalGraph
 
     // MutableGraph
     clear (): void {
-        this.c.length = 0;
-        this.p.length = 0;
-        this.t.length = 0;
-        this.a.length = 0;
-        this._names.length = 0;
-        this._descs.length = 0;
-        this._traits.length = 0;
-        this._states.length = 0;
-        this._samplerInfo.length = 0;
+        this.z(0);
         this.m.clear();
         this.renderPasses.clear();
         this.nextFenceValue = 0;
@@ -680,24 +673,16 @@ export class ResourceGraph implements BidirectionalGraph
             this.p.push(parent);
             this.t.push(id);
             this.a.push(object);
-            this._names.push(componentName);
-            this._descs.push(componentDesc);
-            this._traits.push(componentTraits);
-            this._states.push(componentStates);
-            this._samplerInfo.push(componentSampler);
+            this.n.push(componentName);
+            this.d1.push(componentDesc);
+            this.t1.push(componentTraits);
+            this.s.push(componentStates);
+            this.s1.push(componentSampler);
             this.m.set(componentName, v);
             if (parent !== this.N) siblings.push(new OutE(v));
         } catch (error) {
             this.m.delete(componentName);
-            this.c.length = v;
-            this.p.length = v;
-            this.t.length = v;
-            this.a.length = v;
-            this._names.length = v;
-            this._descs.length = v;
-            this._traits.length = v;
-            this._states.length = v;
-            this._samplerInfo.length = v;
+            this.z(v);
             throw error;
         }
         return v;
@@ -715,32 +700,32 @@ export class ResourceGraph implements BidirectionalGraph
 
     // NamedGraph
     vertexName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
 
     // ComponentGraph
     getName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
     setName (v: number, value: string): void {
-        const previous = this._names[v];
+        const previous = this.n[v];
         if (previous === value) return;
         if (this.m.has(value)) throw new Error('Duplicate vertex name');
         this.m.set(value, v);
         this.m.delete(previous);
-        this._names[v] = value;
+        this.n[v] = value;
     }
     getDesc (v: number): ResourceDesc {
-        return this._descs[v];
+        return this.d1[v];
     }
     getTraits (v: number): ResourceTraits {
-        return this._traits[v];
+        return this.t1[v];
     }
     getStates (v: number): ResourceStates {
-        return this._states[v];
+        return this.s[v];
     }
     getSampler (v: number): SamplerInfo {
-        return this._samplerInfo[v];
+        return this.s1[v];
     }
 
     // PolymorphicGraph
@@ -821,15 +806,27 @@ export class ResourceGraph implements BidirectionalGraph
         return this.m.get(key) ?? this.N;
     }
 
+    private z (length: number): void {
+        this.c.length = length;
+        this.p.length = length;
+        this.t.length = length;
+        this.a.length = length;
+        this.n.length = length;
+        this.d1.length = length;
+        this.t1.length = length;
+        this.s.length = length;
+        this.s1.length = length;
+    }
+
     private readonly c: OutE[][] = [];
     private readonly p: number[] = [];
     private readonly t: ResourceGraphValue[] = [];
     private readonly a: ResourceGraphObject[] = [];
-    private readonly _names: string[] = [];
-    private readonly _descs: ResourceDesc[] = [];
-    private readonly _traits: ResourceTraits[] = [];
-    private readonly _states: ResourceStates[] = [];
-    private readonly _samplerInfo: SamplerInfo[] = [];
+    private readonly n: string[] = [];
+    private readonly d1: ResourceDesc[] = [];
+    private readonly t1: ResourceTraits[] = [];
+    private readonly s: ResourceStates[] = [];
+    private readonly s1: SamplerInfo[] = [];
     private readonly m = new Map<string, number>();
     readonly renderPasses: Map<string, PersistentRenderPassAndFramebuffer> = new Map<string, PersistentRenderPassAndFramebuffer>();
     nextFenceValue: number = 0;
@@ -1175,16 +1172,7 @@ export class RenderGraph implements BidirectionalGraph
 
     // MutableGraph
     clear (): void {
-        this.o.length = 0;
-        this.i.length = 0;
-        this.c.length = 0;
-        this.p.length = 0;
-        this.t.length = 0;
-        this.a.length = 0;
-        this._names.length = 0;
-        this._layoutNodes.length = 0;
-        this._data.length = 0;
-        this._valid.length = 0;
+        this.z(0);
         this.index.clear();
         this.sortedVertices.length = 0;
         this.globalRenderData.reset();
@@ -1209,22 +1197,13 @@ export class RenderGraph implements BidirectionalGraph
             this.p.push(parent);
             this.t.push(id);
             this.a.push(object);
-            this._names.push(componentName);
-            this._layoutNodes.push(componentLayout);
-            this._data.push(componentData);
-            this._valid.push(componentValid);
+            this.n.push(componentName);
+            this.l.push(componentLayout);
+            this.d1.push(componentData);
+            this.v1.push(componentValid);
             if (parent !== this.N) siblings.push(new OutE(v));
         } catch (error) {
-            this.o.length = v;
-            this.i.length = v;
-            this.c.length = v;
-            this.p.length = v;
-            this.t.length = v;
-            this.a.length = v;
-            this._names.length = v;
-            this._layoutNodes.length = v;
-            this._data.length = v;
-            this._valid.length = v;
+            this.z(v);
             throw error;
         }
         return v;
@@ -1263,30 +1242,30 @@ export class RenderGraph implements BidirectionalGraph
 
     // NamedGraph
     vertexName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
 
     // ComponentGraph
     getName (v: number): string {
-        return this._names[v];
+        return this.n[v];
     }
     setName (v: number, value: string): void {
-        this._names[v] = value;
+        this.n[v] = value;
     }
     getLayout (v: number): string {
-        return this._layoutNodes[v];
+        return this.l[v];
     }
     setLayout (v: number, value: string): void {
-        this._layoutNodes[v] = value;
+        this.l[v] = value;
     }
     getData (v: number): RenderData {
-        return this._data[v];
+        return this.d1[v];
     }
     getValid (v: number): boolean {
-        return this._valid[v];
+        return this.v1[v];
     }
     setValid (v: number, value: boolean): void {
-        this._valid[v] = value;
+        this.v1[v] = value;
     }
 
     // PolymorphicGraph
@@ -1387,16 +1366,29 @@ export class RenderGraph implements BidirectionalGraph
         this.p[v] = this.N;
     }
 
+    private z (length: number): void {
+        this.o.length = length;
+        this.i.length = length;
+        this.c.length = length;
+        this.p.length = length;
+        this.t.length = length;
+        this.a.length = length;
+        this.n.length = length;
+        this.l.length = length;
+        this.d1.length = length;
+        this.v1.length = length;
+    }
+
     private readonly o: OutE[][] = [];
     private readonly i: OutE[][] = [];
     private readonly c: OutE[][] = [];
     private readonly p: number[] = [];
     private readonly t: RenderGraphValue[] = [];
     private readonly a: RenderGraphObject[] = [];
-    private readonly _names: string[] = [];
-    private readonly _layoutNodes: string[] = [];
-    private readonly _data: RenderData[] = [];
-    private readonly _valid: boolean[] = [];
+    private readonly n: string[] = [];
+    private readonly l: string[] = [];
+    private readonly d1: RenderData[] = [];
+    private readonly v1: boolean[] = [];
     readonly index: Map<string, number> = new Map<string, number>();
     readonly sortedVertices: number[] = [];
     readonly globalRenderData: RenderData = new RenderData();
