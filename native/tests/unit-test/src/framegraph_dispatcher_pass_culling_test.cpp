@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ****************************************************************************/
 
-#include "cocos/renderer/pipeline/custom/FGDispatcherGraphs.h"
 #include "cocos/renderer/pipeline/custom/test/test.h"
 #include "gfx-base/GFXDef-common.h"
 #include "gtest/gtest.h"
@@ -43,7 +42,7 @@ TEST(fgDispatherCulling, test13) {
     fgDispatcher.run();
 
     const auto& rag = fgDispatcher.resourceAccessGraph;
-    ASSERT_EQ(num_vertices(rag), renderGraph.num_vertices() + 2); // Start and present.
+    ASSERT_EQ(rag.num_vertices(), renderGraph.num_vertices() + 2); // Start and present.
 
     std::vector<RenderGraph::vertex_descriptor> passes;
     for (const auto v : renderGraph.sortedVertices) {
@@ -55,19 +54,19 @@ TEST(fgDispatherCulling, test13) {
 
     auto expectCulled = [&](RenderGraph::vertex_descriptor pass) {
         SCOPED_TRACE(renderGraph.getName(pass).c_str());
-        const auto v = rag.passIndex.at(pass);
+        const auto v = rag.vertex(pass);
         EXPECT_EQ(rag.culledPasses.count(v), 1U);
         EXPECT_TRUE(rag.passResource.at(v).resourceStatus.empty());
-        EXPECT_EQ(in_degree(v, rag), 0U);
-        EXPECT_EQ(out_degree(v, rag), 0U);
+        EXPECT_EQ(rag.in_degree(v), 0U);
+        EXPECT_EQ(rag.out_degree(v), 0U);
     };
     auto expectRetained = [&](RenderGraph::vertex_descriptor pass, const char* output) {
         SCOPED_TRACE(renderGraph.getName(pass).c_str());
-        const auto v = rag.passIndex.at(pass);
+        const auto v = rag.vertex(pass);
         EXPECT_EQ(rag.culledPasses.count(v), 0U);
         EXPECT_EQ(rag.passResource.at(v).resourceStatus.count(output), 1U);
-        EXPECT_GT(in_degree(v, rag), 0U);
-        EXPECT_GT(out_degree(v, rag), 0U);
+        EXPECT_GT(rag.in_degree(v), 0U);
+        EXPECT_GT(rag.out_degree(v), 0U);
     };
 
     // The transient branch pass5 -> pass6 is culled back to its shared producer.
@@ -79,7 +78,7 @@ TEST(fgDispatherCulling, test13) {
     // The second subpass of pass7 writes an external resource. Pass8 only reads one.
     ASSERT_EQ(renderGraph.num_children(passes[7]), 2U);
     ASSERT_EQ(renderGraph.num_children(passes[8]), 2U);
-    EXPECT_EQ(rag.culledPasses.count(rag.passIndex.at(passes[7])), 0U);
+    EXPECT_EQ(rag.culledPasses.count(rag.vertex(passes[7])), 0U);
     expectCulled(passes[8]);
     for (const auto e : renderGraph.child_links(passes[7])) {
         const auto child = renderGraph.target(e);
@@ -90,7 +89,7 @@ TEST(fgDispatherCulling, test13) {
     }
 
     expectRetained(passes[9], "22");
-    EXPECT_TRUE(edge(rag.passIndex.at(passes[9]), rag.presentPassID, rag).second);
+    EXPECT_TRUE(rag.edge(rag.vertex(passes[9]), rag.presentPassID).second);
     EXPECT_EQ(rag.culledPasses.size(), 5U);
     EXPECT_EQ(rag.leafPasses.size(), 6U);
 }
@@ -114,10 +113,10 @@ TEST(fgDispatherCulling, keepsSiblingSubpassWhenExternalOutputLosesItsConsumer) 
     const auto pass = renderGraph.sortedVertices.front();
     const auto consumer = renderGraph.sortedVertices.back();
     ASSERT_EQ(rag.culledPasses.size(), 1U);
-    EXPECT_EQ(rag.culledPasses.count(rag.passIndex.at(consumer)), 1U);
+    EXPECT_EQ(rag.culledPasses.count(rag.vertex(consumer)), 1U);
     const auto children = renderGraph.child_links(pass);
     ASSERT_EQ(renderGraph.num_children(pass), 2U);
     const auto writer = renderGraph.target(*children.begin());
-    EXPECT_TRUE(edge(rag.passIndex.at(writer), rag.presentPassID, rag).second);
+    EXPECT_TRUE(rag.edge(rag.vertex(writer), rag.presentPassID).second);
 }
 #endif

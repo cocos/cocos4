@@ -1306,7 +1306,7 @@ void NativePipeline::executeRenderGraph(const RenderGraph& rg) {
     { // Mark all culled vertices
         RenderGraphCullVisitor visitor{{}, validPasses};
         for (const auto accessID : fgd.resourceAccessGraph.culledPasses) {
-            const auto passID = fgd.resourceAccessGraph.passID[accessID];
+            const auto passID = fgd.resourceAccessGraph.getPassID(accessID);
             // The dispatcher's synthetic start and end have no render graph vertex.
             if (passID >= numVertices) {
                 continue;
