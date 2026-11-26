@@ -1,4 +1,4 @@
-﻿import { cclegacy, Mat4 } from '../core';
+import { cclegacy, Mat4 } from '../core';
 import { BufferInfo, BufferUsageBit, MemoryUsageBit, InputAssemblerInfo } from '../gfx';
 import type { Buffer, Device, InputAssembler } from '../gfx';
 import type { SubModel } from '../render-scene/scene';
@@ -66,8 +66,12 @@ export class ParticleInstanceStream {
                 slot.buffer.destroy();
             }
             const capacity = stride * 2 ** Math.ceil(Math.log2(count));
-            const buffer = device.createBuffer(new BufferInfo(BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
-                MemoryUsageBit.DEVICE, capacity, stride));
+            const buffer = device.createBuffer(new BufferInfo(
+                BufferUsageBit.VERTEX | BufferUsageBit.TRANSFER_DST,
+                MemoryUsageBit.DEVICE,
+                capacity,
+                stride,
+            ));
             const ia = device.createInputAssembler(new InputAssemblerInfo(source.attributes, [buffer, source.vertexBuffers[1]], source.indexBuffer));
             slot = this.slots[this.cursor] = { buffer, bytes: new Uint8Array(capacity), ia };
         }
