@@ -567,6 +567,17 @@ export default class ParticleSystemRendererCPU extends ParticleSystemRendererBas
         this._model!.updateIA(this._particles!.length);
     }
 
+    public override updateWorldTransform (pass?: Pass): void {
+        super.updateWorldTransform(pass);
+        // The component refreshes eligibility after late transforms, even while playback is paused.
+        if (pass || !this._model || !this._particleSystem) return;
+        const ps = this._particleSystem;
+        const group = ps.drawBatchGroup;
+        const material = group && (ps.getMaterialInstance(0) || this._defaultMat);
+        const builtin = material && builtinResMgr.get<Material>('default-particle-material');
+        this._model.setDrawBatchGroup(builtin && material && material.effectAsset === builtin.effectAsset ? group : '');
+    }
+
     public getParticleCount (): number {
         return this._particles!.length;
     }

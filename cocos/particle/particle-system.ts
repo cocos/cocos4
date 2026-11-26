@@ -83,6 +83,11 @@ export class ParticleSystem extends ModelRenderer {
      */
     public static globalTimeScale = 1.0;
 
+    /** Matching nonempty names allow adjacent compatible CPU billboard emitters to share a draw. */
+    @serializable
+    @displayName('Draw Batch Group')
+    public drawBatchGroup = '';
+
     /** Sets the playback multiplier shared by all 3D particle systems. */
     public static setGlobalTimeScale (scale: number): void {
         ParticleSystem.globalTimeScale = scale;

@@ -23,6 +23,7 @@
 */
 
 import { RecyclePool, CachedArray } from '../core';
+import { batchParticleDraws } from './particle-instance-stream';
 import { getPassPool, IRenderObject, IRenderPass, IRenderQueueDesc, SetIndex } from './define';
 import { PipelineStateManager } from './pipeline-state-manager';
 import { RenderPass, Device, CommandBuffer } from '../gfx';
@@ -118,7 +119,9 @@ export class RenderQueue {
     public recordCommandBuffer (device: Device, renderPass: RenderPass, cmdBuff: CommandBuffer): void {
         for (let i = 0; i < this.queue.length; ++i) {
             const { subModel, passIdx } = this.queue.array[i];
-            const { inputAssembler } = subModel;
+            const batch = batchParticleDraws(device, this.queue.array, i, this.queue.length);
+            if (batch) i = batch.last;
+            const inputAssembler = batch?.ia ?? subModel.inputAssembler;
             const pass = subModel.passes[passIdx];
             const shader = subModel.shaders[passIdx];
             const pso = PipelineStateManager.getOrCreatePipelineState(device, pass, shader, renderPass, inputAssembler);
