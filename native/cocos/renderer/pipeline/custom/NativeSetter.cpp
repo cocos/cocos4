@@ -26,7 +26,8 @@
 #include "cocos/renderer/pipeline/custom/NativeBuiltinUtils.h"
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
 #include "cocos/renderer/pipeline/custom/NativeUtils.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
+#include "cocos/renderer/pipeline/custom/details/GslUtils.h"
 #include "cocos/scene/DirectionalLight.h"
 #include "cocos/scene/Light.h"
 #include "cocos/scene/PointLight.h"
@@ -40,77 +41,77 @@ namespace cc {
 namespace render {
 
 void NativeSetter::setMat4(const ccstd::string &name, const Mat4 &mat) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setMat4Impl(data, *layoutGraph, name, mat);
 }
 
 void NativeSetter::setQuaternion(const ccstd::string &name, const Quaternion &quat) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setQuaternionImpl(data, *layoutGraph, name, quat);
 }
 
 void NativeSetter::setColor(const ccstd::string &name, const gfx::Color &color) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setColorImpl(data, *layoutGraph, name, color);
 }
 
 void NativeSetter::setVec4(const ccstd::string &name, const Vec4 &vec) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setVec4Impl(data, *layoutGraph, name, vec);
 }
 
 void NativeSetter::setVec2(const ccstd::string &name, const Vec2 &vec) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setVec2Impl(data, *layoutGraph, name, vec);
 }
 
 void NativeSetter::setFloat(const ccstd::string &name, float v) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setFloatImpl(data, *layoutGraph, name, v);
 }
 
 void NativeSetter::setArrayBuffer(const ccstd::string &name, const ArrayBuffer *buffer) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setArrayBufferImpl(data, *layoutGraph, name, *buffer);
 }
 
 void NativeSetter::setBuffer(const ccstd::string &name, gfx::Buffer *buffer) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setBufferImpl(data, *layoutGraph, name, buffer);
 }
 
 void NativeSetter::setTexture(const ccstd::string &name, gfx::Texture *texture) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setTextureImpl(data, *layoutGraph, name, texture);
 }
 
 void NativeSetter::setSampler(const ccstd::string &name, gfx::Sampler *sampler) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setSamplerImpl(data, *layoutGraph, name, sampler);
 }
 
 void NativeSetter::setVec4ArraySize(const ccstd::string &name, uint32_t sz) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setVec4ArraySizeImpl(data, *layoutGraph, name, sz);
 }
 
 void NativeSetter::setVec4ArrayElem(const ccstd::string &name, const cc::Vec4 &vec, uint32_t id) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setVec4ArrayElemImpl(data, *layoutGraph, name, vec, id);
 }
 
 void NativeSetter::setMat4ArraySize(const ccstd::string &name, uint32_t sz) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setMat4ArraySizeImpl(data, *layoutGraph, name, sz);
 }
 
 void NativeSetter::setMat4ArrayElem(const ccstd::string &name, const cc::Mat4 &mat, uint32_t id) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setMat4ArrayElemImpl(data, *layoutGraph, name, mat, id);
 }
 
 void NativeSetter::setBuiltinCameraConstants(const scene::Camera *camera) {
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     const auto *scene = camera->getScene();
     setCameraUBOValues(
         *camera,
@@ -130,7 +131,7 @@ void NativeSetter::setBuiltinDirectionalLightFrustumConstants(
     // set data
     auto *device = pipelineRuntime->getDevice();
     const auto &sceneData = *pipelineRuntime->getPipelineSceneData();
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setShadowUBOLightView(device, *layoutGraph, sceneData, csm, *light, level, data);
 }
 
@@ -138,7 +139,7 @@ void NativeSetter::setBuiltinSpotLightFrustumConstants(const scene::SpotLight *l
     CC_EXPECTS(light);
     auto *device = pipelineRuntime->getDevice();
     const auto &sceneData = *pipelineRuntime->getPipelineSceneData();
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setShadowUBOLightView(device, *layoutGraph, sceneData, nullptr, *light, 0, data);
 }
 
@@ -154,7 +155,7 @@ void NativeSetter::setBuiltinDirectionalLightConstants(const scene::DirectionalL
     CC_EXPECTS(light);
     auto *device = pipelineRuntime->getDevice();
     const auto &sceneData = *pipelineRuntime->getPipelineSceneData();
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
     setShadowUBOView(*device, *layoutGraph, sceneData, *light, data);
 }
 
@@ -164,7 +165,7 @@ void NativeSetter::setBuiltinSphereLightConstants(
     const auto &sceneData = *pipelineRuntime->getPipelineSceneData();
     const auto &shadowInfo = *sceneData.getShadows();
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
 
     if constexpr (ENABLE_NEW_MULTI_LIGHT) {
         setVec4Impl(
@@ -203,7 +204,7 @@ void NativeSetter::setBuiltinSpotLightConstants(const scene::SpotLight *light, c
     const auto &sceneData = *this->pipelineRuntime->getPipelineSceneData();
     const auto &shadowInfo = *sceneData.getShadows();
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
 
     if constexpr (ENABLE_NEW_MULTI_LIGHT) {
         setVec4Impl(
@@ -256,7 +257,7 @@ void NativeSetter::setBuiltinPointLightConstants(const scene::PointLight *light,
     const auto &sceneData = *this->pipelineRuntime->getPipelineSceneData();
     const auto &shadowInfo = *sceneData.getShadows();
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
 
     if constexpr (ENABLE_NEW_MULTI_LIGHT) {
         setVec4Impl(
@@ -294,7 +295,7 @@ void NativeSetter::setBuiltinRangedDirectionalLightConstants(const scene::Ranged
     const auto &sceneData = *this->pipelineRuntime->getPipelineSceneData();
     const auto &shadowInfo = *sceneData.getShadows();
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+    auto &data = renderGraph->getData(nodeID);
 
     if constexpr (ENABLE_NEW_MULTI_LIGHT) {
         setVec4Impl(

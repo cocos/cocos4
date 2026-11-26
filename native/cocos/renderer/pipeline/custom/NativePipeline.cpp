@@ -32,7 +32,7 @@
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
 #include "cocos/renderer/pipeline/custom/NativeRenderGraphUtils.h"
 #include "cocos/renderer/pipeline/custom/NativeUtils.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderingModule.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
@@ -124,7 +124,7 @@ public:
     : _sceneData(sceneData) {}
 
     void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
-        const auto &sceneData = get(SceneTag{}, vertID, *rg.renderGraph);
+        const auto &sceneData = rg.renderGraph->value(Scene_{}, vertID);
         if (sceneData.camera && sceneData.camera->getGeometryRenderer()) {
             sceneData.camera->getGeometryRenderer()->render(rg.currentRenderPass, rg.primaryCommandBuffer, _sceneData);
         }
@@ -1123,7 +1123,7 @@ MultisampleRenderPassBuilder *NativePipeline::addMultisampleRenderPass(
         renderGraph, layoutGraph,
         width, height, count, quality, passName);
 
-    auto &pass = get(RasterPassTag{}, passID, renderGraph);
+    auto &pass = renderGraph.value(RasterPassTag{}, passID);
 
     auto [subpassID, subpassLayoutID] = addRenderSubpassVertex(
         pass, renderGraph, passID,
