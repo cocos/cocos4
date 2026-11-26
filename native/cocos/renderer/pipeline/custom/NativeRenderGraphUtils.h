@@ -1,53 +1,50 @@
 #pragma once
+#include <string_view>
+#include <tuple>
+#include <utility>
 #include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
-#include "pipeline/custom/RenderGraphTypes.h"
 
 namespace cc {
 
 namespace render {
 
-template <class Component0, class Component1, class Component2, class Component3, class Tag, class ValueT>
+template <class Tag, class NameArgs, class LayoutArgs, class DataArgs, class ValidArgs, class PayloadArgs>
 RenderGraph::vertex_descriptor
-addVertex2(Tag tag, Component0 &&c0, Component1 &&c1, Component2 &&c2, Component3 &&c3, ValueT &&val,
-           RenderGraph &g, RenderGraph::vertex_descriptor u = RenderGraph::null_vertex()) {
-    auto v = addVertex(
-        tag,
-        std::forward<Component0>(c0),
-        std::forward<Component1>(c1),
-        std::forward<Component2>(c2),
-        std::forward<Component3>(c3),
-        std::forward<ValueT>(val),
-        g,
-        u);
+addVertex2(Tag tag, NameArgs &&name, LayoutArgs &&layout, DataArgs &&data, ValidArgs &&valid, PayloadArgs &&payload,
+           RenderGraph &g, RenderGraph::vertex_descriptor parent = RenderGraph::null_vertex()) {
+    const auto v = g.add_vertex(
+        tag, std::piecewise_construct, std::forward<PayloadArgs>(payload),
+        std::forward<NameArgs>(name), std::forward<LayoutArgs>(layout),
+        std::forward<DataArgs>(data), std::forward<ValidArgs>(valid), parent);
     g.sortedVertices.emplace_back(v);
-    CC_EXPECTS(g.sortedVertices.size() == num_vertices(g));
+    CC_EXPECTS(g.sortedVertices.size() == g.num_vertices());
     return v;
 }
 
 inline LayoutGraphData::vertex_descriptor getSubpassOrPassID(
     RenderGraph::vertex_descriptor vertID,
     const RenderGraph &rg, const LayoutGraphData &lg) {
-    const auto queueID = parent(vertID, rg);
+    const auto queueID = rg.get_parent(vertID);
     CC_ENSURES(queueID != RenderGraph::null_vertex());
-    const auto subpassOrPassID = parent(queueID, rg);
+    const auto subpassOrPassID = rg.get_parent(queueID);
     CC_ENSURES(subpassOrPassID != RenderGraph::null_vertex());
-    const auto passID = parent(subpassOrPassID, rg);
+    const auto passID = rg.get_parent(subpassOrPassID);
 
     auto layoutID = LayoutGraphData::null_vertex();
     if (passID == RenderGraph::null_vertex()) { // single render pass
-        const auto &layoutName = get(RenderGraph::LayoutTag{}, rg, subpassOrPassID);
+        const auto &layoutName = rg.getLayout(subpassOrPassID);
         CC_ENSURES(!layoutName.empty());
         layoutID = lg.locate(layoutName);
     } else { // render pass
-        const auto &passLayoutName = get(RenderGraph::LayoutTag{}, rg, passID);
+        const auto &passLayoutName = rg.getLayout(passID);
         CC_ENSURES(!passLayoutName.empty());
         const auto passLayoutID = lg.locate(passLayoutName);
         CC_ENSURES(passLayoutID != LayoutGraphData::null_vertex());
 
-        const auto &subpassLayoutName = get(RenderGraph::LayoutTag{}, rg, subpassOrPassID);
+        const auto &subpassLayoutName = rg.getLayout(subpassOrPassID);
         if (subpassLayoutName.empty()) {
             layoutID = passLayoutID; // expect to be multisample pass
         } else {
@@ -101,17 +98,13 @@ addRenderSubpassVertex(
     CC_EXPECTS(!subpassName.empty() || count > 1);
 
     auto &subpassGraph = pass.subpassGraph;
-    const auto subpassIndex = num_vertices(pass.subpassGraph);
+    const auto subpassIndex = subpassGraph.num_vertices();
     {
-        auto id = addVertex(
-            std::piecewise_construct,
-            std::forward_as_tuple(subpassName),
-            std::forward_as_tuple(),
-            subpassGraph);
+        const auto id = subpassGraph.add_vertex(subpassName);
         CC_ENSURES(id == subpassIndex);
     }
 
-    RasterSubpass subpass(subpassIndex, count, quality, renderGraph.get_allocator());
+    RasterSubpass subpass(std::allocator_arg, renderGraph.get_allocator(), subpassIndex, count, quality);
     subpass.viewport.width = pass.width;
     subpass.viewport.height = pass.height;
 
@@ -146,10 +139,9 @@ void addPassComputeViewImpl(
     RenderGraph &renderGraph,
     RenderGraph::vertex_descriptor passID,
     const ccstd::string &name, const ComputeView &view) {
-    std::ignore = tag;
     CC_EXPECTS(!name.empty());
     CC_EXPECTS(!view.name.empty());
-    auto &pass = get(Tag{}, passID, renderGraph);
+    auto &pass = renderGraph.value(tag, passID);
     auto iter = pass.computeViews.find(name.c_str());
     if (iter == pass.computeViews.end()) {
         bool added = false;
@@ -168,16 +160,15 @@ void addSubpassComputeViewImpl(
     RenderGraph &renderGraph,
     RenderGraph::vertex_descriptor subpassID,
     const ccstd::string &name, const ComputeView &view) {
-    std::ignore = tag;
     CC_EXPECTS(!name.empty());
     CC_EXPECTS(!view.name.empty());
-    auto &subpass = get(Tag{}, subpassID, renderGraph);
-    const auto passID = parent(subpassID, renderGraph);
+    auto &subpass = renderGraph.value(tag, subpassID);
+    const auto passID = renderGraph.get_parent(subpassID);
     CC_EXPECTS(passID != RenderGraph::null_vertex());
-    CC_EXPECTS(holds<RasterPassTag>(passID, renderGraph));
-    auto &pass = get(RasterPassTag{}, passID, renderGraph);
-    CC_EXPECTS(subpass.subpassID < num_vertices(pass.subpassGraph));
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    CC_EXPECTS(renderGraph.holds<RasterPassTag>(passID));
+    auto &pass = renderGraph.value(RasterPassTag{}, passID);
+    CC_EXPECTS(subpass.subpassID < pass.subpassGraph.num_vertices());
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
     CC_EXPECTS(subpass.computeViews.size() == subpassData.computeViews.size());
     {
         auto iter = subpassData.computeViews.find(name.c_str());

@@ -37,22 +37,20 @@ namespace cc {
 namespace render {
 
 ccstd::string NativeRenderNode::getName() const {
-    return std::string(get(RenderGraph::NameTag{}, *renderGraph, nodeID));
+    return std::string(renderGraph->getName(nodeID));
 }
 
 void NativeRenderNode::setName(const ccstd::string &name) { // NOLINT(readability-make-member-function-const)
-    get(RenderGraph::NameTag{}, *renderGraph, nodeID) = std::string_view{name};
+    renderGraph->getName(nodeID) = std::string_view{name};
 }
 
 void NativeRenderNode::setCustomBehavior(const ccstd::string &name) { // NOLINT(readability-make-member-function-const)
-    get(RenderGraph::DataTag{}, *renderGraph, nodeID).custom = std::string_view{name};
+    renderGraph->getData(nodeID).custom = std::string_view{name};
 }
 
 RenderGraph::vertex_descriptor RenderGraph::getPassID(vertex_descriptor nodeID) const {
     CC_EXPECTS(nodeID != null_vertex());
-    for (auto parentID = nodeID;
-         parentID != RenderGraph::null_vertex();
-         parentID = parent(nodeID, *this)) {
+    for (auto parentID = get_parent(nodeID); parentID != null_vertex(); parentID = get_parent(parentID)) {
         nodeID = parentID;
     }
     CC_ENSURES(nodeID != null_vertex());
@@ -71,7 +69,7 @@ void addRenderTargetImpl(
     gfx::LoadOp loadOp,
     gfx::StoreOp storeOp,
     const gfx::Color &color) {
-    auto &pass = get(Tag{}, passID, graph);
+    auto &pass = graph.value(Tag{}, passID);
     auto iter = pass.rasterViews.find(name);
     if (iter != pass.rasterViews.end()) {
         // no overwrite
@@ -106,7 +104,7 @@ void addDepthStencilImpl(
     gfx::ClearFlagBit clearFlags,
     float depth,
     uint8_t stencil) {
-    auto &pass = get(Tag{}, passID, graph);
+    auto &pass = graph.value(Tag{}, passID);
     auto iter = pass.rasterViews.find(name);
     if (iter != pass.rasterViews.end()) {
         // no overwrite
@@ -188,7 +186,7 @@ void NativeRenderPassBuilder::addTexture(
     if (sampler) {
         auto iter = layoutGraph->attributeIndex.find(std::string_view{slotName});
         if (iter != layoutGraph->attributeIndex.end()) {
-            auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+            auto &data = renderGraph->getData(nodeID);
             data.samplers[iter->second.value] = sampler;
         }
     }
@@ -202,13 +200,10 @@ void NativeRenderPassBuilder::addStorageBuffer(
         nodeID,
         name,
         ComputeView{
+            std::allocator_arg,
+            renderGraph->get_allocator(),
             ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+            accessType});
 }
 
 void NativeRenderPassBuilder::addStorageImage(
@@ -219,24 +214,20 @@ void NativeRenderPassBuilder::addStorageImage(
         nodeID,
         name,
         ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+            std::allocator_arg,
+            renderGraph->get_allocator(),
+            ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeRenderPassBuilder::addMaterialTexture(
     const ccstd::string &resourceName, gfx::ShaderStageFlagBit flags) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
     pass.textures.emplace(resourceName, flags);
 }
 
 void NativeRenderPassBuilder::setCustomShaderStages(
     const ccstd::string &name, gfx::ShaderStageFlagBit stageFlags) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
     {
         auto iter = pass.rasterViews.find(std::string_view{name});
         if (iter != pass.rasterViews.end()) {
@@ -255,12 +246,12 @@ void NativeRenderPassBuilder::setCustomShaderStages(
 }
 
 bool NativeRenderPassBuilder::getShowStatistics() const {
-    const auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    const auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
     return pass.showStatistics;
 }
 
 void NativeRenderPassBuilder::setShowStatistics(bool enable) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
     pass.showStatistics = enable;
 }
 
@@ -290,13 +281,13 @@ void addRasterViewImpl(
     RenderGraph::vertex_descriptor subpassID,
     RenderGraph &renderGraph) {
     CC_EXPECTS(!name.empty());
-    auto &subpass = get(Tag{}, subpassID, renderGraph);
-    const auto passID = parent(subpassID, renderGraph);
+    auto &subpass = renderGraph.value(Tag{}, subpassID);
+    const auto passID = renderGraph.get_parent(subpassID);
     CC_EXPECTS(passID != RenderGraph::null_vertex());
-    CC_EXPECTS(holds<RasterPassTag>(passID, renderGraph));
-    auto &pass = get(RasterPassTag{}, passID, renderGraph);
-    CC_EXPECTS(subpass.subpassID < num_vertices(pass.subpassGraph));
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    CC_EXPECTS(renderGraph.holds<RasterPassTag>(passID));
+    auto &pass = renderGraph.value(RasterPassTag{}, passID);
+    CC_EXPECTS(subpass.subpassID < pass.subpassGraph.num_vertices());
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
     const auto slotID = static_cast<uint32_t>(subpass.rasterViews.size());
     CC_EXPECTS(subpass.rasterViews.size() == subpassData.rasterViews.size());
     auto nameIter = subpassData.rasterViews.find(name);
@@ -422,7 +413,7 @@ void NativeRenderSubpassBuilderImpl::addTexture(
     if (sampler) {
         auto iter = layoutGraph->attributeIndex.find(std::string_view{slotName});
         if (iter != layoutGraph->attributeIndex.end()) {
-            auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+            auto &data = renderGraph->getData(nodeID);
             data.samplers[iter->second.value] = sampler;
         }
     }
@@ -435,14 +426,8 @@ void NativeRenderSubpassBuilderImpl::addStorageBuffer(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeRenderSubpassBuilderImpl::addStorageImage(
@@ -452,14 +437,8 @@ void NativeRenderSubpassBuilderImpl::addStorageImage(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 namespace {
@@ -470,13 +449,13 @@ void setSubpassResourceShaderStages(
     RenderGraph::vertex_descriptor subpassID,
     std::string_view name,
     gfx::ShaderStageFlagBit stageFlags) {
-    auto &subpass = get(Tag{}, subpassID, rg);
-    const auto passID = parent(subpassID, rg);
+    auto &subpass = rg.value(Tag{}, subpassID);
+    const auto passID = rg.get_parent(subpassID);
     CC_EXPECTS(passID != RenderGraph::null_vertex());
-    CC_EXPECTS(holds<RasterPassTag>(passID, rg));
-    auto &pass = get(RasterPassTag{}, passID, rg);
-    CC_EXPECTS(subpass.subpassID < num_vertices(pass.subpassGraph));
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    CC_EXPECTS(rg.holds<RasterPassTag>(passID));
+    auto &pass = rg.value(RasterPassTag{}, passID);
+    CC_EXPECTS(subpass.subpassID < pass.subpassGraph.num_vertices());
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
     CC_EXPECTS(subpass.rasterViews.size() == subpassData.rasterViews.size());
     {
         auto iter = subpassData.rasterViews.find(name);
@@ -518,7 +497,7 @@ void NativeRenderSubpassBuilderImpl::setCustomShaderStages(
 }
 
 void NativeRenderSubpassBuilderImpl::setViewport(const gfx::Viewport &viewport) {
-    auto &subpass = get(RasterSubpassTag{}, nodeID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, nodeID);
     subpass.viewport = viewport;
 }
 
@@ -537,7 +516,7 @@ RenderQueueBuilder *NativeRenderSubpassBuilderImpl::addQueue(
     CC_ENSURES(phaseLayoutID != LayoutGraphData::null_vertex());
 
     auto queueID = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(),
@@ -550,22 +529,22 @@ RenderQueueBuilder *NativeRenderSubpassBuilderImpl::addQueue(
 }
 
 bool NativeRenderSubpassBuilderImpl::getShowStatistics() const {
-    const auto &subpass = get(RasterSubpassTag{}, nodeID, *renderGraph);
+    const auto &subpass = renderGraph->value(RasterSubpassTag{}, nodeID);
     return subpass.showStatistics;
 }
 
 void NativeRenderSubpassBuilderImpl::setShowStatistics(bool enable) {
-    auto &subpass = get(RasterSubpassTag{}, nodeID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, nodeID);
     subpass.showStatistics = enable;
 }
 
 void NativeMultisampleRenderSubpassBuilder::resolveRenderTarget(
     const ccstd::string &source, const ccstd::string &target) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto &subpass = get(RasterSubpassTag{}, nodeID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, nodeID);
 
-    auto parentID = parent(nodeID, *renderGraph);
-    auto &pass = get(RasterPassTag{}, parentID, *renderGraph);
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    auto parentID = renderGraph->get_parent(nodeID);
+    auto &pass = renderGraph->value(RasterPassTag{}, parentID);
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
 
     subpass.resolvePairs.emplace_back(
         ccstd::pmr::string(source.data(), renderGraph->get_allocator()),
@@ -580,7 +559,7 @@ void NativeMultisampleRenderSubpassBuilder::resolveRenderTarget(
 void NativeMultisampleRenderSubpassBuilder::resolveDepthStencil(
     const ccstd::string &source, const ccstd::string &target,   // NOLINT(bugprone-easily-swappable-parameters)
     gfx::ResolveMode depthMode, gfx::ResolveMode stencilMode) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto &subpass = get(RasterSubpassTag{}, nodeID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, nodeID);
     ResolveFlags flags = ResolveFlags::NONE;
     if (depthMode != gfx::ResolveMode::NONE) {
         flags |= ResolveFlags::DEPTH;
@@ -589,9 +568,9 @@ void NativeMultisampleRenderSubpassBuilder::resolveDepthStencil(
         flags |= ResolveFlags::STENCIL;
     }
 
-    auto parentID = parent(nodeID, *renderGraph);
-    auto &pass = get(RasterPassTag{}, parentID, *renderGraph);
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    auto parentID = renderGraph->get_parent(nodeID);
+    auto &pass = renderGraph->value(RasterPassTag{}, parentID);
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
 
     subpass.resolvePairs.emplace_back(
         ccstd::pmr::string(source.data(), renderGraph->get_allocator()),
@@ -639,7 +618,7 @@ void NativeComputeSubpassBuilder::addTexture(
     if (sampler) {
         auto iter = layoutGraph->attributeIndex.find(std::string_view{slotName});
         if (iter != layoutGraph->attributeIndex.end()) {
-            auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+            auto &data = renderGraph->getData(nodeID);
             data.samplers[iter->second.value] = sampler;
         }
     }
@@ -652,14 +631,8 @@ void NativeComputeSubpassBuilder::addStorageBuffer(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeComputeSubpassBuilder::addStorageImage(
@@ -669,14 +642,8 @@ void NativeComputeSubpassBuilder::addStorageImage(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeComputeSubpassBuilder::setCustomShaderStages(
@@ -699,7 +666,7 @@ ComputeQueueBuilder *NativeComputeSubpassBuilder::addQueue(
     CC_ENSURES(phaseLayoutID != LayoutGraphData::null_vertex());
 
     auto queueID = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(),
@@ -733,7 +700,7 @@ void NativeRenderQueueBuilder::addSceneOfCamera(
     const auto *pLight = light.light.get();
     SceneData scene(camera->getScene(), camera, sceneFlags, light, makeCullingFlags(light), light.light);
     auto sceneID = addVertex2(
-        SceneTag{},
+        Scene_{},
         std::forward_as_tuple("Camera"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -742,7 +709,7 @@ void NativeRenderQueueBuilder::addSceneOfCamera(
         *renderGraph, nodeID);
     CC_ENSURES(sceneID != RenderGraph::null_vertex());
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneID);
+    auto &data = renderGraph->getData(sceneID);
 
     setCameraUBOValues(
         *camera,
@@ -782,7 +749,7 @@ void NativeRenderQueueBuilder::addSceneOfCamera(
 
 void NativeSceneBuilder::useLightFrustum(
     IntrusivePtr<scene::Light> light, uint32_t csmLevel, const scene::Camera *optCamera) {
-    auto &sceneData = get(SceneTag{}, nodeID, *renderGraph);
+    auto &sceneData = renderGraph->value(Scene_{}, nodeID);
     sceneData.light.light = light;
     sceneData.light.level = csmLevel;
     sceneData.light.culledByLight = true;
@@ -870,7 +837,7 @@ SceneBuilder *NativeRenderQueueBuilder::addScene(
     const scene::Camera *camera, SceneFlags sceneFlags,
     scene::Light *light, scene::RenderScene *scene) {
     const auto sceneID = addVertex2(
-        SceneTag{},
+        Scene_{},
         std::forward_as_tuple("Scene"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -896,7 +863,7 @@ SceneBuilder *NativeRenderQueueBuilder::addScene(
 
     if (!any(sceneFlags & SceneFlags::NON_BUILTIN)) {
         // objects are projected to camera, set camera ubo
-        auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneID);
+        auto &data = renderGraph->getData(sceneID);
         cc::scene::DirectionalLight *mainLight = nullptr;
         if (scene) {
             mainLight = scene->getMainLight();
@@ -915,20 +882,20 @@ SceneBuilder *NativeRenderQueueBuilder::addScene(
 
 #if CC_USE_GEOMETRY_RENDERER
     if (any(sceneFlags & SceneFlags::GEOMETRY)) {
-        auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneID);
+        auto &data = renderGraph->getData(sceneID);
         data.custom = cc::pipeline::GEOMETRY_RENDERER_COMMAND;
     }
 #endif
 
     if (any(sceneFlags & SceneFlags::UI)) {
         CC_EXPECTS(camera);
-        const auto passOrSubpassId = parent(nodeID, *renderGraph);
+        const auto passOrSubpassId = renderGraph->get_parent(nodeID);
 
         const auto passLayoutId = layoutGraph->locate("default");
         const auto phaseLayoutId = layoutGraph->locate("default", passLayoutId);
 
         const auto queueId = addVertex2(
-            QueueTag{},
+            Queue_{},
             std::forward_as_tuple("UI Queue"),
             std::forward_as_tuple("default"),
             std::forward_as_tuple(),
@@ -938,7 +905,7 @@ SceneBuilder *NativeRenderQueueBuilder::addScene(
             passOrSubpassId);
 
         const auto sceneId = addVertex2(
-            BlitTag{},
+            Blit_{},
             std::forward_as_tuple("UI"),
             std::forward_as_tuple(),
             std::forward_as_tuple(),
@@ -964,7 +931,7 @@ void NativeRenderQueueBuilder::addFullscreenQuad(
     Material *material, uint32_t passID, SceneFlags sceneFlags) {
     std::string_view name = "FullscreenQuad";
     auto drawID = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -979,7 +946,7 @@ void NativeRenderQueueBuilder::addCameraQuad(
     SceneFlags sceneFlags) {
     std::string_view name = "CameraQuad";
     auto drawID = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -988,7 +955,7 @@ void NativeRenderQueueBuilder::addCameraQuad(
         *renderGraph, nodeID);
     CC_ENSURES(drawID != RenderGraph::null_vertex());
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, drawID);
+    auto &data = renderGraph->getData(drawID);
 
     setCameraUBOValues(
         *camera,
@@ -1031,7 +998,7 @@ void NativeRenderQueueBuilder::addDraw3D(
         renderGraph->get_allocator());
 
     const auto sceneId = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple("Draw3D"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1042,7 +1009,7 @@ void NativeRenderQueueBuilder::addDraw3D(
 
     if (!any(sceneFlags & SceneFlags::NON_BUILTIN)) {
         // objects are projected to camera, set camera ubo
-        auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneId);
+        auto &data = renderGraph->getData(sceneId);
         setupLegacyUniforms(
             *this,
             *pipelineRuntime,
@@ -1057,7 +1024,7 @@ void NativeRenderQueueBuilder::addDraw3D(
 void NativeRenderQueueBuilder::addDraw2D(const scene::Camera *camera) {
     CC_EXPECTS(camera);
     const auto sceneId = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple("Draw2D"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1074,13 +1041,13 @@ void NativeRenderQueueBuilder::addDraw2D(const scene::Camera *camera) {
 
 void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
     CC_EXPECTS(camera);
-    const auto passOrSubpassId = parent(nodeID, *renderGraph);
+    const auto passOrSubpassId = renderGraph->get_parent(nodeID);
 
     const auto passLayoutId = layoutGraph->locate("default");
     const auto phaseLayoutId = layoutGraph->locate("default", passLayoutId);
 
     const auto queueId = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple("Profiler Queue"),
         std::forward_as_tuple("default"),
         std::forward_as_tuple(),
@@ -1091,7 +1058,7 @@ void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
 
 #if CC_USE_DEBUG_RENDERER
     const auto debugId = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple("DebugRenderer"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1104,7 +1071,7 @@ void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
             BlitType::FULLSCREEN_QUAD),
         *renderGraph,
         queueId);
-    auto &debugData = get(RenderGraph::DataTag{}, *renderGraph, debugId);
+    auto &debugData = renderGraph->getData(debugId);
     debugData.custom = cc::pipeline::DEBUG_RENDERER_COMMAND;
     setCameraUBOValues(
         *camera,
@@ -1115,7 +1082,7 @@ void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
 #endif
 
     const auto sceneId = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple("Profiler"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1129,7 +1096,7 @@ void NativeRenderQueueBuilder::addProfiler(const scene::Camera *camera) {
         *renderGraph,
         queueId);
 
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, sceneId);
+    auto &data = renderGraph->getData(sceneId);
     setMat4Impl(data, *layoutGraph, "cc_matProj", camera->getMatProj());
 }
 
@@ -1138,7 +1105,7 @@ void NativeRenderQueueBuilder::clearRenderTarget(const ccstd::string &name, cons
     clears.emplace_back(name.c_str(), gfx::ClearFlagBit::COLOR, color);
 
     auto clearID = addVertex2(
-        ClearTag{},
+        Clear_{},
         std::forward_as_tuple("ClearRenderTarget"),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1149,14 +1116,14 @@ void NativeRenderQueueBuilder::clearRenderTarget(const ccstd::string &name, cons
 }
 
 void NativeRenderQueueBuilder::setViewport(const gfx::Viewport &viewport) {
-    auto &queue = get(QueueTag{}, nodeID, *renderGraph);
+    auto &queue = renderGraph->value(Queue_{}, nodeID);
     queue.viewport = viewport;
 }
 
 void NativeRenderQueueBuilder::addCustomCommand(std::string_view customBehavior) {
     std::string_view name = "FullscreenQuad";
     auto drawID = addVertex2(
-        BlitTag{},
+        Blit_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1169,7 +1136,7 @@ void NativeRenderQueueBuilder::addCustomCommand(std::string_view customBehavior)
             BlitType::FULLSCREEN_QUAD),
         *renderGraph, nodeID);
     CC_ENSURES(drawID != RenderGraph::null_vertex());
-    auto &data = get(RenderGraph::DataTag{}, *renderGraph, drawID);
+    auto &data = renderGraph->getData(drawID);
     data.custom = customBehavior;
 }
 
@@ -1188,7 +1155,7 @@ RenderQueueBuilder *NativeRenderPassBuilder::addQueue(
     CC_ENSURES(phaseLayoutID != LayoutGraphData::null_vertex());
 
     auto queueID = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(),
@@ -1209,7 +1176,7 @@ SubpassBuilder *addRenderSubpassImpl(
     const LayoutGraphData &layoutGraph, LayoutGraphData::vertex_descriptor passLayoutID,
     const ccstd::string &subpassName,
     uint32_t count, uint32_t quality) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto &pass = get(RasterPassTag{}, passID, renderGraph);
+    auto &pass = renderGraph.value(RasterPassTag{}, passID);
 
     auto [subpassID, subpassLayoutID] = addRenderSubpassVertex(
         pass, renderGraph, passID, layoutGraph, passLayoutID, subpassName, count, quality);
@@ -1236,19 +1203,8 @@ MultisampleRenderSubpassBuilder *NativeRenderPassBuilder::addMultisampleRenderSu
 }
 
 ComputeSubpassBuilder *NativeRenderPassBuilder::addComputeSubpass(const ccstd::string &subpassName) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
-    auto &subpassGraph = pass.subpassGraph;
-    const auto subpassIndex = num_vertices(pass.subpassGraph);
-    {
-        auto id = addVertex(
-            std::piecewise_construct,
-            std::forward_as_tuple(subpassName),
-            std::forward_as_tuple(),
-            subpassGraph);
-        CC_ENSURES(id == subpassIndex);
-    }
-
-    ComputeSubpass subpass(subpassIndex, renderGraph->get_allocator());
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
+    const auto subpassIndex = pass.subpassGraph.add_vertex(subpassName);
 
     auto subpassID = addVertex2(
         ComputeSubpassTag{},
@@ -1256,7 +1212,7 @@ ComputeSubpassBuilder *NativeRenderPassBuilder::addComputeSubpass(const ccstd::s
         std::forward_as_tuple(subpassName),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
-        std::forward_as_tuple(std::move(subpass)),
+        std::forward_as_tuple(subpassIndex),
         *renderGraph, nodeID);
 
     auto subpassLayoutID = LayoutGraphData::null_vertex();
@@ -1275,7 +1231,7 @@ ComputeSubpassBuilder *NativeRenderPassBuilder::addComputeSubpass(const ccstd::s
 }
 
 void NativeRenderPassBuilder::setViewport(const gfx::Viewport &viewport) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
     pass.viewport = viewport;
 }
 
@@ -1336,7 +1292,7 @@ void NativeMultisampleRenderPassBuilder::addTexture(
     if (sampler) {
         auto iter = layoutGraph->attributeIndex.find(std::string_view{slotName});
         if (iter != layoutGraph->attributeIndex.end()) {
-            auto &data = get(RenderGraph::DataTag{}, *renderGraph, subpassID);
+            auto &data = renderGraph->getData(subpassID);
             data.samplers[iter->second.value] = sampler;
         }
     }
@@ -1349,14 +1305,8 @@ void NativeMultisampleRenderPassBuilder::addStorageBuffer(
         *renderGraph,
         subpassID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeMultisampleRenderPassBuilder::addStorageImage(
@@ -1366,14 +1316,8 @@ void NativeMultisampleRenderPassBuilder::addStorageImage(
         *renderGraph,
         subpassID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 RenderQueueBuilder *NativeMultisampleRenderPassBuilder::addQueue(
@@ -1392,7 +1336,7 @@ RenderQueueBuilder *NativeMultisampleRenderPassBuilder::addQueue(
     CC_ENSURES(phaseLayoutID != LayoutGraphData::null_vertex());
 
     auto queueID = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(),
@@ -1405,7 +1349,7 @@ RenderQueueBuilder *NativeMultisampleRenderPassBuilder::addQueue(
 }
 
 void NativeMultisampleRenderPassBuilder::setViewport(const gfx::Viewport &viewport) {
-    auto &subpass = get(RasterSubpassTag{}, subpassID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, subpassID);
     subpass.viewport = viewport;
 }
 
@@ -1414,21 +1358,21 @@ void NativeMultisampleRenderPassBuilder::setVersion(const ccstd::string &name, u
 }
 
 bool NativeMultisampleRenderPassBuilder::getShowStatistics() const {
-    const auto &subpass = get(RasterSubpassTag{}, subpassID, *renderGraph);
+    const auto &subpass = renderGraph->value(RasterSubpassTag{}, subpassID);
     return subpass.showStatistics;
 }
 
 void NativeMultisampleRenderPassBuilder::setShowStatistics(bool enable) {
-    auto &subpass = get(RasterSubpassTag{}, subpassID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, subpassID);
     subpass.showStatistics = enable;
 }
 
 void NativeMultisampleRenderPassBuilder::resolveRenderTarget(
     const ccstd::string &source, const ccstd::string &target) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto &subpass = get(RasterSubpassTag{}, subpassID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, subpassID);
 
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
 
     subpass.resolvePairs.emplace_back(
         ccstd::pmr::string(source.data(), renderGraph->get_allocator()),
@@ -1443,7 +1387,7 @@ void NativeMultisampleRenderPassBuilder::resolveRenderTarget(
 void NativeMultisampleRenderPassBuilder::resolveDepthStencil(
     const ccstd::string &source, const ccstd::string &target,   // NOLINT(bugprone-easily-swappable-parameters)
     gfx::ResolveMode depthMode, gfx::ResolveMode stencilMode) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto &subpass = get(RasterSubpassTag{}, subpassID, *renderGraph);
+    auto &subpass = renderGraph->value(RasterSubpassTag{}, subpassID);
     ResolveFlags flags = ResolveFlags::NONE;
     if (depthMode != gfx::ResolveMode::NONE) {
         flags |= ResolveFlags::DEPTH;
@@ -1452,8 +1396,8 @@ void NativeMultisampleRenderPassBuilder::resolveDepthStencil(
         flags |= ResolveFlags::STENCIL;
     }
 
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
-    auto &subpassData = get(SubpassGraph::SubpassTag{}, pass.subpassGraph, subpass.subpassID);
+    auto &pass = renderGraph->value(RasterPassTag{}, nodeID);
+    auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
 
     subpass.resolvePairs.emplace_back(
         ccstd::pmr::string(source.data(), renderGraph->get_allocator()),
@@ -1471,7 +1415,7 @@ void NativeComputeQueueBuilder::addDispatch(
     Material *material, uint32_t passID) {
     std::string_view name("Dispatch");
     addVertex2(
-        DispatchTag{},
+        Dispatch_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1506,7 +1450,7 @@ void NativeComputePassBuilder::addTexture(
     if (sampler) {
         const auto iter = layoutGraph->attributeIndex.find(std::string_view{slotName});
         if (iter != layoutGraph->attributeIndex.end()) {
-            auto &data = get(RenderGraph::DataTag{}, *renderGraph, nodeID);
+            auto &data = renderGraph->getData(nodeID);
             data.samplers[iter->second.value] = sampler;
         }
     }
@@ -1519,14 +1463,8 @@ void NativeComputePassBuilder::addStorageBuffer(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeComputePassBuilder::addStorageImage(
@@ -1536,25 +1474,19 @@ void NativeComputePassBuilder::addStorageImage(
         *renderGraph,
         nodeID,
         name,
-        ComputeView{
-            ccstd::pmr::string(slotName, renderGraph->get_allocator()),
-            accessType,
-            gfx::ClearFlagBit::NONE,
-            ClearValueType::NONE,
-            ClearValue{},
-            gfx::ShaderStageFlagBit::NONE,
-            renderGraph->get_allocator()});
+        ComputeView{std::allocator_arg, renderGraph->get_allocator(),
+                    ccstd::pmr::string(slotName, renderGraph->get_allocator()), accessType});
 }
 
 void NativeComputePassBuilder::addMaterialTexture(
     const ccstd::string &resourceName, gfx::ShaderStageFlagBit flags) {
-    auto &pass = get(RasterPassTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(ComputeTag{}, nodeID);
     pass.textures.emplace(resourceName, flags);
 }
 
 void NativeComputePassBuilder::setCustomShaderStages(
     const ccstd::string &name, gfx::ShaderStageFlagBit stageFlags) {
-    auto &pass = get(ComputeTag{}, nodeID, *renderGraph);
+    auto &pass = renderGraph->value(ComputeTag{}, nodeID);
     {
         auto iter = pass.computeViews.find(std::string_view{name});
         if (iter != pass.computeViews.end()) {
@@ -1580,7 +1512,7 @@ ComputeQueueBuilder *NativeComputePassBuilder::addQueue(
     CC_ENSURES(phaseLayoutID != LayoutGraphData::null_vertex());
 
     auto queueID = addVertex2(
-        QueueTag{},
+        Queue_{},
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(phaseName),
         std::forward_as_tuple(),

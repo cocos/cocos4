@@ -1,10 +1,8 @@
-#include <boost/graph/depth_first_search.hpp>
-#include <boost/graph/filtered_graph.hpp>
+#include "cocos/base/GraphDFS.h"
+#include "cocos/base/GraphView.h"
 #include "cocos/renderer/pipeline/custom/RenderCommonNames.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/details/DebugUtils.h"
-#include "cocos/renderer/pipeline/custom/details/GraphTypes.h"
-#include "cocos/renderer/pipeline/custom/details/GraphView.h"
 
 namespace cc {
 
@@ -65,14 +63,13 @@ std::string getName(const gfx::ClearFlagBit &flags) {
     return oss.str();
 }
 
-struct RenderGraphPrintVisitor : boost::dfs_visitor<> {
-    void discover_vertex(
+struct RenderGraphPrintVisitor : graph::DefaultDfsVisitor {
+    void discoverVertex(
         RenderGraph::vertex_descriptor vertID,
-        const AddressableView<RenderGraph> &gv) const {
-        const auto &g = gv.mGraph;
-        const auto &name = get(RenderGraph::NameTag{}, g, vertID);
-        visitObject(
-            vertID, gv.mGraph,
+        const graph::ReferenceGraphView<RenderGraph> & /*view*/) const {
+        const auto &name = renderGraph.getName(vertID);
+        renderGraph.visit_vertex(
+            vertID,
             [&](const RasterPass &pass) {
                 OSS << "RasterPass \"" << name << "\" {\n";
                 indent(space);
@@ -232,12 +229,11 @@ struct RenderGraphPrintVisitor : boost::dfs_visitor<> {
             });
     }
 
-    void finish_vertex(
+    void finishVertex(
         RenderGraph::vertex_descriptor vertID,
-        const AddressableView<RenderGraph> &gv) const {
-        std::ignore = gv;
-        visitObject(
-            vertID, gv.mGraph,
+        const graph::ReferenceGraphView<RenderGraph> & /*view*/) const {
+        renderGraph.visit_vertex(
+            vertID,
             [&](const RasterPass &pass) {
                 std::ignore = pass;
                 unindent(space);
@@ -297,6 +293,7 @@ struct RenderGraphPrintVisitor : boost::dfs_visitor<> {
             });
     }
 
+    const RenderGraph &renderGraph;
     std::ostringstream &oss;
     ccstd::pmr::string &space;
 };
@@ -305,18 +302,16 @@ struct RenderGraphPrintVisitor : boost::dfs_visitor<> {
 
 ccstd::string RenderGraph::print(
     boost::container::pmr::memory_resource *scratch) const {
-    const auto &rg = *this;
     std::ostringstream oss;
     ccstd::pmr::string space(scratch);
     oss << "\n";
     OSS << "RenderGraph {\n";
     {
         INDENT();
-        RenderGraphPrintVisitor visitor{
-            {}, oss, space};
-        AddressableView<RenderGraph> graphView(rg);
-        auto colors = rg.colors(scratch);
-        boost::depth_first_search(graphView, visitor, get(colors, rg));
+        RenderGraphPrintVisitor visitor{{}, *this, oss, space};
+        graph::ReferenceGraphView view{*this};
+        ccstd::pmr::vector<graph::GraphColor> colors(num_vertices(), scratch);
+        graph::depthFirstSearch(view, visitor, colors, std::nullopt, scratch);
     }
     OSS << "}\n";
     return oss.str();
