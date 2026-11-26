@@ -66,8 +66,6 @@ import {
     SurfaceTransform,
     Swapchain,
     Texture,
-    TextureBlit,
-    Filter,
     TextureInfo,
     TextureType,
     TextureUsageBit,
@@ -115,8 +113,6 @@ import {
     ResourceTraits,
     SceneData,
     SubresourceView,
-    Subpass,
-    SubpassGraph,
 } from './render-graph';
 import {
     AccessType,
@@ -141,8 +137,7 @@ import {
 } from './define';
 import { LightResource, SceneCulling } from './scene-culling';
 import { Pass, RenderScene } from '../../render-scene';
-import { WebProgramLibrary } from './web-program-library';
-import { recordCommand, RenderQueue as RenderExeQueue } from './web-pipeline-types';
+import { recordCommand } from './web-pipeline-types';
 import { SpotLight, SphereLight } from '../../render-scene/scene';
 
 class ResourceVisitor implements ResourceGraphVisitor {
@@ -761,7 +756,6 @@ class RenderPassLayoutInfo {
 const profilerViewport = new Viewport();
 const renderPassArea = new Rect();
 const resourceVisitor = new ResourceVisitor();
-const textureBlit = new TextureBlit();
 class DeviceRenderPass implements RecordingInterface {
     protected _renderPass: RenderPass;
     protected _framebuffer!: Framebuffer;
@@ -1427,7 +1421,6 @@ class ExecutorPools {
     readonly deviceScenePool: RecyclePool<DeviceRenderScene>;
 }
 
-const vbData = new Float32Array(4 * 4);
 const quadRect = new Rect();
 // The attribute length of the volume light
 const volLightAttrCount = 5;
@@ -1843,7 +1836,6 @@ class PreRenderVisitor extends BaseRenderVisitor implements RenderGraphVisitor {
     }
     compute (pass: ComputePass): void {
         if (!this.rg.getValid(this.passID)) return;
-        const devicePasses = context.devicePasses;
         const computeInfo = new ComputePassInfo();
         computeInfo.applyInfo(this.passID, pass);
         this.currPass = new DeviceComputePass(computeInfo);

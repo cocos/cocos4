@@ -32,20 +32,18 @@ import {
     RenderQueue, RenderSwapchain, ResolvePass, ResourceGraph, ResourceGraphVisitor, SceneData, SubresourceView, PersistentBuffer, PersistentTexture,
     RenderGraphValue,
 } from './render-graph';
-import { AccessType, ResourceResidency, SceneFlags } from './types';
+import { AccessType, ResourceResidency } from './types';
 
-const readViews: Map<string, RasterView> = new Map();
+const readViews = new Set<string>();
 class PassVisitor implements RenderGraphVisitor {
     public queueID = 0xFFFFFFFF;
     public sceneID = 0xFFFFFFFF;
     public passID = 0xFFFFFFFF;
     public dispatchID = 0xFFFFFFFF;
-    public subpassID = 0xFFFFFFFF;
     // output resourcetexture id
     public resID = 0xFFFFFFFF;
     public context: CompilerContext;
     private _currPass: RasterPass | CopyPass | ComputePass | null = null;
-    private _rasterSubpass: RasterSubpass | null = null;
     private _resVisitor: ResourceVisitor;
     constructor (context: CompilerContext) {
         this.context = context;
@@ -66,28 +64,11 @@ class PassVisitor implements RenderGraphVisitor {
     protected _isQueue (u: number): boolean {
         return this.context.renderGraph.h(RenderGraphValue.Queue, u);
     }
-    protected _isShadowMap (u: number): boolean {
-        const sceneData = this._getSceneData(u);
-        if (sceneData) {
-            return sceneData.light && !!sceneData.light.light && (sceneData.flags & SceneFlags.SHADOW_CASTER) !== 0;
-        }
-        return false;
-    }
-    protected _getSceneData (u: number): SceneData | null {
-        if (!this.context.renderGraph.h(RenderGraphValue.Scene, u)) {
-            return null;
-        }
-        return this.context.renderGraph.j<SceneData>(u);
-    }
     protected _isScene (u: number): boolean {
         return this.context.renderGraph.h(RenderGraphValue.Scene, u);
     }
     protected _isBlit (u: number): boolean {
         return this.context.renderGraph.h(RenderGraphValue.Blit, u);
-    }
-
-    protected _isRasterSubpass (u: number): boolean {
-        return this.context.renderGraph.object(u) instanceof RasterSubpass;
     }
 
     private _useResourceInfo (input: string, raster: RasterView): void {
@@ -100,19 +81,6 @@ class PassVisitor implements RenderGraphVisitor {
             const passRaster = rasters.get(this.passID);
             if (passRaster === raster) {
                 return;
-            }
-            const computes = useContext.computes;
-            let isPreRaster = false;
-            for (const [passId, currRaster] of rasters) {
-                if (passId > this.passID) {
-                    isPreRaster = true;
-                }
-            }
-            for (const [passId] of computes) {
-                if (passId > this.passID) {
-                    isPreRaster = true;
-                    break;
-                }
             }
             rasters.set(this.passID, raster);
         } else {
@@ -160,17 +128,17 @@ class PassVisitor implements RenderGraphVisitor {
                 continue;
             }
             if (raster.accessType !== AccessType.WRITE) {
-                readViews.set(readName, raster);
+                readViews.add(readName);
             }
         }
         if (validPass) return;
         if (rg.getValid(this.sceneID)) {
-            for (const [readName, raster] of pass.rasterViews) {
+            for (const readName of pass.rasterViews.keys()) {
                 context.pipeline.resourceUses.push(readName);
             }
             let resourceGraph;
             let vertID;
-            for (const [rasterName, raster] of readViews) {
+            for (const rasterName of readViews) {
                 resourceGraph = this.context.resourceGraph;
                 vertID = resourceGraph.find(rasterName);
                 if (vertID !== 0xFFFFFFFF) {
@@ -206,8 +174,6 @@ class PassVisitor implements RenderGraphVisitor {
             this.passID = id;
         } else if (this._isQueue(id)) {
             this.queueID = id;
-        } else if (this._isRasterSubpass(id)) {
-            this.subpassID = id;
         } else if (this._isScene(id) || this._isBlit(id)) {
             this.sceneID = id;
         } else if (this._isDispatch(id)) {
@@ -215,15 +181,10 @@ class PassVisitor implements RenderGraphVisitor {
         }
     }
     rasterPass (pass: RasterPass): void {
-        // const rg = this.context.renderGraph;
-        // Since the pass is valid, there is no need to continue traversing.
-        // if (rg.getValid(this.passID)) {
-        //     return;
-        // }
         this._currPass = pass;
     }
     rasterSubpass (value: RasterSubpass): void {
-        this._rasterSubpass = value;
+        // noop
     }
     computeSubpass (value: ComputeSubpass): void {
         // noop

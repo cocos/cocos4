@@ -26,7 +26,8 @@
 import { EffectAsset } from '../../asset/assets';
 import { assert, error, warn } from '../../core';
 import { Format, MemoryAccessBit, SampleType, ShaderStageFlagBit, Type, Uniform, UniformBlock, ViewDimension } from '../../gfx';
-import { DefaultVisitor, depthFirstSearch, GraphColor, MutableVertexPropertyMap } from './graph';
+import { VectorGraphColorMap } from './effect';
+import { DefaultVisitor, depthFirstSearch } from './graph';
 import {
     Descriptor,
     DescriptorBlock,
@@ -41,9 +42,7 @@ import {
 } from './layout-graph';
 import { getDescriptorTypeOrderName } from './layout-graph-names';
 import { ENABLE_SUBPASS, getOrCreateDescriptorID, sortDescriptorBlocks, sortDescriptorGroupBlocks } from './layout-graph-utils';
-import {
-    AccessType, ParameterType, UpdateFrequency,
-} from './types';
+import { ParameterType, UpdateFrequency } from './types';
 import { getUpdateFrequencyName } from './types-names';
 
 export function getLayoutGraphDataVersion (): number {
@@ -508,20 +507,6 @@ export class VisibilityGraph {
     passes = new Map<string, VisibilityPass>();
 }
 
-// graph coloring help class
-class VectorGraphColorMap implements MutableVertexPropertyMap<GraphColor> {
-    constructor (sz: number) {
-        this.colors = new Array<GraphColor>(sz);
-    }
-    get (u: number): GraphColor {
-        return this.colors[u];
-    }
-    put (u: number, value: GraphColor): void {
-        this.colors[u] = value;
-    }
-    readonly colors: Array<GraphColor>;
-}
-
 // class to layout all descriptors
 export class LayoutGraphInfo {
     constructor (visg: VisibilityGraph) {
@@ -723,21 +708,6 @@ export class LayoutGraphInfo {
                 counter.addDescriptor(key, info.name, 1);
             }
         }
-    }
-    private getBufferAccessType (access: MemoryAccessBit): AccessType {
-        if (access & MemoryAccessBit.WRITE_ONLY) {
-            return AccessType.READ_WRITE;
-        }
-        return AccessType.READ;
-    }
-    private getImageAccessType (access: MemoryAccessBit): AccessType {
-        if (access === MemoryAccessBit.READ_WRITE) {
-            return AccessType.READ_WRITE;
-        }
-        if (access === MemoryAccessBit.WRITE_ONLY) {
-            return AccessType.WRITE;
-        }
-        return AccessType.READ;
     }
     private buildGroupBuffers (
         visDB: VisibilityDB,
