@@ -35,9 +35,7 @@
 #include "../FGDispatcherTypes.h"
 #include "../LayoutGraphTypes.h"
 #include "../NativePipelineTypes.h"
-#include "../RenderGraphGraphs.h"
 #include "../RenderGraphTypes.h"
-#include "../details/Range.h"
 #include "GFXDeviceManager.h"
 #include "cocos/base/std/container/vector.h"
 #include "frame-graph/FrameGraph.h"
@@ -63,11 +61,10 @@ using ComputeViews = PmrTransparentMap<ccstd::pmr::string, ccstd::pmr::vector<Co
 
 static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescInfo, const LayoutInfo &layoutInfo, RenderGraph &renderGraph, ResourceGraph &rescGraph, LayoutGraphData &layoutGraphData) {
     for (const auto &resc : rescInfo) {
-        string name = std::get<0>(resc);
-        auto rescVertexID = add_vertex(rescGraph, ManagedTag{}, name.c_str());
-        rescGraph.descs[rescVertexID] = std::get<1>(resc);
-        rescGraph.traits[rescVertexID] = std::get<2>(resc);
-        rescGraph.states[rescVertexID].states = gfx::AccessFlagBit::NONE;
+        const auto rescVertexID = rescGraph.add_vertex(Managed_{}, std::get<0>(resc));
+        rescGraph.getDesc(rescVertexID) = std::get<1>(resc);
+        rescGraph.getTraits(rescVertexID) = std::get<2>(resc);
+        rescGraph.getStates(rescVertexID).states = gfx::AccessFlagBit::NONE;
     }
 
     const auto phase = layoutGraphData.add_vertex(RenderPhase_{}, "default");
@@ -93,22 +90,19 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
             desc.descriptorID = {nameID};
         }
     }
-    renderGraph.layoutNodes.emplace_back("");
 
     std::set<ccstd::string> nameSet;
     auto addRasterNode = [&](const vector<vector<vector<string>>> &subpasses, uint32_t count, uint32_t passID) {
         const ccstd::string name = "pass" + std::to_string(passID);
-        const auto vertexID = add_vertex(renderGraph, RasterPassTag{}, name.c_str());
-        auto &layoutName = get(RenderGraph::LayoutTag{}, renderGraph, vertexID);
-        layoutName = "default";
+        const auto vertexID = renderGraph.add_vertex(RasterPassTag{}, name);
+        renderGraph.getLayout(vertexID) = "default";
 
         renderGraph.sortedVertices.emplace_back(vertexID);
-        auto &raster = get(RasterPassTag{}, vertexID, renderGraph);
+        auto &raster = renderGraph.value(RasterPassTag{}, vertexID);
         auto &subpassGraph = raster.subpassGraph;
 
         bool hasSubpass = count > 1;
 
-        Subpass *subpass = nullptr;
         auto &rasterViews = raster.rasterViews;
 
         for (size_t j = 0; j < count; ++j) {
@@ -117,25 +111,17 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
             bool isOutput = false;
 
             Subpass *subpass = nullptr;
-            RasterSubpass *subpassNode1 = nullptr;
             PmrTransparentMap<ccstd::pmr::string, RasterView> *subpassViews = nullptr;
             if (hasSubpass) {
                 const ccstd::string subpassName = "subpass" + std::to_string(passID);
-                auto subpassVertexID = add_vertex(subpassGraph, subpassName.c_str());
-                subpass = &get(SubpassGraph::SubpassTag{}, subpassGraph, subpassVertexID);
+                const auto subpassVertexID = subpassGraph.add_vertex(subpassName);
+                subpass = &subpassGraph.getSubpass(subpassVertexID);
 
-                RasterSubpass subpassNode(j, 1, 0, renderGraph.get_allocator());
-                auto subpassID = addVertex(
-                    RasterSubpassTag{},
-                    std::forward_as_tuple(subpassName.c_str()),
-                    std::forward_as_tuple(),
-                    std::forward_as_tuple(),
-                    std::forward_as_tuple(),
-                    std::forward_as_tuple(std::move(subpassNode)),
-                    renderGraph, vertexID);
-
-                subpassNode1 = get_if<RasterSubpass>(subpassID, &renderGraph);
-                subpassViews = &subpassNode1->rasterViews;
+                const auto subpassID = renderGraph.add_vertex(
+                    RasterSubpassTag{}, std::piecewise_construct, std::forward_as_tuple(subpassVertexID),
+                    std::forward_as_tuple(subpassName), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, vertexID);
+                renderGraph.sortedVertices.emplace_back(subpassID);
+                subpassViews = &renderGraph.value(RasterSubpassTag{}, subpassID).rasterViews;
             }
 
             uint32_t slot = 0;
@@ -150,7 +136,7 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
 
                     auto &views = hasSubpass ? (*subpass).rasterViews : raster.rasterViews;
                     auto view = RasterView{
-                        viewName.c_str(),
+                        std::allocator_arg, renderGraph.get_allocator(), viewName,
                         isOutput ? AccessType::WRITE : AccessType::READ,
                         AttachmentType::RENDER_TARGET,
                         firstMeet ? gfx::LoadOp::CLEAR : gfx::LoadOp::LOAD,
@@ -193,32 +179,18 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 const auto &subpasses = pass.second;
 
                 const ccstd::string name = "pass" + std::to_string(passCount++);
-                const auto vertexID = add_vertex(renderGraph, ComputeTag{}, name.c_str());
+                const auto vertexID = renderGraph.add_vertex(ComputeTag{}, name);
+                renderGraph.getLayout(vertexID) = "default";
                 renderGraph.sortedVertices.emplace_back(vertexID);
 
                 assert(subpasses.back().size() == 2); // inputs and outputs
-                auto &computePass = get(ComputeTag{}, vertexID, renderGraph);
+                auto &computePass = renderGraph.value(ComputeTag{}, vertexID);
                 const auto &inputsAndOutputs = subpasses.back();
                 const auto &inputs = inputsAndOutputs.front();
                 const auto &outputs = inputsAndOutputs.back();
 
-                std::vector<ComputeView> views(2);
-                ComputeView &src = views.front();
-                src.name = inputs.front();
-                src.accessType = AccessType::READ;
-                ComputeView &dst = views.back();
-                dst.name = outputs.front();
-                dst.accessType = AccessType::WRITE;
-
-                computePass.computeViews.emplace(src.name, ccstd::pmr::vector<ComputeView>{});
-                computePass.computeViews.emplace(dst.name, ccstd::pmr::vector<ComputeView>{});
-                computePass.computeViews.at(src.name.c_str()).emplace_back();
-                computePass.computeViews.at(dst.name.c_str()).emplace_back();
-                computePass.computeViews.at(src.name.c_str()).front().name = inputs.front();
-                computePass.computeViews.at(src.name.c_str()).front().accessType = AccessType::READ;
-                computePass.computeViews.at(dst.name.c_str()).back().name = outputs.front();
-                computePass.computeViews.at(dst.name.c_str()).back().accessType = AccessType::WRITE;
-
+                computePass.computeViews[inputs.front()].emplace_back(inputs.front(), AccessType::READ);
+                computePass.computeViews[outputs.front()].emplace_back(outputs.front(), AccessType::WRITE);
                 break;
             }
             case PassType::PRESENT: {
@@ -230,10 +202,10 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 const auto &subpasses = pass.second;
 
                 const ccstd::string name = "pass" + std::to_string(passCount++);
-                const auto vertexID = add_vertex(renderGraph, CopyTag{}, name.c_str());
+                const auto vertexID = renderGraph.add_vertex(CopyTag{}, name);
                 renderGraph.sortedVertices.emplace_back(vertexID);
                 assert(subpasses.back().size() == 2); // inputs and outputs
-                auto &copyPass = get(CopyTag{}, vertexID, renderGraph);
+                auto &copyPass = renderGraph.value(CopyTag{}, vertexID);
                 const auto &inputsAndOutputs = subpasses.back();
                 const auto &inputs = inputsAndOutputs.front();
                 const auto &outputs = inputsAndOutputs.back();
