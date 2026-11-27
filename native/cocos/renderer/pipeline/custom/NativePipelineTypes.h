@@ -28,6 +28,7 @@
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
 #pragma once // NOLINT(portability-avoid-pragma-once)
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -72,7 +73,6 @@
 #include "cocos/renderer/pipeline/GlobalDescriptorSetManager.h"
 #include "cocos/renderer/pipeline/InstancedBuffer.h"
 #include "cocos/renderer/pipeline/PipelineSceneData.h"
-#include "cocos/renderer/pipeline/custom/Array4.h"
 #include "cocos/renderer/pipeline/custom/CustomTypes.h"
 #include "cocos/renderer/pipeline/custom/FGDispatcherTypes.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
@@ -1168,7 +1168,7 @@ inline bool operator<(const BuiltinCascadedShadowMapKey& lhs, const BuiltinCasca
 }
 
 struct BuiltinCascadedShadowMap {
-    Array4<BuiltinShadowTransform> layers;
+    std::array<BuiltinShadowTransform, 4> layers;
     BuiltinShadowTransform specialLayer;
     float shadowDistance{0};
 };

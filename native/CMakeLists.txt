@@ -1528,7 +1528,6 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/ArchiveFwd.h
                  cocos/renderer/pipeline/custom/ArchiveTypes.cpp
                  cocos/renderer/pipeline/custom/ArchiveTypes.h
-                 cocos/renderer/pipeline/custom/Array4.h
                  cocos/renderer/pipeline/custom/BinaryArchive.h
                  cocos/renderer/pipeline/custom/CustomFwd.h
                  cocos/renderer/pipeline/custom/CustomTypes.cpp
