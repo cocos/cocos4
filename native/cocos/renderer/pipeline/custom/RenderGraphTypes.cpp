@@ -495,35 +495,35 @@ RenderData::RenderData(RenderData&& rhs, const allocator_type& alloc)
 RenderGraph::RenderGraph(RenderGraph&& rhs, const allocator_type& alloc)
 : handles(std::move(rhs.handles), alloc), outEdges(std::move(rhs.outEdges), alloc), inEdges(std::move(rhs.inEdges), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), layoutNodes(std::move(rhs.layoutNodes), alloc), data(std::move(rhs.data), alloc), valid(std::move(rhs.valid), alloc), rasterPasses(std::move(rhs.rasterPasses), alloc), rasterSubpasses(std::move(rhs.rasterSubpasses), alloc), computeSubpasses(std::move(rhs.computeSubpasses), alloc), computePasses(std::move(rhs.computePasses), alloc), resolvePasses(std::move(rhs.resolvePasses), alloc), copyPasses(std::move(rhs.copyPasses), alloc), movePasses(std::move(rhs.movePasses), alloc), raytracePasses(std::move(rhs.raytracePasses), alloc), renderQueues(std::move(rhs.renderQueues), alloc), scenes(std::move(rhs.scenes), alloc), blits(std::move(rhs.blits), alloc), dispatches(std::move(rhs.dispatches), alloc), clearViews(std::move(rhs.clearViews), alloc), viewports(std::move(rhs.viewports), alloc), index(std::move(rhs.index), alloc), sortedVertices(std::move(rhs.sortedVertices), alloc), globalRenderData(std::move(rhs.globalRenderData), alloc) {}
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterPassTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterPass_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterSubpassTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterSubpass_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const ComputeSubpassTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const ComputeSubpass_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const ComputeTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Compute_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const ResolveTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Resolve_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const CopyTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Copy_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const MoveTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Move_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RaytraceTag& tag, std::string_view value, vertex_descriptor parent) {
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Raytrace_& tag, std::string_view value, vertex_descriptor parent) {
     return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 

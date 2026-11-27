@@ -56,14 +56,14 @@ inline const char* getName(ParameterType e) noexcept {
     }
     return "";
 }
-inline const char* getName(const RasterPassTag& /*v*/) noexcept { return "RasterPass"; }
-inline const char* getName(const RasterSubpassTag& /*v*/) noexcept { return "RasterSubpass"; }
-inline const char* getName(const ComputeSubpassTag& /*v*/) noexcept { return "ComputeSubpass"; }
-inline const char* getName(const ComputeTag& /*v*/) noexcept { return "Compute"; }
-inline const char* getName(const ResolveTag& /*v*/) noexcept { return "Resolve"; }
-inline const char* getName(const CopyTag& /*v*/) noexcept { return "Copy"; }
-inline const char* getName(const MoveTag& /*v*/) noexcept { return "Move"; }
-inline const char* getName(const RaytraceTag& /*v*/) noexcept { return "Raytrace"; }
+inline const char* getName(const RasterPass_& /*v*/) noexcept { return "RasterPass"; }
+inline const char* getName(const RasterSubpass_& /*v*/) noexcept { return "RasterSubpass"; }
+inline const char* getName(const ComputeSubpass_& /*v*/) noexcept { return "ComputeSubpass"; }
+inline const char* getName(const Compute_& /*v*/) noexcept { return "Compute"; }
+inline const char* getName(const Resolve_& /*v*/) noexcept { return "Resolve"; }
+inline const char* getName(const Copy_& /*v*/) noexcept { return "Copy"; }
+inline const char* getName(const Move_& /*v*/) noexcept { return "Move"; }
+inline const char* getName(const Raytrace_& /*v*/) noexcept { return "Raytrace"; }
 inline const char* getName(ResourceResidency e) noexcept {
     switch (e) {
         case ResourceResidency::MANAGED: return "MANAGED";

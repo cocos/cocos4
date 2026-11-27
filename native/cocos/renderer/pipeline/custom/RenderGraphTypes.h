@@ -1220,30 +1220,30 @@ struct RenderGraph {
     vertex_descriptor num_vertices() const noexcept { return static_cast<vertex_descriptor>(this->names.size()); } // NOLINT(readability-identifier-naming)
 
     // MutableGraph
-    vertex_descriptor add_vertex(const RasterPassTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());     // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const RasterSubpassTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());  // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const ComputeSubpassTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex()); // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const ComputeTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());        // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const ResolveTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());        // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const CopyTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());           // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const MoveTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());           // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const RaytraceTag& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());       // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Queue_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());            // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Scene_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());            // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Blit_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());             // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Dispatch_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());         // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Clear_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());            // NOLINT(readability-identifier-naming)
-    vertex_descriptor add_vertex(const Viewport_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());         // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const RasterPass_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());     // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const RasterSubpass_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());  // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const ComputeSubpass_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex()); // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Compute_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());        // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Resolve_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());        // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Copy_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());           // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Move_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());           // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Raytrace_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());       // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Queue_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());          // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Scene_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());          // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Blit_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());           // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Dispatch_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());       // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Clear_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());          // NOLINT(readability-identifier-naming)
+    vertex_descriptor add_vertex(const Viewport_& tag, std::string_view value = {}, vertex_descriptor parent = null_vertex());       // NOLINT(readability-identifier-naming)
 
     template <class Tag, class PayloadArgs, class Args0, class Args1, class Args2, class Args3,
-              std::enable_if_t<std::is_same_v<Tag, RasterPassTag> ||
-                                   std::is_same_v<Tag, RasterSubpassTag> ||
-                                   std::is_same_v<Tag, ComputeSubpassTag> ||
-                                   std::is_same_v<Tag, ComputeTag> ||
-                                   std::is_same_v<Tag, ResolveTag> ||
-                                   std::is_same_v<Tag, CopyTag> ||
-                                   std::is_same_v<Tag, MoveTag> ||
-                                   std::is_same_v<Tag, RaytraceTag> ||
+              std::enable_if_t<std::is_same_v<Tag, RasterPass_> ||
+                                   std::is_same_v<Tag, RasterSubpass_> ||
+                                   std::is_same_v<Tag, ComputeSubpass_> ||
+                                   std::is_same_v<Tag, Compute_> ||
+                                   std::is_same_v<Tag, Resolve_> ||
+                                   std::is_same_v<Tag, Copy_> ||
+                                   std::is_same_v<Tag, Move_> ||
+                                   std::is_same_v<Tag, Raytrace_> ||
                                    std::is_same_v<Tag, Queue_> ||
                                    std::is_same_v<Tag, Scene_> ||
                                    std::is_same_v<Tag, Blit_> ||
@@ -1291,21 +1291,21 @@ struct RenderGraph {
     template <class Tag>
     bool holds(vertex_descriptor v) const noexcept {
         if (static_cast<std::uintmax_t>(v) >= this->handles.size()) return false;
-        if constexpr (std::is_same_v<Tag, RasterPassTag>) {
+        if constexpr (std::is_same_v<Tag, RasterPass_>) {
             return this->handles[v].kind == Kind::RasterPass;
-        } else if constexpr (std::is_same_v<Tag, RasterSubpassTag>) {
+        } else if constexpr (std::is_same_v<Tag, RasterSubpass_>) {
             return this->handles[v].kind == Kind::RasterSubpass;
-        } else if constexpr (std::is_same_v<Tag, ComputeSubpassTag>) {
+        } else if constexpr (std::is_same_v<Tag, ComputeSubpass_>) {
             return this->handles[v].kind == Kind::ComputeSubpass;
-        } else if constexpr (std::is_same_v<Tag, ComputeTag>) {
+        } else if constexpr (std::is_same_v<Tag, Compute_>) {
             return this->handles[v].kind == Kind::Compute;
-        } else if constexpr (std::is_same_v<Tag, ResolveTag>) {
+        } else if constexpr (std::is_same_v<Tag, Resolve_>) {
             return this->handles[v].kind == Kind::Resolve;
-        } else if constexpr (std::is_same_v<Tag, CopyTag>) {
+        } else if constexpr (std::is_same_v<Tag, Copy_>) {
             return this->handles[v].kind == Kind::Copy;
-        } else if constexpr (std::is_same_v<Tag, MoveTag>) {
+        } else if constexpr (std::is_same_v<Tag, Move_>) {
             return this->handles[v].kind == Kind::Move;
-        } else if constexpr (std::is_same_v<Tag, RaytraceTag>) {
+        } else if constexpr (std::is_same_v<Tag, Raytrace_>) {
             return this->handles[v].kind == Kind::Raytrace;
         } else if constexpr (std::is_same_v<Tag, Queue_>) {
             return this->handles[v].kind == Kind::Queue;
@@ -1322,68 +1322,68 @@ struct RenderGraph {
             return this->handles[v].kind == Kind::Viewport;
         }
     }
-    RasterPass& value(const RasterPassTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<RasterPassTag>(v)) throw std::bad_variant_access{};
+    RasterPass& value(const RasterPass_& /*tag*/, vertex_descriptor v) {
+        if (!holds<RasterPass_>(v)) throw std::bad_variant_access{};
         return this->rasterPasses[this->handles[v].index];
     }
-    RasterPass const& value(const RasterPassTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<RasterPassTag>(v)) throw std::bad_variant_access{};
+    RasterPass const& value(const RasterPass_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<RasterPass_>(v)) throw std::bad_variant_access{};
         return this->rasterPasses[this->handles[v].index];
     }
-    RasterSubpass& value(const RasterSubpassTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<RasterSubpassTag>(v)) throw std::bad_variant_access{};
+    RasterSubpass& value(const RasterSubpass_& /*tag*/, vertex_descriptor v) {
+        if (!holds<RasterSubpass_>(v)) throw std::bad_variant_access{};
         return this->rasterSubpasses[this->handles[v].index];
     }
-    RasterSubpass const& value(const RasterSubpassTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<RasterSubpassTag>(v)) throw std::bad_variant_access{};
+    RasterSubpass const& value(const RasterSubpass_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<RasterSubpass_>(v)) throw std::bad_variant_access{};
         return this->rasterSubpasses[this->handles[v].index];
     }
-    ComputeSubpass& value(const ComputeSubpassTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<ComputeSubpassTag>(v)) throw std::bad_variant_access{};
+    ComputeSubpass& value(const ComputeSubpass_& /*tag*/, vertex_descriptor v) {
+        if (!holds<ComputeSubpass_>(v)) throw std::bad_variant_access{};
         return this->computeSubpasses[this->handles[v].index];
     }
-    ComputeSubpass const& value(const ComputeSubpassTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<ComputeSubpassTag>(v)) throw std::bad_variant_access{};
+    ComputeSubpass const& value(const ComputeSubpass_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<ComputeSubpass_>(v)) throw std::bad_variant_access{};
         return this->computeSubpasses[this->handles[v].index];
     }
-    ComputePass& value(const ComputeTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<ComputeTag>(v)) throw std::bad_variant_access{};
+    ComputePass& value(const Compute_& /*tag*/, vertex_descriptor v) {
+        if (!holds<Compute_>(v)) throw std::bad_variant_access{};
         return this->computePasses[this->handles[v].index];
     }
-    ComputePass const& value(const ComputeTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<ComputeTag>(v)) throw std::bad_variant_access{};
+    ComputePass const& value(const Compute_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<Compute_>(v)) throw std::bad_variant_access{};
         return this->computePasses[this->handles[v].index];
     }
-    ResolvePass& value(const ResolveTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<ResolveTag>(v)) throw std::bad_variant_access{};
+    ResolvePass& value(const Resolve_& /*tag*/, vertex_descriptor v) {
+        if (!holds<Resolve_>(v)) throw std::bad_variant_access{};
         return this->resolvePasses[this->handles[v].index];
     }
-    ResolvePass const& value(const ResolveTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<ResolveTag>(v)) throw std::bad_variant_access{};
+    ResolvePass const& value(const Resolve_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<Resolve_>(v)) throw std::bad_variant_access{};
         return this->resolvePasses[this->handles[v].index];
     }
-    CopyPass& value(const CopyTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<CopyTag>(v)) throw std::bad_variant_access{};
+    CopyPass& value(const Copy_& /*tag*/, vertex_descriptor v) {
+        if (!holds<Copy_>(v)) throw std::bad_variant_access{};
         return this->copyPasses[this->handles[v].index];
     }
-    CopyPass const& value(const CopyTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<CopyTag>(v)) throw std::bad_variant_access{};
+    CopyPass const& value(const Copy_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<Copy_>(v)) throw std::bad_variant_access{};
         return this->copyPasses[this->handles[v].index];
     }
-    MovePass& value(const MoveTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<MoveTag>(v)) throw std::bad_variant_access{};
+    MovePass& value(const Move_& /*tag*/, vertex_descriptor v) {
+        if (!holds<Move_>(v)) throw std::bad_variant_access{};
         return this->movePasses[this->handles[v].index];
     }
-    MovePass const& value(const MoveTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<MoveTag>(v)) throw std::bad_variant_access{};
+    MovePass const& value(const Move_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<Move_>(v)) throw std::bad_variant_access{};
         return this->movePasses[this->handles[v].index];
     }
-    RaytracePass& value(const RaytraceTag& /*tag*/, vertex_descriptor v) {
-        if (!holds<RaytraceTag>(v)) throw std::bad_variant_access{};
+    RaytracePass& value(const Raytrace_& /*tag*/, vertex_descriptor v) {
+        if (!holds<Raytrace_>(v)) throw std::bad_variant_access{};
         return this->raytracePasses[this->handles[v].index];
     }
-    RaytracePass const& value(const RaytraceTag& /*tag*/, vertex_descriptor v) const {
-        if (!holds<RaytraceTag>(v)) throw std::bad_variant_access{};
+    RaytracePass const& value(const Raytrace_& /*tag*/, vertex_descriptor v) const {
+        if (!holds<Raytrace_>(v)) throw std::bad_variant_access{};
         return this->raytracePasses[this->handles[v].index];
     }
     RenderQueue& value(const Queue_& /*tag*/, vertex_descriptor v) {
@@ -1716,14 +1716,14 @@ ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const Tag& /*tag*/, s
 }
 
 template <class Tag, class PayloadArgs, class Args0, class Args1, class Args2, class Args3,
-          std::enable_if_t<std::is_same_v<Tag, RasterPassTag> ||
-                               std::is_same_v<Tag, RasterSubpassTag> ||
-                               std::is_same_v<Tag, ComputeSubpassTag> ||
-                               std::is_same_v<Tag, ComputeTag> ||
-                               std::is_same_v<Tag, ResolveTag> ||
-                               std::is_same_v<Tag, CopyTag> ||
-                               std::is_same_v<Tag, MoveTag> ||
-                               std::is_same_v<Tag, RaytraceTag> ||
+          std::enable_if_t<std::is_same_v<Tag, RasterPass_> ||
+                               std::is_same_v<Tag, RasterSubpass_> ||
+                               std::is_same_v<Tag, ComputeSubpass_> ||
+                               std::is_same_v<Tag, Compute_> ||
+                               std::is_same_v<Tag, Resolve_> ||
+                               std::is_same_v<Tag, Copy_> ||
+                               std::is_same_v<Tag, Move_> ||
+                               std::is_same_v<Tag, Raytrace_> ||
                                std::is_same_v<Tag, Queue_> ||
                                std::is_same_v<Tag, Scene_> ||
                                std::is_same_v<Tag, Blit_> ||
@@ -1765,56 +1765,56 @@ RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Tag& /*tag*/, std::
         this->outEdges.emplace_back();
         this->inEdges.emplace_back();
         edges.push_back(TreeEdge{parent});
-        if constexpr (std::is_same_v<Tag, RasterPassTag>) {
+        if constexpr (std::is_same_v<Tag, RasterPass_>) {
             this->handles.push_back({Kind::RasterPass, static_cast<RenderGraph::vertex_descriptor>(this->rasterPasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->rasterPasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, RasterSubpassTag>) {
+        } else if constexpr (std::is_same_v<Tag, RasterSubpass_>) {
             this->handles.push_back({Kind::RasterSubpass, static_cast<RenderGraph::vertex_descriptor>(this->rasterSubpasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->rasterSubpasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, ComputeSubpassTag>) {
+        } else if constexpr (std::is_same_v<Tag, ComputeSubpass_>) {
             this->handles.push_back({Kind::ComputeSubpass, static_cast<RenderGraph::vertex_descriptor>(this->computeSubpasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->computeSubpasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, ComputeTag>) {
+        } else if constexpr (std::is_same_v<Tag, Compute_>) {
             this->handles.push_back({Kind::Compute, static_cast<RenderGraph::vertex_descriptor>(this->computePasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->computePasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, ResolveTag>) {
+        } else if constexpr (std::is_same_v<Tag, Resolve_>) {
             this->handles.push_back({Kind::Resolve, static_cast<RenderGraph::vertex_descriptor>(this->resolvePasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->resolvePasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, CopyTag>) {
+        } else if constexpr (std::is_same_v<Tag, Copy_>) {
             this->handles.push_back({Kind::Copy, static_cast<RenderGraph::vertex_descriptor>(this->copyPasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->copyPasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, MoveTag>) {
+        } else if constexpr (std::is_same_v<Tag, Move_>) {
             this->handles.push_back({Kind::Move, static_cast<RenderGraph::vertex_descriptor>(this->movePasses.size())});
             std::apply(
                 [&](auto&&... args) {
                     this->movePasses.emplace_back(std::forward<decltype(args)>(args)...);
                 },
                 std::forward<PayloadArgs>(payloadArgs));
-        } else if constexpr (std::is_same_v<Tag, RaytraceTag>) {
+        } else if constexpr (std::is_same_v<Tag, Raytrace_>) {
             this->handles.push_back({Kind::Raytrace, static_cast<RenderGraph::vertex_descriptor>(this->raytracePasses.size())});
             std::apply(
                 [&](auto&&... args) {

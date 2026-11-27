@@ -103,7 +103,7 @@ const ResourceAccessNode &FrameGraphDispatcher::getAccessNode(RenderGraph::verte
 }
 
 const gfx::RenderPassInfo &FrameGraphDispatcher::getRenderPassInfo(RenderGraph::vertex_descriptor u) const {
-    CC_EXPECTS(renderGraph.holds<RasterPassTag>(u));
+    CC_EXPECTS(renderGraph.holds<RasterPass_>(u));
     auto ragVertID = resourceAccessGraph.vertex(u);
     return resourceAccessGraph.getRenderPassInfo(ragVertID).rpInfo;
 }
@@ -286,8 +286,8 @@ RenderingInfo FrameGraphDispatcher::getRenderPassAndFrameBuffer(RenderGraph::ver
         nullptr,
     };
 
-    CC_ENSURES(renderGraph.holds<RasterPassTag>(u));
-    const RasterPass &pass = renderGraph.value(RasterPassTag{}, u);
+    CC_ENSURES(renderGraph.holds<RasterPass_>(u));
+    const RasterPass &pass = renderGraph.value(RasterPass_{}, u);
 
     for (const auto &viewName : orderedViews) {
         const auto &info = viewIndex.at(viewName);
@@ -950,7 +950,7 @@ auto checkRasterViews(const Graphs &graphs,
     bool hasDS = false;
 
     auto explicitVis = gfx::ShaderStageFlagBit::NONE;
-    if (renderGraph.holds<ComputeTag>(passID)) {
+    if (renderGraph.holds<Compute_>(passID)) {
         explicitVis |= gfx::ShaderStageFlagBit::COMPUTE;
     }
 
@@ -1314,8 +1314,8 @@ void startRenderSubpass(const Graphs &graphs, uint32_t passID, const RasterSubpa
                     auto lastVert = lastIter->first;
                     auto lastPassID = rag.getPassID(lastVert);
                     auto lastPassIndex = INVALID_ID;
-                    if (rg.holds<RasterSubpassTag>(lastPassID) && (rg.get_parent(lastPassID) == parentID)) {
-                        lastPassIndex = rg.value(RasterSubpassTag{}, lastPassID).subpassID;
+                    if (rg.holds<RasterSubpass_>(lastPassID) && (rg.get_parent(lastPassID) == parentID)) {
+                        lastPassIndex = rg.value(RasterSubpass_{}, lastPassID).subpassID;
                     }
 
                     auto &dependency = dependencies.emplace_back();
@@ -1328,7 +1328,7 @@ void startRenderSubpass(const Graphs &graphs, uint32_t passID, const RasterSubpa
         }
     };
 
-    const auto &parentPass = renderGraph.value(RasterPassTag{}, parentID);
+    const auto &parentPass = renderGraph.value(RasterPass_{}, parentID);
 
     if (parentPass.subpassGraph.subpasses.size() == 1) {
         // for those renderpass which consist of only 1 subpass
@@ -1758,12 +1758,12 @@ void findCulledPasses(const RenderGraph &renderGraph, ResourceAccessGraph &rag) 
             retain(rag.source(e));
         }
         const auto pass = rag.getPassID(v);
-        if (renderGraph.holds<RasterSubpassTag>(pass) || renderGraph.holds<ComputeSubpassTag>(pass)) {
+        if (renderGraph.holds<RasterSubpass_>(pass) || renderGraph.holds<ComputeSubpass_>(pass)) {
             retain(rag.vertex(renderGraph.get_parent(pass)));
-        } else if (renderGraph.holds<RasterPassTag>(pass)) {
+        } else if (renderGraph.holds<RasterPass_>(pass)) {
             for (const auto e : renderGraph.child_links(pass)) {
                 const auto child = renderGraph.target(e);
-                if (renderGraph.holds<RasterSubpassTag>(child) || renderGraph.holds<ComputeSubpassTag>(child)) {
+                if (renderGraph.holds<RasterSubpass_>(child) || renderGraph.holds<ComputeSubpass_>(child)) {
                     retain(rag.vertex(child));
                 }
             }
@@ -1822,7 +1822,7 @@ void buildAccessGraph(Graphs &graphs) {
     ccstd::pmr::vector<graph::GraphColor> colors(renderGraph.num_vertices(), graph::GraphColor::WHITE, scratch);
     for (const auto passID : renderGraph.sortedVertices) {
         if (colors[passID] == graph::GraphColor::WHITE &&
-            !renderGraph.holds<RasterSubpassTag>(passID) && !renderGraph.holds<ComputeSubpassTag>(passID)) {
+            !renderGraph.holds<RasterSubpass_>(passID) && !renderGraph.holds<ComputeSubpass_>(passID)) {
             graph::depthFirstVisit(view, passID, visitor, colors, {}, scratch);
         }
     }
@@ -1861,8 +1861,8 @@ void buildAccessGraph(Graphs &graphs) {
                 });
             }
         }
-        if (hasConsumer || (renderGraph.holds<RasterPassTag>(pass) &&
-                            renderGraph.value(RasterPassTag{}, pass).subpassGraph.num_vertices() != 0)) {
+        if (hasConsumer || (renderGraph.holds<RasterPass_>(pass) &&
+                            renderGraph.value(RasterPass_{}, pass).subpassGraph.num_vertices() != 0)) {
             rag.leafPasses.erase(v);
             continue;
         }
@@ -1968,7 +1968,7 @@ void buildBarriers(FrameGraphDispatcher &fgDispatcher) {
             auto srcPassID = rag.getPassID(srcRagVertID);
             auto dstPassID = rag.getPassID(dstRagVertID);
 
-            if (renderGraph.holds<RasterPassTag>(dstPassID) || renderGraph.holds<RasterSubpassTag>(dstPassID)) {
+            if (renderGraph.holds<RasterPass_>(dstPassID) || renderGraph.holds<RasterSubpass_>(dstPassID)) {
                 const auto &fgRenderPassInfo = rag.getRenderPassInfo(dstRagVertID);
                 if (fgRenderPassInfo.viewIndex.find(resName) != fgRenderPassInfo.viewIndex.end() ||
                     rag.movedTargetStatus.find(resName) != rag.movedTargetStatus.end()) {
@@ -1978,9 +1978,9 @@ void buildBarriers(FrameGraphDispatcher &fgDispatcher) {
             }
 
             // subpass layout transition
-            if ((srcRagVertID != 0) && (renderGraph.holds<RasterPassTag>(srcPassID) || renderGraph.holds<RasterSubpassTag>(srcPassID))) {
+            if ((srcRagVertID != 0) && (renderGraph.holds<RasterPass_>(srcPassID) || renderGraph.holds<RasterSubpass_>(srcPassID))) {
                 auto ragVertID = srcRagVertID;
-                if (renderGraph.holds<RasterSubpassTag>(srcPassID)) {
+                if (renderGraph.holds<RasterSubpass_>(srcPassID)) {
                     auto parentID = renderGraph.get_parent(srcPassID);
                     ragVertID = rag.vertex(parentID);
                 }
@@ -1997,9 +1997,9 @@ void buildBarriers(FrameGraphDispatcher &fgDispatcher) {
                     fgRenderPassInfo.dsResolveAccess.nextAccess = nextIter->second.accessFlag;
                 }
 
-                if (renderGraph.holds<RasterSubpassTag>(srcPassID) &&
+                if (renderGraph.holds<RasterSubpass_>(srcPassID) &&
                     accessDependent(iter->second.accessFlag, nextIter->second.accessFlag, isBuffer)) {
-                    const auto &subpass = renderGraph.value(RasterSubpassTag{}, srcPassID);
+                    const auto &subpass = renderGraph.value(RasterSubpass_{}, srcPassID);
                     auto &dependency = fgRenderPassInfo.rpInfo.dependencies.emplace_back();
                     dependency.srcSubpass = subpass.subpassID;
                     dependency.dstSubpass = INVALID_ID;

@@ -1123,7 +1123,7 @@ MultisampleRenderPassBuilder *NativePipeline::addMultisampleRenderPass(
         renderGraph, layoutGraph,
         width, height, count, quality, passName);
 
-    auto &pass = renderGraph.value(RasterPassTag{}, passID);
+    auto &pass = renderGraph.value(RasterPass_{}, passID);
 
     auto [subpassID, subpassLayoutID] = addRenderSubpassVertex(
         pass, renderGraph, passID,
@@ -1148,7 +1148,7 @@ void NativePipeline::addResolvePass(const ccstd::vector<ResolvePair> &resolvePai
     }
     std::string_view name("Resolve");
     addVertex2(
-        ResolveTag{},
+        Resolve_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1160,7 +1160,7 @@ void NativePipeline::addResolvePass(const ccstd::vector<ResolvePair> &resolvePai
 // NOLINTNEXTLINE
 ComputePassBuilder *NativePipeline::addComputePass(const ccstd::string &passName) {
     auto passID = addVertex2(
-        ComputeTag{},
+        Compute_{},
         std::forward_as_tuple(passName),
         std::forward_as_tuple(passName),
         std::forward_as_tuple(),
@@ -1181,7 +1181,7 @@ void NativePipeline::addMovePass(const ccstd::vector<MovePair> &movePairs) {
     }
     std::string_view name("Move");
     addVertex2(
-        MoveTag{},
+        Move_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1283,7 +1283,7 @@ void NativePipeline::addCopyPass(const ccstd::vector<CopyPair> &copyPairs) {
     }
     std::string_view name("Copy");
     addVertex2(
-        CopyTag{},
+        Copy_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1301,7 +1301,7 @@ void NativePipeline::addUploadPass(ccstd::vector<UploadPair> &uploadPairs) {
     uploadPairs.clear();
     std::string_view name("Upload");
     addVertex2(
-        CopyTag{},
+        Copy_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),

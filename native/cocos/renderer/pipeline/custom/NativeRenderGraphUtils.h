@@ -72,7 +72,7 @@ addRenderPassVertex(
     pass.quality = quality;
 
     auto passID = addVertex2(
-        RasterPassTag{},
+        RasterPass_{},
         std::forward_as_tuple(passName),
         std::forward_as_tuple(passName),
         std::forward_as_tuple(),
@@ -109,7 +109,7 @@ addRenderSubpassVertex(
     subpass.viewport.height = pass.height;
 
     auto subpassID = addVertex2(
-        RasterSubpassTag{},
+        RasterSubpass_{},
         std::forward_as_tuple(subpassName),
         std::forward_as_tuple(subpassName),
         std::forward_as_tuple(),
@@ -165,8 +165,8 @@ void addSubpassComputeViewImpl(
     auto &subpass = renderGraph.value(tag, subpassID);
     const auto passID = renderGraph.get_parent(subpassID);
     CC_EXPECTS(passID != RenderGraph::null_vertex());
-    CC_EXPECTS(renderGraph.holds<RasterPassTag>(passID));
-    auto &pass = renderGraph.value(RasterPassTag{}, passID);
+    CC_EXPECTS(renderGraph.holds<RasterPass_>(passID));
+    auto &pass = renderGraph.value(RasterPass_{}, passID);
     CC_EXPECTS(subpass.subpassID < pass.subpassGraph.num_vertices());
     auto &subpassData = pass.subpassGraph.getSubpass(subpass.subpassID);
     CC_EXPECTS(subpass.computeViews.size() == subpassData.computeViews.size());

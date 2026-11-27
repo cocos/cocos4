@@ -65,14 +65,14 @@ enum class ParameterType : uint8_t {
     SSV,
 };
 
-struct RasterPassTag {};
-struct RasterSubpassTag {};
-struct ComputeSubpassTag {};
-struct ComputeTag {};
-struct ResolveTag {};
-struct CopyTag {};
-struct MoveTag {};
-struct RaytraceTag {};
+struct RasterPass_ {};
+struct RasterSubpass_ {};
+struct ComputeSubpass_ {};
+struct Compute_ {};
+struct Resolve_ {};
+struct Copy_ {};
+struct Move_ {};
+struct Raytrace_ {};
 
 enum class ResourceResidency : uint8_t {
     MANAGED,

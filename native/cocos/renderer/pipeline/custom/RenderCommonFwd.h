@@ -39,14 +39,14 @@ namespace render {
 enum class UpdateFrequency : uint8_t;
 enum class ParameterType : uint8_t;
 
-struct RasterPassTag;
-struct RasterSubpassTag;
-struct ComputeSubpassTag;
-struct ComputeTag;
-struct ResolveTag;
-struct CopyTag;
-struct MoveTag;
-struct RaytraceTag;
+struct RasterPass_;
+struct RasterSubpass_;
+struct ComputeSubpass_;
+struct Compute_;
+struct Resolve_;
+struct Copy_;
+struct Move_;
+struct Raytrace_;
 
 enum class ResourceResidency : uint8_t;
 enum class QueueHint : uint8_t;

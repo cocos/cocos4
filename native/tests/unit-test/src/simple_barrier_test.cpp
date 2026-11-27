@@ -116,9 +116,9 @@ TEST(frameGraphDispatcher, copyFallbackUsesOneAccessVertexPerMovePass) {
     ResourceGraph resourceGraph(memory);
     LayoutGraphData layout(memory);
     fillTestGraph({}, resources, {}, passes, resourceGraph, layout);
-    const auto move = passes.add_vertex(MoveTag{}, "move");
+    const auto move = passes.add_vertex(Move_{}, "move");
     passes.sortedVertices.push_back(move);
-    auto& pairs = passes.value(MoveTag{}, move).movePairs;
+    auto& pairs = passes.value(Move_{}, move).movePairs;
     // Moving an external source falls back to copying both destinations.
     for (const auto* target : {"0", "1"}) {
         resourceGraph.getDesc(resourceGraph.vertex(target)).mipLevels = 1;

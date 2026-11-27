@@ -82,7 +82,7 @@ TEST(fgDispatherCulling, test13) {
     expectCulled(passes[8]);
     for (const auto e : renderGraph.child_links(passes[7])) {
         const auto child = renderGraph.target(e);
-        expectRetained(child, renderGraph.value(RasterSubpassTag{}, child).subpassID == 0 ? "7" : "20");
+        expectRetained(child, renderGraph.value(RasterSubpass_{}, child).subpassID == 0 ? "7" : "20");
     }
     for (const auto e : renderGraph.child_links(passes[8])) {
         expectCulled(renderGraph.target(e));

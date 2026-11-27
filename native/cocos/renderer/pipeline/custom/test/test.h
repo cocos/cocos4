@@ -94,11 +94,11 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
     std::set<ccstd::string> nameSet;
     auto addRasterNode = [&](const vector<vector<vector<string>>> &subpasses, uint32_t count, uint32_t passID) {
         const ccstd::string name = "pass" + std::to_string(passID);
-        const auto vertexID = renderGraph.add_vertex(RasterPassTag{}, name);
+        const auto vertexID = renderGraph.add_vertex(RasterPass_{}, name);
         renderGraph.getLayout(vertexID) = "default";
 
         renderGraph.sortedVertices.emplace_back(vertexID);
-        auto &raster = renderGraph.value(RasterPassTag{}, vertexID);
+        auto &raster = renderGraph.value(RasterPass_{}, vertexID);
         auto &subpassGraph = raster.subpassGraph;
 
         bool hasSubpass = count > 1;
@@ -118,10 +118,10 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 subpass = &subpassGraph.getSubpass(subpassVertexID);
 
                 const auto subpassID = renderGraph.add_vertex(
-                    RasterSubpassTag{}, std::piecewise_construct, std::forward_as_tuple(subpassVertexID),
+                    RasterSubpass_{}, std::piecewise_construct, std::forward_as_tuple(subpassVertexID),
                     std::forward_as_tuple(subpassName), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, vertexID);
                 renderGraph.sortedVertices.emplace_back(subpassID);
-                subpassViews = &renderGraph.value(RasterSubpassTag{}, subpassID).rasterViews;
+                subpassViews = &renderGraph.value(RasterSubpass_{}, subpassID).rasterViews;
             }
 
             uint32_t slot = 0;
@@ -179,12 +179,12 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 const auto &subpasses = pass.second;
 
                 const ccstd::string name = "pass" + std::to_string(passCount++);
-                const auto vertexID = renderGraph.add_vertex(ComputeTag{}, name);
+                const auto vertexID = renderGraph.add_vertex(Compute_{}, name);
                 renderGraph.getLayout(vertexID) = "default";
                 renderGraph.sortedVertices.emplace_back(vertexID);
 
                 assert(subpasses.back().size() == 2); // inputs and outputs
-                auto &computePass = renderGraph.value(ComputeTag{}, vertexID);
+                auto &computePass = renderGraph.value(Compute_{}, vertexID);
                 const auto &inputsAndOutputs = subpasses.back();
                 const auto &inputs = inputsAndOutputs.front();
                 const auto &outputs = inputsAndOutputs.back();
@@ -202,10 +202,10 @@ static void fillTestGraph(const ViewInfo &rasterData, const ResourceInfo &rescIn
                 const auto &subpasses = pass.second;
 
                 const ccstd::string name = "pass" + std::to_string(passCount++);
-                const auto vertexID = renderGraph.add_vertex(CopyTag{}, name);
+                const auto vertexID = renderGraph.add_vertex(Copy_{}, name);
                 renderGraph.sortedVertices.emplace_back(vertexID);
                 assert(subpasses.back().size() == 2); // inputs and outputs
-                auto &copyPass = renderGraph.value(CopyTag{}, vertexID);
+                auto &copyPass = renderGraph.value(Copy_{}, vertexID);
                 const auto &inputsAndOutputs = subpasses.back();
                 const auto &inputs = inputsAndOutputs.front();
                 const auto &outputs = inputsAndOutputs.back();

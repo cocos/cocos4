@@ -294,8 +294,8 @@ void submitProfilerCommands(
     const auto& rg = ctx.g;
 
     const auto passId = rg.getPassID(sceneId);
-    CC_ENSURES(rg.holds<RasterPassTag>(passId));
-    const auto& rasterPass = rg.value(RasterPassTag{}, passId);
+    CC_ENSURES(rg.holds<RasterPass_>(passId));
+    const auto& rasterPass = rg.value(RasterPass_{}, passId);
 
     auto* renderPass = ctx.currentPass;
     auto* cmdBuff = ctx.cmdBuff;
@@ -1393,9 +1393,9 @@ void NativePipeline::executeRenderGraph(const RenderGraph& rg) {
         RenderGraphVisitor visitor{{}, ctx};
         std::fill(colors.begin(), colors.end(), graph::GraphColor::WHITE);
         for (const auto vertID : rg.sortedVertices) {
-            if (rg.holds<RasterPassTag>(vertID) ||
-                rg.holds<ComputeTag>(vertID) ||
-                rg.holds<CopyTag>(vertID)) {
+            if (rg.holds<RasterPass_>(vertID) ||
+                rg.holds<Compute_>(vertID) ||
+                rg.holds<Copy_>(vertID)) {
                 graph::depthFirstVisit(visible, vertID, visitor, colors, {}, scratch);
             }
         }
