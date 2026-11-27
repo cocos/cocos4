@@ -53,8 +53,8 @@ enum class QueueHint : uint8_t;
 enum class ResourceDimension : uint8_t;
 enum class ResourceFlags : uint32_t;
 
-struct BufferTag;
-struct TextureTag;
+struct Buffer_;
+struct Texture_;
 struct Name_;
 struct Layout_;
 

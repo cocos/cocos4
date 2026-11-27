@@ -142,8 +142,8 @@ constexpr bool any(ResourceFlags e) noexcept {
     return !!e;
 }
 
-struct BufferTag {};
-struct TextureTag {};
+struct Buffer_ {};
+struct Texture_ {};
 struct Name_ {};
 struct Layout_ {};
 

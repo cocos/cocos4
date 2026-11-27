@@ -93,8 +93,8 @@ inline const char* getName(ResourceDimension e) noexcept {
     }
     return "";
 }
-inline const char* getName(const BufferTag& /*v*/) noexcept { return "Buffer"; }
-inline const char* getName(const TextureTag& /*v*/) noexcept { return "Texture"; }
+inline const char* getName(const Buffer_& /*v*/) noexcept { return "Buffer"; }
+inline const char* getName(const Texture_& /*v*/) noexcept { return "Texture"; }
 inline const char* getName(const Name_& /*v*/) noexcept { return "Name"; }
 inline const char* getName(const Layout_& /*v*/) noexcept { return "Layout"; }
 inline const char* getName(TaskType e) noexcept {
