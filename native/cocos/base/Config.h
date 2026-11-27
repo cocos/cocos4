@@ -67,3 +67,13 @@
 #ifndef CC_USE_PROFILER
     #define CC_USE_PROFILER 0
 #endif
+
+// Experimental Android pacing. Keep the legacy path until device validation.
+#ifndef CC_USE_ANDROID_FRAME_PACER
+    #define CC_USE_ANDROID_FRAME_PACER 0
+#endif
+
+// Per-frame diagnostics perturb timing; enable only for short captures.
+#ifndef CC_USE_ANDROID_FRAME_PACER_LOG
+    #define CC_USE_ANDROID_FRAME_PACER_LOG 0
+#endif
