@@ -27,19 +27,19 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "RenderGraphTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-RasterView::RasterView(const allocator_type& alloc) noexcept
+RasterView::RasterView(const allocator_type& alloc)
 : slotName(alloc),
-  slotName1(alloc) {}
+  slotName1(alloc),
+  clearColor() {} // NOLINT(readability-redundant-member-init)
 
-RasterView::RasterView(ccstd::pmr::string slotNameIn, AccessType accessTypeIn, AttachmentType attachmentTypeIn, gfx::LoadOp loadOpIn, gfx::StoreOp storeOpIn, gfx::ClearFlagBit clearFlagsIn, const gfx::Color& clearColorIn, gfx::ShaderStageFlagBit shaderStageFlagsIn, const allocator_type& alloc) // NOLINT
+RasterView::RasterView(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string slotNameIn, AccessType accessTypeIn, AttachmentType attachmentTypeIn, gfx::LoadOp loadOpIn, gfx::StoreOp storeOpIn, gfx::ClearFlagBit clearFlagsIn, const gfx::Color& clearColorIn, gfx::ShaderStageFlagBit shaderStageFlagsIn) // NOLINT
 : slotName(std::move(slotNameIn), alloc),
   slotName1(alloc),
   accessType(accessTypeIn),
@@ -85,10 +85,11 @@ RasterView::RasterView(RasterView const& rhs, const allocator_type& alloc)
   slotID(rhs.slotID),
   shaderStageFlags(rhs.shaderStageFlags) {}
 
-ComputeView::ComputeView(const allocator_type& alloc) noexcept
-: name(alloc) {}
+ComputeView::ComputeView(const allocator_type& alloc)
+: name(alloc),
+  clearValue() {} // NOLINT(readability-redundant-member-init)
 
-ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, gfx::ClearFlagBit clearFlagsIn, ClearValueType clearValueTypeIn, ClearValue clearValueIn, gfx::ShaderStageFlagBit shaderStageFlagsIn, const allocator_type& alloc)
+ComputeView::ComputeView(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string nameIn, AccessType accessTypeIn, gfx::ClearFlagBit clearFlagsIn, ClearValueType clearValueTypeIn, ClearValue clearValueIn, gfx::ShaderStageFlagBit shaderStageFlagsIn) // NOLINT
 : name(std::move(nameIn), alloc),
   accessType(accessTypeIn),
   clearFlags(clearFlagsIn),
@@ -96,7 +97,7 @@ ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, gfx
   clearValue(clearValueIn),
   shaderStageFlags(shaderStageFlagsIn) {}
 
-ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, uint32_t planeIn, gfx::ClearFlagBit clearFlagsIn, ClearValueType clearValueTypeIn, ClearValue clearValueIn, gfx::ShaderStageFlagBit shaderStageFlagsIn, const allocator_type& alloc)
+ComputeView::ComputeView(ccstd::pmr::string nameIn, AccessType accessTypeIn, uint32_t planeIn, gfx::ClearFlagBit clearFlagsIn, ClearValueType clearValueTypeIn, ClearValue clearValueIn, gfx::ShaderStageFlagBit shaderStageFlagsIn, const allocator_type& alloc) // NOLINT
 : name(std::move(nameIn), alloc),
   accessType(accessTypeIn),
   plane(planeIn),
@@ -123,7 +124,7 @@ ComputeView::ComputeView(ComputeView const& rhs, const allocator_type& alloc)
   clearValue(rhs.clearValue),
   shaderStageFlags(rhs.shaderStageFlags) {}
 
-Subpass::Subpass(const allocator_type& alloc) noexcept
+Subpass::Subpass(const allocator_type& alloc)
 : rasterViews(alloc),
   computeViews(alloc),
   resolvePairs(alloc) {}
@@ -138,49 +139,57 @@ Subpass::Subpass(Subpass const& rhs, const allocator_type& alloc)
   computeViews(rhs.computeViews, alloc),
   resolvePairs(rhs.resolvePairs, alloc) {}
 
-SubpassGraph::SubpassGraph(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  names(alloc),
-  subpasses(alloc) {}
+SubpassGraph::SubpassGraph(const SubpassGraph& rhs, const allocator_type& alloc)
+: outEdges(rhs.outEdges, alloc), inEdges(rhs.inEdges, alloc), names(rhs.names, alloc), subpasses(rhs.subpasses, alloc) {}
 
 SubpassGraph::SubpassGraph(SubpassGraph&& rhs, const allocator_type& alloc)
-: _vertices(std::move(rhs._vertices), alloc),
-  names(std::move(rhs.names), alloc),
-  subpasses(std::move(rhs.subpasses), alloc) {}
+: outEdges(std::move(rhs.outEdges), alloc), inEdges(std::move(rhs.inEdges), alloc), names(std::move(rhs.names), alloc), subpasses(std::move(rhs.subpasses), alloc) {}
 
-SubpassGraph::SubpassGraph(SubpassGraph const& rhs, const allocator_type& alloc)
-: _vertices(rhs._vertices, alloc),
-  names(rhs.names, alloc),
-  subpasses(rhs.subpasses, alloc) {}
-
-// ContinuousContainer
-void SubpassGraph::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    names.reserve(sz);
-    subpasses.reserve(sz);
+SubpassGraph::vertex_descriptor SubpassGraph::add_vertex(std::string_view value) {
+    return add_vertex(std::piecewise_construct, std::forward_as_tuple(value), std::tuple<>{});
 }
 
-SubpassGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+std::pair<SubpassGraph::edge_descriptor, bool> SubpassGraph::add_edge(vertex_descriptor u, vertex_descriptor v) {
+    if (u >= outEdges.size() || v >= outEdges.size()) return {{null_vertex(), null_vertex()}, false};
+    outEdges[u].push_back(v);
+    try {
+        inEdges[v].push_back(u);
+    } catch (...) {
+        outEdges[u].pop_back();
+        throw;
+    }
+    return {{u, v}, true};
+}
 
-SubpassGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc) {}
+void SubpassGraph::remove_edge(edge_descriptor e) noexcept {
+    if (e.source >= outEdges.size()) return;
+    auto& out = outEdges[e.source];
+    const auto it = std::find(out.begin(), out.end(), e.target);
+    if (it == out.end()) return;
+    out.erase(it);
+    auto& in = inEdges[e.target];
+    in.erase(std::find(in.begin(), in.end(), e.source));
+}
 
-SubpassGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc) {}
+void SubpassGraph::remove_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (u >= outEdges.size() || v >= outEdges.size()) return;
+    auto& out = outEdges[u];
+    out.erase(std::remove(out.begin(), out.end(), v), out.end());
+    auto& in = inEdges[v];
+    in.erase(std::remove(in.begin(), in.end(), u), in.end());
+}
 
-RasterSubpass::RasterSubpass(const allocator_type& alloc) noexcept
-: rasterViews(alloc),
-  computeViews(alloc),
-  resolvePairs(alloc) {}
-
-RasterSubpass::RasterSubpass(uint32_t subpassIDIn, uint32_t countIn, uint32_t qualityIn, const allocator_type& alloc) noexcept
+RasterSubpass::RasterSubpass(const allocator_type& alloc)
 : rasterViews(alloc),
   computeViews(alloc),
   resolvePairs(alloc),
+  viewport() {} // NOLINT(readability-redundant-member-init)
+
+RasterSubpass::RasterSubpass(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, uint32_t subpassIDIn, uint32_t countIn, uint32_t qualityIn) // NOLINT
+: rasterViews(alloc),
+  computeViews(alloc),
+  resolvePairs(alloc),
+  viewport(), // NOLINT(readability-redundant-member-init)
   subpassID(subpassIDIn),
   count(countIn),
   quality(qualityIn) {}
@@ -205,11 +214,11 @@ RasterSubpass::RasterSubpass(RasterSubpass const& rhs, const allocator_type& all
   quality(rhs.quality),
   showStatistics(rhs.showStatistics) {}
 
-ComputeSubpass::ComputeSubpass(const allocator_type& alloc) noexcept
+ComputeSubpass::ComputeSubpass(const allocator_type& alloc)
 : rasterViews(alloc),
   computeViews(alloc) {}
 
-ComputeSubpass::ComputeSubpass(uint32_t subpassIDIn, const allocator_type& alloc) noexcept
+ComputeSubpass::ComputeSubpass(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, uint32_t subpassIDIn) // NOLINT
 : rasterViews(alloc),
   computeViews(alloc),
   subpassID(subpassIDIn) {}
@@ -224,12 +233,13 @@ ComputeSubpass::ComputeSubpass(ComputeSubpass const& rhs, const allocator_type& 
   computeViews(rhs.computeViews, alloc),
   subpassID(rhs.subpassID) {}
 
-RasterPass::RasterPass(const allocator_type& alloc) noexcept
+RasterPass::RasterPass(const allocator_type& alloc)
 : rasterViews(alloc),
   computeViews(alloc),
   attachmentIndexMap(alloc),
   textures(alloc),
   subpassGraph(alloc),
+  viewport(), // NOLINT(readability-redundant-member-init)
   versionName(alloc) {}
 
 RasterPass::RasterPass(RasterPass&& rhs, const allocator_type& alloc)
@@ -264,10 +274,12 @@ RasterPass::RasterPass(RasterPass const& rhs, const allocator_type& alloc)
   hashValue(rhs.hashValue),
   showStatistics(rhs.showStatistics) {}
 
-PersistentRenderPassAndFramebuffer::PersistentRenderPassAndFramebuffer(const allocator_type& alloc) noexcept
-: clearColors(alloc) {}
+PersistentRenderPassAndFramebuffer::PersistentRenderPassAndFramebuffer(const allocator_type& alloc)
+: renderPass(), // NOLINT(readability-redundant-member-init)
+  framebuffer(), // NOLINT(readability-redundant-member-init)
+  clearColors(alloc) {}
 
-PersistentRenderPassAndFramebuffer::PersistentRenderPassAndFramebuffer(IntrusivePtr<gfx::RenderPass> renderPassIn, IntrusivePtr<gfx::Framebuffer> framebufferIn, const allocator_type& alloc) noexcept
+PersistentRenderPassAndFramebuffer::PersistentRenderPassAndFramebuffer(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, IntrusivePtr<gfx::RenderPass> renderPassIn, IntrusivePtr<gfx::Framebuffer> framebufferIn) // NOLINT
 : renderPass(std::move(renderPassIn)),
   framebuffer(std::move(framebufferIn)),
   clearColors(alloc) {}
@@ -286,50 +298,87 @@ PersistentRenderPassAndFramebuffer::PersistentRenderPassAndFramebuffer(Persisten
   clearDepth(rhs.clearDepth),
   clearStencil(rhs.clearStencil) {}
 
-ResourceGraph::ResourceGraph(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  names(alloc),
-  descs(alloc),
-  traits(alloc),
-  states(alloc),
-  samplerInfo(alloc),
-  resources(alloc),
-  managedBuffers(alloc),
-  managedTextures(alloc),
-  buffers(alloc),
-  textures(alloc),
-  framebuffers(alloc),
-  swapchains(alloc),
-  formatViews(alloc),
-  subresourceViews(alloc),
-  valueIndex(alloc),
-  renderPasses(alloc) {}
-
-// ContinuousContainer
-void ResourceGraph::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    names.reserve(sz);
-    descs.reserve(sz);
-    traits.reserve(sz);
-    states.reserve(sz);
-    samplerInfo.reserve(sz);
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const Managed_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-ResourceGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const ManagedBuffer_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-ResourceGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc),
-  handle(std::move(rhs.handle)) {}
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const ManagedTexture_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-ResourceGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc),
-  handle(rhs.handle) {}
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const PersistentBuffer_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-ComputePass::ComputePass(const allocator_type& alloc) noexcept
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const PersistentTexture_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const Framebuffer_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const Swapchain_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const FormatView_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+ResourceGraph::vertex_descriptor ResourceGraph::add_vertex(const SubresourceView_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+std::pair<ResourceGraph::edge_descriptor, bool> ResourceGraph::add_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
+        links[v].parent != null_vertex()) return {{null_vertex(), null_vertex()}, false};
+    for (auto p = u; p != null_vertex(); p = links[p].parent) {
+        if (p == v) return {{null_vertex(), null_vertex()}, false};
+    }
+    auto& parent = links[u];
+    auto& child = links[v];
+    auto* slot = &parent.firstChild;
+    while (*slot != null_vertex() && *slot < v) slot = &links[*slot].nextSibling;
+    child.nextSibling = *slot;
+    if (*slot == null_vertex()) parent.lastChild = v;
+    *slot = v;
+    child.parent = u;
+    ++parent.childCount;
+    return {{u, v}, true};
+}
+
+void ResourceGraph::remove_edge(edge_descriptor e) noexcept {
+    if (!edge(e.source, e.target).second) return;
+    auto& parent = links[e.source];
+    auto& child = links[e.target];
+    auto previous = null_vertex();
+    auto* slot = &parent.firstChild;
+    while (*slot != e.target) {
+        previous = *slot;
+        slot = &links[previous].nextSibling;
+    }
+    *slot = child.nextSibling;
+    if (parent.lastChild == e.target) parent.lastChild = previous;
+    child.parent = child.nextSibling = null_vertex();
+    --parent.childCount;
+}
+
+void ResourceGraph::setName(vertex_descriptor v, std::string_view value) {
+    auto& current = this->names.at(v);
+    if (std::string_view{current} == value) return;
+    ccstd::pmr::string replacement(value, current.get_allocator());
+    const auto old = this->nameIndex_.find(std::string_view{current});
+    if (!this->nameIndex_.emplace(value, v).second) throw std::invalid_argument("duplicate vertex name");
+    current.swap(replacement);
+    this->nameIndex_.erase(old);
+}
+
+ComputePass::ComputePass(const allocator_type& alloc)
 : computeViews(alloc),
   textures(alloc) {}
 
@@ -341,7 +390,7 @@ ComputePass::ComputePass(ComputePass const& rhs, const allocator_type& alloc)
 : computeViews(rhs.computeViews, alloc),
   textures(rhs.textures, alloc) {}
 
-ResolvePass::ResolvePass(const allocator_type& alloc) noexcept
+ResolvePass::ResolvePass(const allocator_type& alloc)
 : resolvePairs(alloc) {}
 
 ResolvePass::ResolvePass(ResolvePass&& rhs, const allocator_type& alloc)
@@ -350,7 +399,7 @@ ResolvePass::ResolvePass(ResolvePass&& rhs, const allocator_type& alloc)
 ResolvePass::ResolvePass(ResolvePass const& rhs, const allocator_type& alloc)
 : resolvePairs(rhs.resolvePairs, alloc) {}
 
-CopyPass::CopyPass(const allocator_type& alloc) noexcept
+CopyPass::CopyPass(const allocator_type& alloc)
 : copyPairs(alloc),
   uploadPairs(alloc) {}
 
@@ -358,7 +407,7 @@ CopyPass::CopyPass(CopyPass&& rhs, const allocator_type& alloc)
 : copyPairs(std::move(rhs.copyPairs), alloc),
   uploadPairs(std::move(rhs.uploadPairs), alloc) {}
 
-MovePass::MovePass(const allocator_type& alloc) noexcept
+MovePass::MovePass(const allocator_type& alloc)
 : movePairs(alloc) {}
 
 MovePass::MovePass(MovePass&& rhs, const allocator_type& alloc)
@@ -367,7 +416,7 @@ MovePass::MovePass(MovePass&& rhs, const allocator_type& alloc)
 MovePass::MovePass(MovePass const& rhs, const allocator_type& alloc)
 : movePairs(rhs.movePairs, alloc) {}
 
-RaytracePass::RaytracePass(const allocator_type& alloc) noexcept
+RaytracePass::RaytracePass(const allocator_type& alloc)
 : computeViews(alloc) {}
 
 RaytracePass::RaytracePass(RaytracePass&& rhs, const allocator_type& alloc)
@@ -376,10 +425,11 @@ RaytracePass::RaytracePass(RaytracePass&& rhs, const allocator_type& alloc)
 RaytracePass::RaytracePass(RaytracePass const& rhs, const allocator_type& alloc)
 : computeViews(rhs.computeViews, alloc) {}
 
-ClearView::ClearView(const allocator_type& alloc) noexcept
-: slotName(alloc) {}
+ClearView::ClearView(const allocator_type& alloc)
+: slotName(alloc),
+  clearColor() {} // NOLINT(readability-redundant-member-init)
 
-ClearView::ClearView(ccstd::pmr::string slotNameIn, gfx::ClearFlagBit clearFlagsIn, const gfx::Color& clearColorIn, const allocator_type& alloc)
+ClearView::ClearView(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string slotNameIn, gfx::ClearFlagBit clearFlagsIn, const gfx::Color& clearColorIn) // NOLINT
 : slotName(std::move(slotNameIn), alloc),
   clearFlags(clearFlagsIn),
   clearColor(clearColorIn) {}
@@ -394,10 +444,11 @@ ClearView::ClearView(ClearView const& rhs, const allocator_type& alloc)
   clearFlags(rhs.clearFlags),
   clearColor(rhs.clearColor) {}
 
-Blit::Blit(const allocator_type& alloc) noexcept
-: models(alloc) {}
+Blit::Blit(const allocator_type& alloc)
+: material(), // NOLINT(readability-redundant-member-init)
+  models(alloc) {}
 
-Blit::Blit(IntrusivePtr<Material> materialIn, uint32_t passIDIn, SceneFlags sceneFlagsIn, const scene::Camera* cameraIn, BlitType blitTypeIn, const allocator_type& alloc) noexcept
+Blit::Blit(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, IntrusivePtr<Material> materialIn, uint32_t passIDIn, SceneFlags sceneFlagsIn, const scene::Camera* cameraIn, BlitType blitTypeIn) // NOLINT
 : material(std::move(materialIn)),
   passID(passIDIn),
   sceneFlags(sceneFlagsIn),
@@ -405,8 +456,9 @@ Blit::Blit(IntrusivePtr<Material> materialIn, uint32_t passIDIn, SceneFlags scen
   blitType(blitTypeIn),
   models(alloc) {}
 
-Blit::Blit(const scene::Camera* cameraIn, BlitType blitTypeIn, ccstd::pmr::vector<IntrusivePtr<scene::Model>> modelsIn, const allocator_type& alloc)
-: camera(cameraIn),
+Blit::Blit(const scene::Camera* cameraIn, BlitType blitTypeIn, ccstd::pmr::vector<IntrusivePtr<scene::Model>> modelsIn, const allocator_type& alloc) // NOLINT
+: material(), // NOLINT(readability-redundant-member-init)
+  camera(cameraIn),
   blitType(blitTypeIn),
   models(std::move(modelsIn), alloc) {}
 
@@ -426,7 +478,7 @@ Blit::Blit(Blit const& rhs, const allocator_type& alloc)
   blitType(rhs.blitType),
   models(rhs.models, alloc) {}
 
-RenderData::RenderData(const allocator_type& alloc) noexcept
+RenderData::RenderData(const allocator_type& alloc)
 : constants(alloc),
   buffers(alloc),
   textures(alloc),
@@ -440,95 +492,129 @@ RenderData::RenderData(RenderData&& rhs, const allocator_type& alloc)
   samplers(std::move(rhs.samplers), alloc),
   custom(std::move(rhs.custom), alloc) {}
 
-RenderGraph::RenderGraph(const allocator_type& alloc) noexcept
-: objects(alloc),
-  _vertices(alloc),
-  names(alloc),
-  layoutNodes(alloc),
-  data(alloc),
-  valid(alloc),
-  rasterPasses(alloc),
-  rasterSubpasses(alloc),
-  computeSubpasses(alloc),
-  computePasses(alloc),
-  resolvePasses(alloc),
-  copyPasses(alloc),
-  movePasses(alloc),
-  raytracePasses(alloc),
-  renderQueues(alloc),
-  scenes(alloc),
-  blits(alloc),
-  dispatches(alloc),
-  clearViews(alloc),
-  viewports(alloc),
-  index(alloc),
-  sortedVertices(alloc),
-  globalRenderData(alloc) {}
-
 RenderGraph::RenderGraph(RenderGraph&& rhs, const allocator_type& alloc)
-: objects(std::move(rhs.objects), alloc),
-  _vertices(std::move(rhs._vertices), alloc),
-  names(std::move(rhs.names), alloc),
-  layoutNodes(std::move(rhs.layoutNodes), alloc),
-  data(std::move(rhs.data), alloc),
-  valid(std::move(rhs.valid), alloc),
-  rasterPasses(std::move(rhs.rasterPasses), alloc),
-  rasterSubpasses(std::move(rhs.rasterSubpasses), alloc),
-  computeSubpasses(std::move(rhs.computeSubpasses), alloc),
-  computePasses(std::move(rhs.computePasses), alloc),
-  resolvePasses(std::move(rhs.resolvePasses), alloc),
-  copyPasses(std::move(rhs.copyPasses), alloc),
-  movePasses(std::move(rhs.movePasses), alloc),
-  raytracePasses(std::move(rhs.raytracePasses), alloc),
-  renderQueues(std::move(rhs.renderQueues), alloc),
-  scenes(std::move(rhs.scenes), alloc),
-  blits(std::move(rhs.blits), alloc),
-  dispatches(std::move(rhs.dispatches), alloc),
-  clearViews(std::move(rhs.clearViews), alloc),
-  viewports(std::move(rhs.viewports), alloc),
-  index(std::move(rhs.index), alloc),
-  sortedVertices(std::move(rhs.sortedVertices), alloc),
-  globalRenderData(std::move(rhs.globalRenderData), alloc) {}
+: handles(std::move(rhs.handles), alloc), outEdges(std::move(rhs.outEdges), alloc), inEdges(std::move(rhs.inEdges), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), layoutNodes(std::move(rhs.layoutNodes), alloc), data(std::move(rhs.data), alloc), valid(std::move(rhs.valid), alloc), rasterPasses(std::move(rhs.rasterPasses), alloc), rasterSubpasses(std::move(rhs.rasterSubpasses), alloc), computeSubpasses(std::move(rhs.computeSubpasses), alloc), computePasses(std::move(rhs.computePasses), alloc), resolvePasses(std::move(rhs.resolvePasses), alloc), copyPasses(std::move(rhs.copyPasses), alloc), movePasses(std::move(rhs.movePasses), alloc), raytracePasses(std::move(rhs.raytracePasses), alloc), renderQueues(std::move(rhs.renderQueues), alloc), scenes(std::move(rhs.scenes), alloc), blits(std::move(rhs.blits), alloc), dispatches(std::move(rhs.dispatches), alloc), clearViews(std::move(rhs.clearViews), alloc), viewports(std::move(rhs.viewports), alloc), index(std::move(rhs.index), alloc), sortedVertices(std::move(rhs.sortedVertices), alloc), globalRenderData(std::move(rhs.globalRenderData), alloc) {}
 
-// ContinuousContainer
-void RenderGraph::reserve(vertices_size_type sz) {
-    objects.reserve(sz);
-    _vertices.reserve(sz);
-    names.reserve(sz);
-    layoutNodes.reserve(sz);
-    data.reserve(sz);
-    valid.reserve(sz);
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterPass_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-RenderGraph::Object::Object(const allocator_type& alloc) noexcept
-: children(alloc),
-  parents(alloc) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const RasterSubpass_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-RenderGraph::Object::Object(Object&& rhs, const allocator_type& alloc)
-: children(std::move(rhs.children), alloc),
-  parents(std::move(rhs.parents), alloc) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const ComputeSubpass_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-RenderGraph::Object::Object(Object const& rhs, const allocator_type& alloc)
-: children(rhs.children, alloc),
-  parents(rhs.parents, alloc) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Compute_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-RenderGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Resolve_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-RenderGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc),
-  handle(std::move(rhs.handle)) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Copy_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-RenderGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc),
-  handle(rhs.handle) {}
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Move_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Raytrace_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Queue_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Scene_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Blit_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Dispatch_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Clear_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+RenderGraph::vertex_descriptor RenderGraph::add_vertex(const Viewport_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, std::tuple<>{}, parent);
+}
+
+std::pair<RenderGraph::edge_descriptor, bool> RenderGraph::add_edge(vertex_descriptor u, vertex_descriptor v) {
+    if (u >= outEdges.size() || v >= outEdges.size()) return {{null_vertex(), null_vertex()}, false};
+    outEdges[u].push_back(v);
+    try {
+        inEdges[v].push_back(u);
+    } catch (...) {
+        outEdges[u].pop_back();
+        throw;
+    }
+    return {{u, v}, true};
+}
+
+void RenderGraph::remove_edge(edge_descriptor e) noexcept {
+    if (e.source >= outEdges.size()) return;
+    auto& out = outEdges[e.source];
+    const auto it = std::find(out.begin(), out.end(), e.target);
+    if (it == out.end()) return;
+    out.erase(it);
+    auto& in = inEdges[e.target];
+    in.erase(std::find(in.begin(), in.end(), e.source));
+}
+
+void RenderGraph::remove_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (u >= outEdges.size() || v >= outEdges.size()) return;
+    auto& out = outEdges[u];
+    out.erase(std::remove(out.begin(), out.end(), v), out.end());
+    auto& in = inEdges[v];
+    in.erase(std::remove(in.begin(), in.end(), u), in.end());
+}
+
+std::pair<RenderGraph::ownership_descriptor, bool> RenderGraph::add_reference(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
+        links[v].parent != null_vertex()) return {{null_vertex(), null_vertex()}, false};
+    for (auto p = u; p != null_vertex(); p = links[p].parent) {
+        if (p == v) return {{null_vertex(), null_vertex()}, false};
+    }
+    auto& parent = links[u];
+    auto& child = links[v];
+    auto* slot = &parent.firstChild;
+    while (*slot != null_vertex() && *slot < v) slot = &links[*slot].nextSibling;
+    child.nextSibling = *slot;
+    if (*slot == null_vertex()) parent.lastChild = v;
+    *slot = v;
+    child.parent = u;
+    ++parent.childCount;
+    return {{u, v}, true};
+}
+
+void RenderGraph::remove_reference(ownership_descriptor e) noexcept {
+    if (!reference(e.source, e.target).second) return;
+    auto& parent = links[e.source];
+    auto& child = links[e.target];
+    auto previous = null_vertex();
+    auto* slot = &parent.firstChild;
+    while (*slot != e.target) {
+        previous = *slot;
+        slot = &links[previous].nextSibling;
+    }
+    *slot = child.nextSibling;
+    if (parent.lastChild == e.target) parent.lastChild = previous;
+    child.parent = child.nextSibling = null_vertex();
+    --parent.childCount;
+}
 
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

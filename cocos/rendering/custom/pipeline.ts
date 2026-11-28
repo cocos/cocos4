@@ -29,22 +29,22 @@
  */
 /* eslint-disable max-len */
 import type { Material } from '../../asset/assets';
-import type { Camera } from '../../render-scene/scene/camera';
-import type { DirectionalLight } from '../../render-scene/scene/directional-light';
-import type { GeometryRenderer } from '../geometry-renderer';
-import type { Buffer, BufferInfo, ClearFlagBit, Color, CommandBuffer, DescriptorSet, DescriptorSetLayout, Device, Format, LoadOp, ResolveMode, SampleCount, Sampler, ShaderStageFlagBit, StoreOp, Swapchain, Texture, TextureInfo, TextureType, Viewport } from '../../gfx';
-import type { GlobalDSManager } from '../global-descriptor-set-manager';
 import type { Mat4, Quat, Vec2, Vec4 } from '../../core/math';
+import type { Buffer, BufferInfo, ClearFlagBit, Color, CommandBuffer, DescriptorSet, DescriptorSetLayout, Device, Format, LoadOp, ResolveMode, SampleCount, Sampler, ShaderStageFlagBit, StoreOp, Swapchain, Texture, TextureInfo, TextureType, Viewport } from '../../gfx';
 import type { MacroRecord } from '../../render-scene/core/pass-utils';
-import type { PipelineSceneData } from '../pipeline-scene-data';
-import type { PointLight } from '../../render-scene/scene/point-light';
-import type { RangedDirectionalLight } from '../../render-scene/scene/ranged-directional-light';
-import type { AccessType, CopyPair, LightInfo, MovePair, QueueHint, ResolvePair, ResourceDimension, ResourceFlags, ResourceResidency, SceneFlags, UpdateFrequency, UploadPair } from './types';
 import type { RenderScene } from '../../render-scene/core/render-scene';
 import type { RenderWindow } from '../../render-scene/core/render-window';
 import type { Light, Model } from '../../render-scene/scene';
+import type { Camera } from '../../render-scene/scene/camera';
+import type { DirectionalLight } from '../../render-scene/scene/directional-light';
+import type { PointLight } from '../../render-scene/scene/point-light';
+import type { RangedDirectionalLight } from '../../render-scene/scene/ranged-directional-light';
 import type { SphereLight } from '../../render-scene/scene/sphere-light';
 import type { SpotLight } from '../../render-scene/scene/spot-light';
+import type { AccessType, CopyPair, LightInfo, MovePair, QueueHint, ResolvePair, ResourceDimension, ResourceFlags, ResourceResidency, SceneFlags, UpdateFrequency, UploadPair } from './types';
+import type { GeometryRenderer } from '../geometry-renderer';
+import type { GlobalDSManager } from '../global-descriptor-set-manager';
+import type { PipelineSceneData } from '../pipeline-scene-data';
 
 /**
  * @engineInternal
@@ -1696,24 +1696,24 @@ export interface Pipeline extends BasicPipeline {
 export interface PipelinePassBuilder {
     getConfigOrder (): number;
     getRenderOrder (): number;
-    configCamera? (
+    configCamera?(
         camera: Readonly<Camera>,
-        pplConfigs: { readonly [name: string]: any },
-        cameraConfigs: { [name: string]: any }): void;
-    windowResize? (
+        pplConfigs: Readonly<Record<string, any>>,
+        cameraConfigs: Record<string, any>): void;
+    windowResize?(
         ppl: BasicPipeline,
-        pplConfigs: { readonly [name: string]: any },
-        cameraConfigs: { readonly [name: string]: any },
+        pplConfigs: Readonly<Record<string, any>>,
+        cameraConfigs: Readonly<Record<string, any>>,
         window: RenderWindow,
         camera: Camera,
         width: number,
         height: number): void;
-    setup? (
+    setup?(
         ppl: BasicPipeline,
-        pplConfigs: { readonly [name: string]: any },
-        cameraConfigs: { readonly [name: string]: any },
+        pplConfigs: Readonly<Record<string, any>>,
+        cameraConfigs: Readonly<Record<string, any>>,
         camera: Camera,
-        context: { [name: string]: any },
+        context: Record<string, any>,
         prevRenderPass?: BasicRenderPassBuilder): BasicRenderPassBuilder | undefined;
 }
 
@@ -1726,7 +1726,7 @@ export interface PipelinePassBuilder {
  * 调用setCustomPipeline注册管线
  */
 export interface PipelineBuilder {
-    windowResize? (
+    windowResize?(
         pipeline: BasicPipeline,
         window: RenderWindow,
         camera: Camera,
@@ -1743,7 +1743,7 @@ export interface PipelineBuilder {
      * @en Callback of pipeline state changed
      * @zh 渲染管线状态更新的回调
      */
-    onGlobalPipelineStateChanged? (): void;
+    onGlobalPipelineStateChanged?(): void;
 }
 
 /**

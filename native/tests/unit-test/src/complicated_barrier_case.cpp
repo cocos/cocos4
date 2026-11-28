@@ -48,7 +48,7 @@ TEST(complicatedBarrierTest, test12) {
 
     const auto& barrierMap = fgDispatcher.resourceAccessGraph.barrier;
     const auto& rag = fgDispatcher.resourceAccessGraph;
-    ExpectEq(rag._vertices.size() == 23, true);
+    ExpectEq(rag.num_vertices() == 23, true);
 
     // head
     const auto& head = barrierMap.at(0);

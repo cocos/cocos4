@@ -29,13 +29,14 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
 #include "cocos/renderer/pipeline/custom/RenderGraphFwd.h"
-// IWYU pragma: end_exports
+#include <cstdint>
 
 namespace cc {
 
 namespace render {
+
+using RenderGraphVertex = uint32_t;
 
 class Customization;
 class CustomPipelineContext;

@@ -29,10 +29,8 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
 #include "cocos/renderer/pipeline/custom/LayoutGraphFwd.h"
 #include "cocos/renderer/pipeline/custom/PrivateFwd.h"
-// IWYU pragma: end_exports
 
 namespace cc {
 

@@ -464,6 +464,9 @@ cocos_source_files(
     cocos/base/etc1.h
     cocos/base/etc2.cpp
     cocos/base/etc2.h
+    cocos/base/GraphDFS.h
+    cocos/base/GraphIterator.h
+    cocos/base/GraphView.h
     cocos/base/HasMemberFunction.h
     cocos/base/IndexHandle.h
     cocos/base/Locked.h
@@ -1529,12 +1532,11 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/CustomFwd.h
                  cocos/renderer/pipeline/custom/CustomTypes.cpp
                  cocos/renderer/pipeline/custom/CustomTypes.h
-                 cocos/renderer/pipeline/custom/FGDispatcherGraphs.h
+                 cocos/renderer/pipeline/custom/FGDispatcherFwd.h
                  cocos/renderer/pipeline/custom/FGDispatcherTypes.cpp
                  cocos/renderer/pipeline/custom/FGDispatcherTypes.h
                  cocos/renderer/pipeline/custom/FrameGraphDispatcher.cpp
                  cocos/renderer/pipeline/custom/LayoutGraphFwd.h
-                 cocos/renderer/pipeline/custom/LayoutGraphGraphs.h
                  cocos/renderer/pipeline/custom/LayoutGraphNames.h
                  cocos/renderer/pipeline/custom/LayoutGraphSerialization.cpp
                  cocos/renderer/pipeline/custom/LayoutGraphSerialization.h
@@ -1551,7 +1553,6 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/NativeFwd.h
                  cocos/renderer/pipeline/custom/NativePipeline.cpp
                  cocos/renderer/pipeline/custom/NativePipelineFwd.h
-                 cocos/renderer/pipeline/custom/NativePipelineGraphs.h
                  cocos/renderer/pipeline/custom/NativePipelineTypes.cpp
                  cocos/renderer/pipeline/custom/NativePipelineTypes.h
                  cocos/renderer/pipeline/custom/NativePools.cpp
@@ -1580,7 +1581,6 @@ cocos_source_files(
                  cocos/renderer/pipeline/custom/RenderCommonTypes.cpp
                  cocos/renderer/pipeline/custom/RenderCommonTypes.h
                  cocos/renderer/pipeline/custom/RenderGraphFwd.h
-                 cocos/renderer/pipeline/custom/RenderGraphGraphs.h
                  cocos/renderer/pipeline/custom/RenderGraphTypes.cpp
                  cocos/renderer/pipeline/custom/RenderGraphTypes.h
                  cocos/renderer/pipeline/custom/RenderInterfaceFwd.h

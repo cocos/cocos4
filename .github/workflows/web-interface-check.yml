@@ -237,14 +237,14 @@ jobs:
           cd ./engine-HEAD
           npm install --ignore-scripts
           # Use package-size-check.js in HEAD
-          node .github/workflows/package-size-check.js "$ROOT_DIR"
+          node --max-old-space-size=4096 .github/workflows/package-size-check.js "$ROOT_DIR"
 
       - name: Build Declarations (head)
         if: ${{ matrix.config.target == 'head' }}
         run: |
           ROOT_DIR=$(pwd)
           npm install
-          node .github/workflows/package-size-check.js "$ROOT_DIR"
+          node --max-old-space-size=4096 .github/workflows/package-size-check.js "$ROOT_DIR"
 
       - name: Pack for compare
         run: |

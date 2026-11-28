@@ -27,11 +27,21 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
-#pragma once
-#include "cocos/renderer/pipeline/custom/CustomFwd.h"
+#pragma once // NOLINT(portability-avoid-pragma-once)
+#include <memory>
+#include <string_view>
+#include "CustomFwd.h"
+#include "cocos/base/Ptr.h"
+#include "cocos/renderer/gfx-base/GFXBuffer.h"
+#include "cocos/renderer/gfx-base/GFXTexture.h"
 #include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
+
+namespace cc::gfx {
+struct BufferInfo;
+class CommandBuffer;
+class RenderPass;
+struct TextureInfo;
+} // namespace cc::gfx
 
 namespace cc {
 
@@ -40,10 +50,10 @@ namespace render {
 class Customization {
 public:
     Customization() noexcept = default;
-    Customization(Customization&& rhs) = delete;
-    Customization(Customization const& rhs) = delete;
-    Customization& operator=(Customization&& rhs) = delete;
-    Customization& operator=(Customization const& rhs) = delete;
+    Customization(Customization &&rhs) = delete;
+    Customization(Customization const &rhs) = delete;
+    Customization &operator=(Customization &&rhs) = delete;
+    Customization &operator=(Customization const &rhs) = delete;
     virtual ~Customization() noexcept = default;
 
     virtual std::string_view getName() const noexcept = 0;
@@ -51,8 +61,6 @@ public:
 
 class CustomPipelineContext : public Customization {
 public:
-    CustomPipelineContext() noexcept = default;
-
     virtual IntrusivePtr<gfx::Buffer> createCustomBuffer(std::string_view type, const gfx::BufferInfo &info) = 0;
     virtual IntrusivePtr<gfx::Texture> createCustomTexture(std::string_view type, const gfx::TextureInfo &info) = 0;
     virtual void destroy() noexcept = 0;
@@ -60,73 +68,62 @@ public:
 
 struct CustomRenderGraphContext {
     std::shared_ptr<CustomPipelineContext> pipelineContext;
-    const RenderGraph* renderGraph{nullptr};
-    const ResourceGraph* resourceGraph{nullptr};
-    gfx::CommandBuffer* primaryCommandBuffer{nullptr};
-    gfx::RenderPass* currentRenderPass{nullptr};
+    const RenderGraph *renderGraph{nullptr};
+    const ResourceGraph *resourceGraph{nullptr};
+    gfx::CommandBuffer *primaryCommandBuffer{nullptr};
+    gfx::RenderPass *currentRenderPass{nullptr};
 };
 
 class CustomRenderPass : public Customization {
 public:
-    CustomRenderPass() noexcept = default;
-
-    virtual void beginRenderPass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endRenderPass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginRenderPass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endRenderPass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 class CustomRenderSubpass : public Customization {
 public:
-    CustomRenderSubpass() noexcept = default;
-
-    virtual void beginRenderSubpass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endRenderSubpass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginRenderSubpass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endRenderSubpass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 class CustomComputeSubpass : public Customization {
 public:
-    CustomComputeSubpass() noexcept = default;
-
-    virtual void beginComputeSubpass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endComputeSubpass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginComputeSubpass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endComputeSubpass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 class CustomComputePass : public Customization {
 public:
-    CustomComputePass() noexcept = default;
-
-    virtual void beginComputePass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endComputePass(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginComputePass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endComputePass(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 class CustomRenderQueue {
 public:
     CustomRenderQueue() noexcept = default;
-    CustomRenderQueue(CustomRenderQueue&& rhs) = delete;
-    CustomRenderQueue(CustomRenderQueue const& rhs) = delete;
-    CustomRenderQueue& operator=(CustomRenderQueue&& rhs) = delete;
-    CustomRenderQueue& operator=(CustomRenderQueue const& rhs) = delete;
+    CustomRenderQueue(CustomRenderQueue &&rhs) = delete;
+    CustomRenderQueue(CustomRenderQueue const &rhs) = delete;
+    CustomRenderQueue &operator=(CustomRenderQueue &&rhs) = delete;
+    CustomRenderQueue &operator=(CustomRenderQueue const &rhs) = delete;
     virtual ~CustomRenderQueue() noexcept = default;
 
-    virtual void beginRenderQueue(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endRenderQueue(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginRenderQueue(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endRenderQueue(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 class CustomRenderCommand {
 public:
     CustomRenderCommand() noexcept = default;
-    CustomRenderCommand(CustomRenderCommand&& rhs) = delete;
-    CustomRenderCommand(CustomRenderCommand const& rhs) = delete;
-    CustomRenderCommand& operator=(CustomRenderCommand&& rhs) = delete;
-    CustomRenderCommand& operator=(CustomRenderCommand const& rhs) = delete;
+    CustomRenderCommand(CustomRenderCommand &&rhs) = delete;
+    CustomRenderCommand(CustomRenderCommand const &rhs) = delete;
+    CustomRenderCommand &operator=(CustomRenderCommand &&rhs) = delete;
+    CustomRenderCommand &operator=(CustomRenderCommand const &rhs) = delete;
     virtual ~CustomRenderCommand() noexcept = default;
 
-    virtual void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
-    virtual void endRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor passID) = 0;
+    virtual void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
+    virtual void endRenderCommand(const CustomRenderGraphContext &rg, RenderGraphVertex passID) = 0;
 };
 
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

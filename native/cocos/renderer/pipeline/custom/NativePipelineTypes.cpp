@@ -27,15 +27,23 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "NativePipelineTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-RenderInstancingQueue::RenderInstancingQueue(const allocator_type& alloc) noexcept
+ProbeHelperQueue::ProbeHelperQueue(const allocator_type& alloc)
+: probeMap(alloc) {}
+
+ProbeHelperQueue::ProbeHelperQueue(ProbeHelperQueue&& rhs, const allocator_type& alloc)
+: probeMap(std::move(rhs.probeMap), alloc) {}
+
+ProbeHelperQueue::ProbeHelperQueue(ProbeHelperQueue const& rhs, const allocator_type& alloc)
+: probeMap(rhs.probeMap, alloc) {}
+
+RenderInstancingQueue::RenderInstancingQueue(const allocator_type& alloc)
 : sortedBatches(alloc),
   passInstances(alloc),
   instanceBuffers(alloc) {}
@@ -50,16 +58,7 @@ RenderInstancingQueue::RenderInstancingQueue(RenderInstancingQueue const& rhs, c
   passInstances(rhs.passInstances, alloc),
   instanceBuffers(rhs.instanceBuffers, alloc) {}
 
-ProbeHelperQueue::ProbeHelperQueue(const allocator_type& alloc) noexcept
-: probeMap(alloc) {}
-
-ProbeHelperQueue::ProbeHelperQueue(ProbeHelperQueue&& rhs, const allocator_type& alloc)
-: probeMap(std::move(rhs.probeMap), alloc) {}
-
-ProbeHelperQueue::ProbeHelperQueue(ProbeHelperQueue const& rhs, const allocator_type& alloc)
-: probeMap(rhs.probeMap, alloc) {}
-
-RenderDrawQueue::RenderDrawQueue(const allocator_type& alloc) noexcept
+RenderDrawQueue::RenderDrawQueue(const allocator_type& alloc)
 : instances(alloc) {}
 
 RenderDrawQueue::RenderDrawQueue(RenderDrawQueue&& rhs, const allocator_type& alloc)
@@ -68,7 +67,7 @@ RenderDrawQueue::RenderDrawQueue(RenderDrawQueue&& rhs, const allocator_type& al
 RenderDrawQueue::RenderDrawQueue(RenderDrawQueue const& rhs, const allocator_type& alloc)
 : instances(rhs.instances, alloc) {}
 
-NativeRenderQueue::NativeRenderQueue(const allocator_type& alloc) noexcept
+NativeRenderQueue::NativeRenderQueue(const allocator_type& alloc)
 : opaqueQueue(alloc),
   transparentQueue(alloc),
   probeQueue(alloc),
@@ -85,16 +84,16 @@ NativeRenderQueue::NativeRenderQueue(NativeRenderQueue&& rhs, const allocator_ty
   sceneFlags(rhs.sceneFlags),
   lightByteOffset(rhs.lightByteOffset) {}
 
-ResourceGroup::ResourceGroup(const allocator_type& alloc) noexcept
+ResourceGroup::ResourceGroup(const allocator_type& alloc)
 : instancingBuffers(alloc) {}
 
-BufferPool::BufferPool(const allocator_type& alloc) noexcept
+BufferPool::BufferPool(const allocator_type& alloc)
 : currentBuffers(alloc),
   currentBufferViews(alloc),
   freeBuffers(alloc),
   freeBufferViews(alloc) {}
 
-BufferPool::BufferPool(gfx::Device* deviceIn, uint32_t bufferSizeIn, bool dynamicIn, const allocator_type& alloc) noexcept // NOLINT
+BufferPool::BufferPool(gfx::Device* deviceIn, uint32_t bufferSizeIn, bool dynamicIn, const allocator_type& alloc) // NOLINT
 : device(deviceIn),
   bufferSize(bufferSizeIn),
   dynamic(dynamicIn),
@@ -112,11 +111,12 @@ BufferPool::BufferPool(BufferPool&& rhs, const allocator_type& alloc)
   freeBuffers(std::move(rhs.freeBuffers), alloc),
   freeBufferViews(std::move(rhs.freeBufferViews), alloc) {}
 
-DescriptorSetPool::DescriptorSetPool(const allocator_type& alloc) noexcept
-: currentDescriptorSets(alloc),
+DescriptorSetPool::DescriptorSetPool(const allocator_type& alloc)
+: setLayout(), // NOLINT(readability-redundant-member-init)
+  currentDescriptorSets(alloc),
   freeDescriptorSets(alloc) {}
 
-DescriptorSetPool::DescriptorSetPool(gfx::Device* deviceIn, IntrusivePtr<gfx::DescriptorSetLayout> setLayoutIn, const allocator_type& alloc) noexcept // NOLINT
+DescriptorSetPool::DescriptorSetPool(gfx::Device* deviceIn, IntrusivePtr<gfx::DescriptorSetLayout> setLayoutIn, const allocator_type& alloc) // NOLINT
 : device(deviceIn),
   setLayout(std::move(setLayoutIn)),
   currentDescriptorSets(alloc),
@@ -128,7 +128,7 @@ DescriptorSetPool::DescriptorSetPool(DescriptorSetPool&& rhs, const allocator_ty
   currentDescriptorSets(std::move(rhs.currentDescriptorSets), alloc),
   freeDescriptorSets(std::move(rhs.freeDescriptorSets), alloc) {}
 
-UniformBlockResource::UniformBlockResource(const allocator_type& alloc) noexcept
+UniformBlockResource::UniformBlockResource(const allocator_type& alloc)
 : cpuBuffer(alloc),
   bufferPool(alloc) {}
 
@@ -136,7 +136,7 @@ UniformBlockResource::UniformBlockResource(UniformBlockResource&& rhs, const all
 : cpuBuffer(std::move(rhs.cpuBuffer), alloc),
   bufferPool(std::move(rhs.bufferPool), alloc) {}
 
-ProgramResource::ProgramResource(const allocator_type& alloc) noexcept
+ProgramResource::ProgramResource(const allocator_type& alloc)
 : uniformBuffers(alloc),
   descriptorSetPool(alloc) {}
 
@@ -144,7 +144,7 @@ ProgramResource::ProgramResource(ProgramResource&& rhs, const allocator_type& al
 : uniformBuffers(std::move(rhs.uniformBuffers), alloc),
   descriptorSetPool(std::move(rhs.descriptorSetPool), alloc) {}
 
-LayoutGraphNodeResource::LayoutGraphNodeResource(const allocator_type& alloc) noexcept
+LayoutGraphNodeResource::LayoutGraphNodeResource(const allocator_type& alloc)
 : uniformBuffers(alloc),
   descriptorSetPool(alloc),
   programResources(alloc) {}
@@ -154,7 +154,7 @@ LayoutGraphNodeResource::LayoutGraphNodeResource(LayoutGraphNodeResource&& rhs, 
   descriptorSetPool(std::move(rhs.descriptorSetPool), alloc),
   programResources(std::move(rhs.programResources), alloc) {}
 
-FrustumCulling::FrustumCulling(const allocator_type& alloc) noexcept
+FrustumCulling::FrustumCulling(const allocator_type& alloc)
 : resultIndex(alloc) {}
 
 FrustumCulling::FrustumCulling(FrustumCulling&& rhs, const allocator_type& alloc)
@@ -163,7 +163,7 @@ FrustumCulling::FrustumCulling(FrustumCulling&& rhs, const allocator_type& alloc
 FrustumCulling::FrustumCulling(FrustumCulling const& rhs, const allocator_type& alloc)
 : resultIndex(rhs.resultIndex, alloc) {}
 
-LightBoundsCulling::LightBoundsCulling(const allocator_type& alloc) noexcept
+LightBoundsCulling::LightBoundsCulling(const allocator_type& alloc)
 : resultIndex(alloc) {}
 
 LightBoundsCulling::LightBoundsCulling(LightBoundsCulling&& rhs, const allocator_type& alloc)
@@ -172,7 +172,7 @@ LightBoundsCulling::LightBoundsCulling(LightBoundsCulling&& rhs, const allocator
 LightBoundsCulling::LightBoundsCulling(LightBoundsCulling const& rhs, const allocator_type& alloc)
 : resultIndex(rhs.resultIndex, alloc) {}
 
-SceneCulling::SceneCulling(const allocator_type& alloc) noexcept
+SceneCulling::SceneCulling(const allocator_type& alloc)
 : frustumCullings(alloc),
   frustumCullingResults(alloc),
   lightBoundsCullings(alloc),
@@ -195,12 +195,14 @@ SceneCulling::SceneCulling(SceneCulling&& rhs, const allocator_type& alloc)
   gpuCullingPassID(rhs.gpuCullingPassID),
   enableLightCulling(rhs.enableLightCulling) {}
 
-LightResource::LightResource(const allocator_type& alloc) noexcept
+LightResource::LightResource(const allocator_type& alloc)
 : cpuBuffer(alloc),
+  lightBuffer(), // NOLINT(readability-redundant-member-init)
+  firstLightBufferView(), // NOLINT(readability-redundant-member-init)
   lights(alloc),
   lightIndex(alloc) {}
 
-DeviceRenderData::DeviceRenderData(const allocator_type& alloc) noexcept
+DeviceRenderData::DeviceRenderData(const allocator_type& alloc)
 : buffers(alloc),
   textures(alloc),
   samplers(alloc) {}
@@ -212,23 +214,29 @@ DeviceRenderData::DeviceRenderData(DeviceRenderData&& rhs, const allocator_type&
   textures(std::move(rhs.textures), alloc),
   samplers(std::move(rhs.samplers), alloc) {}
 
-NativeRenderContext::NativeRenderContext(std::unique_ptr<gfx::DefaultResource> defaultResourceIn, const allocator_type& alloc) noexcept
+NativeRenderContext::NativeRenderContext(std::unique_ptr<gfx::DefaultResource> defaultResourceIn, const allocator_type& alloc) // NOLINT
 : defaultResource(std::move(defaultResourceIn)),
   resourceGroups(alloc),
   layoutGraphResources(alloc),
+  fullscreenQuad(), // NOLINT(readability-redundant-member-init)
   sceneCulling(alloc),
   lightResources(alloc),
   resourceGraphIndex(alloc),
   graphNodeRenderData(alloc),
   graphNodeDescriptorSets(alloc) {}
 
-NativeProgramLibrary::NativeProgramLibrary(const allocator_type& alloc) noexcept
+NativeProgramLibrary::NativeProgramLibrary(const allocator_type& alloc)
 : layoutGraph(alloc),
   phases(alloc),
-  localLayoutData(alloc) {}
+  unsycPool(), // NOLINT(readability-redundant-member-init)
+  localLayoutData(alloc),
+  localDescriptorSetLayout(), // NOLINT(readability-redundant-member-init)
+  emptyDescriptorSetLayout(), // NOLINT(readability-redundant-member-init)
+  emptyPipelineLayout() {} // NOLINT(readability-redundant-member-init)
 
-PipelineCustomization::PipelineCustomization(const allocator_type& alloc) noexcept
-: contexts(alloc),
+PipelineCustomization::PipelineCustomization(const allocator_type& alloc)
+: currentContext(), // NOLINT(readability-redundant-member-init)
+  contexts(alloc),
   renderPasses(alloc),
   renderSubpasses(alloc),
   computeSubpasses(alloc),
@@ -259,6 +267,3 @@ PipelineCustomization::PipelineCustomization(PipelineCustomization const& rhs, c
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

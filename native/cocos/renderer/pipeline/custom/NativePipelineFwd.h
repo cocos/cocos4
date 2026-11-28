@@ -29,31 +29,14 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
 #include "cocos/renderer/pipeline/custom/CustomFwd.h"
+#include "cocos/renderer/pipeline/custom/FGDispatcherFwd.h"
+#include "cocos/renderer/pipeline/custom/LayoutGraphFwd.h"
 #include "cocos/renderer/pipeline/custom/NativeFwd.h"
-// IWYU pragma: end_exports
-
-namespace cc {
-
-namespace scene {
-
-class ReflectionProbe;
-
-} // namespace scene
-
-namespace render {
-
-template <class T>
-using Array4 = std::array<T, 4>;
-
-struct RenderGraphVisitorContext;
-struct FrameGraphDispatcher;
-
-} // namespace render
-
-} // namespace cc
-
+#include "cocos/renderer/pipeline/custom/PrivateFwd.h"
+#include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphFwd.h"
+#include "cocos/renderer/pipeline/custom/RenderInterfaceFwd.h"
 #include "cocos/base/std/hash/hash.h"
 
 namespace cc {
@@ -63,8 +46,8 @@ namespace render {
 struct RenderGraphFilter;
 class NativeRenderNode;
 class NativeSetter;
-class NativeSceneBuilder;
 class NativeRenderSubpassBuilderImpl;
+class NativeSceneBuilder;
 class NativeRenderQueueBuilder;
 class NativeRenderSubpassBuilder;
 class NativeMultisampleRenderSubpassBuilder;
@@ -73,9 +56,9 @@ class NativeRenderPassBuilder;
 class NativeMultisampleRenderPassBuilder;
 class NativeComputeQueueBuilder;
 class NativeComputePassBuilder;
-struct RenderInstancingQueue;
 struct DrawInstance;
 struct ProbeHelperQueue;
+struct RenderInstancingQueue;
 struct RenderDrawQueue;
 struct NativeRenderQueue;
 struct ResourceGroup;

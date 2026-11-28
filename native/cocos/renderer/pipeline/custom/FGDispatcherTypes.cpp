@@ -27,15 +27,14 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "FGDispatcherTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-ResourceAccessNode::ResourceAccessNode(const allocator_type& alloc) noexcept
+ResourceAccessNode::ResourceAccessNode(const allocator_type& alloc)
 : resourceStatus(alloc) {}
 
 ResourceAccessNode::ResourceAccessNode(ResourceAccessNode&& rhs, const allocator_type& alloc)
@@ -44,7 +43,7 @@ ResourceAccessNode::ResourceAccessNode(ResourceAccessNode&& rhs, const allocator
 ResourceAccessNode::ResourceAccessNode(ResourceAccessNode const& rhs, const allocator_type& alloc)
 : resourceStatus(rhs.resourceStatus, alloc) {}
 
-AttachmentInfo::AttachmentInfo(const allocator_type& alloc) noexcept
+AttachmentInfo::AttachmentInfo(const allocator_type& alloc)
 : parentName(alloc) {}
 
 AttachmentInfo::AttachmentInfo(AttachmentInfo&& rhs, const allocator_type& alloc)
@@ -57,8 +56,12 @@ AttachmentInfo::AttachmentInfo(AttachmentInfo const& rhs, const allocator_type& 
   attachmentIndex(rhs.attachmentIndex),
   isResolveView(rhs.isResolveView) {}
 
-FGRenderPassInfo::FGRenderPassInfo(const allocator_type& alloc) noexcept
-: orderedViews(alloc),
+FGRenderPassInfo::FGRenderPassInfo(const allocator_type& alloc)
+: colorAccesses(), // NOLINT(readability-redundant-member-init)
+  dsAccess(), // NOLINT(readability-redundant-member-init)
+  dsResolveAccess(), // NOLINT(readability-redundant-member-init)
+  rpInfo(), // NOLINT(readability-redundant-member-init)
+  orderedViews(alloc),
   viewIndex(alloc) {}
 
 FGRenderPassInfo::FGRenderPassInfo(FGRenderPassInfo&& rhs, const allocator_type& alloc)
@@ -81,70 +84,113 @@ FGRenderPassInfo::FGRenderPassInfo(FGRenderPassInfo const& rhs, const allocator_
   resolveCount(rhs.resolveCount),
   uniqueRasterViewCount(rhs.uniqueRasterViewCount) {}
 
-ResourceAccessGraph::ResourceAccessGraph(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  passID(alloc),
-  passResource(alloc),
-  rpInfo(alloc),
-  barrier(alloc),
-  passIndex(alloc),
-  resourceNames(alloc),
-  resourceIndex(alloc),
-  leafPasses(alloc),
-  culledPasses(alloc),
-  resourceLifeRecord(alloc),
-  topologicalOrder(alloc),
-  resourceAccess(alloc),
-  movedTarget(alloc),
-  movedSourceStatus(alloc),
-  movedTargetStatus(alloc) {}
-
-// ContinuousContainer
-void ResourceAccessGraph::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    passID.reserve(sz);
-    passResource.reserve(sz);
-    rpInfo.reserve(sz);
-    barrier.reserve(sz);
+ResourceAccessGraph::vertex_descriptor ResourceAccessGraph::add_vertex(RenderGraph::vertex_descriptor key) {
+    return add_vertex(std::piecewise_construct, std::forward_as_tuple(key), std::tuple<>{}, std::tuple<>{}, std::tuple<>{});
 }
 
-ResourceAccessGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
-
-ResourceAccessGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc) {}
-
-ResourceAccessGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc) {}
-
-RelationGraph::RelationGraph(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  descID(alloc),
-  vertexMap(alloc) {}
-
-// ContinuousContainer
-void RelationGraph::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    descID.reserve(sz);
+std::pair<ResourceAccessGraph::edge_descriptor, bool> ResourceAccessGraph::add_edge(vertex_descriptor u, vertex_descriptor v) {
+    if (u >= outEdges.size() || v >= outEdges.size()) return {{null_vertex(), null_vertex()}, false};
+    outEdges[u].push_back(v);
+    try {
+        inEdges[v].push_back(u);
+    } catch (...) {
+        outEdges[u].pop_back();
+        throw;
+    }
+    return {{u, v}, true};
 }
 
-RelationGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+void ResourceAccessGraph::remove_edge(edge_descriptor e) noexcept {
+    if (e.source >= outEdges.size()) return;
+    auto& out = outEdges[e.source];
+    const auto it = std::find(out.begin(), out.end(), e.target);
+    if (it == out.end()) return;
+    out.erase(it);
+    auto& in = inEdges[e.target];
+    in.erase(std::find(in.begin(), in.end(), e.source));
+}
 
-RelationGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc) {}
+void ResourceAccessGraph::remove_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (u >= outEdges.size() || v >= outEdges.size()) return;
+    auto& out = outEdges[u];
+    out.erase(std::remove(out.begin(), out.end(), v), out.end());
+    auto& in = inEdges[v];
+    in.erase(std::remove(in.begin(), in.end(), u), in.end());
+}
 
-RelationGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc) {}
+void ResourceAccessGraph::reserve(vertex_descriptor capacity) {
+    this->passID.reserve(capacity);
+    this->passResource.reserve(capacity);
+    this->rpInfo.reserve(capacity);
+    this->barrier.reserve(capacity);
+    this->outEdges.reserve(capacity);
+    this->inEdges.reserve(capacity);
+    this->componentIndex_.reserve(capacity);
+}
 
-RenderingInfo::RenderingInfo(const allocator_type& alloc) noexcept
-: clearColors(alloc) {}
+RelationGraph::vertex_descriptor RelationGraph::add_vertex(ResourceAccessGraph::vertex_descriptor key) {
+    return add_vertex(std::piecewise_construct, std::forward_as_tuple(key));
+}
+
+std::pair<RelationGraph::edge_descriptor, bool> RelationGraph::add_edge(vertex_descriptor u, vertex_descriptor v) {
+    if (u >= outEdges.size() || v >= outEdges.size()) return {{null_vertex(), null_vertex()}, false};
+    outEdges[u].push_back(v);
+    try {
+        inEdges[v].push_back(u);
+    } catch (...) {
+        outEdges[u].pop_back();
+        throw;
+    }
+    return {{u, v}, true};
+}
+
+void RelationGraph::remove_edge(edge_descriptor e) noexcept {
+    if (e.source >= outEdges.size()) return;
+    auto& out = outEdges[e.source];
+    const auto it = std::find(out.begin(), out.end(), e.target);
+    if (it == out.end()) return;
+    out.erase(it);
+    auto& in = inEdges[e.target];
+    in.erase(std::find(in.begin(), in.end(), e.source));
+}
+
+void RelationGraph::remove_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (u >= outEdges.size() || v >= outEdges.size()) return;
+    auto& out = outEdges[u];
+    out.erase(std::remove(out.begin(), out.end(), v), out.end());
+    auto& in = inEdges[v];
+    in.erase(std::remove(in.begin(), in.end(), u), in.end());
+}
+
+void RelationGraph::reserve(vertex_descriptor capacity) {
+    this->descID.reserve(capacity);
+    this->outEdges.reserve(capacity);
+    this->inEdges.reserve(capacity);
+    this->componentIndex_.reserve(capacity);
+}
+
+void RelationGraph::remove_vertex(vertex_descriptor v) {
+    if (v >= this->descID.size()) throw std::out_of_range("invalid vertex");
+    this->componentIndex_.erase(this->descID[v]);
+    for (auto& entry : this->componentIndex_) if (entry.second > v) --entry.second;
+    static_assert(std::is_nothrow_move_assignable_v<decltype(descID)::value_type>);
+    this->descID.erase(this->descID.begin() + v);
+    const auto compact = [v](auto& rows) {
+        for (std::size_t i = v; i + 1 < rows.size(); ++i) rows[i].swap(rows[i + 1]);
+        rows.pop_back();
+        for (auto& row : rows) {
+            row.erase(std::remove(row.begin(), row.end(), v), row.end());
+            for (auto& neighbor : row) if (neighbor > v) --neighbor;
+        }
+    };
+    compact(this->outEdges);
+    compact(this->inEdges);
+}
+
+RenderingInfo::RenderingInfo(const allocator_type& alloc)
+: renderpassInfo(), // NOLINT(readability-redundant-member-init)
+  framebufferInfo(), // NOLINT(readability-redundant-member-init)
+  clearColors(alloc) {}
 
 RenderingInfo::RenderingInfo(RenderingInfo&& rhs, const allocator_type& alloc)
 : renderpassInfo(std::move(rhs.renderpassInfo)),
@@ -160,7 +206,7 @@ RenderingInfo::RenderingInfo(RenderingInfo const& rhs, const allocator_type& all
   clearDepth(rhs.clearDepth),
   clearStencil(rhs.clearStencil) {}
 
-FrameGraphDispatcher::FrameGraphDispatcher(ResourceGraph& resourceGraphIn, const RenderGraph& renderGraphIn, const LayoutGraphData& layoutGraphIn, boost::container::pmr::memory_resource* scratchIn, const allocator_type& alloc) noexcept
+FrameGraphDispatcher::FrameGraphDispatcher(ResourceGraph& resourceGraphIn, const RenderGraph& renderGraphIn, const LayoutGraphData& layoutGraphIn, boost::container::pmr::memory_resource* scratchIn, const allocator_type& alloc) // NOLINT
 : resourceAccessGraph(alloc),
   resourceGraph(resourceGraphIn),
   renderGraph(renderGraphIn),
@@ -171,6 +217,3 @@ FrameGraphDispatcher::FrameGraphDispatcher(ResourceGraph& resourceGraphIn, const
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

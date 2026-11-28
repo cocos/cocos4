@@ -27,13 +27,40 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
 #pragma once
-#include <string_view>
-#include <tuple>
-#include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
-#include "cocos/renderer/pipeline/custom/details/GraphImpl.h"
-#include "cocos/renderer/pipeline/custom/details/Overload.h"
-#include "cocos/renderer/pipeline/custom/details/PathUtils.h"
+// clang-format off
+#include "cocos/renderer/pipeline/custom/LayoutGraphFwd.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphFwd.h"
+
+namespace cc {
+
+namespace render {
+
+struct NullTag;
+struct ResourceLifeRecord;
+struct LeafStatus;
+struct AccessStatus;
+struct ResourceAccessNode;
+struct LayoutAccess;
+struct AttachmentInfo;
+struct FGRenderPassInfo;
+struct Barrier;
+struct BarrierNode;
+struct SliceNode;
+struct TextureNode;
+struct ResourceNode;
+struct PassID_;
+struct PassNode_;
+struct RenderPassInfo_;
+struct Barrier_;
+struct DescID_;
+struct ResourceAccessGraph;
+struct RelationGraph;
+struct RenderingInfo;
+struct FrameGraphDispatcher;
+
+} // namespace render
+
+} // namespace cc
 
 // clang-format on

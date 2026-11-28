@@ -27,18 +27,21 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "NativeTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-ProgramInfo::ProgramInfo(const allocator_type& alloc) noexcept
-: attributes(alloc) {}
+ProgramInfo::ProgramInfo(const allocator_type& alloc)
+: programInfo(), // NOLINT(readability-redundant-member-init)
+  shaderInfo(), // NOLINT(readability-redundant-member-init)
+  attributes(alloc),
+  blockSizes(), // NOLINT(readability-redundant-member-init)
+  handleMap() {} // NOLINT(readability-redundant-member-init)
 
-ProgramInfo::ProgramInfo(IProgramInfo programInfoIn, gfx::ShaderInfo shaderInfoIn, ccstd::pmr::vector<gfx::Attribute> attributesIn, ccstd::vector<signed> blockSizesIn, ccstd::unordered_map<ccstd::string, uint32_t> handleMapIn, const allocator_type& alloc)
+ProgramInfo::ProgramInfo(IProgramInfo programInfoIn, gfx::ShaderInfo shaderInfoIn, ccstd::pmr::vector<gfx::Attribute> attributesIn, ccstd::vector<int> blockSizesIn, ccstd::unordered_map<ccstd::string, uint32_t> handleMapIn, const allocator_type& alloc) // NOLINT
 : programInfo(std::move(programInfoIn)),
   shaderInfo(std::move(shaderInfoIn)),
   attributes(std::move(attributesIn), alloc),
@@ -59,7 +62,7 @@ ProgramInfo::ProgramInfo(ProgramInfo const& rhs, const allocator_type& alloc)
   blockSizes(rhs.blockSizes),
   handleMap(rhs.handleMap) {}
 
-ProgramGroup::ProgramGroup(const allocator_type& alloc) noexcept
+ProgramGroup::ProgramGroup(const allocator_type& alloc)
 : programInfos(alloc),
   programProxies(alloc) {}
 
@@ -74,6 +77,3 @@ ProgramGroup::ProgramGroup(ProgramGroup const& rhs, const allocator_type& alloc)
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

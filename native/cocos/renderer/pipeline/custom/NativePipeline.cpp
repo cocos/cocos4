@@ -32,17 +32,18 @@
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
 #include "cocos/renderer/pipeline/custom/NativeRenderGraphUtils.h"
 #include "cocos/renderer/pipeline/custom/NativeUtils.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "cocos/renderer/pipeline/custom/RenderingModule.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
-#include "cocos/renderer/pipeline/custom/details/Range.h"
 #include "cocos/scene/DirectionalLight.h"
 #include "cocos/scene/ReflectionProbe.h"
 #include "cocos/scene/ReflectionProbeManager.h"
 #include "cocos/scene/RenderScene.h"
 #include "cocos/scene/RenderWindow.h"
 #include "cocos/scene/SpotLight.h"
+
+#include <stdexcept>
 
 #if CC_USE_DEBUG_RENDERER
     #include "profiler/DebugRenderer.h"
@@ -59,53 +60,34 @@ namespace render {
 namespace {
 
 template <gfx::Format>
-void addSubresourceNode(ResourceGraph::vertex_descriptor v, const ccstd::string &name, ResourceGraph &resg);
+void addSubresourceNode(ResourceGraph::vertex_descriptor v, const ccstd::string &depthName, const ccstd::string &stencilName, ResourceGraph &resg);
 
 template <>
-void addSubresourceNode<gfx::Format::DEPTH_STENCIL>(ResourceGraph::vertex_descriptor v, const ccstd::string &name, ResourceGraph &resg) {
-    const auto desc = get(ResourceGraph::DescTag{}, resg, v);
-    const auto traits = get(ResourceGraph::TraitsTag{}, resg, v);
-    const auto samplerInfo = get(ResourceGraph::SamplerTag{}, resg, v);
-
-    SubresourceView view{
-        nullptr,
-        gfx::Format::DEPTH_STENCIL,
-        0, // indexOrFirstMipLevel
-        1, // numMipLevels
-        0, // firstArraySlice
-        1, // numArraySlices
-        0, // firstPlane
-        1, // numPlanes
+void addSubresourceNode<gfx::Format::DEPTH_STENCIL>(ResourceGraph::vertex_descriptor v, const ccstd::string &depthName, const ccstd::string &stencilName, ResourceGraph &resg) {
+    // Adding the first view can reallocate the graph's component vectors.
+    const auto desc = resg.getDesc(v);
+    const auto residency = resg.getTraits(v).residency;
+    const auto samplerInfo = resg.getSampler(v);
+    const auto addPlane = [&](const ccstd::string &name, uint16_t plane) {
+        SubresourceView view{};
+        view.format = gfx::Format::DEPTH_STENCIL;
+        view.numMipLevels = 1;
+        view.numArraySlices = 1;
+        view.firstPlane = plane;
+        view.numPlanes = 1;
+        resg.add_vertex(
+            SubresourceView_{},
+            std::piecewise_construct,
+            std::tie(view),
+            std::forward_as_tuple(name.data(), name.size()),
+            std::tie(desc),
+            std::tie(residency),
+            std::tuple<>{},
+            std::tie(samplerInfo),
+            v);
     };
-
-    ccstd::string depthName{name};
-    depthName += "/";
-    depthName += DEPTH_PLANE_NAME;
-    const auto depthID = addVertex(
-        SubresourceViewTag{},
-        std::forward_as_tuple(depthName.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(traits.residency),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(samplerInfo),
-        std::forward_as_tuple(view),
-        resg,
-        v);
-
-    view.firstPlane = 1;
-    ccstd::string stencilName{name};
-    stencilName += "/";
-    stencilName += STENCIL_PLANE_NAME;
-    const auto stencilID = addVertex(
-        SubresourceViewTag{},
-        std::forward_as_tuple(stencilName.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(traits.residency),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(samplerInfo),
-        std::forward_as_tuple(view),
-        resg,
-        v);
+    addPlane(depthName, 0);
+    addPlane(stencilName, 1);
 }
 
 } // namespace
@@ -142,7 +124,7 @@ public:
     : _sceneData(sceneData) {}
 
     void beginRenderCommand(const CustomRenderGraphContext &rg, RenderGraph::vertex_descriptor vertID) override {
-        const auto &sceneData = get(SceneTag{}, vertID, *rg.renderGraph);
+        const auto &sceneData = rg.renderGraph->value(Scene_{}, vertID);
         if (sceneData.camera && sceneData.camera->getGeometryRenderer()) {
             sceneData.camera->getGeometryRenderer()->render(rg.currentRenderPass, rg.primaryCommandBuffer, _sceneData);
         }
@@ -200,11 +182,11 @@ void NativePipeline::setEnableCpuLightCulling(bool enable) {
 }
 
 bool NativePipeline::containsResource(const ccstd::string &name) const {
-    return contains(name.c_str(), resourceGraph);
+    return resourceGraph.contains(name);
 }
 
 uint32_t NativePipeline::addExternalTexture(const ccstd::string &name, gfx::Texture *texture, ResourceFlags flags) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateExternalTexture(name, texture);
         return resID;
@@ -223,29 +205,29 @@ uint32_t NativePipeline::addExternalTexture(const ccstd::string &name, gfx::Text
     desc.flags = flags;
     desc.viewType = texInfo.type;
 
-    return addVertex(
-        PersistentTextureTag{},
-        std::forward_as_tuple(name.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{ResourceResidency::EXTERNAL}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
+    return resourceGraph.add_vertex(
+        PersistentTexture_{},
+        std::piecewise_construct,
         std::forward_as_tuple(texture),
-        resourceGraph);
+        std::forward_as_tuple(name.data(), name.size()),
+        std::forward_as_tuple(desc),
+        std::forward_as_tuple(ResourceResidency::EXTERNAL),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 void NativePipeline::updateExternalTexture(const ccstd::string &name, gfx::Texture *texture) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
-    visitObject(
-        resID, resourceGraph,
-        [&](IntrusivePtr<gfx::Texture> &tex) {
+    auto &desc = resourceGraph.getDesc(resID);
+    resourceGraph.visit_vertex(
+        resID,
+        [&](PersistentTexture &tex) {
             desc.width = texture->getWidth();
             desc.height = texture->getHeight();
-            tex = texture;
+            tex.texture = texture;
         },
         [](const auto & /*res*/) {});
 }
@@ -258,7 +240,7 @@ void updateDepthStencilImpl(
     ResourceGraph::vertex_descriptor resID, uint32_t width, uint32_t height, gfx::Format format,
     gfx::Swapchain *swapchain) {
     CC_EXPECTS(resID != ResourceGraph::null_vertex());
-    auto &desc = get(ResourceGraph::DescTag{}, ppl.resourceGraph, resID);
+    auto &desc = ppl.resourceGraph.getDesc(resID);
 
     // update format
     if (format == gfx::Format::UNKNOWN) {
@@ -270,20 +252,19 @@ void updateDepthStencilImpl(
     }
     CC_ENSURES(format != gfx::Format::UNKNOWN);
 
-    visitObject(
-        resID, ppl.resourceGraph,
+    ppl.resourceGraph.visit_vertex(
+        resID,
         [&](ManagedTexture &tex) {
             CC_EXPECTS(!swapchain || !ppl.defaultFramebufferHasDepthStencil);
             bool invalidated =
                 std::forward_as_tuple(desc.width, desc.height, desc.format) !=
                 std::forward_as_tuple(width, height, format);
             if (invalidated) {
-                for (const auto &e : makeRange(children(resID, ppl.resourceGraph))) {
-                    const auto childID = child(e, ppl.resourceGraph);
-                    auto &desc = get(ResourceGraph::DescTag{}, ppl.resourceGraph, childID);
-                    desc.width = width;
-                    desc.height = height;
-                    desc.format = format;
+                for (const auto &e : ppl.resourceGraph.child_links(resID)) {
+                    auto &childDesc = ppl.resourceGraph.getDesc(ppl.resourceGraph.child(e));
+                    childDesc.width = width;
+                    childDesc.height = height;
+                    childDesc.format = format;
                 }
                 desc.width = width;
                 desc.height = height;
@@ -321,12 +302,20 @@ uint32_t addDepthStencilImpl(
     const ccstd::string &name, gfx::Format format, uint32_t width, uint32_t height,
     ResourceResidency residency,
     gfx::Swapchain *swapchain) {
-    auto resID = findVertex(ccstd::pmr::string(name, ppl.get_allocator()), ppl.resourceGraph);
+    auto resID = ppl.resourceGraph.find(name);
 
     // Resource already exists
     if (resID != ResourceGraph::null_vertex()) {
         updateDepthStencilImpl(ppl, resID, width, height, format, swapchain);
         return resID;
+    }
+
+    auto depthName = name + '/';
+    depthName += DEPTH_PLANE_NAME;
+    auto stencilName = name + '/';
+    stencilName += STENCIL_PLANE_NAME;
+    if (ppl.resourceGraph.contains(depthName) || ppl.resourceGraph.contains(stencilName)) {
+        throw std::invalid_argument("depth/stencil view name already exists");
     }
 
     ResourceDesc desc{};
@@ -351,29 +340,29 @@ uint32_t addDepthStencilImpl(
         CC_EXPECTS(ppl.defaultFramebufferHasDepthStencil);
         RenderSwapchain sc{swapchain, true};
         sc.texture = RenderSwapchain::getDepthStencilTexture(swapchain);
-        resID = addVertex(
-            SwapchainTag{},
-            std::forward_as_tuple(name.c_str()),
-            std::forward_as_tuple(desc),
-            std::forward_as_tuple(ResourceTraits{residency}),
-            std::forward_as_tuple(),
-            std::forward_as_tuple(samplerInfo),
-            std::forward_as_tuple(sc),
-            ppl.resourceGraph);
+        resID = ppl.resourceGraph.add_vertex(
+            Swapchain_{},
+            std::piecewise_construct,
+            std::tie(sc),
+            std::forward_as_tuple(name.data(), name.size()),
+            std::tie(desc),
+            std::tie(residency),
+            std::tuple<>{},
+            std::tie(samplerInfo));
     } else {
         CC_EXPECTS(residency == ResourceResidency::MANAGED || residency == ResourceResidency::MEMORYLESS);
-        resID = addVertex(
-            ManagedTextureTag{},
-            std::forward_as_tuple(name.c_str()),
-            std::forward_as_tuple(desc),
-            std::forward_as_tuple(ResourceTraits{residency}),
-            std::forward_as_tuple(),
-            std::forward_as_tuple(samplerInfo),
-            std::forward_as_tuple(),
-            ppl.resourceGraph);
+        resID = ppl.resourceGraph.add_vertex(
+            ManagedTexture_{},
+            std::piecewise_construct,
+            std::tuple<>{},
+            std::forward_as_tuple(name.data(), name.size()),
+            std::tie(desc),
+            std::tie(residency),
+            std::tuple<>{},
+            std::tie(samplerInfo));
     }
 
-    addSubresourceNode<gfx::Format::DEPTH_STENCIL>(resID, name, ppl.resourceGraph);
+    addSubresourceNode<gfx::Format::DEPTH_STENCIL>(resID, depthName, stencilName, ppl.resourceGraph);
 
     return resID;
 }
@@ -408,7 +397,7 @@ uint32_t NativePipeline::addRenderWindow(
     const ccstd::string &name,
     gfx::Format format, uint32_t width, uint32_t height,
     scene::RenderWindow *renderWindow, const ccstd::string &depthStencilName) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateRenderWindow(name, renderWindow, depthStencilName);
         return resID;
@@ -444,15 +433,15 @@ uint32_t NativePipeline::addRenderWindow(
         CC_ENSURES(sc.texture);
 
         CC_ENSURES(desc.format != gfx::Format::UNKNOWN);
-        return addVertex(
-            SwapchainTag{},
-            std::forward_as_tuple(name.c_str()),
-            std::forward_as_tuple(desc),
-            std::forward_as_tuple(ResourceTraits{ResourceResidency::EXTERNAL}),
-            std::forward_as_tuple(),
-            std::forward_as_tuple(),
+        return resourceGraph.add_vertex(
+            Swapchain_{},
+            std::piecewise_construct,
             std::forward_as_tuple(sc),
-            resourceGraph);
+            std::forward_as_tuple(name.data(), name.size()),
+            std::forward_as_tuple(desc),
+            std::forward_as_tuple(ResourceResidency::EXTERNAL),
+            std::tuple<>{},
+            std::tuple<>{});
     }
 
     CC_ASSERT(renderWindow->getFramebuffer()->getColorTextures().size() == 1);
@@ -465,20 +454,20 @@ uint32_t NativePipeline::addRenderWindow(
     sc.texture = RenderSwapchain::getColorTexture(renderWindow->getSwapchain());
     CC_ENSURES(sc.texture);
 
-    return addVertex(
-        SwapchainTag{},
-        std::forward_as_tuple(name.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{ResourceResidency::BACKBUFFER}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
+    return resourceGraph.add_vertex(
+        Swapchain_{},
+        std::piecewise_construct,
         std::forward_as_tuple(sc),
-        resourceGraph);
+        std::forward_as_tuple(name.data(), name.size()),
+        std::forward_as_tuple(desc),
+        std::forward_as_tuple(ResourceResidency::BACKBUFFER),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 // NOLINTNEXTLINE
 uint32_t NativePipeline::addStorageBuffer(const ccstd::string &name, gfx::Format format, uint32_t size, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateStorageBuffer(name, size, format);
         return resID;
@@ -494,20 +483,20 @@ uint32_t NativePipeline::addStorageBuffer(const ccstd::string &name, gfx::Format
     desc.textureFlags = gfx::TextureFlagBit::NONE;
     desc.flags = ResourceFlags::STORAGE | ResourceFlags::TRANSFER_SRC | ResourceFlags::TRANSFER_DST;
 
-    return addVertex(
-        ManagedBufferTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedBuffer_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 // NOLINTNEXTLINE
 uint32_t NativePipeline::addRenderTarget(const ccstd::string &name, gfx::Format format, uint32_t width, uint32_t height, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateRenderTarget(name, width, height, format);
         return resID;
@@ -524,15 +513,15 @@ uint32_t NativePipeline::addRenderTarget(const ccstd::string &name, gfx::Format 
     desc.flags = ResourceFlags::COLOR_ATTACHMENT | ResourceFlags::INPUT_ATTACHMENT | ResourceFlags::SAMPLED |
                  ResourceFlags::TRANSFER_SRC | ResourceFlags::TRANSFER_DST;
 
-    return addVertex(
-        ManagedTextureTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedTexture_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -541,7 +530,7 @@ uint32_t NativePipeline::addDepthStencil(const ccstd::string &name, gfx::Format 
 }
 
 uint32_t NativePipeline::addTexture(const ccstd::string &name, gfx::TextureType type, gfx::Format format, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, gfx::SampleCount sampleCount, ResourceFlags flags, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateTexture(name, format, width, height, depth, arraySize, mipLevels, sampleCount);
         return resID;
@@ -560,15 +549,15 @@ uint32_t NativePipeline::addTexture(const ccstd::string &name, gfx::TextureType 
         flags,
         type,
     };
-    return addVertex(
-        ManagedTextureTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedTexture_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 void NativePipeline::updateTexture(const ccstd::string &name, gfx::Format format, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, gfx::SampleCount sampleCount) {
@@ -576,7 +565,7 @@ void NativePipeline::updateTexture(const ccstd::string &name, gfx::Format format
 }
 
 uint32_t NativePipeline::addBuffer(const ccstd::string &name, uint32_t size, ResourceFlags flags, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateBuffer(name, size);
         return resID;
@@ -585,15 +574,15 @@ uint32_t NativePipeline::addBuffer(const ccstd::string &name, uint32_t size, Res
     desc.dimension = ResourceDimension::BUFFER;
     desc.width = size;
     desc.flags = flags;
-    return addVertex(
-        ManagedBufferTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedBuffer_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 void NativePipeline::updateBuffer(const ccstd::string &name, uint32_t size) {
@@ -605,7 +594,7 @@ uint32_t NativePipeline::addResource(
     gfx::Format format,
     uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels,
     gfx::SampleCount sampleCount, ResourceFlags flags, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateResource(name, format, width, height, depth, arraySize, mipLevels, sampleCount);
         return resID;
@@ -624,18 +613,18 @@ void NativePipeline::updateResource(
     const ccstd::string &name, gfx::Format format,
     uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, // NOLINT(bugprone-easily-swappable-parameters)
     gfx::SampleCount sampleCount) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+    auto &desc = resourceGraph.getDesc(resID);
 
     // update format
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](ManagedTexture &tex) {
             uint32_t depthOrArraySize = static_cast<uint16_t>(
                 desc.dimension == ResourceDimension::TEXTURE3D ? depth : arraySize);
@@ -660,7 +649,7 @@ void NativePipeline::updateResource(
 
 // NOLINTNEXTLINE
 uint32_t NativePipeline::addStorageTexture(const ccstd::string &name, gfx::Format format, uint32_t width, uint32_t height, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateStorageTexture(name, width, height, format);
         return resID;
@@ -682,19 +671,19 @@ uint32_t NativePipeline::addStorageTexture(const ccstd::string &name, gfx::Forma
     samplerInfo.magFilter = gfx::Filter::POINT;
     samplerInfo.minFilter = gfx::Filter::POINT;
     samplerInfo.mipFilter = gfx::Filter::NONE;
-    return addVertex(
-        ManagedTextureTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedTexture_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(samplerInfo),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::forward_as_tuple(samplerInfo));
 }
 // NOLINTNEXTLINE
 uint32_t NativePipeline::addShadingRateTexture(const ccstd::string &name, uint32_t width, uint32_t height, ResourceResidency residency) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateShadingRateTexture(name, width, height);
         return resID;
@@ -716,15 +705,15 @@ uint32_t NativePipeline::addShadingRateTexture(const ccstd::string &name, uint32
     samplerInfo.magFilter = gfx::Filter::POINT;
     samplerInfo.minFilter = gfx::Filter::POINT;
     samplerInfo.mipFilter = gfx::Filter::NONE;
-    return addVertex(
-        ManagedTextureTag{},
-        std::forward_as_tuple(name.c_str()),
+    return resourceGraph.add_vertex(
+        ManagedTexture_{},
+        std::piecewise_construct,
+        std::tuple<>{},
+        std::forward_as_tuple(name.data(), name.size()),
         std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{residency}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(samplerInfo),
-        std::forward_as_tuple(),
-        resourceGraph);
+        std::forward_as_tuple(residency),
+        std::tuple<>{},
+        std::forward_as_tuple(samplerInfo));
 }
 
 uint32_t NativePipeline::addCustomBuffer(
@@ -733,7 +722,7 @@ uint32_t NativePipeline::addCustomBuffer(
     if (!custom.currentContext) {
         return ResourceGraph::null_vertex();
     }
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateBuffer(name, info.size);
         return resID;
@@ -753,15 +742,15 @@ uint32_t NativePipeline::addCustomBuffer(
 
     auto ptr = ctx.createCustomBuffer(type, info);
 
-    return addVertex(
-        PersistentBufferTag{},
-        std::forward_as_tuple(name.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{ResourceResidency::EXTERNAL}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
+    return resourceGraph.add_vertex(
+        PersistentBuffer_{},
+        std::piecewise_construct,
         std::forward_as_tuple(std::move(ptr)),
-        resourceGraph);
+        std::forward_as_tuple(name.data(), name.size()),
+        std::forward_as_tuple(desc),
+        std::forward_as_tuple(ResourceResidency::EXTERNAL),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 uint32_t NativePipeline::addCustomTexture(
@@ -770,7 +759,7 @@ uint32_t NativePipeline::addCustomTexture(
     if (!custom.currentContext) {
         return ResourceGraph::null_vertex();
     }
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID != ResourceGraph::null_vertex()) {
         updateTexture(name,
                       info.format, info.width, info.height, info.depth,
@@ -792,28 +781,28 @@ uint32_t NativePipeline::addCustomTexture(
 
     auto ptr = ctx.createCustomTexture(type, info);
 
-    return addVertex(
-        PersistentTextureTag{},
-        std::forward_as_tuple(name.c_str()),
-        std::forward_as_tuple(desc),
-        std::forward_as_tuple(ResourceTraits{ResourceResidency::EXTERNAL}),
-        std::forward_as_tuple(),
-        std::forward_as_tuple(),
+    return resourceGraph.add_vertex(
+        PersistentTexture_{},
+        std::piecewise_construct,
         std::forward_as_tuple(std::move(ptr)),
-        resourceGraph);
+        std::forward_as_tuple(name.data(), name.size()),
+        std::forward_as_tuple(desc),
+        std::forward_as_tuple(ResourceResidency::EXTERNAL),
+        std::tuple<>{},
+        std::tuple<>{});
 }
 
 void NativePipeline::updateRenderWindow(
     const ccstd::string &name, scene::RenderWindow *renderWindow,
     const ccstd::string &depthStencilName) {
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
     uint32_t width = 0;
     uint32_t height = 0;
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](IntrusivePtr<gfx::Framebuffer> &fb) {
             // deprecated
             CC_EXPECTS(false);
@@ -854,7 +843,7 @@ void NativePipeline::updateRenderWindow(
     CC_ENSURES(height);
 
     {
-        auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+        auto &desc = resourceGraph.getDesc(resID);
         desc.width = width;
         desc.height = height;
     }
@@ -868,19 +857,19 @@ void NativePipeline::updateRenderWindow(
 
 void NativePipeline::updateStorageBuffer(
     const ccstd::string &name, uint32_t size, gfx::Format format) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+    auto &desc = resourceGraph.getDesc(resID);
 
     // update format
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
 
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](ManagedBuffer &buffer) {
             std::ignore = buffer;
             bool invalidate =
@@ -898,26 +887,26 @@ void NativePipeline::updateStorageBuffer(
 void NativePipeline::updateRenderTarget(
     const ccstd::string &name,
     uint32_t width, uint32_t height, gfx::Format format) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+    auto &desc = resourceGraph.getDesc(resID);
 
     // update format
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](ManagedTexture &tex) {
             bool invalidate =
                 std::forward_as_tuple(desc.width, desc.height, desc.format) !=
                 std::forward_as_tuple(width, height, format);
             if (invalidate) {
-                for (const auto &e : makeRange(children(resID, resourceGraph))) {
-                    const auto childID = child(e, resourceGraph);
-                    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, childID);
+                for (const auto &e : resourceGraph.child_links(resID)) {
+                    const auto childID = resourceGraph.child(e);
+                    auto &desc = resourceGraph.getDesc(childID);
                     desc.width = width;
                     desc.height = height;
                     desc.format = format;
@@ -934,7 +923,7 @@ void NativePipeline::updateRenderTarget(
 void NativePipeline::updateDepthStencil(
     const ccstd::string &name,
     uint32_t width, uint32_t height, gfx::Format format) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    const auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
@@ -943,19 +932,19 @@ void NativePipeline::updateDepthStencil(
 
 void NativePipeline::updateStorageTexture(
     const ccstd::string &name, uint32_t width, uint32_t height, gfx::Format format) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+    auto &desc = resourceGraph.getDesc(resID);
 
     // update format
     if (format == gfx::Format::UNKNOWN) {
         format = desc.format;
     }
 
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](ManagedTexture &tex) {
             std::ignore = tex;
             bool invalidate =
@@ -973,15 +962,15 @@ void NativePipeline::updateStorageTexture(
 
 void NativePipeline::updateShadingRateTexture(
     const ccstd::string &name, uint32_t width, uint32_t height) { // NOLINT(bugprone-easily-swappable-parameters)
-    auto resID = findVertex(ccstd::pmr::string(name, get_allocator()), resourceGraph);
+    auto resID = resourceGraph.find(name);
     if (resID == ResourceGraph::null_vertex()) {
         return;
     }
-    auto &desc = get(ResourceGraph::DescTag{}, resourceGraph, resID);
+    auto &desc = resourceGraph.getDesc(resID);
 
     // update format
-    visitObject(
-        resID, resourceGraph,
+    resourceGraph.visit_vertex(
+        resID,
         [&](ManagedTexture &tex) {
             std::ignore = tex;
             bool invalidate =
@@ -1134,7 +1123,7 @@ MultisampleRenderPassBuilder *NativePipeline::addMultisampleRenderPass(
         renderGraph, layoutGraph,
         width, height, count, quality, passName);
 
-    auto &pass = get(RasterPassTag{}, passID, renderGraph);
+    auto &pass = renderGraph.value(RasterPass_{}, passID);
 
     auto [subpassID, subpassLayoutID] = addRenderSubpassVertex(
         pass, renderGraph, passID,
@@ -1159,7 +1148,7 @@ void NativePipeline::addResolvePass(const ccstd::vector<ResolvePair> &resolvePai
     }
     std::string_view name("Resolve");
     addVertex2(
-        ResolveTag{},
+        Resolve_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1171,7 +1160,7 @@ void NativePipeline::addResolvePass(const ccstd::vector<ResolvePair> &resolvePai
 // NOLINTNEXTLINE
 ComputePassBuilder *NativePipeline::addComputePass(const ccstd::string &passName) {
     auto passID = addVertex2(
-        ComputeTag{},
+        Compute_{},
         std::forward_as_tuple(passName),
         std::forward_as_tuple(passName),
         std::forward_as_tuple(),
@@ -1179,7 +1168,7 @@ ComputePassBuilder *NativePipeline::addComputePass(const ccstd::string &passName
         std::forward_as_tuple(),
         renderGraph);
 
-    auto passLayoutID = locate(LayoutGraphData::null_vertex(), passName, programLibrary->layoutGraph);
+    auto passLayoutID = programLibrary->layoutGraph.locate(passName);
 
     return ccnew NativeComputePassBuilder(this, &renderGraph, passID, &programLibrary->layoutGraph, passLayoutID);
 }
@@ -1192,7 +1181,7 @@ void NativePipeline::addMovePass(const ccstd::vector<MovePair> &movePairs) {
     }
     std::string_view name("Move");
     addVertex2(
-        MoveTag{},
+        Move_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1209,74 +1198,74 @@ void setupGpuDrivenResources(
     { // init resource
         name = "_GpuInit";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
-            resID = addVertex(
-                PersistentBufferTag{},
-                std::forward_as_tuple(name.c_str()),
-                std::forward_as_tuple(),
-                std::forward_as_tuple(ResourceTraits{ResourceResidency::EXTERNAL}),
-                std::forward_as_tuple(),
-                std::forward_as_tuple(),
-                std::forward_as_tuple(/*xxx*/),
-                resg);
+            resID = resg.add_vertex(
+                PersistentBuffer_{},
+                std::piecewise_construct,
+                std::tuple<>{},
+                std::forward_as_tuple(name.data(), name.size()),
+                std::tuple<>{},
+                std::forward_as_tuple(ResourceResidency::EXTERNAL),
+                std::tuple<>{},
+                std::tuple<>{});
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
-            // get(PersistentBufferTag{}, resID, resg) = xxx;
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
+            // resg.value(PersistentBuffer_{}, resID).buffer = xxx;
         }
     }
     {
         name = "CCObjectBuffer";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
             resID = ppl.addStorageBuffer(std::string(name), gfx::Format::UNKNOWN, 0, ResourceResidency::MANAGED);
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
             ppl.updateStorageBuffer(std::string(name), 0, gfx::Format::UNKNOWN);
         }
     }
     {
         name = "CCInstanceBuffer";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
             resID = ppl.addStorageBuffer(std::string(name), gfx::Format::UNKNOWN, 0, ResourceResidency::MANAGED);
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
             ppl.updateStorageBuffer(std::string(name), 0, gfx::Format::UNKNOWN);
         }
     }
     {
         name = "CCDrawIndirectBuffer";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
             resID = ppl.addStorageBuffer(std::string(name), gfx::Format::UNKNOWN, 0, ResourceResidency::MANAGED);
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
             ppl.updateStorageBuffer(std::string(name), 0, gfx::Format::UNKNOWN);
         }
     }
     {
         name = "CCDrawInstanceBuffer";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
             resID = ppl.addStorageBuffer(std::string(name), gfx::Format::UNKNOWN, 0, ResourceResidency::MANAGED);
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
             ppl.updateStorageBuffer(std::string(name), 0, gfx::Format::UNKNOWN);
         }
     }
     {
         name = "CCVisibilityBuffer";
         name.append(std::to_string(cullingID));
-        auto resID = findVertex(name, resg);
+        auto resID = resg.find(name);
         if (resID == ResourceGraph::null_vertex()) {
             resID = ppl.addStorageBuffer(std::string(name), gfx::Format::UNKNOWN, 0, ResourceResidency::MANAGED);
         } else {
-            CC_EXPECTS(holds<PersistentBufferTag>(resID, resg));
+            CC_EXPECTS(resg.holds<PersistentBuffer_>(resID));
             ppl.updateStorageBuffer(std::string(name), 0, gfx::Format::UNKNOWN);
         }
     }
@@ -1294,7 +1283,7 @@ void NativePipeline::addCopyPass(const ccstd::vector<CopyPair> &copyPairs) {
     }
     std::string_view name("Copy");
     addVertex2(
-        CopyTag{},
+        Copy_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1312,7 +1301,7 @@ void NativePipeline::addUploadPass(ccstd::vector<UploadPair> &uploadPairs) {
     uploadPairs.clear();
     std::string_view name("Upload");
     addVertex2(
-        CopyTag{},
+        Copy_{},
         std::forward_as_tuple(name),
         std::forward_as_tuple(),
         std::forward_as_tuple(),
@@ -1325,7 +1314,7 @@ gfx::DescriptorSetLayout *NativePipeline::getDescriptorSetLayout(const ccstd::st
     const auto &lg = programLibrary->layoutGraph;
     auto iter = lg.shaderLayoutIndex.find(std::string_view{shaderName});
     if (iter != lg.shaderLayoutIndex.end()) {
-        const auto &layouts = get(LayoutGraphData::LayoutTag{}, lg, iter->second).descriptorSets;
+        const auto &layouts = lg.getLayout(iter->second).descriptorSets;
         auto iter2 = layouts.find(freq);
         if (iter2 != layouts.end()) {
             return iter2->second.descriptorSetLayout.get();
@@ -1451,14 +1440,14 @@ bool NativePipeline::activate(gfx::Swapchain *swapchainIn) {
 
     // reserve layout graph resource
     const auto &lg = programLibrary->layoutGraph;
-    const auto numNodes = num_vertices(lg);
+    const auto numNodes = lg.num_vertices();
     nativeContext.layoutGraphResources.reserve(numNodes);
     nativeContext.lightResources.init(*programLibrary, device, 16);
 
     for (uint32_t i = 0; i != numNodes; ++i) {
         auto &node = nativeContext.layoutGraphResources.emplace_back();
-        const auto &layout = get(LayoutGraphData::LayoutTag{}, lg, i);
-        if (holds<RenderStageTag>(i, lg)) {
+        const auto &layout = lg.getLayout(i);
+        if (lg.holds<RenderStage_>(i)) {
             auto iter = layout.descriptorSets.find(UpdateFrequency::PER_PASS);
             if (iter == layout.descriptorSets.end()) {
                 continue;

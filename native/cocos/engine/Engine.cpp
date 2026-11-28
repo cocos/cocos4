@@ -37,6 +37,7 @@
 #include "renderer/GFXDeviceManager.h"
 #include "renderer/core/ProgramLib.h"
 #include "renderer/pipeline/RenderPipeline.h"
+#include "renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "renderer/pipeline/custom/RenderingModule.h"
 
 #if CC_USE_AUDIO

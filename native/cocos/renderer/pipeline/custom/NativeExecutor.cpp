@@ -22,28 +22,27 @@
  THE SOFTWARE.
 ****************************************************************************/
 
-#include <boost/graph/depth_first_search.hpp>
-#include <boost/graph/filtered_graph.hpp>
-#include "FGDispatcherGraphs.h"
+#include <algorithm>
+#include "FGDispatcherTypes.h"
 #include "NativeBuiltinUtils.h"
 #include "NativeExecutorRenderGraph.h"
 #include "NativePipelineTypes.h"
 #include "PrivateTypes.h"
-#include "RenderGraphGraphs.h"
 #include "RenderGraphTypes.h"
+#include "cocos/base/GraphDFS.h"
+#include "cocos/base/GraphView.h"
 #include "cocos/renderer/gfx-base/GFXDef-common.h"
 #include "cocos/renderer/gfx-base/GFXDevice.h"
 #include "cocos/renderer/pipeline/Define.h"
 #include "cocos/renderer/pipeline/InstancedBuffer.h"
+#include "cocos/renderer/pipeline/PipelineSceneData.h"
 #include "cocos/renderer/pipeline/PipelineStateManager.h"
 #include "cocos/scene/Model.h"
 #include "cocos/scene/Octree.h"
 #include "cocos/scene/Pass.h"
 #include "cocos/scene/RenderScene.h"
 #include "cocos/scene/Skybox.h"
-#include "details/GraphView.h"
 #include "details/GslUtils.h"
-#include "details/Range.h"
 
 namespace cc {
 
@@ -294,16 +293,9 @@ void submitProfilerCommands(
     }
     const auto& rg = ctx.g;
 
-    const auto queueId = parent(sceneId, rg);
-    const auto passOrSubpassId = parent(queueId, rg);
-    CC_ENSURES(passOrSubpassId != RenderGraph::null_vertex());
-    const auto nullOrPassId = parent(passOrSubpassId, rg);
-
-    const auto passId = nullOrPassId == RenderGraph::null_vertex()
-                            ? passOrSubpassId
-                            : nullOrPassId;
-    CC_ENSURES(passId != RenderGraph::null_vertex() && holds<RasterPassTag>(passId, rg));
-    const auto& rasterPass = get(RasterPassTag{}, passId, rg);
+    const auto passId = rg.getPassID(sceneId);
+    CC_ENSURES(rg.holds<RasterPass_>(passId));
+    const auto& rasterPass = rg.value(RasterPass_{}, passId);
 
     auto* renderPass = ctx.currentPass;
     auto* cmdBuff = ctx.cmdBuff;
@@ -327,7 +319,7 @@ void submitProfilerCommands(
     cmdBuff->draw(ia);
 }
 
-struct RenderGraphVisitor : boost::dfs_visitor<> {
+struct RenderGraphVisitor : graph::DefaultDfsVisitor {
     void submitBarriers(const std::vector<Barrier>& barriers) const {
         auto& resg = ctx.resourceGraph;
         auto sz = barriers.size();
@@ -341,8 +333,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         textureBarriers.reserve(sz);
         for (const auto& barrier : barriers) {
             const auto resID = barrier.resourceID;
-            const auto& desc = get(ResourceGraph::DescTag{}, resg, resID);
-            const auto& resource = get(ResourceGraph::DescTag{}, resg, resID);
+            const auto& desc = resg.getDesc(resID);
             switch (desc.dimension) {
                 case ResourceDimension::BUFFER: {
                     auto* buffer = resg.getBuffer(resID);
@@ -408,7 +399,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         }
     }
     void begin(const RasterPass& pass, RenderGraph::vertex_descriptor vertID) const {
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& passes = ctx.ppl->custom.renderPasses;
             auto iter = passes.find(renderData.custom);
@@ -461,10 +452,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     }
     void begin(const RasterSubpass& subpass, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
 #if CC_DEBUG
-        ctx.cmdBuff->insertMarker(makeMarkerInfo(get(RenderGraph::NameTag{}, ctx.g, vertID).c_str(), RASTER_COLOR));
+        ctx.cmdBuff->insertMarker(makeMarkerInfo(ctx.g.getName(vertID).c_str(), RASTER_COLOR));
 #endif
 
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& subpasses = ctx.ppl->custom.renderSubpasses;
             auto iter = subpasses.find(renderData.custom);
@@ -486,7 +477,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         ctx.passShowStatistics.emplace_back(subpass.showStatistics);
     }
     void begin(const ComputeSubpass& subpass, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& subpasses = ctx.ppl->custom.computeSubpasses;
             auto iter = subpasses.find(renderData.custom);
@@ -502,10 +493,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     }
     void begin(const ComputePass& pass, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
 #if CC_DEBUG
-        ctx.cmdBuff->beginMarker(makeMarkerInfo(get(RenderGraph::NameTag{}, ctx.g, vertID).c_str(), COMPUTE_COLOR));
+        ctx.cmdBuff->beginMarker(makeMarkerInfo(ctx.g.getName(vertID).c_str(), COMPUTE_COLOR));
 #endif
 
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& passes = ctx.ppl->custom.computePasses;
             auto iter = passes.find(renderData.custom);
@@ -611,11 +602,11 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
 
         // currently, only texture to texture supported.
         for (const auto& copy : pass.copyPairs) {
-            auto srcID = findVertex(copy.source, resg);
-            auto dstID = findVertex(copy.target, resg);
-            CC_ENSURES(srcID != RenderGraph::null_vertex());
-            CC_ENSURES(dstID != RenderGraph::null_vertex());
-            if (srcID == RenderGraph::null_vertex() || dstID == RenderGraph::null_vertex()) {
+            auto srcID = resg.find(copy.source);
+            auto dstID = resg.find(copy.target);
+            CC_ENSURES(srcID != ResourceGraph::null_vertex());
+            CC_ENSURES(dstID != ResourceGraph::null_vertex());
+            if (srcID == ResourceGraph::null_vertex() || dstID == ResourceGraph::null_vertex()) {
                 continue;
             }
             const bool sourceIsTexture = resg.isTexture(srcID);
@@ -632,9 +623,9 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         }
         // copy from cpu
         for (const auto& upload : pass.uploadPairs) {
-            auto dstID = findVertex(upload.target, resg);
-            CC_ENSURES(dstID != RenderGraph::null_vertex());
-            if (dstID == RenderGraph::null_vertex()) {
+            auto dstID = resg.find(upload.target);
+            CC_ENSURES(dstID != ResourceGraph::null_vertex());
+            if (dstID == ResourceGraph::null_vertex()) {
                 continue;
             }
             const bool targetIsTexture = resg.isTexture(dstID);
@@ -661,10 +652,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     }
     void begin(const RenderQueue& queue, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
 #if CC_DEBUG
-        ctx.cmdBuff->beginMarker(makeMarkerInfo(get(RenderGraph::NameTag{}, ctx.g, vertID).c_str(), RENDER_QUEUE_COLOR));
+        ctx.cmdBuff->beginMarker(makeMarkerInfo(ctx.g.getName(vertID).c_str(), RENDER_QUEUE_COLOR));
 #endif
 
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& queues = ctx.ppl->custom.renderQueues;
             auto iter = queues.find(renderData.custom);
@@ -698,7 +689,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             ctx.cmdBuff, ctx.currentPass, ctx.subpassIndex, sceneData.flags);
 
 #if CC_USE_GEOMETRY_RENDERER
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, sceneID);
+        const auto& renderData = ctx.g.getData(sceneID);
         if (!renderData.custom.empty()) {
             const auto& commands = ctx.ppl->custom.renderCommands;
             auto iter = commands.find(renderData.custom);
@@ -743,10 +734,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     }
 
     void draw2D(const Blit& blit, RenderGraph::vertex_descriptor sceneID) const {
-        const auto queueID = parent(sceneID, ctx.g);
+        const auto queueID = ctx.g.get_parent(sceneID);
         CC_EXPECTS(queueID != RenderGraph::null_vertex());
 
-        const auto& queueData = get(QueueTag{}, queueID, ctx.g);
+        const auto& queueData = ctx.g.value(Queue_{}, queueID);
         const auto phaseLayoutID = queueData.phaseID;
         CC_EXPECTS(phaseLayoutID != LayoutGraphData::null_vertex());
 
@@ -786,7 +777,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     void begin(const Blit& blit, RenderGraph::vertex_descriptor vertID) const {
         tryBindPassDescriptorSet(vertID);
         tryBindQueueDescriptorSets(vertID);
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& commands = ctx.ppl->custom.renderCommands;
             auto iter = commands.find(renderData.custom);
@@ -847,7 +838,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     void end(const RasterPass& pass, RenderGraph::vertex_descriptor vertID) const {
         CC_EXPECTS(ctx.viewportStack.size() == 1);
 
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& passes = ctx.ppl->custom.renderPasses;
             auto iter = passes.find(renderData.custom);
@@ -869,7 +860,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         CC_ENSURES(ctx.passShowStatistics.empty());
     }
     void end(const RasterSubpass& subpass, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& subpasses = ctx.ppl->custom.renderSubpasses;
             auto iter = subpasses.find(renderData.custom);
@@ -886,7 +877,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         CC_ENSURES(ctx.passShowStatistics.size() == 1);
     }
     void end(const ComputeSubpass& subpass, RenderGraph::vertex_descriptor vertID) const { // NOLINT(readability-convert-member-functions-to-static)
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& subpasses = ctx.ppl->custom.computeSubpasses;
             auto iter = subpasses.find(renderData.custom);
@@ -901,7 +892,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         // noop
     }
     void end(const ComputePass& pass, RenderGraph::vertex_descriptor vertID) const {
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& passes = ctx.ppl->custom.computePasses;
             auto iter = passes.find(renderData.custom);
@@ -928,7 +919,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         CC_EXPECTS(false);
     }
     void end(const RenderQueue& pass, RenderGraph::vertex_descriptor vertID) const {
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& queues = ctx.ppl->custom.renderQueues;
             auto iter = queues.find(renderData.custom);
@@ -959,7 +950,7 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     void end(const SceneData& pass, RenderGraph::vertex_descriptor vertID) const {
     }
     void end(const Blit& pass, RenderGraph::vertex_descriptor vertID) const {
-        const auto& renderData = get(RenderGraph::DataTag{}, ctx.g, vertID);
+        const auto& renderData = ctx.g.getData(vertID);
         if (!renderData.custom.empty()) {
             const auto& commands = ctx.ppl->custom.renderCommands;
             auto iter = commands.find(renderData.custom);
@@ -983,8 +974,8 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             auto resID = resIter->second;
             auto& resg = ctx.resourceGraph;
             resg.mount(ctx.device, resID);
-            for (const auto& subres : makeRange(children(resID, resg))) {
-                const auto& subresName = get(ResourceGraph::NameTag{}, resg, subres.target);
+            for (const auto link : resg.child_links(resID)) {
+                const auto& subresName = resg.getName(resg.child(link));
                 mountResource(subresName);
             }
         }
@@ -1065,16 +1056,13 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
         // not supported yet
     }
 
-    void discover_vertex(
-        RenderGraph::vertex_descriptor vertID,
-        const boost::filtered_graph<AddressableView<RenderGraph>, boost::keep_all, RenderGraphFilter>& gv) const {
-        std::ignore = gv;
-
-        visitObject(
-            vertID, ctx.g,
+    template <class Graph>
+    void discoverVertex(RenderGraph::vertex_descriptor vertID, const Graph& /*view*/) const {
+        ctx.g.visit_vertex(
+            vertID,
             [&](const RasterPass& pass) {
 #if CC_DEBUG
-                ctx.cmdBuff->beginMarker(makeMarkerInfo(get(RenderGraph::NameTag{}, ctx.g, vertID).c_str(), RASTER_COLOR));
+                ctx.cmdBuff->beginMarker(makeMarkerInfo(ctx.g.getName(vertID).c_str(), RASTER_COLOR));
 #endif
                 mountResources(pass);
 
@@ -1123,12 +1111,10 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
             });
     }
 
-    void finish_vertex(
-        RenderGraph::vertex_descriptor vertID,
-        const boost::filtered_graph<AddressableView<RenderGraph>, boost::keep_all, RenderGraphFilter>& gv) const {
-        std::ignore = gv;
-        visitObject(
-            vertID, ctx.g,
+    template <class Graph>
+    void finishVertex(RenderGraph::vertex_descriptor vertID, const Graph& /*view*/) const {
+        ctx.g.visit_vertex(
+            vertID,
             [&](const RasterPass& pass) {
                 end(pass, vertID);
                 rearBarriers(vertID);
@@ -1170,10 +1156,8 @@ struct RenderGraphVisitor : boost::dfs_visitor<> {
     RenderGraphVisitorContext& ctx;
 };
 
-struct RenderGraphCullVisitor : boost::dfs_visitor<> {
-    void discover_vertex(
-        // NOLINTNEXTLINE(misc-unused-parameters)
-        RenderGraph::vertex_descriptor vertID, const AddressableView<RenderGraph>& gv) const {
+struct RenderGraphCullVisitor : graph::DefaultDfsVisitor {
+    void discoverVertex(RenderGraph::vertex_descriptor vertID, const graph::ReferenceGraphView<RenderGraph>& /*view*/) const {
         validPasses[vertID] = false;
     }
     ccstd::pmr::vector<bool>& validPasses;
@@ -1315,21 +1299,20 @@ void NativePipeline::executeRenderGraph(const RenderGraph& rg) {
     fgd.setParalellWeight(0);
     fgd.run();
 
-    AddressableView<RenderGraph> graphView(rg);
-    ccstd::pmr::vector<bool> validPasses(num_vertices(rg), true, scratch);
-    auto colors = rg.colors(scratch);
+    graph::ReferenceGraphView graphView{rg};
+    const auto numVertices = rg.num_vertices();
+    ccstd::pmr::vector<bool> validPasses(numVertices, true, scratch);
+    ccstd::pmr::vector<graph::GraphColor> colors(numVertices, graph::GraphColor::WHITE, scratch);
     { // Mark all culled vertices
         RenderGraphCullVisitor visitor{{}, validPasses};
-        for (const auto& vertID : fgd.resourceAccessGraph.culledPasses) {
-            const auto nodeID = get(ResourceAccessGraph::PassIDTag{}, fgd.resourceAccessGraph, vertID);
-            if (nodeID == RenderGraph::null_vertex()) {
+        for (const auto accessID : fgd.resourceAccessGraph.culledPasses) {
+            const auto passID = fgd.resourceAccessGraph.getPassID(accessID);
+            // The dispatcher's synthetic start and end have no render graph vertex.
+            if (passID >= numVertices) {
                 continue;
             }
-            const auto passID = fgd.resourceAccessGraph.passIndex.at(nodeID);
-            boost::depth_first_visit(graphView, passID, visitor, get(colors, rg));
+            graph::depthFirstVisit(graphView, passID, visitor, colors, {}, scratch);
         }
-        colors.clear();
-        colors.resize(num_vertices(rg), boost::white_color);
     }
 
     // scene culling
@@ -1358,10 +1341,7 @@ void NativePipeline::executeRenderGraph(const RenderGraph& rg) {
 
     // Execute all valid passes
     {
-        boost::filtered_graph<
-            AddressableView<RenderGraph>,
-            boost::keep_all, RenderGraphFilter>
-            fg(graphView, boost::keep_all{}, RenderGraphFilter{&validPasses});
+        graph::FilteredGraphView visible{graphView, RenderGraphFilter{&validPasses}};
 
         CommandSubmitter submit(ppl.device, ppl.getCommandBuffers());
 
@@ -1411,12 +1391,12 @@ void NativePipeline::executeRenderGraph(const RenderGraph& rg) {
             scratch};
 
         RenderGraphVisitor visitor{{}, ctx};
-        auto colors = rg.colors(scratch);
-        for (const auto vertID : ctx.g.sortedVertices) {
-            if (holds<RasterPassTag>(vertID, ctx.g) ||
-                holds<ComputeTag>(vertID, ctx.g) ||
-                holds<CopyTag>(vertID, ctx.g)) {
-                boost::depth_first_visit(fg, vertID, visitor, get(colors, ctx.g));
+        std::fill(colors.begin(), colors.end(), graph::GraphColor::WHITE);
+        for (const auto vertID : rg.sortedVertices) {
+            if (rg.holds<RasterPass_>(vertID) ||
+                rg.holds<Compute_>(vertID) ||
+                rg.holds<Copy_>(vertID)) {
+                graph::depthFirstVisit(visible, vertID, visitor, colors, {}, scratch);
             }
         }
     }

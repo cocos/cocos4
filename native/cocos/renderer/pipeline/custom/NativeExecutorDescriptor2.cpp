@@ -24,15 +24,16 @@
 
 #include <boost/container/static_vector.hpp>
 #include <boost/core/span.hpp>
-#include <boost/graph/depth_first_search.hpp>
 
 #include "FGDispatcherTypes.h"
-#include "LayoutGraphGraphs.h"
+#include "LayoutGraphTypes.h"
 #include "LayoutGraphUtils.h"
 #include "NativeExecutorRenderGraph.h" // IWYU pragma: keep
 #include "NativePipelineTypes.h"
-#include "RenderGraphGraphs.h"
-#include "details/GraphView.h"
+#include "RenderGraphTypes.h"
+#include "cocos/base/GraphDFS.h"
+#include "cocos/base/GraphView.h"
+#include "details/GslUtils.h"
 
 namespace cc {
 
@@ -50,7 +51,7 @@ struct DescriptorSetVisitorContext {
         CC_EXPECTS(mPhaseLayoutIdStack.empty());
 
         // Get the pass layoutId from the layout graph
-        auto passLayoutId = locate(LayoutGraphData::null_vertex(), passLayoutName, layoutGraph);
+        auto passLayoutId = layoutGraph.locate(passLayoutName);
         CC_ENSURES(passLayoutId != LayoutGraphData::null_vertex());
 
         // Save the passId
@@ -94,7 +95,7 @@ struct DescriptorSetVisitorContext {
         auto subpassLayoutId =
             subpassLayoutName.empty()
                 ? mPassLayoutIdStack.back()
-                : locate(LayoutGraphData::null_vertex(), subpassLayoutName, layoutGraph);
+                : layoutGraph.locate(subpassLayoutName);
         CC_ENSURES(subpassLayoutId != LayoutGraphData::null_vertex());
 
         // Save the passId
@@ -347,9 +348,8 @@ struct DescriptorSetVisitorContext {
         const ResourceAccessNode& accessNode,
         ResourceGraph::vertex_descriptor resID) const {
         // All sub-resources must be in the same access group
-        auto parentID = parent(resID, pipeline.resourceGraph);
-        parentID = parentID == ResourceGraph::null_vertex() ? resID : parentID;
-        const auto& resName = get(ResourceGraph::NameTag{}, pipeline.resourceGraph, parentID);
+        const auto parentID = pipeline.resourceGraph.get_parent(resID);
+        const auto& resName = pipeline.resourceGraph.getName(parentID == ResourceGraph::null_vertex() ? resID : parentID);
         return accessNode.resourceStatus.at(resName).accessFlag;
     }
 
@@ -521,7 +521,7 @@ struct DescriptorSetVisitorContext {
             accessNode = &renderDependencyGraph.getAccessNode(passOrSubpassID);
         }
 
-        const auto& layout = get(LayoutGraphData::LayoutTag{}, layoutGraph, layoutID);
+        const auto& layout = layoutGraph.getLayout(layoutID);
 
         DeviceRenderData* deviceData = nullptr;
         // Collect resources from the current render graph node
@@ -610,7 +610,7 @@ struct DescriptorSetVisitorContext {
 
         // Add global and pass render data to the stack
         mRenderDataStack.emplace_back(&renderGraph.globalRenderData);
-        mRenderDataStack.emplace_back(&get(RenderGraph::DataTag{}, renderGraph, v));
+        mRenderDataStack.emplace_back(&renderGraph.getData(v));
 
         // Collect per pass descriptors
         collectPerPassDescriptors(v);
@@ -640,7 +640,7 @@ struct DescriptorSetVisitorContext {
         CC_EXPECTS(mPerQueueDeviceRenderDataStack.empty());
 
         // Add subpass render data to the stack
-        mRenderDataStack.emplace_back(&get(RenderGraph::DataTag{}, renderGraph, v));
+        mRenderDataStack.emplace_back(&renderGraph.getData(v));
 
         // Collect per pass descriptors
         collectPerPassDescriptors(v);
@@ -669,7 +669,7 @@ struct DescriptorSetVisitorContext {
         CC_EXPECTS(mPerQueueDeviceRenderDataStack.empty());
 
         // Add queue render data to the stack
-        mRenderDataStack.emplace_back(&get(RenderGraph::DataTag{}, renderGraph, v));
+        mRenderDataStack.emplace_back(&renderGraph.getData(v));
 
         // Collect per pass and per phase descriptors
         collectPerPassDescriptors(v);
@@ -699,7 +699,7 @@ struct DescriptorSetVisitorContext {
         CC_EXPECTS(mPerQueueDeviceRenderDataStack.size() == 1);
 
         // Add scene render data to the stack
-        mRenderDataStack.emplace_back(&get(RenderGraph::DataTag{}, renderGraph, v));
+        mRenderDataStack.emplace_back(&renderGraph.getData(v));
 
         // Collect per pass and per phase descriptors
         collectPerPassDescriptors(v);
@@ -878,7 +878,7 @@ struct DescriptorSetVisitorContext {
         boost::span<const DeviceRenderData* const> dataRange) const {
         const auto& defaultResource = *pipeline.nativeContext.defaultResource;
         // Get layout
-        const auto& layout = get(LayoutGraphData::LayoutTag{}, layoutGraph, layoutID);
+        const auto& layout = layoutGraph.getLayout(layoutID);
         CC_EXPECTS(layout.descriptorSets.find(frequency) != layout.descriptorSets.end());
         const auto& data = layout.descriptorSets.at(frequency).descriptorSetLayoutData;
 
@@ -1148,41 +1148,40 @@ struct DescriptorSetVisitorContext {
     boost::container::static_vector<DeviceRenderData*, 2> mPerQueueDeviceRenderDataStack;
 };
 
-struct DescriptorSetVisitor : boost::dfs_visitor<> {
-    void discover_vertex(
-        RenderGraph::vertex_descriptor v, const AddressableView<RenderGraph>& gv) const {
-        std::ignore = gv;
+struct DescriptorSetVisitor : graph::DefaultDfsVisitor {
+    void discoverVertex(
+        RenderGraph::vertex_descriptor v, const graph::ReferenceGraphView<RenderGraph>& /*view*/) const {
         const auto& g = ctx.renderGraph;
-        visitObject(
-            v, g,
+        g.visit_vertex(
+            v,
             // Pass
             [&](const RasterPass& pass) {
-                const auto& passLayoutName = get(RenderGraph::LayoutTag{}, ctx.renderGraph, v);
+                const auto& passLayoutName = g.getLayout(v);
                 ctx.buildRenderOrComputePassResourceIndex(v, pass);
                 ctx.setupRenderPass(v, passLayoutName);
                 ctx.collectPassDescriptors(v);
             },
             [&](const ComputePass& pass) {
-                const auto& passLayoutName = get(RenderGraph::LayoutTag{}, ctx.renderGraph, v);
+                const auto& passLayoutName = g.getLayout(v);
                 ctx.buildRenderOrComputePassResourceIndex(v, pass);
                 ctx.setupRenderPass(v, passLayoutName);
                 ctx.collectPassDescriptors(v);
             },
             [&](const RaytracePass& pass) {
-                const auto& passLayoutName = get(RenderGraph::LayoutTag{}, ctx.renderGraph, v);
+                const auto& passLayoutName = g.getLayout(v);
                 ctx.buildRenderOrComputePassResourceIndex(v, pass);
                 ctx.setupRenderPass(v, passLayoutName);
                 ctx.collectPassDescriptors(v);
             },
             // Subpass
             [&](const RasterSubpass& subpass) {
-                const auto& subpassLayoutName = get(RenderGraph::LayoutTag{}, ctx.renderGraph, v);
+                const auto& subpassLayoutName = g.getLayout(v);
                 ctx.buildRenderSubpassResourceIndex(v, subpass);
                 ctx.setupRenderSubpass(v, subpassLayoutName);
                 ctx.collectSubpassDescriptors(v);
             },
             [&](const ComputeSubpass& subpass) {
-                const auto& subpassLayoutName = get(RenderGraph::LayoutTag{}, ctx.renderGraph, v);
+                const auto& subpassLayoutName = g.getLayout(v);
                 ctx.buildRenderSubpassResourceIndex(v, subpass);
                 ctx.setupRenderSubpass(v, subpassLayoutName);
                 ctx.collectSubpassDescriptors(v);
@@ -1231,12 +1230,11 @@ struct DescriptorSetVisitor : boost::dfs_visitor<> {
             });
     }
 
-    void finish_vertex(RenderGraph::vertex_descriptor v, const AddressableView<RenderGraph>& gv) {
-        std::ignore = gv;
+    void finishVertex(RenderGraph::vertex_descriptor v, const graph::ReferenceGraphView<RenderGraph>& /*view*/) const {
         const auto& g = ctx.renderGraph;
         // The following code can be simplified with C++20
-        visitObject(
-            v, g,
+        g.visit_vertex(
+            v,
             // Pass
             [&](const RasterPass& pass) {
                 std::ignore = pass;
@@ -1334,8 +1332,6 @@ void NativePipeline::prepareDescriptorSets(
 #if CC_DEBUG
     cmdBuff.beginMarker(makeMarkerInfo("Upload", RASTER_UPLOAD_COLOR));
 #endif
-    auto colors = renderGraph.colors(&unsyncPool);
-
     DescriptorSetVisitorContext context{
         *this,
         programLibrary->layoutGraph,
@@ -1346,8 +1342,9 @@ void NativePipeline::prepareDescriptorSets(
 
     DescriptorSetVisitor visitor{{}, context};
 
-    AddressableView<RenderGraph> graphView(renderGraph);
-    boost::depth_first_visit(graphView, passID, visitor, get(colors, renderGraph));
+    graph::ReferenceGraphView view{renderGraph};
+    ccstd::pmr::vector<graph::GraphColor> colors(view.num_vertices(), graph::GraphColor::WHITE, &unsyncPool);
+    graph::depthFirstVisit(view, passID, visitor, colors, {}, &unsyncPool);
 
 #if CC_DEBUG
     cmdBuff.endMarker();

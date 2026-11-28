@@ -24,6 +24,7 @@
 #include "bindings/auto/jsb_assets_auto.h"
 #include "renderer/pipeline/GeometryRenderer.h"
 #include "renderer/pipeline/GlobalDescriptorSetManager.h"
+#include "renderer/pipeline/PipelineSceneData.h"
 #include "renderer/pipeline/custom/RenderCommonJsb.h"
 
 using namespace cc;

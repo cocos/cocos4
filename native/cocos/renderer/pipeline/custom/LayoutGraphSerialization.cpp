@@ -30,11 +30,8 @@
 // NOLINTBEGIN(misc-include-cleaner)
 // clang-format off
 #include "cocos/renderer/pipeline/custom/ArchiveTypes.h"
-#include "cocos/renderer/pipeline/custom/LayoutGraphGraphs.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphSerialization.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphTypes.h"
-#include "cocos/renderer/pipeline/custom/RenderCommonSerialization.h"
-#include "cocos/renderer/pipeline/custom/details/Range.h"
 #include "cocos/renderer/pipeline/custom/details/SerializationUtils.h"
 // clang-format on
 
@@ -139,84 +136,67 @@ void load(InputArchive& ar, RenderPhase& v) {
 }
 
 void save(OutputArchive& ar, const LayoutGraph& g) {
-    using Graph = LayoutGraph;
-    using VertexT = Graph::vertex_descriptor;
-    using SizeT = Graph::vertices_size_type;
-    static_assert(std::is_same_v<SizeT, VertexT>);
-
-    const auto numVertices = num_vertices(g);
-    const auto numEdges = num_edges(g);
-    save(ar, numVertices);
-    save(ar, numEdges);
-
-    save(ar, static_cast<SizeT>(g.stages.size()));
-    save(ar, static_cast<SizeT>(g.phases.size()));
-
-    const auto nameMap = get(Graph::NameTag{}, g);
-    const auto descriptorsMap = get(Graph::DescriptorsTag{}, g);
-    for (const auto& v : makeRange(vertices(g))) {
-        const auto typeID = static_cast<SizeT>(tag(v, g).index());
-        static_assert(std::is_same_v<decltype(typeID), const SizeT>);
-        save(ar, typeID);
-        save(ar, parent(v, g));
-        save(ar, get(nameMap, v));
-        save(ar, get(descriptorsMap, v));
-        visitObject(
-            v, g,
-            overload(
-                [&](const auto& object) {
-                    save(ar, object);
-                }));
+    uint32_t edges = 0;
+    uint32_t counts[2]{};
+    for (auto v : g.vertices()) {
+        edges += g.out_degree(v);
+        ++counts[static_cast<uint32_t>(g.kind(v))];
+    }
+    save(ar, g.num_vertices());
+    save(ar, edges);
+    for (auto n : counts) save(ar, n);
+    for (auto v : g.vertices()) {
+        save(ar, static_cast<uint32_t>(g.kind(v)));
+        save(ar, g.get_parent(v));
+        save(ar, g.getName(v));
+        save(ar, g.getDescriptors(v));
+        switch (g.kind(v)) {
+        case LayoutGraph::Kind::RenderStage: save(ar, g.value(RenderStage_{}, v)); break;
+        case LayoutGraph::Kind::RenderPhase: save(ar, g.value(RenderPhase_{}, v)); break;
+        }
     }
 }
 
 void load(InputArchive& ar, LayoutGraph& g) {
-    using Graph = LayoutGraph;
-    using VertexT = Graph::vertex_descriptor;
-    using SizeT = Graph::vertices_size_type;
-    static_assert(std::is_same_v<SizeT, VertexT>);
-
-    SizeT numVertices = 0;
-    SizeT numEdges = 0;
-    load(ar, numVertices);
-    load(ar, numEdges);
-    g.reserve(numVertices);
-
-    SizeT stages = 0;
-    SizeT phases = 0;
-    load(ar, stages);
-    load(ar, phases);
-    g.stages.reserve(stages);
-    g.phases.reserve(phases);
-
-    const auto nameMap = get(Graph::NameTag{}, g);
-    const auto descriptorsMap = get(Graph::DescriptorsTag{}, g);
-    for (SizeT v = 0; v != numVertices; ++v) {
-        SizeT id = std::numeric_limits<SizeT>::max();
-        VertexT u = Graph::null_vertex();
-        ccstd::pmr::string name(g.get_allocator());
-        DescriptorDB descriptors(g.get_allocator());
-        load(ar, id);
-        load(ar, u);
-        load(ar, name);
-        load(ar, descriptors);
-        switch (id) {
-            case 0: {
-                RenderPassType val;
-                load(ar, val);
-                addVertex(std::move(name), std::move(descriptors), val, g, u);
-                break;
-            }
-            case 1: {
-                RenderPhase val(g.get_allocator());
-                load(ar, val);
-                addVertex(std::move(name), std::move(descriptors), std::move(val), g, u);
-                break;
-            }
-            default:
-                throw std::runtime_error("load graph failed");
+    g.handles.clear();
+    g.links.clear();
+    g.names.clear();
+    g.descriptors.clear();
+    g.stages.clear();
+    g.phases.clear();
+    const auto readSize = [&ar]() -> uint32_t {
+        const auto n = ar.readNumber();
+        if (n >= 0 && n <= UINT32_MAX && n == static_cast<uint32_t>(n)) {
+            return static_cast<uint32_t>(n);
+        }
+        throw std::runtime_error("Invalid graph archive size");
+    };
+    const auto size = readSize();
+    auto edges = readSize();
+    uint32_t counts[2];
+    for (auto& n : counts) n = readSize();
+    for (uint32_t i = 0; i < size; ++i) {
+        const auto kind = readSize();
+        const auto parent = readSize();
+        if (kind >= 2 || counts[kind] == 0) throw std::runtime_error("Invalid graph archive kind");
+        --counts[kind];
+        if (parent != LayoutGraph::null_vertex()) {
+            if (parent >= i || !edges) throw std::runtime_error("Invalid graph archive parent");
+            --edges;
+        }
+        const auto readVertex = [&](auto tag) {
+            const auto v = g.add_vertex(tag, {}, parent);
+            load(ar, g.getName(v));
+            load(ar, g.getDescriptors(v));
+            load(ar, g.value(tag, v));
+        };
+        switch (static_cast<LayoutGraph::Kind>(kind)) {
+        case LayoutGraph::Kind::RenderStage: readVertex(RenderStage_{}); break;
+        case LayoutGraph::Kind::RenderPhase: readVertex(RenderPhase_{}); break;
         }
     }
+    if (edges) throw std::runtime_error("Invalid graph archive edge count");
+    for (auto n : counts) if (n) throw std::runtime_error("Invalid graph archive kind count");
 }
 
 void save(OutputArchive& ar, const UniformData& v) {
@@ -398,36 +378,25 @@ void load(InputArchive& ar, RenderPhaseData& v) {
 }
 
 void save(OutputArchive& ar, const LayoutGraphData& g) {
-    using Graph = LayoutGraphData;
-    using VertexT = Graph::vertex_descriptor;
-    using SizeT = Graph::vertices_size_type;
-    static_assert(std::is_same_v<SizeT, VertexT>);
-
-    const auto numVertices = num_vertices(g);
-    const auto numEdges = num_edges(g);
-    save(ar, numVertices);
-    save(ar, numEdges);
-
-    save(ar, static_cast<SizeT>(g.stages.size()));
-    save(ar, static_cast<SizeT>(g.phases.size()));
-
-    const auto nameMap = get(Graph::NameTag{}, g);
-    const auto updateMap = get(Graph::UpdateTag{}, g);
-    const auto layoutMap = get(Graph::LayoutTag{}, g);
-    for (const auto& v : makeRange(vertices(g))) {
-        const auto typeID = static_cast<SizeT>(tag(v, g).index());
-        static_assert(std::is_same_v<decltype(typeID), const SizeT>);
-        save(ar, typeID);
-        save(ar, parent(v, g));
-        save(ar, get(nameMap, v));
-        save(ar, get(updateMap, v));
-        save(ar, get(layoutMap, v));
-        visitObject(
-            v, g,
-            overload(
-                [&](const auto& object) {
-                    save(ar, object);
-                }));
+    uint32_t edges = 0;
+    uint32_t counts[2]{};
+    for (auto v : g.vertices()) {
+        edges += g.out_degree(v);
+        ++counts[static_cast<uint32_t>(g.kind(v))];
+    }
+    save(ar, g.num_vertices());
+    save(ar, edges);
+    for (auto n : counts) save(ar, n);
+    for (auto v : g.vertices()) {
+        save(ar, static_cast<uint32_t>(g.kind(v)));
+        save(ar, g.get_parent(v));
+        save(ar, g.getName(v));
+        save(ar, g.getUpdate(v));
+        save(ar, g.getLayout(v));
+        switch (g.kind(v)) {
+        case LayoutGraphData::Kind::RenderStage: save(ar, g.value(RenderStage_{}, v)); break;
+        case LayoutGraphData::Kind::RenderPhase: save(ar, g.value(RenderPhase_{}, v)); break;
+        }
     }
     save(ar, g.valueNames);
     save(ar, g.attributeIndex);
@@ -437,55 +406,52 @@ void save(OutputArchive& ar, const LayoutGraphData& g) {
 }
 
 void load(InputArchive& ar, LayoutGraphData& g) {
-    using Graph = LayoutGraphData;
-    using VertexT = Graph::vertex_descriptor;
-    using SizeT = Graph::vertices_size_type;
-    static_assert(std::is_same_v<SizeT, VertexT>);
-
-    SizeT numVertices = 0;
-    SizeT numEdges = 0;
-    load(ar, numVertices);
-    load(ar, numEdges);
-    g.reserve(numVertices);
-
-    SizeT stages = 0;
-    SizeT phases = 0;
-    load(ar, stages);
-    load(ar, phases);
-    g.stages.reserve(stages);
-    g.phases.reserve(phases);
-
-    const auto nameMap = get(Graph::NameTag{}, g);
-    const auto updateMap = get(Graph::UpdateTag{}, g);
-    const auto layoutMap = get(Graph::LayoutTag{}, g);
-    for (SizeT v = 0; v != numVertices; ++v) {
-        SizeT id = std::numeric_limits<SizeT>::max();
-        VertexT u = Graph::null_vertex();
-        ccstd::pmr::string name(g.get_allocator());
-        UpdateFrequency update{};
-        PipelineLayoutData layout(g.get_allocator());
-        load(ar, id);
-        load(ar, u);
-        load(ar, name);
-        load(ar, update);
-        load(ar, layout);
-        switch (id) {
-            case 0: {
-                RenderStageData val(g.get_allocator());
-                load(ar, val);
-                addVertex(std::move(name), update, std::move(layout), std::move(val), g, u);
-                break;
-            }
-            case 1: {
-                RenderPhaseData val(g.get_allocator());
-                load(ar, val);
-                addVertex(std::move(name), update, std::move(layout), std::move(val), g, u);
-                break;
-            }
-            default:
-                throw std::runtime_error("load graph failed");
+    g.handles.clear();
+    g.links.clear();
+    g.names.clear();
+    g.updateFrequencies.clear();
+    g.layouts.clear();
+    g.stages.clear();
+    g.phases.clear();
+    g.valueNames.clear();
+    g.attributeIndex.clear();
+    g.constantIndex.clear();
+    g.shaderLayoutIndex.clear();
+    g.effects.clear();
+    const auto readSize = [&ar]() -> uint32_t {
+        const auto n = ar.readNumber();
+        if (n >= 0 && n <= UINT32_MAX && n == static_cast<uint32_t>(n)) {
+            return static_cast<uint32_t>(n);
+        }
+        throw std::runtime_error("Invalid graph archive size");
+    };
+    const auto size = readSize();
+    auto edges = readSize();
+    uint32_t counts[2];
+    for (auto& n : counts) n = readSize();
+    for (uint32_t i = 0; i < size; ++i) {
+        const auto kind = readSize();
+        const auto parent = readSize();
+        if (kind >= 2 || counts[kind] == 0) throw std::runtime_error("Invalid graph archive kind");
+        --counts[kind];
+        if (parent != LayoutGraphData::null_vertex()) {
+            if (parent >= i || !edges) throw std::runtime_error("Invalid graph archive parent");
+            --edges;
+        }
+        const auto readVertex = [&](auto tag) {
+            const auto v = g.add_vertex(tag, {}, parent);
+            load(ar, g.getName(v));
+            load(ar, g.getUpdate(v));
+            load(ar, g.getLayout(v));
+            load(ar, g.value(tag, v));
+        };
+        switch (static_cast<LayoutGraphData::Kind>(kind)) {
+        case LayoutGraphData::Kind::RenderStage: readVertex(RenderStage_{}); break;
+        case LayoutGraphData::Kind::RenderPhase: readVertex(RenderPhase_{}); break;
         }
     }
+    if (edges) throw std::runtime_error("Invalid graph archive edge count");
+    for (auto n : counts) if (n) throw std::runtime_error("Invalid graph archive kind count");
     load(ar, g.valueNames);
     load(ar, g.attributeIndex);
     load(ar, g.constantIndex);

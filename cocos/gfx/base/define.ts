@@ -1844,6 +1844,10 @@ export class DescriptorSetLayoutInfo {
         deepCopy(this.bindings, info.bindings, DescriptorSetLayoutBinding);
         return this;
     }
+
+    public reset (): void {
+        this.bindings.length = 0;
+    }
 }
 
 export class DescriptorSetInfo {

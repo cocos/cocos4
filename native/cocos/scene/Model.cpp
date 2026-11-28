@@ -35,6 +35,7 @@
 #include "profiler/Profiler.h"
 #include "renderer/pipeline/Define.h"
 #include "renderer/pipeline/InstancedBuffer.h"
+#include "renderer/pipeline/PipelineSceneData.h"
 #include "renderer/pipeline/custom/RenderInterfaceTypes.h"
 #include "scene/Model.h"
 #include "scene/Pass.h"

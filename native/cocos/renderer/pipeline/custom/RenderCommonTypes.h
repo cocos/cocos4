@@ -27,25 +27,22 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
-#pragma once
+#pragma once // NOLINT(portability-avoid-pragma-once)
+#include <cstdint>
+#include <memory>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include "RenderCommonFwd.h"
 #include "cocos/base/Ptr.h"
 #include "cocos/base/std/container/string.h"
-#include "cocos/base/std/hash/hash.h"
+#include "cocos/base/std/container/vector.h"
 #include "cocos/renderer/gfx-base/GFXDef-common.h"
-#include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
 #include "cocos/scene/Light.h"
 
-namespace cc {
-
-namespace scene {
-
+namespace cc::scene {
 class ReflectionProbe;
-
-} // namespace scene
-
-} // namespace cc
+}
 
 namespace cc {
 
@@ -68,14 +65,14 @@ enum class ParameterType : uint8_t {
     SSV,
 };
 
-struct RasterPassTag {};
-struct RasterSubpassTag {};
-struct ComputeSubpassTag {};
-struct ComputeTag {};
-struct ResolveTag {};
-struct CopyTag {};
-struct MoveTag {};
-struct RaytraceTag {};
+struct RasterPass_ {};
+struct RasterSubpass_ {};
+struct ComputeSubpass_ {};
+struct Compute_ {};
+struct Resolve_ {};
+struct Copy_ {};
+struct Move_ {};
+struct Raytrace_ {};
 
 enum class ResourceResidency : uint8_t {
     MANAGED,
@@ -87,10 +84,10 @@ enum class ResourceResidency : uint8_t {
 };
 
 enum class QueueHint : uint8_t {
-    NONE,
-    OPAQUE,
-    MASK,
-    BLEND,
+    NONE = 0,
+    OPAQUE = 1,
+    MASK = 2,
+    BLEND = 3,
     RENDER_OPAQUE = OPAQUE,
     RENDER_CUTOUT = MASK,
     RENDER_TRANSPARENT = BLEND,
@@ -145,8 +142,10 @@ constexpr bool any(ResourceFlags e) noexcept {
     return !!e;
 }
 
-struct BufferTag {};
-struct TextureTag {};
+struct Buffer_ {};
+struct Texture_ {};
+struct Name_ {};
+struct Layout_ {};
 
 enum class TaskType : uint8_t {
     SYNC,
@@ -245,15 +244,11 @@ enum class ClearValueType : uint8_t {
 };
 
 struct LightInfo {
-    LightInfo() = default;
-    LightInfo(IntrusivePtr<scene::Light> lightIn, uint32_t levelIn, bool culledByLightIn, scene::ReflectionProbe* probeIn) noexcept
+    LightInfo(IntrusivePtr<scene::Light> lightIn = IntrusivePtr<scene::Light>{}, uint32_t levelIn = 0, bool culledByLightIn = false, scene::ReflectionProbe* probeIn = nullptr) // NOLINT(google-explicit-constructor)
     : light(std::move(lightIn)),
       probe(probeIn),
       level(levelIn),
       culledByLight(culledByLightIn) {}
-    LightInfo(IntrusivePtr<scene::Light> lightIn, uint32_t levelIn) noexcept
-    : light(std::move(lightIn)),
-      level(levelIn) {}
 
     IntrusivePtr<scene::Light> light;
     scene::ReflectionProbe* probe{nullptr};
@@ -302,8 +297,8 @@ struct ResolvePair {
         return {source.get_allocator().resource()};
     }
 
-    ResolvePair(const allocator_type& alloc = boost::container::pmr::get_default_resource()) noexcept; // NOLINT
-    ResolvePair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, ResolveFlags resolveFlagsIn, gfx::ResolveMode modeIn, gfx::ResolveMode mode1In, const allocator_type& alloc = boost::container::pmr::get_default_resource());
+    ResolvePair(const allocator_type& alloc = boost::container::pmr::get_default_resource()); // NOLINT
+    ResolvePair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn = ccstd::pmr::string{}, ccstd::pmr::string targetIn = ccstd::pmr::string{}, ResolveFlags resolveFlagsIn = ResolveFlags::NONE, gfx::ResolveMode modeIn = gfx::ResolveMode::SAMPLE_ZERO, gfx::ResolveMode mode1In = gfx::ResolveMode::SAMPLE_ZERO);
     ResolvePair(ResolvePair&& rhs, const allocator_type& alloc);
     ResolvePair(ResolvePair const& rhs, const allocator_type& alloc);
 
@@ -334,8 +329,8 @@ struct CopyPair {
         return {source.get_allocator().resource()};
     }
 
-    CopyPair(const allocator_type& alloc = boost::container::pmr::get_default_resource()) noexcept; // NOLINT
-    CopyPair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t sourceMostDetailedMipIn, uint32_t sourceFirstSliceIn, uint32_t sourcePlaneSliceIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc = boost::container::pmr::get_default_resource());
+    CopyPair(const allocator_type& alloc = boost::container::pmr::get_default_resource()); // NOLINT
+    CopyPair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn = ccstd::pmr::string{}, ccstd::pmr::string targetIn = ccstd::pmr::string{}, uint32_t mipLevelsIn = 0xFFFFFFFF, uint32_t numSlicesIn = 0xFFFFFFFF, uint32_t sourceMostDetailedMipIn = 0, uint32_t sourceFirstSliceIn = 0, uint32_t sourcePlaneSliceIn = 0, uint32_t targetMostDetailedMipIn = 0, uint32_t targetFirstSliceIn = 0, uint32_t targetPlaneSliceIn = 0);
     CopyPair(CopyPair&& rhs, const allocator_type& alloc);
     CopyPair(CopyPair const& rhs, const allocator_type& alloc);
 
@@ -362,8 +357,8 @@ struct UploadPair {
         return {target.get_allocator().resource()};
     }
 
-    UploadPair(const allocator_type& alloc = boost::container::pmr::get_default_resource()) noexcept; // NOLINT
-    UploadPair(ccstd::vector<uint8_t> sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc = boost::container::pmr::get_default_resource());
+    UploadPair(const allocator_type& alloc = boost::container::pmr::get_default_resource()); // NOLINT
+    UploadPair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::vector<uint8_t> sourceIn = ccstd::vector<uint8_t>{}, ccstd::pmr::string targetIn = ccstd::pmr::string{}, uint32_t mipLevelsIn = 0xFFFFFFFF, uint32_t numSlicesIn = 0xFFFFFFFF, uint32_t targetMostDetailedMipIn = 0, uint32_t targetFirstSliceIn = 0, uint32_t targetPlaneSliceIn = 0);
     UploadPair(UploadPair&& rhs, const allocator_type& alloc);
 
     UploadPair(UploadPair&& rhs) noexcept = default;
@@ -386,8 +381,8 @@ struct MovePair {
         return {source.get_allocator().resource()};
     }
 
-    MovePair(const allocator_type& alloc = boost::container::pmr::get_default_resource()) noexcept; // NOLINT
-    MovePair(ccstd::pmr::string sourceIn, ccstd::pmr::string targetIn, uint32_t mipLevelsIn, uint32_t numSlicesIn, uint32_t targetMostDetailedMipIn, uint32_t targetFirstSliceIn, uint32_t targetPlaneSliceIn, const allocator_type& alloc = boost::container::pmr::get_default_resource());
+    MovePair(const allocator_type& alloc = boost::container::pmr::get_default_resource()); // NOLINT
+    MovePair(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, ccstd::pmr::string sourceIn = ccstd::pmr::string{}, ccstd::pmr::string targetIn = ccstd::pmr::string{}, uint32_t mipLevelsIn = 0xFFFFFFFF, uint32_t numSlicesIn = 0xFFFFFFFF, uint32_t targetMostDetailedMipIn = 0, uint32_t targetFirstSliceIn = 0, uint32_t targetPlaneSliceIn = 0);
     MovePair(MovePair&& rhs, const allocator_type& alloc);
     MovePair(MovePair const& rhs, const allocator_type& alloc);
 
@@ -436,6 +431,3 @@ inline hash_t hash<cc::render::ResolvePair>::operator()(const cc::render::Resolv
 }
 
 } // namespace ccstd
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

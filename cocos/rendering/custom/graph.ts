@@ -55,15 +55,6 @@ export interface Vertex {
 export type vertex_descriptor = number | Vertex;
 
 //--------------------------------------------------------------------------
-// Edge
-//--------------------------------------------------------------------------
-export interface Edge {
-    getProperty (): unknown;
-    source: vertex_descriptor;
-    target: vertex_descriptor;
-}
-
-//--------------------------------------------------------------------------
 // Edge Descriptor
 //--------------------------------------------------------------------------
 export class ED {
@@ -79,23 +70,8 @@ export class ED {
     target: vertex_descriptor;
 }
 
-// Edge Descriptor with Property
-export class EPD {
-    constructor (source: vertex_descriptor, target: vertex_descriptor, edge: Edge) {
-        this.source = source;
-        this.target = target;
-        this.edge = edge;
-    }
-    equals (rhs: EPD): boolean {
-        return this.edge === rhs.edge;
-    }
-    source: vertex_descriptor;
-    target: vertex_descriptor;
-    readonly edge: Edge;
-}
-
 // Edge Descriptor
-export type edge_descriptor = ED | EPD;
+export type edge_descriptor = ED;
 
 //--------------------------------------------------------------------------
 // OutEdge
@@ -109,22 +85,6 @@ export class OutE {
         return this.target === rhs.target;
     }
     target: vertex_descriptor;
-}
-
-// OutEdge(Property)
-export class OutEP {
-    constructor (target: vertex_descriptor, edge: Edge) {
-        this.target = target;
-        this.edge = edge;
-    }
-    equals (rhs: OutEP): boolean {
-        return this.target === rhs.target;
-    }
-    getProperty (): unknown {
-        return this.edge.getProperty();
-    }
-    target: vertex_descriptor;
-    readonly edge: Edge;
 }
 
 //--------------------------------------------------------------------------
@@ -150,29 +110,8 @@ export class OutEI implements IterableIterator<ED> {
     readonly source: vertex_descriptor;
 }
 
-// OutEdge(Property) Iterator
-export class OutEPI implements IterableIterator<EPD> {
-    constructor (iterator: IterableIterator<OutEP>, source: vertex_descriptor) {
-        this.iterator = iterator;
-        this.source = source;
-    }
-    [Symbol.iterator] (): OutEPI {
-        return this;
-    }
-    next (): IteratorResult<EPD> {
-        const res = this.iterator.next();
-        if (res.done) {
-            return { value: undefined, done: true };
-        } else {
-            return { value: new EPD(this.source, res.value.target, res.value.edge), done: false };
-        }
-    }
-    readonly iterator: IterableIterator<OutEP>;
-    readonly source: vertex_descriptor;
-}
-
 // OutEdge Iterator
-export type out_edge_iterator = OutEI | OutEPI;
+export type out_edge_iterator = OutEI;
 
 //--------------------------------------------------------------------------
 // InEdge Iterator
@@ -198,29 +137,29 @@ export class InEI implements IterableIterator<ED> {
     readonly source: vertex_descriptor;
 }
 
-// InEdge(Property) Iterator
-export class InEPI implements IterableIterator<EPD> {
-    constructor (iterator: IterableIterator<OutEP>, source: vertex_descriptor) {
-        this.iterator = iterator;
-        this.source = source;
+/** Iterates the incoming edge of a vertex in a single-parent graph. */
+export class OneInEI implements IterableIterator<ED> {
+    constructor (parent: number, target: number, nullVertex: number) {
+        this.parent = parent === nullVertex ? undefined : parent;
+        this.target = target;
     }
-    [Symbol.iterator] (): InEPI {
+    [Symbol.iterator] (): OneInEI {
         return this;
     }
-    next (): IteratorResult<EPD> {
-        const res = this.iterator.next();
-        if (res.done) {
+    next (): IteratorResult<ED> {
+        const parent = this.parent;
+        if (parent === undefined) {
             return { value: undefined, done: true };
-        } else {
-            return { value: new EPD(res.value.target, this.source, res.value.edge), done: false };
         }
+        this.parent = undefined;
+        return { value: new ED(parent, this.target), done: false };
     }
-    readonly iterator: IterableIterator<OutEP>;
-    readonly source: vertex_descriptor;
+    private parent: number | undefined;
+    private readonly target: number;
 }
 
 // InEdge Iterator
-export type in_edge_iterator = InEI | InEPI;
+export type in_edge_iterator = InEI | OneInEI;
 
 //--------------------------------------------------------------------------
 // Graph
@@ -282,28 +221,8 @@ export class AdjI implements IterableIterator<vertex_descriptor> {
     readonly iterator: OutEI;
 }
 
-export class AdjPI implements IterableIterator<vertex_descriptor> {
-    constructor (graph: IncidenceGraph, iterator: OutEPI) {
-        this.graph = graph;
-        this.iterator = iterator;
-    }
-    [Symbol.iterator] (): AdjPI {
-        return this;
-    }
-    next (): IteratorResult<vertex_descriptor> {
-        const res = this.iterator.next();
-        if (res.done) {
-            return { value: undefined, done: true };
-        } else {
-            return { value: this.graph.target(res.value), done: false };
-        }
-    }
-    readonly graph: IncidenceGraph;
-    readonly iterator: OutEPI;
-}
-
 // Adjacency Iterator
-export type adjacency_iterator = AdjI | AdjPI;
+export type adjacency_iterator = AdjI;
 
 // AdjacencyGraph
 export interface AdjacencyGraph extends Graph {
@@ -396,9 +315,9 @@ export interface PolymorphicGraph extends Graph {
 //--------------------------------------------------------------------------
 // ReferenceGraph
 //--------------------------------------------------------------------------
-export type reference_descriptor = ED | EPD;
-export type child_iterator = OutEI | OutEPI;
-export type parent_iterator = InEI | InEPI;
+export type reference_descriptor = edge_descriptor;
+export type child_iterator = out_edge_iterator;
+export type parent_iterator = in_edge_iterator;
 
 export interface ReferenceGraph extends Graph {
     reference (u: vertex_descriptor, v: vertex_descriptor): boolean;
@@ -450,33 +369,6 @@ export interface UuidGraph<Key> extends Graph {
 //--------------------------------------------------------------------------
 // Help Functions
 //--------------------------------------------------------------------------
-export function reindexEdgeList (el: (OutE|OutEP)[], u: number): void {
-    for (const e of el) {
-        if (e.target as number > u) {
-            --(e.target as number);
-        }
-    }
-}
-
-export function removeAllEdgesFromList (edges: Set<Edge>, el: OutEP[], v: vertex_descriptor): void {
-    const sz = el.length;
-    for (let i = 0; i !== sz; ++i) {
-        const oe = el[i];
-        if (oe.target === v) {
-            // NOTE: Wihtout this skip, this loop will double-delete
-            // properties of loop edges. This solution is based on the
-            // observation that the incidence edges of a vertex with a loop
-            // are adjacent in the out edge list. This *may* actually hold
-            // for multisets also.
-            const skip = (i + 1 !== sz && oe.edge === el[i + 1].edge);
-            edges.delete(oe.edge);
-            if (skip) {
-                ++i;
-            }
-        }
-    }
-}
-
 export function getPath (g: ReferenceGraph & NamedGraph, v: vertex_descriptor | null): string {
     if (v === g.N) {
         return '';
@@ -496,10 +388,6 @@ export function getPath (g: ReferenceGraph & NamedGraph, v: vertex_descriptor | 
 export function findRelative (g: ParentGraph, v: vertex_descriptor | null, path: string): vertex_descriptor | null {
     const pseudo = g.N;
     const names = path.split('/');
-
-    if (names.length === 0) { // empty string
-        return v;
-    }
 
     let curr = v;
     let start = 0;
@@ -553,21 +441,7 @@ export interface TerminatorFunc {
     terminate (v: vertex_descriptor, g: IncidenceGraph): boolean;
 }
 
-class NoTermination implements TerminatorFunc {
-    terminate (v: vertex_descriptor, g: IncidenceGraph): boolean {
-        return false;
-    }
-}
-
-function getDefaultStartingVertex (g: IncidenceGraph & VertexListGraph): vertex_descriptor | null {
-    const iter = g.v();
-    const v = iter.next();
-    if (v.done) {
-        return g.N;
-    } else {
-        return v.value;
-    }
-}
+const noTermination: TerminatorFunc = { terminate: () => false };
 
 export interface GraphVisitor {
     // 0. before dfs
@@ -627,12 +501,11 @@ function depthFirstVisitImpl (
     color.put(u, GraphColor.GRAY);
     visitor.discoverVertex(u, g);
 
-    ei = g.oe(u);
     if (func.terminate(u, g)) {
         // If this vertex terminates the search, we push empty range
         stack.push(new VertexInfo(u, null, null));
     } else {
-        stack.push(new VertexInfo(u, null, ei));
+        stack.push(new VertexInfo(u, null, g.oe(u)));
     }
 
     while (stack.length) {
@@ -648,8 +521,8 @@ function depthFirstVisitImpl (
         if (ei) { // has out edges
             for (let ev = ei.next(); !ev.done; ev = ei.next()) {
                 const e = ev.value;
-                const v = e.target;
                 visitor.examineEdge(e, g);
+                const v = g.target(e);
                 const vColor = color.get(v);
                 if (vColor === GraphColor.WHITE) {
                     visitor.treeEdge(e, g);
@@ -658,10 +531,10 @@ function depthFirstVisitImpl (
                     u = v;
                     color.put(u, GraphColor.GRAY);
                     visitor.discoverVertex(u, g);
-                    ei = g.oe(u);
                     if (func.terminate(u, g)) {
                         break;
                     }
+                    ei = g.oe(u);
                 } else {
                     if (vColor === GraphColor.GRAY) {
                         visitor.backEdge(e, g);
@@ -683,10 +556,8 @@ export function depthFirstSearch (
     color: MutableVertexPropertyMap<GraphColor>,
     startVertex: vertex_descriptor | null = null,
 ): void {
-    // get start vertex
-    startVertex = startVertex || getDefaultStartingVertex(g);
     // graph is empty, do nothing
-    if (startVertex === null || g.nv() === 0) {
+    if (g.nv() === 0) {
         return;
     }
     // initialize vertex and color map
@@ -695,18 +566,17 @@ export function depthFirstSearch (
         visitor.initializeVertex(u, g);
     }
     // start DFS
-    const terminator = new NoTermination();
     // try starting from startVertex
-    if (startVertex !== getDefaultStartingVertex(g)) {
+    if (startVertex !== null) {
         visitor.startVertex(startVertex, g);
-        depthFirstVisitImpl(g, startVertex, visitor, color, terminator);
+        depthFirstVisitImpl(g, startVertex, visitor, color, noTermination);
     }
     // try starting from each vertex
     for (const u of g.v()) {
         // if vertex is not visited, start DFS
         if (color.get(u) === GraphColor.WHITE) {
             visitor.startVertex(u, g);
-            depthFirstVisitImpl(g, u, visitor, color, terminator);
+            depthFirstVisitImpl(g, u, visitor, color, noTermination);
         }
     }
 }
@@ -716,7 +586,7 @@ export function depthFirstVisit (
     u: vertex_descriptor,
     visitor: GraphVisitor,
     color: MutableVertexPropertyMap<GraphColor>,
-    func: TerminatorFunc = new NoTermination(),
+    func: TerminatorFunc = noTermination,
 ): void {
     visitor.startVertex(u, g);
     depthFirstVisitImpl(g, u, visitor, color, func);

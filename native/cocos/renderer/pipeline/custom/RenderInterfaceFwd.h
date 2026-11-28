@@ -29,9 +29,8 @@
  */
 #pragma once
 // clang-format off
-// IWYU pragma: begin_exports
 #include "cocos/renderer/pipeline/custom/RenderCommonFwd.h"
-// IWYU pragma: end_exports
+#include <cstdint>
 
 namespace cc {
 

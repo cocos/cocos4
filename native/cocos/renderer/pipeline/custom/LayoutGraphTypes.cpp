@@ -27,15 +27,14 @@
  * The following section is auto-generated.
  * ========================= !DO NOT CHANGE THE FOLLOWING SECTION MANUALLY! =========================
  */
-// clang-format off
-// NOLINTBEGIN(misc-include-cleaner, bugprone-easily-swappable-parameters)
 #include "LayoutGraphTypes.h"
+#include <utility>
 
 namespace cc {
 
 namespace render {
 
-DescriptorDB::DescriptorDB(const allocator_type& alloc) noexcept
+DescriptorDB::DescriptorDB(const allocator_type& alloc)
 : blocks(alloc),
   groupBlocks(alloc) {}
 
@@ -47,7 +46,7 @@ DescriptorDB::DescriptorDB(DescriptorDB const& rhs, const allocator_type& alloc)
 : blocks(rhs.blocks, alloc),
   groupBlocks(rhs.groupBlocks, alloc) {}
 
-RenderPhase::RenderPhase(const allocator_type& alloc) noexcept
+RenderPhase::RenderPhase(const allocator_type& alloc)
 : shaders(alloc) {}
 
 RenderPhase::RenderPhase(RenderPhase&& rhs, const allocator_type& alloc)
@@ -56,52 +55,113 @@ RenderPhase::RenderPhase(RenderPhase&& rhs, const allocator_type& alloc)
 RenderPhase::RenderPhase(RenderPhase const& rhs, const allocator_type& alloc)
 : shaders(rhs.shaders, alloc) {}
 
-LayoutGraph::LayoutGraph(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  names(alloc),
-  descriptors(alloc),
-  stages(alloc),
-  phases(alloc),
-  pathIndex(alloc) {}
+LayoutGraph::LayoutGraph(const LayoutGraph& rhs, const allocator_type& alloc)
+: handles(rhs.handles, alloc), links(rhs.links, alloc), names(rhs.names, alloc), descriptors(rhs.descriptors, alloc), stages(rhs.stages, alloc), phases(rhs.phases, alloc) {}
 
 LayoutGraph::LayoutGraph(LayoutGraph&& rhs, const allocator_type& alloc)
-: _vertices(std::move(rhs._vertices), alloc),
-  names(std::move(rhs.names), alloc),
-  descriptors(std::move(rhs.descriptors), alloc),
-  stages(std::move(rhs.stages), alloc),
-  phases(std::move(rhs.phases), alloc),
-  pathIndex(std::move(rhs.pathIndex), alloc) {}
+: handles(std::move(rhs.handles), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), descriptors(std::move(rhs.descriptors), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc) {}
 
-LayoutGraph::LayoutGraph(LayoutGraph const& rhs, const allocator_type& alloc)
-: _vertices(rhs._vertices, alloc),
-  names(rhs.names, alloc),
-  descriptors(rhs.descriptors, alloc),
-  stages(rhs.stages, alloc),
-  phases(rhs.phases, alloc),
-  pathIndex(rhs.pathIndex, alloc) {}
-
-// ContinuousContainer
-void LayoutGraph::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    names.reserve(sz);
-    descriptors.reserve(sz);
+LayoutGraph::vertex_descriptor LayoutGraph::add_vertex(const RenderStage_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, parent);
 }
 
-LayoutGraph::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+LayoutGraph::vertex_descriptor LayoutGraph::add_vertex(const RenderPhase_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, parent);
+}
 
-LayoutGraph::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc),
-  handle(std::move(rhs.handle)) {}
+std::pair<LayoutGraph::edge_descriptor, bool> LayoutGraph::add_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
+        links[v].parent != null_vertex() || u >= v) return {{null_vertex(), null_vertex()}, false};
+    auto& parent = links[u];
+    auto& child = links[v];
+    auto* slot = &parent.firstChild;
+    while (*slot != null_vertex() && *slot < v) slot = &links[*slot].nextSibling;
+    child.nextSibling = *slot;
+    if (*slot == null_vertex()) parent.lastChild = v;
+    *slot = v;
+    child.parent = u;
+    ++parent.childCount;
+    return {{u, v}, true};
+}
 
-LayoutGraph::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc),
-  handle(rhs.handle) {}
+void LayoutGraph::remove_edge(edge_descriptor e) noexcept {
+    if (!edge(e.source, e.target).second) return;
+    auto& parent = links[e.source];
+    auto& child = links[e.target];
+    auto previous = null_vertex();
+    auto* slot = &parent.firstChild;
+    while (*slot != e.target) {
+        previous = *slot;
+        slot = &links[previous].nextSibling;
+    }
+    *slot = child.nextSibling;
+    if (parent.lastChild == e.target) parent.lastChild = previous;
+    child.parent = child.nextSibling = null_vertex();
+    --parent.childCount;
+}
 
-UniformBlockData::UniformBlockData(const allocator_type& alloc) noexcept
+LayoutGraph::vertex_descriptor LayoutGraph::locate_child(vertex_descriptor parent, std::string_view name) const noexcept {
+    const auto count = this->names.size();
+    if (parent == null_vertex()) {
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto v = static_cast<vertex_descriptor>(i);
+            if (get_parent(v) == null_vertex() && std::string_view{this->getName(v)} == name) return v;
+        }
+    } else if (static_cast<std::uintmax_t>(parent) < count) {
+        for (const auto link : child_links(parent)) {
+            const auto v = child(link);
+            if (std::string_view{this->getName(v)} == name) return v;
+        }
+    }
+    return null_vertex();
+}
+
+LayoutGraph::vertex_descriptor LayoutGraph::locate(std::string_view refPath, vertex_descriptor start) const noexcept {
+    if (refPath.empty()) return null_vertex();
+    if (refPath.front() == '/') {
+        start = null_vertex();
+    } else if (start != null_vertex() && static_cast<std::uintmax_t>(start) >= this->names.size()) {
+        return null_vertex();
+    }
+
+    while (!refPath.empty()) {
+        const auto slash = refPath.find('/');
+        const std::string_view segment{refPath.data(), slash == std::string_view::npos ? refPath.size() : slash};
+        refPath.remove_prefix(slash == std::string_view::npos ? refPath.size() : slash + 1);
+        if (segment.empty() || segment == ".") continue;
+        if (segment == "..") {
+            if (start == null_vertex()) return null_vertex();
+            start = get_parent(start);
+        } else {
+            start = locate_child(start, segment);
+            if (start == null_vertex()) return null_vertex();
+        }
+    }
+    return start;
+}
+
+ccstd::pmr::string LayoutGraph::path(vertex_descriptor v) const {
+    if (v != null_vertex() && static_cast<std::uintmax_t>(v) >= this->names.size()) {
+        throw std::out_of_range("invalid LayoutGraph vertex");
+    }
+    ccstd::pmr::string result(get_allocator());
+    std::size_t length = 0;
+    for (auto u = v; u != null_vertex(); u = get_parent(u)) {
+        const auto size = this->getName(u).size();
+        if (size >= result.max_size() - length) throw std::length_error("graph path too long");
+        length += size + 1;
+    }
+    result.resize(length);
+    for (auto u = v; u != null_vertex(); u = get_parent(u)) {
+        const auto& segment = this->getName(u);
+        length -= segment.size();
+        segment.copy(result.data() + length, segment.size());
+        result[--length] = '/';
+    }
+    return result;
+}
+
+UniformBlockData::UniformBlockData(const allocator_type& alloc)
 : uniforms(alloc) {}
 
 UniformBlockData::UniformBlockData(UniformBlockData&& rhs, const allocator_type& alloc)
@@ -112,10 +172,10 @@ UniformBlockData::UniformBlockData(UniformBlockData const& rhs, const allocator_
 : bufferSize(rhs.bufferSize),
   uniforms(rhs.uniforms, alloc) {}
 
-DescriptorBlockData::DescriptorBlockData(const allocator_type& alloc) noexcept
+DescriptorBlockData::DescriptorBlockData(const allocator_type& alloc)
 : descriptors(alloc) {}
 
-DescriptorBlockData::DescriptorBlockData(DescriptorTypeOrder typeIn, gfx::ShaderStageFlagBit visibilityIn, uint32_t capacityIn, gfx::MemoryAccessBit accessTypeIn, gfx::ViewDimension viewDimensionIn, gfx::SampleType sampleTypeIn, gfx::Format formatIn, const allocator_type& alloc) noexcept // NOLINT
+DescriptorBlockData::DescriptorBlockData(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, DescriptorTypeOrder typeIn, gfx::ShaderStageFlagBit visibilityIn, uint32_t capacityIn, gfx::MemoryAccessBit accessTypeIn, gfx::ViewDimension viewDimensionIn, gfx::SampleType sampleTypeIn, gfx::Format formatIn) // NOLINT
 : type(typeIn),
   visibility(visibilityIn),
   capacity(capacityIn),
@@ -125,7 +185,7 @@ DescriptorBlockData::DescriptorBlockData(DescriptorTypeOrder typeIn, gfx::Shader
   format(formatIn),
   descriptors(alloc) {}
 
-DescriptorBlockData::DescriptorBlockData(DescriptorTypeOrder typeIn, gfx::ShaderStageFlagBit visibilityIn, uint32_t capacityIn, const allocator_type& alloc) noexcept // NOLINT
+DescriptorBlockData::DescriptorBlockData(DescriptorTypeOrder typeIn, gfx::ShaderStageFlagBit visibilityIn, uint32_t capacityIn, const allocator_type& alloc) // NOLINT
 : type(typeIn),
   visibility(visibilityIn),
   capacity(capacityIn),
@@ -153,12 +213,12 @@ DescriptorBlockData::DescriptorBlockData(DescriptorBlockData const& rhs, const a
   format(rhs.format),
   descriptors(rhs.descriptors, alloc) {}
 
-DescriptorSetLayoutData::DescriptorSetLayoutData(const allocator_type& alloc) noexcept
+DescriptorSetLayoutData::DescriptorSetLayoutData(const allocator_type& alloc)
 : descriptorBlocks(alloc),
   uniformBlocks(alloc),
   bindingMap(alloc) {}
 
-DescriptorSetLayoutData::DescriptorSetLayoutData(uint32_t slotIn, uint32_t capacityIn, ccstd::pmr::vector<DescriptorBlockData> descriptorBlocksIn, PmrUnorderedMap<NameLocalID, gfx::UniformBlock> uniformBlocksIn, PmrFlatMap<NameLocalID, uint32_t> bindingMapIn, const allocator_type& alloc) // NOLINT
+DescriptorSetLayoutData::DescriptorSetLayoutData(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, uint32_t slotIn, uint32_t capacityIn, ccstd::pmr::vector<DescriptorBlockData> descriptorBlocksIn, PmrUnorderedMap<NameLocalID, gfx::UniformBlock> uniformBlocksIn, PmrFlatMap<NameLocalID, uint32_t> bindingMapIn) // NOLINT
 : slot(slotIn),
   capacity(capacityIn),
   descriptorBlocks(std::move(descriptorBlocksIn), alloc),
@@ -174,11 +234,21 @@ DescriptorSetLayoutData::DescriptorSetLayoutData(DescriptorSetLayoutData&& rhs, 
   uniformBlocks(std::move(rhs.uniformBlocks), alloc),
   bindingMap(std::move(rhs.bindingMap), alloc) {}
 
-DescriptorSetData::DescriptorSetData(const allocator_type& alloc) noexcept
-: descriptorSetLayoutData(alloc) {}
+DescriptorSetData::DescriptorSetData(const allocator_type& alloc)
+: descriptorSetLayoutData(alloc),
+  descriptorSetLayoutInfo(), // NOLINT(readability-redundant-member-init)
+  descriptorSetLayout(), // NOLINT(readability-redundant-member-init)
+  descriptorSet() {} // NOLINT(readability-redundant-member-init)
 
-DescriptorSetData::DescriptorSetData(DescriptorSetLayoutData descriptorSetLayoutDataIn, IntrusivePtr<gfx::DescriptorSetLayout> descriptorSetLayoutIn, IntrusivePtr<gfx::DescriptorSet> descriptorSetIn, const allocator_type& alloc)
+DescriptorSetData::DescriptorSetData(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc)
+: descriptorSetLayoutData(alloc),
+  descriptorSetLayoutInfo(), // NOLINT(readability-redundant-member-init)
+  descriptorSetLayout(), // NOLINT(readability-redundant-member-init)
+  descriptorSet() {} // NOLINT(readability-redundant-member-init)
+
+DescriptorSetData::DescriptorSetData(const std::allocator_arg_t& /*tag*/, const allocator_type& alloc, DescriptorSetLayoutData descriptorSetLayoutDataIn, IntrusivePtr<gfx::DescriptorSetLayout> descriptorSetLayoutIn, IntrusivePtr<gfx::DescriptorSet> descriptorSetIn) // NOLINT
 : descriptorSetLayoutData(std::move(descriptorSetLayoutDataIn), alloc),
+  descriptorSetLayoutInfo(), // NOLINT(readability-redundant-member-init)
   descriptorSetLayout(std::move(descriptorSetLayoutIn)),
   descriptorSet(std::move(descriptorSetIn)) {}
 
@@ -188,7 +258,7 @@ DescriptorSetData::DescriptorSetData(DescriptorSetData&& rhs, const allocator_ty
   descriptorSetLayout(std::move(rhs.descriptorSetLayout)),
   descriptorSet(std::move(rhs.descriptorSet)) {}
 
-PipelineLayoutData::PipelineLayoutData(const allocator_type& alloc) noexcept
+PipelineLayoutData::PipelineLayoutData(const allocator_type& alloc)
 : descriptorSets(alloc),
   descriptorGroups(alloc) {}
 
@@ -196,13 +266,13 @@ PipelineLayoutData::PipelineLayoutData(PipelineLayoutData&& rhs, const allocator
 : descriptorSets(std::move(rhs.descriptorSets), alloc),
   descriptorGroups(std::move(rhs.descriptorGroups), alloc) {}
 
-ShaderBindingData::ShaderBindingData(const allocator_type& alloc) noexcept
+ShaderBindingData::ShaderBindingData(const allocator_type& alloc)
 : descriptorBindings(alloc) {}
 
 ShaderBindingData::ShaderBindingData(ShaderBindingData&& rhs, const allocator_type& alloc)
 : descriptorBindings(std::move(rhs.descriptorBindings), alloc) {}
 
-ShaderLayoutData::ShaderLayoutData(const allocator_type& alloc) noexcept
+ShaderLayoutData::ShaderLayoutData(const allocator_type& alloc)
 : layoutData(alloc),
   bindingData(alloc) {}
 
@@ -210,35 +280,37 @@ ShaderLayoutData::ShaderLayoutData(ShaderLayoutData&& rhs, const allocator_type&
 : layoutData(std::move(rhs.layoutData), alloc),
   bindingData(std::move(rhs.bindingData), alloc) {}
 
-TechniqueData::TechniqueData(const allocator_type& alloc) noexcept
+TechniqueData::TechniqueData(const allocator_type& alloc)
 : passes(alloc) {}
 
 TechniqueData::TechniqueData(TechniqueData&& rhs, const allocator_type& alloc)
 : passes(std::move(rhs.passes), alloc) {}
 
-EffectData::EffectData(const allocator_type& alloc) noexcept
+EffectData::EffectData(const allocator_type& alloc)
 : techniques(alloc) {}
 
 EffectData::EffectData(EffectData&& rhs, const allocator_type& alloc)
 : techniques(std::move(rhs.techniques), alloc) {}
 
-ShaderProgramData::ShaderProgramData(const allocator_type& alloc) noexcept
-: layout(alloc) {}
+ShaderProgramData::ShaderProgramData(const allocator_type& alloc)
+: layout(alloc),
+  pipelineLayout() {} // NOLINT(readability-redundant-member-init)
 
 ShaderProgramData::ShaderProgramData(ShaderProgramData&& rhs, const allocator_type& alloc)
 : layout(std::move(rhs.layout), alloc),
   pipelineLayout(std::move(rhs.pipelineLayout)) {}
 
-RenderStageData::RenderStageData(const allocator_type& alloc) noexcept
+RenderStageData::RenderStageData(const allocator_type& alloc)
 : descriptorVisibility(alloc) {}
 
 RenderStageData::RenderStageData(RenderStageData&& rhs, const allocator_type& alloc)
 : descriptorVisibility(std::move(rhs.descriptorVisibility), alloc) {}
 
-RenderPhaseData::RenderPhaseData(const allocator_type& alloc) noexcept
+RenderPhaseData::RenderPhaseData(const allocator_type& alloc)
 : rootSignature(alloc),
   shaderPrograms(alloc),
-  shaderIndex(alloc) {}
+  shaderIndex(alloc),
+  pipelineLayout() {} // NOLINT(readability-redundant-member-init)
 
 RenderPhaseData::RenderPhaseData(RenderPhaseData&& rhs, const allocator_type& alloc)
 : rootSignature(std::move(rhs.rootSignature), alloc),
@@ -246,60 +318,109 @@ RenderPhaseData::RenderPhaseData(RenderPhaseData&& rhs, const allocator_type& al
   shaderIndex(std::move(rhs.shaderIndex), alloc),
   pipelineLayout(std::move(rhs.pipelineLayout)) {}
 
-LayoutGraphData::LayoutGraphData(const allocator_type& alloc) noexcept
-: _vertices(alloc),
-  names(alloc),
-  updateFrequencies(alloc),
-  layouts(alloc),
-  stages(alloc),
-  phases(alloc),
-  valueNames(alloc),
-  attributeIndex(alloc),
-  constantIndex(alloc),
-  shaderLayoutIndex(alloc),
-  effects(alloc),
-  pathIndex(alloc) {}
-
 LayoutGraphData::LayoutGraphData(LayoutGraphData&& rhs, const allocator_type& alloc)
-: _vertices(std::move(rhs._vertices), alloc),
-  names(std::move(rhs.names), alloc),
-  updateFrequencies(std::move(rhs.updateFrequencies), alloc),
-  layouts(std::move(rhs.layouts), alloc),
-  stages(std::move(rhs.stages), alloc),
-  phases(std::move(rhs.phases), alloc),
-  valueNames(std::move(rhs.valueNames), alloc),
-  attributeIndex(std::move(rhs.attributeIndex), alloc),
-  constantIndex(std::move(rhs.constantIndex), alloc),
-  shaderLayoutIndex(std::move(rhs.shaderLayoutIndex), alloc),
-  effects(std::move(rhs.effects), alloc),
-  constantMacros(std::move(rhs.constantMacros)),
-  pathIndex(std::move(rhs.pathIndex), alloc) {}
+: handles(std::move(rhs.handles), alloc), links(std::move(rhs.links), alloc), names(std::move(rhs.names), alloc), updateFrequencies(std::move(rhs.updateFrequencies), alloc), layouts(std::move(rhs.layouts), alloc), stages(std::move(rhs.stages), alloc), phases(std::move(rhs.phases), alloc), valueNames(std::move(rhs.valueNames), alloc), attributeIndex(std::move(rhs.attributeIndex), alloc), constantIndex(std::move(rhs.constantIndex), alloc), shaderLayoutIndex(std::move(rhs.shaderLayoutIndex), alloc), effects(std::move(rhs.effects), alloc), constantMacros(std::move(rhs.constantMacros)) {}
 
-// ContinuousContainer
-void LayoutGraphData::reserve(vertices_size_type sz) {
-    _vertices.reserve(sz);
-    names.reserve(sz);
-    updateFrequencies.reserve(sz);
-    layouts.reserve(sz);
+LayoutGraphData::vertex_descriptor LayoutGraphData::add_vertex(const RenderStage_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, parent);
 }
 
-LayoutGraphData::Vertex::Vertex(const allocator_type& alloc) noexcept
-: outEdges(alloc),
-  inEdges(alloc) {}
+LayoutGraphData::vertex_descriptor LayoutGraphData::add_vertex(const RenderPhase_& tag, std::string_view value, vertex_descriptor parent) {
+    return add_vertex(tag, std::piecewise_construct, std::tuple<>{}, std::forward_as_tuple(value), std::tuple<>{}, std::tuple<>{}, parent);
+}
 
-LayoutGraphData::Vertex::Vertex(Vertex&& rhs, const allocator_type& alloc)
-: outEdges(std::move(rhs.outEdges), alloc),
-  inEdges(std::move(rhs.inEdges), alloc),
-  handle(std::move(rhs.handle)) {}
+std::pair<LayoutGraphData::edge_descriptor, bool> LayoutGraphData::add_edge(vertex_descriptor u, vertex_descriptor v) noexcept {
+    if (static_cast<std::uintmax_t>(u) >= links.size() || static_cast<std::uintmax_t>(v) >= links.size() ||
+        links[v].parent != null_vertex() || u >= v) return {{null_vertex(), null_vertex()}, false};
+    auto& parent = links[u];
+    auto& child = links[v];
+    auto* slot = &parent.firstChild;
+    while (*slot != null_vertex() && *slot < v) slot = &links[*slot].nextSibling;
+    child.nextSibling = *slot;
+    if (*slot == null_vertex()) parent.lastChild = v;
+    *slot = v;
+    child.parent = u;
+    ++parent.childCount;
+    return {{u, v}, true};
+}
 
-LayoutGraphData::Vertex::Vertex(Vertex const& rhs, const allocator_type& alloc)
-: outEdges(rhs.outEdges, alloc),
-  inEdges(rhs.inEdges, alloc),
-  handle(rhs.handle) {}
+void LayoutGraphData::remove_edge(edge_descriptor e) noexcept {
+    if (!edge(e.source, e.target).second) return;
+    auto& parent = links[e.source];
+    auto& child = links[e.target];
+    auto previous = null_vertex();
+    auto* slot = &parent.firstChild;
+    while (*slot != e.target) {
+        previous = *slot;
+        slot = &links[previous].nextSibling;
+    }
+    *slot = child.nextSibling;
+    if (parent.lastChild == e.target) parent.lastChild = previous;
+    child.parent = child.nextSibling = null_vertex();
+    --parent.childCount;
+}
+
+LayoutGraphData::vertex_descriptor LayoutGraphData::locate_child(vertex_descriptor parent, std::string_view name) const noexcept {
+    const auto count = this->names.size();
+    if (parent == null_vertex()) {
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto v = static_cast<vertex_descriptor>(i);
+            if (get_parent(v) == null_vertex() && std::string_view{this->getName(v)} == name) return v;
+        }
+    } else if (static_cast<std::uintmax_t>(parent) < count) {
+        for (const auto link : child_links(parent)) {
+            const auto v = child(link);
+            if (std::string_view{this->getName(v)} == name) return v;
+        }
+    }
+    return null_vertex();
+}
+
+LayoutGraphData::vertex_descriptor LayoutGraphData::locate(std::string_view refPath, vertex_descriptor start) const noexcept {
+    if (refPath.empty()) return null_vertex();
+    if (refPath.front() == '/') {
+        start = null_vertex();
+    } else if (start != null_vertex() && static_cast<std::uintmax_t>(start) >= this->names.size()) {
+        return null_vertex();
+    }
+
+    while (!refPath.empty()) {
+        const auto slash = refPath.find('/');
+        const std::string_view segment{refPath.data(), slash == std::string_view::npos ? refPath.size() : slash};
+        refPath.remove_prefix(slash == std::string_view::npos ? refPath.size() : slash + 1);
+        if (segment.empty() || segment == ".") continue;
+        if (segment == "..") {
+            if (start == null_vertex()) return null_vertex();
+            start = get_parent(start);
+        } else {
+            start = locate_child(start, segment);
+            if (start == null_vertex()) return null_vertex();
+        }
+    }
+    return start;
+}
+
+ccstd::pmr::string LayoutGraphData::path(vertex_descriptor v) const {
+    if (v != null_vertex() && static_cast<std::uintmax_t>(v) >= this->names.size()) {
+        throw std::out_of_range("invalid LayoutGraphData vertex");
+    }
+    ccstd::pmr::string result(get_allocator());
+    std::size_t length = 0;
+    for (auto u = v; u != null_vertex(); u = get_parent(u)) {
+        const auto size = this->getName(u).size();
+        if (size >= result.max_size() - length) throw std::length_error("graph path too long");
+        length += size + 1;
+    }
+    result.resize(length);
+    for (auto u = v; u != null_vertex(); u = get_parent(u)) {
+        const auto& segment = this->getName(u);
+        length -= segment.size();
+        segment.copy(result.data() + length, segment.size());
+        result[--length] = '/';
+    }
+    return result;
+}
 
 } // namespace render
 
 } // namespace cc
-
-// NOLINTEND(misc-include-cleaner, bugprone-easily-swappable-parameters)
-// clang-format on

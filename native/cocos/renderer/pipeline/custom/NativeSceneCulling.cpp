@@ -1,14 +1,18 @@
 #include "cocos/renderer/pipeline/Define.h"
+#include "cocos/renderer/pipeline/PipelineSceneData.h"
 #include "cocos/renderer/pipeline/custom/LayoutGraphUtils.h"
 #include "cocos/renderer/pipeline/custom/NativeBuiltinUtils.h"
 #include "cocos/renderer/pipeline/custom/NativePipelineTypes.h"
-#include "cocos/renderer/pipeline/custom/RenderGraphGraphs.h"
+#include "cocos/renderer/pipeline/custom/RenderGraphTypes.h"
 #include "cocos/renderer/pipeline/custom/details/GslUtils.h"
-#include "cocos/renderer/pipeline/custom/details/Range.h"
+#include "cocos/scene/DirectionalLight.h"
 #include "cocos/scene/Octree.h"
+#include "cocos/scene/PointLight.h"
+#include "cocos/scene/RangedDirectionalLight.h"
 #include "cocos/scene/ReflectionProbe.h"
 #include "cocos/scene/RenderScene.h"
 #include "cocos/scene/Skybox.h"
+#include "cocos/scene/SphereLight.h"
 #include "cocos/scene/SpotLight.h"
 
 #include <boost/align/align_up.hpp>
@@ -169,11 +173,11 @@ NativeRenderQueueID SceneCulling::getOrCreateRenderQueue(
 }
 
 void SceneCulling::collectCullingQueries(const RenderGraph& rg) {
-    for (const auto vertID : makeRange(vertices(rg))) {
-        if (!holds<SceneTag>(vertID, rg)) {
+    for (const auto vertID : rg.vertices()) {
+        if (!rg.holds<Scene_>(vertID)) {
             continue;
         }
-        const auto& sceneData = get(SceneTag{}, vertID, rg);
+        const auto& sceneData = rg.value(Scene_{}, vertID);
         if (!sceneData.scene) {
             CC_EXPECTS(false);
             continue;
@@ -182,10 +186,10 @@ void SceneCulling::collectCullingQueries(const RenderGraph& rg) {
         const auto lightBoundsCullingID = getOrCreateLightBoundsCulling(sceneData, frustomCulledResultID);
 
         // Get render queue phaseLayoutID
-        const auto queueID = parent(vertID, rg);
+        const auto queueID = rg.get_parent(vertID);
         CC_ENSURES(queueID != RenderGraph::null_vertex());
-        CC_EXPECTS(holds<QueueTag>(queueID, rg));
-        const auto& renderQueue = get(QueueTag{}, queueID, rg);
+        CC_EXPECTS(rg.holds<Queue_>(queueID));
+        const auto& renderQueue = rg.value(Queue_{}, queueID);
         const auto phaseLayoutID = renderQueue.phaseID;
         CC_EXPECTS(phaseLayoutID != LayoutGraphData::null_vertex());
 

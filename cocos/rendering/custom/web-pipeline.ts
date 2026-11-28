@@ -28,7 +28,7 @@ import { DEBUG, EDITOR } from 'internal:constants';
 import { DescriptorSetLayout, Device, Feature, Format, FormatFeatureBit, Sampler, Swapchain, Texture, ClearFlagBit, DescriptorSet, deviceManager, Viewport, API, CommandBuffer, Type, SamplerInfo, Filter, Address, DescriptorSetInfo, LoadOp, StoreOp, ShaderStageFlagBit, BufferInfo, TextureInfo, TextureType, ResolveMode, SampleCount, Color, ComparisonFunc, Buffer } from '../../gfx';
 import { Vec4, macro, cclegacy, RecyclePool, Mat4, Quat, Vec2, assert } from '../../core';
 import { ResolveFlags, AccessType, AttachmentType, CopyPair, LightInfo, LightingMode, MovePair, QueueHint, RenderCommonObjectPool, ResolvePair, ResourceDimension, ResourceFlags, ResourceResidency, SceneFlags, UpdateFrequency, UploadPair } from './types';
-import { ComputePass, CopyPass, MovePass, RasterPass, RasterSubpass, RenderData, RenderGraph, RenderGraphComponent, RenderGraphValue, RenderQueue, RenderSwapchain, ResourceDesc, ResourceGraph, ResourceGraphValue, ResourceStates, ResourceTraits, SceneData, Subpass, PersistentBuffer, RenderGraphObjectPool, CullingFlags, ManagedResource, ManagedBuffer, BlitType } from './render-graph';
+import { ComputePass, CopyPass, MovePass, RasterPass, RasterSubpass, RenderData, RenderGraph, RenderGraphValue, RenderQueue, RenderSwapchain, ResourceDesc, ResourceGraph, ResourceGraphValue, ResourceStates, ResourceTraits, SceneData, Subpass, PersistentBuffer, RenderGraphObjectPool, CullingFlags, ManagedResource, ManagedBuffer, BlitType } from './render-graph';
 import { ComputePassBuilder, ComputeQueueBuilder, BasicPipeline, RenderQueueBuilder, RenderSubpassBuilder, PipelineType, BasicRenderPassBuilder, PipelineCapabilities, BasicMultisampleRenderPassBuilder, Setter, SceneBuilder } from './pipeline';
 import { PipelineSceneData } from '../pipeline-scene-data';
 import { Model, Camera, PCFType, ProbeType, DirectionalLight, PointLight, RangedDirectionalLight, SphereLight, SpotLight } from '../../render-scene/scene';
@@ -1044,39 +1044,33 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
         desc.format = renderWindow.framebuffer.colorTextures[0]!.format;
         desc.flags = ResourceFlags.COLOR_ATTACHMENT;
 
-        if (!renderWindow.swapchain) {
+        const windowResource = new RenderSwapchain(renderWindow.swapchain);
+        windowResource.renderWindow = renderWindow;
+        if (!windowResource.swapchain) {
             desc.sampleCount = renderWindow.framebuffer.colorTextures[0]!.info.samples;
-            return this._resourceGraph.addVertex<ResourceGraphValue.Framebuffer>(
-                ResourceGraphValue.Framebuffer,
-                renderWindow.framebuffer,
-                name,
-                desc,
-                new ResourceTraits(ResourceResidency.EXTERNAL),
-                new ResourceStates(),
-                new SamplerInfo(),
-            );
-        } else {
-            return this._resourceGraph.addVertex<ResourceGraphValue.Swapchain>(
-                ResourceGraphValue.Swapchain,
-                new RenderSwapchain(renderWindow.swapchain),
-                name,
-                desc,
-                new ResourceTraits(ResourceResidency.BACKBUFFER),
-                new ResourceStates(),
-                new SamplerInfo(),
-            );
         }
+        return this._resourceGraph.addVertex(
+            ResourceGraphValue.Swapchain,
+            windowResource,
+            name,
+            desc,
+            new ResourceTraits(windowResource.swapchain ? ResourceResidency.BACKBUFFER : ResourceResidency.EXTERNAL),
+            new ResourceStates(),
+            new SamplerInfo(),
+        );
     }
     updateRenderWindow (name: string, renderWindow: RenderWindow, depthStencilName?: string): void {
         const resId = this.resourceGraph.vertex(name);
         const desc = this.resourceGraph.getDesc(resId);
         desc.width = renderWindow.width;
         desc.height = renderWindow.height;
-        const currFbo = this.resourceGraph.object(resId);
-        if (currFbo !== renderWindow.framebuffer) {
-            this.resourceGraph.x[resId].j = renderWindow.framebuffer;
-        }
-        this.tryAddRenderWindowDepthStencil(renderWindow.width, renderWindow.height, depthStencilName, renderWindow.swapchain);
+        const windowResource = this.resourceGraph.value(ResourceGraphValue.Swapchain, resId);
+        const swapchain = renderWindow.swapchain;
+        windowResource.swapchain = swapchain;
+        windowResource.renderWindow = renderWindow;
+        this.resourceGraph.getTraits(resId).residency = swapchain ? ResourceResidency.BACKBUFFER : ResourceResidency.EXTERNAL;
+        desc.sampleCount = swapchain ? SampleCount.X1 : renderWindow.framebuffer.colorTextures[0]!.info.samples;
+        this.tryAddRenderWindowDepthStencil(renderWindow.width, renderWindow.height, depthStencilName, swapchain);
     }
     updateStorageBuffer (name: string, size: number, format = Format.UNKNOWN): void {
         const resId = this.resourceGraph.vertex(name);
@@ -1659,25 +1653,22 @@ export class WebPipeline extends WebSetter implements BasicPipeline {
     }
 
     compile (): void {
-        if (!this._renderGraph) {
+        const renderGraph = this._renderGraph;
+        if (!renderGraph) {
             throw new Error('RenderGraph cannot be built without being created');
         }
         resetPassMGState();
         if (DEBUG) {
             if (!this._compiler) {
-                this._compiler = new Compiler(this, this._renderGraph, this._resourceGraph, this._lg);
+                this._compiler = new Compiler(this, renderGraph, this._resourceGraph, this._lg);
             }
-            this._compiler.compile(this._renderGraph);
+            this._compiler.compile(renderGraph);
         }
-        this._renderGraph.x.forEach((vert, v) => {
-            if (vert.t !== RenderGraphValue.RasterPass) {
-                return;
+        for (const v of renderGraph.v()) {
+            if (renderGraph.h(RenderGraphValue.RasterPass, v) && (!DEBUG || renderGraph.getValid(v))) {
+                genHashValue(renderGraph.value(RenderGraphValue.RasterPass, v));
             }
-            if (DEBUG && !this._renderGraph!.getValid(v)) {
-                return;
-            }
-            genHashValue(vert.j as RasterPass);
-        });
+        }
     }
 
     execute (): void {
