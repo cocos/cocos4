@@ -436,7 +436,7 @@ inline bool operator<(const NameLocalID& lhs, const NameLocalID& rhs) noexcept {
 }
 
 struct DescriptorData {
-    DescriptorData(const NameLocalID& descriptorIDIn = {}, gfx::Type typeIn = gfx::Type::UNKNOWN, uint32_t countIn = 1) noexcept // NOLINT(google-explicit-constructor)
+    DescriptorData(const NameLocalID& descriptorIDIn = {}, gfx::Type typeIn = gfx::Type::UNKNOWN, uint32_t countIn = 1) // NOLINT(google-explicit-constructor)
     : descriptorID(descriptorIDIn),
       type(typeIn),
       count(countIn) {}

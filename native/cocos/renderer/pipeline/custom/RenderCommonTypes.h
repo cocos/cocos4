@@ -244,7 +244,7 @@ enum class ClearValueType : uint8_t {
 };
 
 struct LightInfo {
-    LightInfo(IntrusivePtr<scene::Light> lightIn = IntrusivePtr<scene::Light>{}, uint32_t levelIn = 0, bool culledByLightIn = false, scene::ReflectionProbe* probeIn = nullptr) noexcept // NOLINT(google-explicit-constructor)
+    LightInfo(IntrusivePtr<scene::Light> lightIn = IntrusivePtr<scene::Light>{}, uint32_t levelIn = 0, bool culledByLightIn = false, scene::ReflectionProbe* probeIn = nullptr) // NOLINT(google-explicit-constructor)
     : light(std::move(lightIn)),
       probe(probeIn),
       level(levelIn),

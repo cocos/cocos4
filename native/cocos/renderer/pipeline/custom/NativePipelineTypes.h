@@ -754,7 +754,7 @@ struct LayoutGraphNodeResource {
 
 struct QuadResource {
     QuadResource() = default;
-    QuadResource(IntrusivePtr<gfx::Buffer> quadVBIn, IntrusivePtr<gfx::Buffer> quadIBIn, IntrusivePtr<gfx::InputAssembler> quadIAIn) noexcept
+    QuadResource(IntrusivePtr<gfx::Buffer> quadVBIn, IntrusivePtr<gfx::Buffer> quadIBIn, IntrusivePtr<gfx::InputAssembler> quadIAIn)
     : quadVB(std::move(quadVBIn)),
       quadIB(std::move(quadIBIn)),
       quadIA(std::move(quadIAIn)) {}
@@ -999,7 +999,7 @@ inline bool operator<(const DescriptorSetKey& lhs, const DescriptorSetKey& rhs) 
 
 struct DescriptorSetContext {
     DescriptorSetContext() = default;
-    DescriptorSetContext(IntrusivePtr<gfx::DescriptorSet> descriptorSetIn) noexcept // NOLINT(google-explicit-constructor)
+    DescriptorSetContext(IntrusivePtr<gfx::DescriptorSet> descriptorSetIn) // NOLINT(google-explicit-constructor)
     : descriptorSet(std::move(descriptorSetIn)) {}
 
     DescriptorSetContext(DescriptorSetContext&& rhs) = default;
@@ -1310,9 +1310,9 @@ public:
 class NativeProgramProxy final : public ProgramProxy {
 public:
     NativeProgramProxy() = default;
-    NativeProgramProxy(IntrusivePtr<gfx::Shader> shaderIn) noexcept // NOLINT(google-explicit-constructor)
+    NativeProgramProxy(IntrusivePtr<gfx::Shader> shaderIn) // NOLINT(google-explicit-constructor)
     : shader(std::move(shaderIn)) {}
-    NativeProgramProxy(IntrusivePtr<gfx::Shader> shaderIn, IntrusivePtr<gfx::PipelineState> pipelineStateIn) noexcept
+    NativeProgramProxy(IntrusivePtr<gfx::Shader> shaderIn, IntrusivePtr<gfx::PipelineState> pipelineStateIn)
     : shader(std::move(shaderIn)),
       pipelineState(std::move(pipelineStateIn)) {}
 
@@ -1325,7 +1325,7 @@ public:
 class NativeRenderingModule final : public RenderingModule {
 public:
     NativeRenderingModule() = default;
-    NativeRenderingModule(std::shared_ptr<NativeProgramLibrary> programLibraryIn) noexcept // NOLINT(google-explicit-constructor)
+    NativeRenderingModule(std::shared_ptr<NativeProgramLibrary> programLibraryIn) // NOLINT(google-explicit-constructor)
     : programLibrary(std::move(programLibraryIn)) {}
 
     uint32_t getPassID(const ccstd::string &name) const override;

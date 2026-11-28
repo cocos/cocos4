@@ -225,7 +225,7 @@ struct ResourceStates {
 };
 
 struct ManagedBuffer {
-    ManagedBuffer(IntrusivePtr<gfx::Buffer> bufferIn = IntrusivePtr<gfx::Buffer>{}) noexcept // NOLINT(google-explicit-constructor)
+    ManagedBuffer(IntrusivePtr<gfx::Buffer> bufferIn = IntrusivePtr<gfx::Buffer>{}) // NOLINT(google-explicit-constructor)
     : buffer(std::move(bufferIn)) {}
 
     IntrusivePtr<gfx::Buffer> buffer;
@@ -233,7 +233,7 @@ struct ManagedBuffer {
 };
 
 struct PersistentBuffer {
-    PersistentBuffer(IntrusivePtr<gfx::Buffer> bufferIn = IntrusivePtr<gfx::Buffer>{}) noexcept // NOLINT(google-explicit-constructor)
+    PersistentBuffer(IntrusivePtr<gfx::Buffer> bufferIn = IntrusivePtr<gfx::Buffer>{}) // NOLINT(google-explicit-constructor)
     : buffer(std::move(bufferIn)) {}
 
     IntrusivePtr<gfx::Buffer> buffer;
@@ -241,7 +241,7 @@ struct PersistentBuffer {
 };
 
 struct ManagedTexture {
-    ManagedTexture(IntrusivePtr<gfx::Texture> textureIn = IntrusivePtr<gfx::Texture>{}) noexcept // NOLINT(google-explicit-constructor)
+    ManagedTexture(IntrusivePtr<gfx::Texture> textureIn = IntrusivePtr<gfx::Texture>{}) // NOLINT(google-explicit-constructor)
     : texture(std::move(textureIn)) {}
 
     bool checkResource(const ResourceDesc &desc) const;
@@ -251,7 +251,7 @@ struct ManagedTexture {
 };
 
 struct PersistentTexture {
-    PersistentTexture(IntrusivePtr<gfx::Texture> textureIn = IntrusivePtr<gfx::Texture>{}) noexcept // NOLINT(google-explicit-constructor)
+    PersistentTexture(IntrusivePtr<gfx::Texture> textureIn = IntrusivePtr<gfx::Texture>{}) // NOLINT(google-explicit-constructor)
     : texture(std::move(textureIn)) {}
 
     bool checkResource(const ResourceDesc &desc) const;
@@ -996,11 +996,11 @@ struct ClearView {
 };
 
 struct RenderQueue {
-    RenderQueue(QueueHint hintIn = QueueHint::RENDER_OPAQUE, uint32_t phaseIDIn = 0xFFFFFFFF, uint32_t passLayoutIDIn = 0xFFFFFFFF) noexcept // NOLINT(google-explicit-constructor)
+    RenderQueue(QueueHint hintIn = QueueHint::RENDER_OPAQUE, uint32_t phaseIDIn = 0xFFFFFFFF, uint32_t passLayoutIDIn = 0xFFFFFFFF) // NOLINT(google-explicit-constructor)
     : hint(hintIn),
       phaseID(phaseIDIn),
       passLayoutID(passLayoutIDIn) {}
-    RenderQueue(uint32_t phaseIDIn, uint32_t passLayoutIDIn) noexcept
+    RenderQueue(uint32_t phaseIDIn, uint32_t passLayoutIDIn)
     : phaseID(phaseIDIn),
       passLayoutID(passLayoutIDIn) {}
 
@@ -1046,7 +1046,7 @@ constexpr bool any(CullingFlags e) noexcept {
 }
 
 struct SceneData {
-    SceneData(const scene::RenderScene* sceneIn = nullptr, const scene::Camera* cameraIn = nullptr, SceneFlags flagsIn = SceneFlags::NONE, LightInfo lightIn = {}, CullingFlags cullingFlagsIn = CullingFlags::CAMERA_FRUSTUM, IntrusivePtr<scene::Light> shadingLightIn = IntrusivePtr<scene::Light>{}) noexcept // NOLINT(google-explicit-constructor)
+    SceneData(const scene::RenderScene* sceneIn = nullptr, const scene::Camera* cameraIn = nullptr, SceneFlags flagsIn = SceneFlags::NONE, LightInfo lightIn = {}, CullingFlags cullingFlagsIn = CullingFlags::CAMERA_FRUSTUM, IntrusivePtr<scene::Light> shadingLightIn = IntrusivePtr<scene::Light>{}) // NOLINT(google-explicit-constructor)
     : scene(sceneIn),
       camera(cameraIn),
       light(std::move(lightIn)),
@@ -1063,7 +1063,7 @@ struct SceneData {
 };
 
 struct Dispatch {
-    Dispatch(IntrusivePtr<Material> materialIn = IntrusivePtr<Material>{}, uint32_t passIDIn = 0, uint32_t threadGroupCountXIn = 0, uint32_t threadGroupCountYIn = 0, uint32_t threadGroupCountZIn = 0) noexcept // NOLINT(google-explicit-constructor)
+    Dispatch(IntrusivePtr<Material> materialIn = IntrusivePtr<Material>{}, uint32_t passIDIn = 0, uint32_t threadGroupCountXIn = 0, uint32_t threadGroupCountYIn = 0, uint32_t threadGroupCountZIn = 0) // NOLINT(google-explicit-constructor)
     : material(std::move(materialIn)),
       passID(passIDIn),
       threadGroupCountX(threadGroupCountXIn),
